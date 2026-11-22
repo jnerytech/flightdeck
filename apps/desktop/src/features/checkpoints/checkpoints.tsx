@@ -18,6 +18,7 @@ import type { AppStore } from "../../lib/app-store.ts";
 import { ForkDialog, RewindDialog, type Target } from "./checkpoint-dialogs.tsx";
 
 /** More than this many lines or characters and the prompt is clamped, with a button to read it whole (#4038). */
+// Keep PROMPT_LINES equal to the `line-clamp-3` class below: a Tailwind class cannot be built from it.
 const PROMPT_LINES = 3;
 const PROMPT_CHARS = 240;
 
@@ -36,7 +37,7 @@ function TurnPrompt(props: Readonly<{ store: AppStore; prompt: string | null }>)
         id={id}
         className={`whitespace-pre-wrap break-words ${long && !open ? "line-clamp-3" : ""}`.trim()}
       >
-        {props.prompt}
+        {text}
       </p>
       {long && (
         <Button
