@@ -33,6 +33,13 @@ describe("personas-ui: the subagent switch of a project", () => {
     await act(async () => {
       store.router.push({ name: "agent", host: hostId, projectId, projectName: "repo" });
     });
+    // The switch is on the Agents tab only (#3985).
+    await settle(() => screen.queryByRole("tab", { name: "Agentes" }) !== null);
+    await act(async () => {
+      fireEvent.mouseDown(screen.queryByRole("tab", { name: "Agentes" }) as HTMLElement, {
+        button: 0,
+      });
+    });
     await settle(() => screen.queryByLabelText(LABEL) !== null);
     const field = screen.queryByLabelText(LABEL) as HTMLSelectElement | null;
     expect(field).not.toBeNull();
