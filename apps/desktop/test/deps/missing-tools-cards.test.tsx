@@ -93,6 +93,18 @@ describe("missing-tool cards: a person who cannot see the screen can use them (i
     expect(new SetupSettings(storage).dismissedTools()).toEqual([]);
   });
 
+  test("a card that comes back later does not pull the focus away from where the person is", () => {
+    const { show } = setup("en", ["git", "claude"]);
+    press(/Dismiss the note about claude/);
+    press(/Undo.*claude on alfa/);
+    const git = screen.queryByRole("button", { name: /Dismiss the note about git/ });
+    expect(git).not.toBeNull();
+    act(() => git?.focus());
+    act(() => show(["git"]));
+    act(() => show(["git", "claude"]));
+    expect(document.activeElement === git).toBe(true);
+  });
+
   test("a card that arrives later is announced; the cards of the first render are not", () => {
     const { show } = setup("en", ["git"]);
     expect(statusText()).toBe("");

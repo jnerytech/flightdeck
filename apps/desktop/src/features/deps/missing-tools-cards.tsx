@@ -1,5 +1,5 @@
 import { Info } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { missingTools } from "@/features/setup/index.ts";
 import { useT } from "@/i18n/context";
@@ -7,11 +7,13 @@ import { Inline } from "@/shared/layout/index.ts";
 import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
 
 /** One card or the Undo that took its place: the one the focus was handed to takes it on mount. */
-function useFocusOnMount(wanted: boolean) {
+function useFocusOnMount(wanted: boolean, done: () => void) {
   const ref = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (wanted) ref.current?.focus();
-  }, [wanted]);
+    if (!wanted) return;
+    ref.current?.focus();
+    done();
+  }, [wanted, done]);
   return ref;
 }
 
@@ -24,11 +26,17 @@ interface Card {
 }
 
 function ToolCard(
-  props: Readonly<{ card: Card; focus: boolean; onFix(url: string): void; onDismiss(): void }>,
+  props: Readonly<{
+    card: Card;
+    focus: boolean;
+    onFocused(): void;
+    onFix(url: string): void;
+    onDismiss(): void;
+  }>,
 ) {
   const t = useT();
   const { card } = props;
-  const button = useFocusOnMount(props.focus);
+  const button = useFocusOnMount(props.focus, props.onFocused);
   return (
     <aside
       role="note"
@@ -66,10 +74,12 @@ function ToolCard(
 }
 
 /** Where a dismissed card was: the way back, with the focus the dismiss button had. */
-function UndoRow(props: Readonly<{ card: Card; onUndo(): void }>) {
+function UndoRow(
+  props: Readonly<{ card: Card; focus: boolean; onFocused(): void; onUndo(): void }>,
+) {
   const t = useT();
   const { card } = props;
-  const button = useFocusOnMount(true);
+  const button = useFocusOnMount(props.focus, props.onFocused);
   return (
     <Inline gap={3} className="justify-between">
       <p className="text-muted-foreground text-xs">
@@ -145,6 +155,7 @@ export function MissingToolsCards(
     if (arrived.length > 0) setSaid(arrived.join(". "));
   }, [onShow]);
 
+  const focused = useCallback(() => setFocus(null), []);
   const dismiss = (card: Card) => {
     setUndoable((now) => new Set(now).add(card.id));
     setFocus(card.id);
@@ -160,12 +171,19 @@ export function MissingToolsCards(
       <output className="sr-only">{said}</output>
       {cards.map((card) =>
         dismissed.has(card.id) ? (
-          <UndoRow key={card.id} card={card} onUndo={() => undo(card)} />
+          <UndoRow
+            key={card.id}
+            card={card}
+            focus={focus === card.id}
+            onFocused={focused}
+            onUndo={() => undo(card)}
+          />
         ) : (
           <ToolCard
             key={card.id}
             card={card}
-            focus={focus === card.id && undoable.has(card.id)}
+            focus={focus === card.id}
+            onFocused={focused}
             onFix={(url) => store.openLink(url)}
             onDismiss={() => dismiss(card)}
           />
