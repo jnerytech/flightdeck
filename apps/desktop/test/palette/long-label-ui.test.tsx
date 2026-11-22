@@ -12,7 +12,7 @@ setDefaultTimeout(30_000);
 afterEach(cleanup);
 
 const LONG =
-  "Migrar a autenticação do painel administrativo para o provedor novo sem derrubar as sessões abertas";
+  "Move the admin panel sign-in to the new identity provider without dropping the open sessions";
 
 /** The palette with one session named `LONG`, which is also the most recent entry (so it has a keycap). */
 function open() {
@@ -75,9 +75,9 @@ describe("palette-long-label: a long label is cut with an ellipsis, not at the d
     }).toEqual({ truncates: true, shrinks: true, nowrapShrink0: false, title: LONG });
   });
 
-  test("the keycap stays in the row, and it never shrinks away", () => {
+  test("the detail gives way before the label, so a short label next to a long path is not cut", () => {
     open();
-    const keycap = within(rowOf()).getByText("Alt+1");
-    expect(keycap.closest(".shrink-0") !== null).toBe(true);
+    const detail = within(rowOf()).getByText("alfa · /work/api/a");
+    expect(detail.className.split(" ")).toContain("shrink-[3]");
   });
 });
