@@ -19,11 +19,17 @@ const TONE = {
 /** How a line's number looks, as a button or as plain text. */
 const NUMBER = "w-10 shrink-0 select-none px-1 text-right text-muted-foreground tabular-nums";
 
-/** A changed cell of the split diff says so in words and in a sign, so colour is not the only signal. */
-const changeMark = (sign: "+" | "-", word: string) => (
+/**
+ * A cell of the split diff leads with a sign and, for a changed line, says so in words too, so colour
+ * is not the only signal. A context line keeps the same width blank, so the text lines up. None of
+ * it is selected, so a copied line is the code alone.
+ */
+const changeMark = (sign: "+" | "-" | " ", word?: string) => (
   <>
-    <span aria-hidden="true">{sign}</span>
-    <span className="sr-only">{word} </span>
+    <span aria-hidden="true" className="select-none">
+      {`${sign} `}
+    </span>
+    {word && <span className="sr-only select-none">{word} </span>}
   </>
 );
 
@@ -211,7 +217,7 @@ function FileDiff(
             <div className="flex">
               {row.op === "-" ? number(row, "old") : <span className="w-10 shrink-0" />}
               <span className="min-w-0 flex-1 whitespace-pre-wrap break-all px-2">
-                {row.op === "-" && changeMark("-", t("diff.removed"))}
+                {row.op === "-" ? changeMark("-", t("diff.removed")) : changeMark(" ")}
                 {row.text}
               </span>
             </div>
@@ -222,7 +228,7 @@ function FileDiff(
             <div className="flex">
               {number(row, "new")}
               <span className="min-w-0 flex-1 whitespace-pre-wrap break-all px-2">
-                {row.op === "+" && changeMark("+", t("diff.added"))}
+                {row.op === "+" ? changeMark("+", t("diff.added")) : changeMark(" ")}
                 {row.text}
               </span>
             </div>

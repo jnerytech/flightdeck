@@ -78,6 +78,7 @@ export function ChangesPanel(
   const [body, setBody] = useState("");
   const commentBox = useRef<HTMLTextAreaElement>(null);
   const hintId = useId();
+  const splitOffId = useId();
   const panel = useRef<HTMLElement>(null);
   // Focus brings the draft into view: it sits after the whole diff (#1496). Once the drafts were
   // sent, the reviewer's first comment in the history is where they went.
@@ -388,18 +389,24 @@ export function ChangesPanel(
           {mode === "unified" && <Check aria-hidden="true" className="size-4" />}
           {t("diff.unified")}
         </Button>
-        <ActionButton
+        <Button
           variant="outline"
           size="sm"
           aria-pressed={mode === "split"}
+          aria-describedby={compact ? splitOffId : undefined}
           className="aria-pressed:bg-accent aria-pressed:font-semibold"
           disabled={compact}
-          disabledReason={t("diff.splitOff")}
           onClick={() => setMode("split")}
         >
           {mode === "split" && <Check aria-hidden="true" className="size-4" />}
           {t("diff.split")}
-        </ActionButton>
+        </Button>
+        {/* In the flow, not hung under the button: at 390 px a hanging line has no room to the right. */}
+        {compact && (
+          <p id={splitOffId} className="w-full text-muted-foreground text-xs">
+            {t("diff.splitOff")}
+          </p>
+        )}
       </div>
       {undo && (
         <output className="flex items-center gap-2 text-sm">
