@@ -28,21 +28,11 @@ import { filterIssues, issueLabel, issueNumber } from "./domain/issues.ts";
 
 /** The external-author seal: third-party content, so no automatic approval on the card. */
 export function ExternalSeal({ t }: Readonly<{ t: AppStore["i18n"]["t"] }>) {
-  const why = useId();
   return (
-    <>
-      <Badge
-        variant="outline"
-        className="text-status-needs-you"
-        title={t("issuesUi.externalHint")}
-        aria-describedby={why}
-      >
-        {t("issuesUi.external")}
-      </Badge>
-      <span id={why} className="sr-only">
-        {t("issuesUi.externalHint")}
-      </span>
-    </>
+    <Badge variant="outline" className="text-status-needs-you" title={t("issuesUi.externalHint")}>
+      {t("issuesUi.external")}
+      <span className="sr-only">{`. ${t("issuesUi.externalHint")}`}</span>
+    </Badge>
   );
 }
 
