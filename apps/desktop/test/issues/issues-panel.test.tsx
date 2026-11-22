@@ -140,6 +140,8 @@ const LANGS = [
     cardCreated: "Card created",
     createFor: (n: number) => `Create card for Acme/App#${n}`,
     openFor: (n: number) => `Open card of Acme/App#${n}`,
+    seal: "External author",
+    sealWhy: "Third-party content: automatic approval stays suspended on the card",
   },
   {
     lang: "pt-BR",
@@ -163,6 +165,8 @@ const LANGS = [
     cardCreated: "Card criado",
     createFor: (n: number) => `Criar card de Acme/App#${n}`,
     openFor: (n: number) => `Abrir card de Acme/App#${n}`,
+    seal: "Autor externo",
+    sealWhy: "Conteúdo de terceiro: a aprovação automática fica suspensa no card",
   },
 ] as const;
 
@@ -306,6 +310,29 @@ const card = (n: number): Card => ({ id: `c${n}`, issueRef: `github:Acme/App#${n
 const created: Answer = { ok: true, data: { id: "c1" } };
 
 describe.each(LANGS)("issues panel rows ($lang)", (words) => {
+  test("a long title with no space wraps inside its row instead of running past the sheet (#4258)", async () => {
+    const path = `src/${"deeply/".repeat(17)}file.ts`;
+    const long: Answer = { ok: true, data: { issues: [{ ...issue(1), title: path }] } };
+    const h = host({ list: [long] });
+    render(<Switch store={h.store(words.lang)} id="p1" />);
+    await settle(() => rows() === 1);
+    const title = within(panel()).queryByText(path);
+    expect(title).not.toBeNull();
+    expect(title?.className.split(" ")).toContain("break-words");
+  });
+
+  test("the external seal is described by its reason, which a screen reader reads with it (#4258)", async () => {
+    const outside: Answer = { ok: true, data: { issues: [{ ...issue(1), external: true }] } };
+    const h = host({ list: [outside] });
+    render(<Switch store={h.store(words.lang)} id="p1" />);
+    await settle(() => rows() === 1);
+    const seal = within(panel()).queryByText(words.seal);
+    expect(seal).not.toBeNull();
+    const why = seal?.getAttribute("aria-describedby") ?? "";
+    expect(why).not.toBe("");
+    expect(document.getElementById(why)?.textContent).toBe(words.sealWhy);
+  });
+
   test("each row's create and open buttons name their issue", async () => {
     const h = host({ list: [listed(1, 2)] });
     render(<Switch store={h.store(words.lang)} id="p1" cards={[card(2)]} />);
