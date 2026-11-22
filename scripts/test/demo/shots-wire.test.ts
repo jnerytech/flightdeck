@@ -215,6 +215,9 @@ describe("shots-wire: the states the table prints (#3982)", () => {
       "sino-painel",
       "sino-vazio",
       "sino-limpo",
+      "sino-recusa",
+      "sino-alto-risco",
+      "sino-respondendo",
     ]);
   });
 
@@ -290,5 +293,20 @@ describe("shots-wire: the states the table prints (#3982)", () => {
 
   test("the bell prints with no notifications, and with the list cleared from a full one", () => {
     expect([named("sino-vazio")?.inbox, named("sino-limpo")?.inbox]).toEqual([undefined, true]);
+  });
+
+  test("the bell prints a refused answer and an answer on its way from the host's answer to Approve (#4203)", () => {
+    expect(named("sino-recusa")?.inbox).toBe(true);
+    expect(named("sino-recusa")?.wire?.map((rule) => rule.command)).toEqual(["permission.respond"]);
+    expect(named("sino-recusa")?.wire?.some((rule) => "refuse" in rule && rule.refuse !== "")).toBe(
+      true,
+    );
+    expect(named("sino-respondendo")?.inbox).toBe(true);
+    expect(named("sino-respondendo")?.wire).toEqual([{ command: "permission.respond", hold: true }]);
+  });
+
+  test("the bell prints a high-risk request from the dangerous command's row, which the other bell prints leave out (#4203)", () => {
+    expect(named("sino-alto-risco")?.inbox).toBe("danger");
+    expect(named("sino-painel")?.inbox).toBe(true);
   });
 });

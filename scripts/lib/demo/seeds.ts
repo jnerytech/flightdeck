@@ -7,7 +7,11 @@ import type { Finish } from "../../../apps/desktop/src/features/sessions/domain/
  * The notifications of the bell's print: today in UTC (the prints' zone), and one three days ago.
  * `request` is a request really open in the demo: the "web · tests" row links to it.
  */
-export function demoInbox(lang: string, request?: { hostId: string; requestId: string }): string {
+export function demoInbox(
+  lang: string,
+  request?: { hostId: string; requestId: string },
+  _danger?: { hostId: string; requestId: string },
+): string {
   const pt = lang.startsWith("pt");
   const dayStart = new Date().setUTCHours(0, 0, 0, 0);
   const today = (second: number) => new Date(dayStart + second * 1000).toISOString();

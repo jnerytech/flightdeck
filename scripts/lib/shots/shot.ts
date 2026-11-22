@@ -22,7 +22,7 @@ export interface Shot {
   /** Phase 36: an hourly rate and one person kept in the page's storage before it loads. */
   roi?: boolean;
   /** Issue #137: notifications kept in the page's storage before it loads (read, unread, collapsed, gone). */
-  inbox?: boolean;
+  inbox?: boolean | "danger";
   /** Issue #1168: one session finished since the last look, kept in the page's storage before it loads (Needs you's Finished group). */
   finished?: boolean;
   /** Issue #1344: the app was last active long ago, so Needs you opens with "While you were away". */
