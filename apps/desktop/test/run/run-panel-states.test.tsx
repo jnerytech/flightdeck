@@ -73,11 +73,11 @@ const click = async (name: string) => {
 describe("the run panel tells what happened to each process and what was pressed (#3707)", () => {
   test("a process with no exit code never shows the word null, in either language", async () => {
     await panel("en", run({ status: "ended", processes: [proc({ exitCode: null })] }));
-    expect(screen.queryByText(/null/) !== null).toBe(false);
+    expect(screen.queryByText(/null/)).toBeNull();
     expect(screen.queryByText("ended without an exit code")).not.toBeNull();
     cleanup();
     await panel("pt-BR", run({ status: "ended", processes: [proc({ exitCode: null })] }));
-    expect(screen.queryByText(/null/) !== null).toBe(false);
+    expect(screen.queryByText(/null/)).toBeNull();
     expect(screen.queryByText("encerrado sem código de saída")).not.toBeNull();
   });
 
@@ -128,7 +128,7 @@ describe("the run panel tells what happened to each process and what was pressed
     expect(screen.queryByRole("status")?.textContent).toBe("Not running");
     await act(async () => store.runEnv.updated("h", run({ status: "running" })));
     expect(screen.queryByRole("status")?.textContent).toBe("Running");
-    expect(screen.queryByRole("alert") !== null).toBe(false);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   test("when the host reports the run before it answers, the other button starts fresh, not busy", async () => {

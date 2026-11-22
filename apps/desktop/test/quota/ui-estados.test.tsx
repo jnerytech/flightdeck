@@ -106,11 +106,11 @@ describe.each(["en", "pt-BR"] as const)("the quota screens, states (%s)", (lang)
         <QuotaCharts store={store} hostId="a" />
       </TContext.Provider>,
     );
-    expect(screen.queryByRole("status", { name: t("quotaCharts.loading") }) !== null).toBe(true);
+    expect(screen.queryByRole("status", { name: t("quotaCharts.loading") })).not.toBeNull();
     for (const answer of answers) answer(null);
     await settle(() => screen.queryByText(t("quotaCharts.empty")) !== null);
-    expect(screen.queryByText(t("quotaCharts.empty")) !== null).toBe(true);
-    expect(screen.queryByRole("status", { name: t("quotaCharts.loading") }) === null).toBe(true);
+    expect(screen.queryByText(t("quotaCharts.empty"))).not.toBeNull();
+    expect(screen.queryByRole("status", { name: t("quotaCharts.loading") })).toBeNull();
   });
 
   test("another host's charts start from loading, not from the previous host's charts", async () => {
@@ -135,6 +135,6 @@ describe.each(["en", "pt-BR"] as const)("the quota screens, states (%s)", (lang)
       () => screen.queryByRole("status", { name: t("quotaCharts.loading") }) !== null,
       600,
     );
-    expect(screen.queryByRole("status", { name: t("quotaCharts.loading") }) !== null).toBe(true);
+    expect(screen.queryByRole("status", { name: t("quotaCharts.loading") })).not.toBeNull();
   });
 });

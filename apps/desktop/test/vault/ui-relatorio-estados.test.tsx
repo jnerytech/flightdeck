@@ -83,9 +83,9 @@ describe.each(["en", "pt-BR"] as const)("the vault Report tab, its states (%s)",
   test("while the host has not answered, a loading state shows and the empty texts do not", async () => {
     await report(lang, () => new Promise(() => {}));
     await act(async () => {});
-    expect(screen.queryByRole("status", { name: w.loading }) !== null).toBe(true);
-    expect(screen.queryByText(w.empty) === null).toBe(true);
-    expect(screen.queryByText(w.noDecisions) === null).toBe(true);
+    expect(screen.queryByRole("status", { name: w.loading })).not.toBeNull();
+    expect(screen.queryByText(w.empty)).toBeNull();
+    expect(screen.queryByText(w.noDecisions)).toBeNull();
   });
 
   test("a refused report is an alert with Try again, which reads it again", async () => {
@@ -94,12 +94,12 @@ describe.each(["en", "pt-BR"] as const)("the vault Report tab, its states (%s)",
     );
     await act(async () => {});
     expect(screen.queryByRole("alert")?.textContent?.includes(w.failed)).toBe(true);
-    expect(screen.queryByText(w.empty) === null).toBe(true);
-    expect(screen.queryByText(w.noDecisions) === null).toBe(true);
+    expect(screen.queryByText(w.empty)).toBeNull();
+    expect(screen.queryByText(w.noDecisions)).toBeNull();
     expect(hasButton(w.retry)).toBe(true);
     await click(w.retry);
     await settle(() => hasTable());
-    expect(screen.queryByRole("alert") === null).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
     // The tab has its own Try again, so no toast retry (it would drop the answer).
     expect(asked.every((a) => JSON.stringify(a.options ?? null) === '{"retry":false}')).toBe(true);
   });
@@ -110,7 +110,7 @@ describe.each(["en", "pt-BR"] as const)("the vault Report tab, its states (%s)",
     );
     await act(async () => {});
     expect(screen.queryByRole("alert")?.textContent?.includes(w.failed)).toBe(true);
-    expect(screen.queryByText(w.noDecisions) === null).toBe(true);
+    expect(screen.queryByText(w.noDecisions)).toBeNull();
     expect(hasButton(w.retry)).toBe(true);
     await click(w.retry);
     await settle(() => screen.queryByRole("alert") === null);
@@ -125,12 +125,12 @@ describe.each(["en", "pt-BR"] as const)("the vault Report tab, its states (%s)",
     );
     await settle(() => hasTable());
     const select = screen.queryByRole("combobox", { name: w.host }) as HTMLSelectElement;
-    expect(select !== null).toBe(true);
+    expect(select).not.toBeNull();
     await act(async () => {
       fireEvent.change(select, { target: { value: "h2" } });
     });
     expect(hasTable()).toBe(false);
-    expect(screen.queryByText(w.empty) === null).toBe(true);
+    expect(screen.queryByText(w.empty)).toBeNull();
   });
 
   test("a late answer of the first host never shows once another host is picked", async () => {
@@ -150,7 +150,7 @@ describe.each(["en", "pt-BR"] as const)("the vault Report tab, its states (%s)",
       ["h1", "h2"],
     );
     const select = screen.queryByRole("combobox", { name: w.host }) as HTMLSelectElement;
-    expect(select !== null).toBe(true);
+    expect(select).not.toBeNull();
     await act(async () => {
       fireEvent.change(select, { target: { value: "h2" } });
     });
@@ -158,6 +158,6 @@ describe.each(["en", "pt-BR"] as const)("the vault Report tab, its states (%s)",
       for (const answer of late) answer();
     });
     expect(hasTable()).toBe(false);
-    expect(screen.queryByRole("status", { name: w.loading }) !== null).toBe(true);
+    expect(screen.queryByRole("status", { name: w.loading })).not.toBeNull();
   });
 });

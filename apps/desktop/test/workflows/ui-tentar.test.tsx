@@ -94,11 +94,11 @@ describe.each(["en", "pt-BR"] as const)("the Workflows page, a refused load (%s)
       return null;
     });
     expect(screen.queryByRole("alert")?.textContent?.includes(w.failed)).toBe(true);
-    expect(screen.queryByText(w.empty) === null).toBe(true);
+    expect(screen.queryByText(w.empty)).toBeNull();
     expect(hasButton(w.retry)).toBe(true);
     await click(w.retry);
     await settle(() => screen.queryByRole("listitem", { name: w.item }) !== null);
-    expect(screen.queryByRole("alert") === null).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   test("a refused refresh after Trust keeps the list, shows the alert and Try again reloads it", async () => {
@@ -111,11 +111,11 @@ describe.each(["en", "pt-BR"] as const)("the Workflows page, a refused load (%s)
     await click(w.confirm);
     await act(async () => {});
     expect(screen.queryByRole("alert")?.textContent?.includes(w.failed)).toBe(true);
-    expect(screen.queryByRole("listitem", { name: w.item }) !== null).toBe(true);
+    expect(screen.queryByRole("listitem", { name: w.item })).not.toBeNull();
     expect(hasButton(w.retry)).toBe(true);
     await click(w.retry);
     await settle(() => screen.queryByRole("alert") === null);
-    expect(screen.queryByRole("listitem", { name: w.item }) !== null).toBe(true);
+    expect(screen.queryByRole("listitem", { name: w.item })).not.toBeNull();
     // The page has its own Try again, so no toast retry (it would drop the answer).
     const loads = asked.filter((a) => a.type === "workflow.list");
     expect(loads.every((a) => JSON.stringify(a.options) === '{"retry":false}')).toBe(true);
@@ -129,10 +129,10 @@ describe.each(["en", "pt-BR"] as const)("the Workflows page, a refused load (%s)
     });
     await click(w.open);
     await act(async () => {});
-    expect(screen.queryByText(w.templatesFailed) !== null).toBe(true);
+    expect(screen.queryByText(w.templatesFailed)).not.toBeNull();
     expect(hasButton(w.retry)).toBe(true);
     await click(w.retry);
     await settle(() => screen.queryByText(w.template) !== null);
-    expect(screen.queryByRole("alert") === null).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

@@ -84,18 +84,18 @@ describe.each(["en", "pt-BR"] as const)("the Plugins page states (%s)", (lang) =
 
   test("with no online host that keeps plugins, it says so instead of loading for ever", async () => {
     await page(lang, false, () => LIST);
-    expect(screen.queryByText(w.noHost) !== null).toBe(true);
+    expect(screen.queryByText(w.noHost)).not.toBeNull();
   });
 
   test("a refused list is an error with Try again, not three empty lists", async () => {
     let refuse = true;
     await page(lang, true, () => (refuse ? null : LIST));
     expect(screen.queryByRole("alert")?.textContent?.includes(w.failed)).toBe(true);
-    expect(screen.queryByText(w.none) === null).toBe(true);
+    expect(screen.queryByText(w.none)).toBeNull();
     refuse = false;
     await click(w.retry);
     await settle(() => screen.queryByText("deploy-tools") !== null);
-    expect(screen.queryByRole("alert") === null).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   test("a refused refresh after an action keeps the list and offers Try again, which refreshes it", async () => {
@@ -106,11 +106,11 @@ describe.each(["en", "pt-BR"] as const)("the Plugins page states (%s)", (lang) =
     await settle(() => screen.queryByText("deploy-tools") !== null);
     await click(w.pin);
     await settle(() => screen.queryByRole("alert") !== null);
-    expect(screen.queryByText("deploy-tools") !== null).toBe(true);
-    expect(screen.queryByText(w.none) === null).toBe(true);
+    expect(screen.queryByText("deploy-tools")).not.toBeNull();
+    expect(screen.queryByText(w.none)).toBeNull();
     await click(w.retry);
     await settle(() => screen.queryByRole("alert") === null);
-    expect(screen.queryByText("deploy-tools") !== null).toBe(true);
+    expect(screen.queryByText("deploy-tools")).not.toBeNull();
     // The page has its own Try again, so no toast retry (it would drop the answer).
     const loads = asked.filter((a) => a.type === "plugins.list");
     expect(loads.every((a) => JSON.stringify(a.options) === '{"retry":false}')).toBe(true);
