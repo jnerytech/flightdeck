@@ -4,6 +4,7 @@ import type { Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
 import { DEMO_CARD_TEMPLATE } from "../demo/card-templates.ts";
 import { DEMO_PR_CARD, DEMO_PR_URL, DEMO_TEAM_REPORT } from "../e2e/journeys.ts";
+import { failFolderWrites } from "./folder-fail.ts";
 import { keepSaves } from "./save-file.ts";
 import { ALFA, openHostSettings, type Shot, showSection, showToast } from "./shot.ts";
 
@@ -43,6 +44,19 @@ function maintenancePanel(then?: NonNullable<Shot["prepare"]>): NonNullable<Shot
 }
 
 const SUBMIT = /^(Test and add|Testar e adicionar)$/;
+
+const FOLDER_KEY = "flightdeck.demoBackupFolder";
+const EVERY_DAY = /^(Every day|Todo dia)$/;
+const CHOOSE_FOLDER = /^(Choose folder|Escolher pasta)$/;
+const SCHEDULE = /^(Scheduled backups|Backups agendados)$/;
+
+/** Settings > Backup > Scheduled backups: the session's passphrase typed and set, so a due run goes (#4001). */
+async function setSchedulePassphrase(page: Page): Promise<void> {
+  await page
+    .getByLabel(/^(Passphrase for this session|Frase-senha desta sessão)$/)
+    .fill("a long enough passphrase");
+  await page.getByRole("button", { name: /^(Set passphrase|Definir frase-senha)$/ }).click();
+}
 
 /** Settings > Backup: the passphrase of a new backup, typed and repeated (#4001). */
 async function fillExport(page: Page): Promise<void> {
@@ -269,6 +283,53 @@ export function hostShots(ids: DemoIds): Shot[] {
         await page.getByRole("button", { name: /^(Choose folder|Escolher pasta)$/ }).click();
         await page.getByText("/demo/backups").first().waitFor();
         await showSection(/^(Scheduled backups|Backups agendados)$/)(page);
+      },
+    },
+    {
+      // #4001: the schedule on, the folder chosen and the passphrase set: the due run goes, and the
+      // panel shows the passphrase line, the last backup and the next one.
+      name: "configuracoes-agenda-feito",
+      route: { name: "settings", section: "backup" },
+      query: { backupFolder: "demo" },
+      prepare: async (page) => {
+        await page.getByRole("radio", { name: EVERY_DAY }).check();
+        await page.getByRole("button", { name: CHOOSE_FOLDER }).click();
+        await page.getByText("/demo/backups").first().waitFor();
+        await setSchedulePassphrase(page);
+        await page.getByText(/^(Last backup|Último backup):/).waitFor();
+        await showSection(SCHEDULE)(page);
+      },
+    },
+    {
+      // #4001: the schedule on with no folder chosen: the notice that a backup is due and has nowhere to go.
+      name: "configuracoes-agenda-sem-pasta",
+      route: { name: "settings", section: "backup" },
+      query: { backupFolder: "demo" },
+      prepare: async (page) => {
+        await page.getByRole("radio", { name: EVERY_DAY }).check();
+        await page
+          .getByText(/^(A backup is due, but no folder|Há um backup a fazer, mas nenhuma pasta)/)
+          .waitFor();
+        await showSection(SCHEDULE)(page);
+      },
+    },
+    {
+      // #4001: the folder refuses the write (`failFolderWrites`): the notice that the last backup was not saved.
+      name: "configuracoes-agenda-falhou",
+      route: { name: "settings", section: "backup" },
+      query: { backupFolder: "demo" },
+      prepare: async (page) => {
+        await page.getByRole("radio", { name: EVERY_DAY }).check();
+        await page.getByRole("button", { name: CHOOSE_FOLDER }).click();
+        await page.getByText("/demo/backups").first().waitFor();
+        await page.evaluate(
+          `(${failFolderWrites.toString()})(window, ${JSON.stringify(FOLDER_KEY)})`,
+        );
+        await setSchedulePassphrase(page);
+        await page
+          .getByText(/^(The last backup could not be saved|O último backup não pôde ser salvo)/)
+          .waitFor();
+        await showSection(SCHEDULE)(page);
       },
     },
     {

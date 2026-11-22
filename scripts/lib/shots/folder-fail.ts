@@ -9,6 +9,10 @@ export interface StorageWindow {
 
 /** Self-contained: Playwright sends its source to the page, so it names nothing outside itself. */
 export function failFolderWrites(win: StorageWindow, key: string): void {
-  void win;
-  void key;
+  const proto = win.Storage.prototype;
+  const original = proto.setItem;
+  proto.setItem = function (this: unknown, name: string, value: string) {
+    if (name === key) throw new Error("the folder is full");
+    return original.call(this, name, value);
+  };
 }

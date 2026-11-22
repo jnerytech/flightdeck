@@ -4,15 +4,18 @@ import { failFolderWrites, type StorageWindow } from "../../lib/shots/folder-fai
 import { hostShots } from "../../lib/shots/table-hosts.ts";
 
 const agendaShots = () =>
-  hostShots({} as DemoIds).filter((shot) => shot.name.startsWith("configuracoes-backup-agenda"));
+  hostShots({} as DemoIds).filter(
+    (shot) =>
+      shot.name === "configuracoes-backup-agenda" || shot.name.startsWith("configuracoes-agenda-"),
+  );
 
 describe("the Scheduled backups prints (#4001)", () => {
   test("the table prints the schedule, the run done, a missing folder and a failed write, all with the demo folder", () => {
     expect(agendaShots().map((shot) => shot.name)).toEqual([
       "configuracoes-backup-agenda",
-      "configuracoes-backup-agenda-feito",
-      "configuracoes-backup-agenda-sem-pasta",
-      "configuracoes-backup-agenda-falhou",
+      "configuracoes-agenda-feito",
+      "configuracoes-agenda-sem-pasta",
+      "configuracoes-agenda-falhou",
     ]);
     expect(
       agendaShots().every(
