@@ -48,7 +48,7 @@ export function QuestionForm(
                   <Inline gap={2}>
                     <input
                       type={q.multiSelect ? "checkbox" : "radio"}
-                      name={`ask-${index}`}
+                      name={`${base}-${index}`}
                       disabled={props.disabled}
                       checked={pick.labels.includes(option.label)}
                       onChange={(e) => toggle(option.label, e.target.checked)}

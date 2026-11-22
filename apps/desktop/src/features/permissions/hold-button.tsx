@@ -1,8 +1,6 @@
 import { type KeyboardEvent, type MouseEvent, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-/** A click this soon after a hold ran its time is the end of that press, not a plain click. */
-const CLICK_AFTER_HOLD_MS = 500;
 /** How long the "a click does not approve" text stays on screen. */
 const CLICK_HINT_MS = 6000;
 
@@ -31,8 +29,8 @@ export function HoldButton(
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [clicked, setClicked] = useState(false);
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** When the last hold ran its time: the click that ends that press is no plain click. */
-  const heldAt = useRef(0);
+  /** The last press ran its time: the click that ends it is no plain click (until the next press). */
+  const justHeld = useRef(false);
 
   const cancel = () => {
     if (timer.current) clearTimeout(timer.current);
@@ -47,19 +45,22 @@ export function HoldButton(
   const start = () => {
     if (timer.current || props.disabled) return;
     hideClickHint();
+    justHeld.current = false;
     setHolding(true);
     timer.current = setTimeout(() => {
       timer.current = null;
-      heldAt.current = Date.now();
+      justHeld.current = true;
       setHolding(false);
       props.onHeld();
     }, props.holdMs);
   };
   const click = (e: MouseEvent) => {
     e.preventDefault();
-    if (!props.clickHint || props.disabled || Date.now() - heldAt.current < CLICK_AFTER_HOLD_MS) {
+    if (justHeld.current) {
+      justHeld.current = false;
       return;
     }
+    if (!props.clickHint || props.disabled) return;
     setClicked(true);
     if (clickTimer.current) clearTimeout(clickTimer.current);
     clickTimer.current = setTimeout(hideClickHint, CLICK_HINT_MS);
