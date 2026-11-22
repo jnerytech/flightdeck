@@ -98,6 +98,8 @@ export function HostHealth(
     checks: checks.map((check) => checkRow(check, env)),
   };
   const { required, optional } = healthCounts(items, checks);
+  // The page's own test: a host that is not reachable cannot be asked anything.
+  const unreachable = host.status !== "online" && host.status !== "incompatible";
   const offline = host.status === "offline";
   const { text: headline, look: headlineLook } = headlineFor(
     {
@@ -168,17 +170,34 @@ export function HostHealth(
   const fine = all.filter((row) => !needsYou(row));
   const count = (tone: DepLook["tone"]) => all.filter((row) => row.look.tone === tone).length;
   const signature = signatureOf(items, checks);
-  const ask = (fix: Asked["fix"]) => setAsked({ before: signature, fix, at: props.checkedAt });
-  const result = resultFor(
-    asked,
-    { signature, checkedAt: props.checkedAt, error: props.error ?? null },
-    all,
-    t,
-  );
-  // A fix can move its row into the fold, and the button the focus was on goes with it.
+  // The latest read, for a fix that asks after its command ran: its closure is the click's.
+  const latest = useRef({ signature, checkedAt: props.checkedAt });
+  latest.current = { signature, checkedAt: props.checkedAt };
+  const ask = (fix: Asked["fix"]) =>
+    setAsked({
+      before: latest.current.signature,
+      fix,
+      name: all.find((row) => row.key === fix)?.name ?? "",
+      at: latest.current.checkedAt,
+      answer: null,
+    });
+  const fresh =
+    asked?.answer === null
+      ? resultFor(
+          asked,
+          { signature, checkedAt: props.checkedAt, error: props.error ?? null },
+          all,
+          t,
+        )
+      : null;
+  // The first newer read is the answer and stays. The button Check again or a fix was pressed on
+  // can be gone or disabled by then, and the focus with it: it goes to the headline.
   useEffect(() => {
-    if (result && asked?.fix && document.activeElement === document.body) headRef.current?.focus();
-  }, [result, asked]);
+    if (!fresh) return;
+    setAsked((prev) => (prev?.answer === null ? { ...prev, answer: fresh } : prev));
+    if (document.activeElement === document.body) headRef.current?.focus();
+  }, [fresh]);
+  const result = offline ? null : (asked?.answer ?? fresh);
   const group = (which: "required" | "optional" | "checks") => {
     const problems = rows[which].filter(needsYou);
     return problems.length === 0 ? null : (
@@ -247,7 +266,7 @@ export function HostHealth(
         <ActionButton
           variant="outline"
           size="sm"
-          disabled={offline}
+          disabled={unreachable}
           disabledReason={t("hostHealth.checkOffline")}
           onClick={() => {
             ask(null);
@@ -314,8 +333,8 @@ export function HostHealth(
           onCancel={() => setConfirming(null)}
           onConfirm={() => {
             setConfirming(null);
-            ask("hooks");
             void store.hostCommand(host.id, "hooks.install", { confirm: true }).then(() => {
+              ask("hooks");
               props.onHooksChanged();
               return props.onCheck();
             });
@@ -333,9 +352,9 @@ export function HostHealth(
           onCancel={() => setConfirming(null)}
           onConfirm={() => {
             setConfirming(null);
-            ask("service");
             void store.hostCommand(host.id, "service.install", { confirm: true }).then((result) => {
               if (result) setServiceDone(result);
+              ask("service");
               return props.onCheck();
             });
           }}

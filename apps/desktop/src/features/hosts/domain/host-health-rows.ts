@@ -158,9 +158,11 @@ export function headlineFor(
 /** What the rows say, in one string: two reads with the same signature found the same thing. */
 export function signatureOf(items: DepResult[], checks: DoctorCheckResult[]): string {
   return [
-    ...items.map((item) => `${item.id}:${item.state}`),
-    ...checks.map((check) => `${check.id}:${check.status}`),
-  ].join("|");
+    ...items.map((item) => `${item.id}:${item.state}:${item.version ?? ""}:${item.path ?? ""}`),
+    ...checks.map((check) => `${check.id}:${check.status}:${check.detail}`),
+  ]
+    .sort((a, b) => a.localeCompare(b))
+    .join("|");
 }
 
 /** What Check again or a fix was asked at, kept to tell its answer apart (#4323, #4324). */
@@ -168,8 +170,12 @@ export interface Asked {
   before: string;
   /** The row a one-click fix was for; null for Check again. */
   fix: "hooks" | "service" | null;
+  /** The name of that row, kept in case the next read no longer lists it. */
+  name: string;
   /** The read time when it was asked: a newer one is the answer. */
   at: number | null;
+  /** The answer, once the first newer read gave it: later reads do not rewrite it. */
+  answer: string | null;
 }
 
 /** The answer to Check again or a fix, in words; null until a newer read arrives or when the read failed. */
@@ -181,8 +187,9 @@ export function resultFor(
 ): string | null {
   if (!asked || now.checkedAt === asked.at || now.error) return null;
   const fixed = asked.fix ? rows.find((row) => row.key === asked.fix) : undefined;
-  if (fixed) {
-    return t(needsYou(fixed) ? "hostHealth.fixedStill" : "hostHealth.fixed", { name: fixed.name });
+  if (asked.fix) {
+    const key = fixed && needsYou(fixed) ? "hostHealth.fixedStill" : "hostHealth.fixed";
+    return t(key, { name: fixed?.name ?? asked.name });
   }
   return t(now.signature === asked.before ? "hostHealth.resultSame" : "hostHealth.resultChanged");
 }
