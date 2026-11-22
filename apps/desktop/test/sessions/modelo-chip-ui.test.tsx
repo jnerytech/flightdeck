@@ -201,11 +201,11 @@ describe("modelo-chip: the Model menu", () => {
     expect(
       rows()
         .map((r) => r.textContent ?? "")
-        .filter((text) => /^(Opus 5\.5|Sonnet 5\.5|Haiku 5\.5|Fable 5\.1)/.test(text)),
+        .filter((text) => /^(Opus 5\.5|Sonnet 5\.5|Haiku 5\.5|Fable 5\.2)/.test(text)),
     ).toHaveLength(4);
-    await click(row(/^Fable 5\.1/));
-    expect(models).toEqual(["claude-fable-5-1"]);
-    expect(chip()?.textContent).toContain("Fable 5.1");
+    await click(row(/^Fable 5\.2/));
+    expect(models).toEqual(["claude-fable-5-2"]);
+    expect(chip()?.textContent).toContain("Fable 5.2");
   });
 });
 

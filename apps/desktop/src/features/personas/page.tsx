@@ -226,13 +226,28 @@ export const PersonasPage = memo(function PersonasPage(props: {
   const busy = (p: AppPersona, action: Action) =>
     pending?.id === keyOf(p) && pending.action === action;
 
-  const projects = hostId ? (state.projects[hostId] ?? []) : [];
+  // No host, no personas: the app's own are edited through a host too, so no project choice would lead anywhere (#4214).
+  if (!hostId) {
+    return (
+      <Page title={t("personas.title")}>
+        <EmptyState
+          icon={Drama}
+          title={t("personas.noHost")}
+          action={
+            <Button variant="link" onClick={() => props.go({ name: "add-host" })}>
+              {t("personas.noHostLink")}
+            </Button>
+          }
+        />
+      </Page>
+    );
+  }
+  const projects = state.projects[hostId] ?? [];
   return (
     <Page
       title={t("personas.title")}
       subtitle={t("personas.subtitle", { host: host?.name ?? "" })}
       actions={
-        hostId &&
         editing === null && (
           <Button data-edit="new" onClick={() => openEditor("new")}>
             {t("personas.newPersona")}
@@ -240,7 +255,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
         )
       }
     >
-      {hostId && editing === "new" && (
+      {editing === "new" && (
         <PersonaEditor
           key="new"
           store={store}
@@ -296,8 +311,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
       {cards && cards.length > 0 && (
         <ul ref={list} aria-label={t("personas.list")} className="flex flex-col gap-2">
           {cards.map((p) => {
-            const inEditor =
-              hostId && editing !== null && editing !== "new" && keyOf(editing) === keyOf(p);
+            const inEditor = editing !== null && editing !== "new" && keyOf(editing) === keyOf(p);
             return (
               // A row puts its actions beside its text; the one being edited is a full-width card (#588).
               <li
