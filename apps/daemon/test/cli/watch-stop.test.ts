@@ -21,6 +21,14 @@ describe("watchStop (issue #3621)", () => {
     }
   });
 
+  test("a session teleport stops on Ctrl-C too, so both hosts are freed (#3704), and another session verb does not", async () => {
+    const { stop, handlers } = listening({ command: "session", action: "teleport" });
+    expect([...handlers.keys()].sort()).toEqual(["SIGINT", "SIGTERM"]);
+    await handlers.get("SIGINT")?.();
+    expect(stop.signal.aborted).toBe(true);
+    expect(listening({ command: "session", action: "close" }).handlers.size).toBe(0);
+  });
+
   test("any other command leaves Ctrl-C alone, so it ends the process", () => {
     const { stop, handlers } = listening({ action: "get" });
     expect(handlers.size).toBe(0);

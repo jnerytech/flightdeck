@@ -503,6 +503,9 @@ const HANDLERS: Record<string, Handler> = {
   "--to": setValue((args, v) => {
     args.until = v;
   }),
+  "--repo": setValue((args, v) => {
+    args.teleport = { ...args.teleport, repo: v };
+  }),
   "--cwd": setValue((args, v) => {
     args.cwd = v;
   }),

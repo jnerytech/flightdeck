@@ -20,6 +20,7 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 [Read the chapter.](flightdeckd-session-commands.md) Its sections:
 
 - [fd session](flightdeckd-session-commands.md#fd-session)
+- [fd session teleport](flightdeckd-session-commands.md#fd-session-teleport)
 
 ## flightdeckd commands: ssh destinations
 

@@ -65,3 +65,27 @@ the turn or went to a terminal session. `create`, `fork`, `set-mode` and `apply-
 session runs them from its own shell, so its permission prompt asks the person. If the daemon does not answer,
 `create` and `fork` say a session may or may not have been started: run `fd sessions` before you repeat them.
 
+## fd session teleport
+
+```sh
+fd session teleport api --to cloud --repo /srv/api
+fd session teleport api --to cloud --repo /srv/api --confirm --json
+```
+
+Moves an idle session, its transcript and its code, to another paired host, as the app's Teleport
+dialog does. The session is its name or its id on this host (or on `--host`); `--to` names the host it
+moves to and `--repo` the project there, which must already exist. Without `--confirm` it moves
+nothing: it prints what would move (the model, the permission mode, the persona, the size of each part,
+the branch, the commits ahead and the files changed, and how many lines look like a secret with their
+kinds, never their text), drops the package it made on this host and exits `1`. Run it again with
+`--confirm` to move. A move that lands prints `moved <session> to <host> as session <id>` and archives
+the copy on this host; the progress (`sent N of M bytes`) goes to stderr and is left out under `--json`,
+which prints `moved`, `id`, `sessionId`, `claudeSessionId`, `target`, `worktree` and `branch` (or
+`moved: false` with the `summary` when it stopped before the move).
+
+A session that is working, belongs to a team or does not run on Claude is refused with exit `1`. A source
+that sends a package that does not hold together, a target that refuses the import and a Ctrl-C each leave
+nothing on either host and exit `1` (a Ctrl-C says `cancelled`). A host that does not answer or cannot be
+reached is exit `2`. If the target gives no answer to the final import, the exit is `1` and the session may
+or may not exist there: look at its sessions before you move it again; the copy here is not archived.
+It is rated high-risk when a session runs it from its own shell.

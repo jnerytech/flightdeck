@@ -64,3 +64,26 @@ sessão de terminal. `create`, `fork`, `set-mode` e `apply-persona` têm risco a
 próprio shell, então o pedido de permissão pergunta à pessoa. Se o daemon não responde, `create` e `fork` dizem
 que uma sessão pode ou não ter sido iniciada: rode `fd sessions` antes de repetir.
 
+## fd session teleport
+
+```sh
+fd session teleport api --to cloud --repo /srv/api
+fd session teleport api --to cloud --repo /srv/api --confirm --json
+```
+
+Move uma sessão ociosa, com a transcrição e o código, para outro host pareado, como o diálogo Teleport
+do app. A sessão é o nome ou o id neste host (ou em `--host`); `--to` nomeia o host de destino e `--repo`
+o projeto lá, que já precisa existir. Sem `--confirm` não move nada: mostra o que moveria (o modelo, o
+modo de permissão, a persona, o tamanho de cada parte, o branch, os commits à frente e os arquivos
+alterados, e quantas linhas parecem um segredo com o tipo, nunca o texto), descarta o pacote que fez
+neste host e sai com `1`. Rode de novo com `--confirm` para mover. Um movimento que chega imprime
+`moved <sessão> to <host> as session <id>` e arquiva a cópia deste host; o andamento
+(`sent N of M bytes`) vai para o stderr e não aparece com `--json`, que imprime `moved`, `id`, `sessionId`,
+`claudeSessionId`, `target`, `worktree` e `branch` (ou `moved: false` com o `summary` quando parou antes).
+
+Uma sessão ocupada, de um time ou que não roda no Claude é recusada com saída `1`. Uma origem que manda um
+pacote que não fecha, um destino que recusa a importação e um Ctrl-C não deixam nada em nenhum dos hosts e
+saem com `1` (o Ctrl-C diz `cancelled`). Um host que não responde ou não é alcançado é saída `2`. Se o
+destino não responde à importação final, a saída é `1` e a sessão pode ou não existir lá: veja as sessões
+dele antes de mover de novo; a cópia daqui não foi arquivada. É classificado como de alto risco quando uma
+sessão o roda do próprio shell.
