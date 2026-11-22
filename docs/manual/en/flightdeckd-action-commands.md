@@ -55,6 +55,9 @@ hash that `list --plain` prints, and it trusts the action only if that is still 
 `1`, prints the host's text and the hash the action has now, so you compare what you are about to trust. The hash is only a
 word the caller types: it proves that the caller saw a hash, not that a person reviewed the file.
 
+`save` and `trust` let a command run on the host, so both need a near connection (this computer or Tailscale): over a far
+one the daemon refuses them with the near-connection message. `remove` runs nothing and has no such limit.
+
 `remove <action>` deletes an action saved on the host or in the project, with its trust, and prints what is left. An action that
 comes from `.flightdeck/actions.yaml` is not in that table: remove it by editing the file, and the host answers that it does not exist.
 An unknown name exits `1`.

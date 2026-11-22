@@ -35,9 +35,10 @@ conhece é recusada com saída `1`.
 
 `test <projeto> <servidor>` imprime o comando (ou link) exato que um teste do servidor executaria, e não inicia nada.
 Com `--confirm` ele inicia o servidor, como o botão Testar do app, e imprime as ferramentas e os recursos que ele
-oferece (`tools: a, b`, `resources: none`). Leia antes a prévia: o servidor é um comando do `.mcp.json` do projeto.
+oferece (`tools: a, b`, `resources: none`). Leia antes a prévia: o servidor é um comando do `.mcp.json` do projeto. Iniciá-lo exige uma conexão próxima (este
+computador ou a Tailscale): por uma conexão distante o daemon recusa o `--confirm`. A prévia responde em qualquer lugar.
 
-`save <projeto> <arquivo> --confirm` adiciona um servidor ao `.mcp.json` do projeto, ou troca o de mesmo nome, e imprime
+`save <projeto> <arquivo> --confirm` (só por conexão próxima: o servidor é um comando que uma sessão inicia) adiciona um servidor ao `.mcp.json` do projeto, ou troca o de mesmo nome, e imprime
 os servidores. O arquivo é JSON (`-` lê da entrada padrão) com os campos de um servidor: `name`, e `type` (`stdio`,
 `http` ou `sse`), `command`, `args`, `env`, `url` e `headers`. Um campo que ele não conhece é recusado, para que um erro
 de digitação não salve um servidor que não executa nada. Os segredos vão no arquivo, nunca na linha de comando, onde o
@@ -49,7 +50,7 @@ comando que o host vai executar.
 `--confirm`.
 
 `toggle <projeto> <servidor> --enable | --disable` liga ou desliga um servidor para as próximas sessões do projeto e
-imprime os servidores. `--enable` deixa o servidor rodar, então exige `--confirm`; `--disable` só o para e não aceita
+imprime os servidores. `--enable` deixa o servidor rodar, então exige `--confirm` e uma conexão próxima (este computador ou a Tailscale); `--disable` só o para e não aceita
 `--confirm`. `--session <id>` atualiza também essa sessão ativa. Um servidor do seu arquivo de usuário (`read-only`) é
 recusado.
 

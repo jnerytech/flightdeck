@@ -35,7 +35,8 @@ sessão, indicada pelo nome ou pelo id.
 `close <terminal> --kill` pede ao host que encerre o processo de um terminal e imprime `kill sent to`; o processo ainda pode estar rodando um instante depois. Sem `--kill`, só remove um terminal que já tinha terminado, e sai com `1` quando o terminal ainda está rodando, porque soltar um terminal é da janela do app. Um terminal continua rodando depois do comando
 que o abriu, então é no `list` que você o encontra de novo. `settings` liga ou desliga os terminais do host e imprime
 se estão ligados, quantos podem rodar ao mesmo tempo e qual shell usam. Ligá-los dá um shell completo no host a quem
-alcançar o daemon, por isso exige `--confirm`; sem ele o comando sai com `1` e não envia nada. Um host com os
+alcançar o daemon, por isso exige `--confirm`; sem ele o comando sai com `1` e não envia nada. Exige também uma conexão próxima
+(este computador ou a Tailscale): por uma conexão distante o daemon recusa ligá-los. Desligar não tem esse limite. Um host com os
 terminais desligados recusa o `open`.
 
 Se uma escrita não recebe resposta, o comando sai com `2` e avisa que um terminal pode ou não ter mudado: rode `list`

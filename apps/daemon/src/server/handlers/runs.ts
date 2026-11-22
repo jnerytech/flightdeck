@@ -125,7 +125,10 @@ export const runsHandlers = {
       .need("runenv")
       .configs.info(server.need("board").getProject(payload.projectId));
   },
-  "runenv.trust": async (payload, { server }) => {
+  "runenv.trust": async (payload, { ws, server }) => {
+    // Trusting a run.yaml lets its commands run on this host when a card starts: near only, as
+    // trusting a workflow is (#3807).
+    requireVaultTransport(ws.data.origin, "runenv.trust", server.opts.log);
     const { projectId, hash } = payload;
     return await server
       .need("runenv")

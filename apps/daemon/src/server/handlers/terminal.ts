@@ -2,6 +2,7 @@
  * Issue #248: the terminal domain: the embedded terminals and Claude Code's background sessions.
  */
 import { FlightdeckError } from "../../kernel/index.ts";
+import { requireVaultTransport } from "../../vault/index.ts";
 import type { Handlers } from "../domain/handler.ts";
 import { terminalSink } from "../transport.ts";
 
@@ -63,8 +64,11 @@ export const terminalHandlers = {
   "terminal.list": (_payload, { server }) => {
     return { terminals: server.need("terminals").list() };
   },
-  "terminal.settings": async (payload, { server }) => {
+  "terminal.settings": async (payload, { ws, server }) => {
     const { enabled, confirm } = payload;
+    // The terminal is a full shell on this host, and `confirm` is a flag the caller sends: turning it
+    // on is near only. Turning it off is not (#3807).
+    if (enabled) requireVaultTransport(ws.data.origin, "terminal.settings", server.opts.log);
     const manager = server.need("terminals");
     if (enabled && !manager.enabled && confirm !== true) {
       throw new FlightdeckError(

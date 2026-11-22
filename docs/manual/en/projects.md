@@ -217,6 +217,8 @@ reads the origin remote and sets the PR provider when it is GitHub or Azure DevO
 prints a drafted CLAUDE.md (a model call; it writes nothing), and `fd project harness-export <folder> <id> <title>`
 saves the folder's agent setup as a template on that host. A setup script runs in every card and `--auto-approve`
 changes what is approved without asking, so a session that runs these from its shell is stopped for your approval.
+Setting a setup script needs a near connection (this computer or Tailscale): over a far one the daemon refuses it.
+Clearing it has no such limit.
 
 To write the harness from a terminal, save the preview (`fd project harness-preview <folder> --parts claudeMd,hooks
 --json > preview.json`), read it, then run `fd project harness-apply <folder> --parts claudeMd,hooks --digests
