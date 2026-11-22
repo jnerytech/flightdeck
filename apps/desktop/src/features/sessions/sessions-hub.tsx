@@ -14,6 +14,7 @@ import { filterCount, hostlessHub, personasOf } from "./domain/hub-derive.ts";
 import { projectName } from "./domain/hub-scope.ts";
 import { HUB_ROW_CAP } from "./domain/hub-view.ts";
 import { newSessionHost } from "./domain/new-session-host.ts";
+import { hasNoScreen } from "./domain/row-route.ts";
 import { FoldAll } from "./group-header";
 import { ProjectGroup } from "./hub-project-group.tsx";
 import { type RowActionsContext, setRowMeta } from "./hub-row-actions.tsx";
@@ -81,7 +82,12 @@ export function SessionsHub(
   const personas = personasOf(rows);
   /** The rows as listed, top to bottom: what J and K walk. */
   const listed = groups.flatMap((g) => g.rows);
-  const { activeKey, mark } = useHubCursor(listed, props.onOpen);
+  /** A background session the host did not tie to a Claude session has no screen: say so, open nothing. */
+  const open = (row: HubRow) => {
+    if (hasNoScreen(row)) store.reportError(t("bg.noScreen", { name: row.title }));
+    else props.onOpen(row);
+  };
+  const { activeKey, mark } = useHubCursor(listed, open);
   const costs = useHubCosts(store, state.hosts, rows);
   const set = (patch: Partial<HubFilter>) => {
     const next = { ...filter, ...patch };
@@ -101,7 +107,7 @@ export function SessionsHub(
     hosts: state.hosts,
     teleportPreview: state.settings.teleportPreview,
     renaming,
-    onOpen: props.onOpen,
+    onOpen: open,
     onRename: setRenaming,
     onMove: setMoving,
   };
@@ -240,7 +246,7 @@ export function SessionsHub(
               activeKey={activeKey}
               mark={mark}
               isOpen={props.isOpen}
-              onOpen={props.onOpen}
+              onOpen={open}
               onToggle={() =>
                 setOpen({ ...openState, [group.foldKey]: !(groupView?.expanded ?? false) })
               }

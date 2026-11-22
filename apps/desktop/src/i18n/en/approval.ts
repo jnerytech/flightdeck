@@ -22,6 +22,8 @@ export const approval = {
     removeLocal: "Remove this device's key",
     removeLocalHint:
       "The host keeps listing the device until another enrolled device revokes it, or until you reset it at the host.",
+    removeLocalAsk:
+      "This device can no longer approve for this host after that. The host keeps listing it until another enrolled device revokes it, or until you reset it at the host.",
     removedLocal: "This device's key was removed.",
     lost: "Protection was on and the host now lists no device. If you did not reset it at the host, someone with access to it did.",
     commandsUnchecked:
@@ -72,6 +74,7 @@ export const approval = {
     requestShow: "Show the text",
     requestTextLabel: "Text for the enrolled device",
     requestWaiting: "Waiting for the other device to add this one.",
+    notListed: "This device is not listed yet.",
     requestCheck: "Check again",
     addBadText:
       'That is not a text made by another device\'s "Show the text" button. Copy it again, whole.',
