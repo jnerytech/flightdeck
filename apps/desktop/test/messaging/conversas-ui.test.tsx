@@ -252,3 +252,74 @@ describe("conversas-ui: the open button names its recipient (#4084)", () => {
     expect(JSON.stringify(store.router.current)).toBe(before);
   });
 });
+
+describe("conversas-ui: a paused pair (#4086)", () => {
+  const LOOP = {
+    type: "messaging.alert",
+    kind: "loop",
+    from: "h/s1",
+    to: "h/s2",
+    message: "laço entre h/s1 e h/s2: o par foi pausado",
+    at: "2026-10-30T12:06:00.000Z",
+  };
+  const RULES = "Abrir as regras de mensagens";
+
+  async function withLoop(paused: boolean) {
+    const opened = await open();
+    opened.daemon.messaging.messages = [
+      ...opened.daemon.messaging.messages,
+      message({
+        id: "m4",
+        fromSession: "s3",
+        toSession: "s4",
+        status: "refused",
+        reason: "limite de mensagens",
+        text: "outra recusa",
+        createdAt: "2026-10-30T12:07:00.000Z",
+      }),
+    ];
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
+    });
+    await settle(() => (opened.list()?.children.length ?? 0) === 3);
+    if (paused) {
+      await act(async () => {
+        opened.daemon.push(LOOP);
+      });
+      await settle(() => opened.store.getState().loopAlerts.length === 1);
+    }
+    return opened;
+  }
+  const rowOf = (list: () => HTMLElement | null, text: string) =>
+    [...(list()?.children ?? [])].find((li) => li.textContent?.includes(text)) as HTMLElement;
+
+  test("the page says which pair is paused and links to the messages rules", async () => {
+    const { store } = await withLoop(true);
+    const notice = screen.queryByText(/Estas sessões estão pausadas por um laço de mensagens/);
+    expect(notice).not.toBeNull();
+    expect(notice?.textContent).toContain("h/s1 e h/s2");
+    const link = within(notice as HTMLElement).queryByRole("button", { name: RULES });
+    expect(link).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(link as HTMLElement);
+    });
+    expect(store.router.current).toEqual({ name: "settings", section: "messaging" });
+  });
+
+  test("a refused row of the paused pair has the link; a refusal of another pair does not", async () => {
+    const { list } = await withLoop(true);
+    expect(within(rowOf(list, "de novo")).queryByRole("button", { name: RULES })).not.toBeNull();
+    expect(
+      within(rowOf(list, "outra recusa")).queryAllByRole("button", { name: RULES }).length,
+    ).toBe(0);
+    expect(
+      within(rowOf(list, "pode revisar")).queryAllByRole("button", { name: RULES }).length,
+    ).toBe(0);
+  });
+
+  test("with no paused pair there is no notice and no link", async () => {
+    await withLoop(false);
+    expect(screen.queryAllByRole("button", { name: RULES }).length).toBe(0);
+    expect(screen.queryAllByText(/estão pausadas/).length).toBe(0);
+  });
+});
