@@ -1,5 +1,5 @@
 /** Part of the print table (scripts/demo-shots.ts), in print order. */
-import type { Page } from "playwright-core";
+import type { Locator, Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
 import { DEMO_MESSAGE_ASK, DEMO_MESSAGE_REFUSED } from "../e2e/journeys.ts";
 import {
@@ -42,6 +42,14 @@ async function sendRefusedMessage(page: Page): Promise<void> {
     .fill(DEMO_MESSAGE_REFUSED);
   await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
   await page.getByText(/(per hour for this session|por hora desta sessão)/).waitFor();
+}
+
+/** Opens the bell's panel and returns it (#4203). */
+async function openBellPanel(page: Page): Promise<Locator> {
+  await page.getByRole("button", { name: /^(Notifications|Notificações)/ }).click();
+  const panel = page.getByRole("dialog");
+  await panel.waitFor({ timeout: 8000 });
+  return panel;
 }
 
 export function agentShots(ids: DemoIds): Shot[] {
@@ -428,6 +436,59 @@ export function agentShots(ids: DemoIds): Shot[] {
         await panel.waitFor({ timeout: 8000 });
         await panel.getByRole("button", { name: /^(Clear|Limpar)$/ }).click();
         await panel.getByRole("button", { name: /^(Undo|Desfazer)$/ }).waitFor({ timeout: 8000 });
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      // #4203: the page answers a refusal to the Approve of the "web · tests" request: the row says "Not done" and keeps its buttons.
+      name: "sino-recusa",
+      inbox: true,
+      route: { name: "hub" },
+      wire: [
+        {
+          command: "permission.respond",
+          reject: "The host could not take the answer: the request is not open here.",
+        },
+      ],
+      prepare: async (page) => {
+        const panel = await openBellPanel(page);
+        await panel
+          .getByRole("button", { name: /^(Approve|Aprovar)/ })
+          .first()
+          .click();
+        await panel.getByText(/^(Not done|Não feito)/).waitFor({ timeout: 8000 });
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      // #4203: a high-risk request (a terminal session asks to run `rm -rf build`): Approve is a hold button with its hint.
+      name: "sino-alto-risco",
+      inbox: "danger",
+      route: { name: "hub" },
+      prepare: async (page) => {
+        const panel = await openBellPanel(page);
+        await panel
+          .getByRole("button", { name: /^(Hold to approve|Segurar para aprovar)/ })
+          .waitFor({ timeout: 8000 });
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      // #4203: the answer left and the host has not replied: both buttons are off while it is on its way.
+      name: "sino-respondendo",
+      inbox: true,
+      route: { name: "hub" },
+      wire: [{ command: "permission.respond", stall: true }],
+      prepare: async (page) => {
+        const panel = await openBellPanel(page);
+        await panel
+          .getByRole("button", { name: /^(Approve|Aprovar)/ })
+          .first()
+          .click();
+        await panel
+          .locator("button:disabled")
+          .filter({ hasText: /^(Deny|Negar)$/ })
+          .waitFor({ timeout: 8000 });
         await page.waitForTimeout(400);
       },
     },
