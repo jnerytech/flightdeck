@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSwitcherHosts } from "@/features/hosts/index.ts";
 import type { HubRowState } from "@/features/sessions/index.ts";
-import { EmptyState, NativeSelect, Page } from "@/shared/layout/index.ts";
+import { useMinLoading } from "@/shared/hooks/index.ts";
+import { EmptyState, LoadingState, NativeSelect, Page } from "@/shared/layout/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import {
   filterProjectCards,
@@ -15,7 +16,7 @@ import {
 } from "./domain/project-cards.ts";
 import { NewProject } from "./new-project.tsx";
 import { ProjectCardTile } from "./project-card-tile.tsx";
-import { useProjectCards } from "./use-project-cards.ts";
+import { useProjectCardsRead } from "./use-project-cards.ts";
 
 const SORTS: ProjectSort[] = ["activity", "name", "cost", "attention"];
 
@@ -36,7 +37,7 @@ export function ProjectsOverview(
   const { t } = store.i18n;
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<ProjectSort>("activity");
-  const cards = useProjectCards(store, state);
+  const { cards, read } = useProjectCardsRead(store, state);
   const hostName = props.host ? state.hosts.find((h) => h.id === props.host)?.name : undefined;
   // A route's host wins; else the hosts the switcher shows (#932), so a pick never lands elsewhere.
   const switcher = useSwitcherHosts(store, state.hosts);
@@ -48,6 +49,15 @@ export function ProjectsOverview(
     ? cards.filter((card) => card.hostId === props.host)
     : cards.filter((card) => shownHosts.has(card.hostId));
   const shown = sortProjectCards(filterProjectCards(scoped, query), sort);
+  // No cards yet is "no projects" only once the lists were read: before that, or while a shown
+  // host still connects, the person is waiting. A host that is offline says so at once (#3922).
+  const inView = props.host ? state.hosts.filter((h) => h.id === props.host) : switcher;
+  // A host that already answered with no projects settles it: only a view with no host online waits on one connecting.
+  const connecting =
+    inView.some((host) => host.status === "connecting") &&
+    !inView.some((host) => host.status === "online");
+  const offline = one !== undefined && one.status !== "online" && one.status !== "connecting";
+  const loading = useMinLoading(scoped.length === 0 && (connecting || (!read && !offline)));
 
   return (
     <Page
@@ -100,7 +110,8 @@ export function ProjectsOverview(
         </div>
       }
     >
-      {scoped.length === 0 && (
+      {scoped.length === 0 && loading && <LoadingState label={t("states.loadingProjects")} />}
+      {scoped.length === 0 && !loading && (
         <EmptyState
           icon={FolderGit2}
           title={
