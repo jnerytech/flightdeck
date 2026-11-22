@@ -163,6 +163,25 @@ describe("the Messaging state prints (#4297)", () => {
     return calls;
   };
 
+  test("every state print waits for the state it shows before the shot is taken", async () => {
+    const unwaited: string[] = [];
+    for (const shot of states) {
+      const calls = await callsOf(shot.name);
+      if (!calls.some((call) => call.startsWith("waitFor("))) unwaited.push(shot.name);
+    }
+    expect(unwaited).toEqual([]);
+  });
+
+  test("the filter prints type their text into the filter box, and the empty one waits for the Clear filter button", async () => {
+    const full = await callsOf("conversas-filtro");
+    expect(full.some((call) => call.startsWith("fill(128"))).toBe(true);
+    const none = await callsOf("conversas-filtro-vazio");
+    expect(none.some((call) => call.startsWith("fill(zzzz"))).toBe(true);
+    expect(none.some((call) => call.startsWith("getByRole(button") && call.includes("Clear"))).toBe(
+      true,
+    );
+  });
+
   // LoadingState has no text node, only an accessible name, so a wait on text never resolves.
   test("the loading print waits for the status region by its name, not for text", async () => {
     const calls = await callsOf("sessao-mensagens-carregando");
