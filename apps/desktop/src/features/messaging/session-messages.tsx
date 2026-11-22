@@ -64,6 +64,10 @@ export function SessionMessages(
     return list;
   }, [store, hostId, sessionId]);
   useEffect(() => {
+    // Another session starts from nothing: its first answer, not the last session's list.
+    answered.current = false;
+    setMessages(null);
+    setLoadFailed(false);
     void load();
     void loadTargets();
     return store.messaging.onUpdated(() => void load());

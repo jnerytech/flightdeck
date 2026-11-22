@@ -1,7 +1,7 @@
 import type { MessageInfo, MessageStatus } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import { MessagesSquare } from "lucide-react";
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,12 +70,15 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   const [rows, setRows] = useState<Row[] | null>(null);
   /** The hosts that did not answer the last load: their messages are missing, which is not "no messages" (#4293). */
   const [silent, setSilent] = useState<string[]>([]);
+  // Only the latest load may show its answer: an older one resolving last would show stale rows and hosts.
+  const latestLoad = useRef(0);
   const [status, setStatus] = useState<"" | MessageStatus>("");
   const [text, setText] = useState("");
   const hosts = hostsWith(state.hosts, "messaging");
   const hostKey = hosts.map((h) => h.id).join("|");
 
   const load = useCallback(async () => {
+    const mine = ++latestLoad.current;
     const found = new Map<string, Row>();
     const ids = new Set(hostKey.split("|"));
     const unanswered: string[] = [];
@@ -91,6 +94,7 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
         }
       }
     });
+    if (mine !== latestLoad.current) return;
     setSilent(unanswered);
     setRows(
       [...found.values()].sort((a, b) => b.message.createdAt.localeCompare(a.message.createdAt)),
