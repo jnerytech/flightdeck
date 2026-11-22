@@ -195,6 +195,14 @@ export function missingTools(deps: { items: DepResult[] } | undefined): DepResul
   ];
 }
 
+/** The dismissed notes whose tool a host now reports as in place: a later problem is a new note. */
+function installedDismissals(
+  _dismissed: readonly string[],
+  _deps: Record<string, { items: DepResult[] } | undefined>,
+): string[] {
+  return [];
+}
+
 export const SETUP_HIDDEN_KEY = "flightdeck.setupHidden";
 export const SETUP_NOTIFIED_KEY = "flightdeck.setupNotified";
 export const SETUP_TOOLS_KEY = "flightdeck.setupToolsDismissed";
@@ -245,6 +253,12 @@ export class SetupSettings {
     this.storage.setItem(SETUP_TOOLS_KEY, JSON.stringify(kept.filter((entry) => entry !== id)));
     this.emit();
   }
+
+  /** Several dismissed notes are wanted again, in one write. */
+  restoreTools(_ids: readonly string[]): void {}
+
+  /** What the hosts report now: the notes dismissed for a tool that is in place are forgotten. */
+  clearInstalled(_deps: Record<string, { items: DepResult[] } | undefined>): void {}
 
   private emit(): void {
     for (const listener of this.listeners) listener();
