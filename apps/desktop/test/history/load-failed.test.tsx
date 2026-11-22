@@ -99,7 +99,10 @@ describe("history-load-failed: a refused read says so and can be tried again", (
   });
 
   test("a filter change whose read works shows the new list", async () => {
-    const { asked } = await history([LIST, { ...LIST, sessions: [{ ...SESSION, title: "Other" }] }]);
+    const { asked } = await history([
+      LIST,
+      { ...LIST, sessions: [{ ...SESSION, title: "Other" }] },
+    ]);
     await settle(listShown);
     await filterByFolder("/home/ana/other");
     await settle(() => text().includes("Other"));
