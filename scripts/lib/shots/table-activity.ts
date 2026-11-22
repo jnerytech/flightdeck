@@ -42,7 +42,7 @@ export function activityShots(_ids: DemoIds): Shot[] {
         await page
           .getByRole("checkbox", { name: /^(Show idle sessions|Mostrar sessões ociosas)$/ })
           .check();
-        await page.locator("[data-column='idle']").first().waitFor({ timeout: WAIT });
+        await page.getByRole("region", { name: /^(Idle|Ociosas)$/ }).waitFor({ timeout: WAIT });
       },
     },
     {
