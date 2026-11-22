@@ -65,6 +65,31 @@ describe("tab-facts: the title of a tab", () => {
     });
   });
 
+  test("a terminal that no destino opened is named after its folder, and Terminal when the folder is not known", () => {
+    const plain = tab({ name: "terminal", host: "h1", terminalId: "term2" });
+    expect(tabTitle(plain, state({ terminalCwds: { "h1/term2": "/work/api" } }), store())).toBe(
+      "api",
+    );
+    expect(tabTitle(plain, state(), store())).toBe(t("terminalUi.title"));
+  });
+
+  test("an ssh terminal keeps its destino's name even when its folder is known", () => {
+    expect(tabTitle(terminalTab, state({ terminalCwds: { "h1/term1": "/home/ana" } }), ssh)).toBe(
+      t("terminalUi.sshBadge", { name: "build box" }),
+    );
+  });
+
+  test("a terminal tab's screen reader name is its folder with its host", () => {
+    const plain = tab({ name: "terminal", host: "h1", terminalId: "term2" });
+    const facts = tabFacts(plain, {
+      t,
+      state: state({ terminalCwds: { "h1/term2": "/work/api" } }),
+      store: store(),
+      host: "h1",
+    });
+    expect(facts.ariaLabel).toBe(t("tabs.named", { title: "api", host: "alpha" }));
+  });
+
   test("a terminal that no destino opened has no ssh facts", () => {
     const none = { t, state: state(), store: store(), host: null };
     expect(tabFacts(terminalTab, none).ssh).toBeUndefined();

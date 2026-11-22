@@ -68,6 +68,8 @@ export interface TerminalsCore {
   close(hostId: string, terminalId: string, kill: boolean): Promise<unknown>;
   /** Shows the terminal as a tab. */
   showTab(hostId: string, terminalId: string): void;
+  /** Remembers the folder of terminals, by `host/terminal`. */
+  setCwds(cwds: Record<string, string>): void;
   /** The tab whose close waits for an answer, and the way to set or clear it. */
   closing(): ClosingTerminal | null;
   setClosing(closing: ClosingTerminal | null): void;
