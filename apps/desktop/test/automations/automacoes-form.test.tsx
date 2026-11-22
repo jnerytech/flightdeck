@@ -26,6 +26,9 @@ const WORDS = {
     hint: "minute hour day month weekday. Example: 0 9 * * 1-5 is weekdays at 09:00.",
     nameMissing: "Give the automation a name.",
     label: "Label",
+    cronRefused: "5 fields",
+    tzRefused: "The time zone Mars/Base is not known",
+    otherRefused: "The automation gone does not exist.",
     labelMissing: "Type the label to watch for before going on.",
     workflowMissing:
       "This project has no valid workflow to start. Add one in the project's workflows, then come back.",
@@ -44,6 +47,9 @@ const WORDS = {
     hint: "minuto hora dia mês dia-da-semana. Exemplo: 0 9 * * 1-5 é de segunda a sexta às 09:00.",
     nameMissing: "Dê um nome à automação.",
     label: "Rótulo",
+    cronRefused: "5 campos",
+    tzRefused: "Mars/Base",
+    otherRefused: "A automação gone não existe.",
     labelMissing: "Digite o rótulo a observar antes de continuar.",
     workflowMissing:
       "Este projeto não tem um workflow válido para iniciar. Crie um nos workflows do projeto e volte.",
@@ -56,16 +62,31 @@ const WORDS = {
 const WORKFLOW = { name: "feature", hash: "h", trusted: true, checks: [], errors: [], inputs: [] };
 
 type Asked = Array<{ type: string; payload: Record<string, unknown> }>;
+type Refusal = {
+  code: string;
+  message: string;
+  reason?: string;
+  params?: Record<string, string | number>;
+};
 
 /** The form on a store whose `automation.save` is recorded and answers with the saved automation. */
-async function form(lang: Lang, workflows = [WORKFLOW]) {
+async function form(lang: Lang, workflows = [WORKFLOW], refuse?: Refusal) {
   const store = new AppStore(memoryPlatform(false, lang).platform, { baseDelayMs: 600_000 });
   await store.i18n.setLang(lang);
   seedHosts(store, [{ id: "h1", name: "pc", online: true, features: ["automations"] }]);
   const asked: Asked = [];
+  // What went through `hostCommand`: its refusals become a toast, which a field's own message replaces.
+  const toasting: Asked = [];
   store.hostCommand = (async (_host: string, type: string, payload: Record<string, unknown>) => {
     asked.push({ type, payload });
+    toasting.push({ type, payload });
     return { id: "a1", name: payload.name, enabled: false };
+  }) as never;
+  store.hostRequest = (async (_host: string, type: string, payload: Record<string, unknown>) => {
+    asked.push({ type, payload });
+    return refuse
+      ? { ok: false, ...refuse }
+      : { ok: true, data: { id: "a1", name: payload.name, enabled: false } };
   }) as never;
   render(
     <TContext.Provider value={store.i18n.t}>
@@ -81,7 +102,7 @@ async function form(lang: Lang, workflows = [WORKFLOW]) {
     </TContext.Provider>,
   );
   await act(async () => {});
-  return { asked };
+  return { asked, toasting };
 }
 
 describe.each(["en", "pt-BR"] as const)("the automation form, its fields (%s)", (lang) => {
@@ -163,6 +184,80 @@ describe.each(["en", "pt-BR"] as const)("the automation form, its fields (%s)", 
     await form(lang, [{ ...WORKFLOW, errors: ["bad"] } as never]);
     await press(w.next);
     expect(next()?.disabled).toBe(true);
+  });
+
+  /** The form filled to its last step and saved: the host answers with `refuse`. */
+  const refusedSave = async (refuse: Refusal, edit?: () => Promise<void>) => {
+    const made = await form(lang, [WORKFLOW], refuse);
+    if (edit) await edit();
+    await lastStep();
+    await type(w.name, "nightly");
+    await press(w.save);
+    return made;
+  };
+  const CRON_REFUSED = { code: "bad_request", message: "raw cron", reason: "cron_fields" };
+  const TZ_REFUSED = {
+    code: "bad_request",
+    message: "raw tz",
+    reason: "automation_tz_unknown",
+    params: { tz: "Mars/Base" },
+  };
+  const alertText = () => screen.queryByRole("alert")?.textContent ?? "";
+
+  test("a refused cron goes back to the trigger step, says why on the cron field and focuses it (#4188)", async () => {
+    const { toasting } = await refusedSave(CRON_REFUSED);
+    expect({
+      step: screen.queryByLabelText(w.cron) !== null,
+      said: alertText().includes(w.cronRefused),
+      invalid: screen.queryByLabelText(w.cron)?.getAttribute("aria-invalid"),
+      focused: document.activeElement === screen.queryByLabelText(w.cron),
+      toasted: toasting.filter((a) => a.type === "automation.save").length,
+    }).toEqual({ step: true, said: true, invalid: "true", focused: true, toasted: 0 });
+  });
+
+  test("a refused time zone says why on the time zone field and focuses it (#4188)", async () => {
+    await refusedSave(TZ_REFUSED);
+    expect({
+      said: alertText().includes(w.tzRefused),
+      invalid: screen.queryByLabelText(w.tz)?.getAttribute("aria-invalid"),
+      cronFine: screen.queryByLabelText(w.cron)?.getAttribute("aria-invalid"),
+      focused: document.activeElement === screen.queryByLabelText(w.tz),
+    }).toEqual({ said: true, invalid: "true", cronFine: null, focused: true });
+  });
+
+  test("the message on the cron field goes away when the field is edited (#4188)", async () => {
+    await refusedSave(CRON_REFUSED);
+    const shown = [screen.queryByLabelText(w.cron) !== null, alertText().includes(w.cronRefused)];
+    if (shown[0]) await type(w.cron, "0 8 * * *");
+    expect({ shown, after: screen.queryByRole("alert") }).toEqual({
+      shown: [true, true],
+      after: null,
+    });
+  });
+
+  test("a refusal that is not about a field stays on the last step, in the dialog (#4188)", async () => {
+    await refusedSave({
+      code: "not_found",
+      message: "raw",
+      reason: "automation_not_found",
+      params: { id: "gone" },
+    });
+    expect({
+      last: screen.queryByLabelText(w.name) !== null,
+      said: alertText().includes(w.otherRefused),
+    }).toEqual({ last: true, said: true });
+  });
+
+  test("the time zone suggests the known zones and still takes any text (#4188)", async () => {
+    await form(lang);
+    const field = screen.queryByLabelText(w.tz) as HTMLInputElement;
+    const list = document.getElementById(field.getAttribute("list") ?? "");
+    const zones = [...(list?.querySelectorAll("option") ?? [])].map((o) => o.getAttribute("value"));
+    await type(w.tz, "Mars/Base");
+    expect({
+      zones: zones.includes("America/Sao_Paulo"),
+      free: (screen.queryByLabelText(w.tz) as HTMLInputElement).value,
+    }).toEqual({ zones: true, free: "Mars/Base" });
   });
 
   test("an empty name is said on the field and nothing is sent", async () => {
