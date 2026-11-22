@@ -143,6 +143,10 @@ export function NotificationBell(
         onMarkRead={(row) => store.inbox.markRead(row.ids)}
         onMarkUnread={(row) => store.inbox.markUnread(row.ids)}
         onDismiss={(row) => store.inbox.dismiss(row.ids)}
+        onOpenSettings={() => {
+          setOpen(false);
+          props.go({ name: "settings", section: "notifications" });
+        }}
         onMarkAll={() => store.inbox.markAllRead()}
         onClear={() => store.inbox.clear()}
         onRestore={(entries) => store.inbox.restore(entries)}
