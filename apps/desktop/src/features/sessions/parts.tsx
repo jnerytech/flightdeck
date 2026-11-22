@@ -35,7 +35,7 @@ const LowArea = createContext(false);
 const TightArea = createContext(false);
 
 /** The area is short or a request waits: what the bands over the conversation read. */
-export function useTight(): boolean {
+function useTight(): boolean {
   const short = useContext(ShortArea);
   const tight = useContext(TightArea);
   return short || tight;

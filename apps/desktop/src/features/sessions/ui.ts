@@ -7,7 +7,6 @@ export {
   SessionHeader,
   SessionPane,
   Timeline,
-  useTight,
   useTightBands,
 } from "./parts.tsx";
 export { ResumeOfferDialog } from "./resume-offer-dialog.tsx";
