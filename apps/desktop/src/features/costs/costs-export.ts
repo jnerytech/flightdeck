@@ -27,16 +27,18 @@ export async function exportCosts(
   }
   const answers = await Promise.allSettled(
     scope.hosts.map(async (h) => ({
+      id: h.id,
       host: h.name,
       file: await store.hostCommand(h.id, "costs.export", filter),
     })),
   );
+  // A host counts as given only when its file holds something to merge.
   const files = answers.flatMap((answer) => {
-    if (answer.status !== "fulfilled" || !answer.value.file) return [];
-    return [{ host: answer.value.host, ...answer.value.file }];
+    if (answer.status !== "fulfilled" || !answer.value.file?.csv) return [];
+    return [{ id: answer.value.id, host: answer.value.host, ...answer.value.file }];
   });
-  const given = new Set(files.map((f) => f.host));
-  const left = scope.hosts.map((h) => h.name).filter((name) => !given.has(name));
+  const given = new Set(files.map((f) => f.id));
+  const left = scope.hosts.filter((h) => !given.has(h.id)).map((h) => h.name);
   const csv = mergeHostCsv(files);
   const first = files[0];
   if (!first || csv === "") return { kind: "nothing", left };

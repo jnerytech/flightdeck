@@ -107,6 +107,8 @@ export function RoiTable(
         : { column, direction: "asc" },
     );
 
+  // The file's name holds its period: the line is shown only while that period is on screen.
+  const csvName = `roi-${from}_${to}.csv`;
   // The file the last press saved; a new press clears it, and a cancel leaves it clear.
   const [saved, setSaved] = useState<string | null>(null);
   const exportCsv = async () => {
@@ -114,8 +116,7 @@ export function RoiTable(
     const text = csvOf(shown, [...COLUMNS.map(label), t("roiUi.table.derivation")], (row) =>
       row.figures.derivation.map((d) => t(d.key as Key, d.vars)).join("; "),
     );
-    const file = `roi-${from}_${to}.csv`;
-    if (await store.system.saveFile(file, text)) setSaved(file);
+    if (await store.system.saveFile(csvName, text)) setSaved(csvName);
   };
 
   return (
@@ -128,7 +129,9 @@ export function RoiTable(
           </ActionButton>
         )}
       </div>
-      {saved && <InlineNotice tone="info">{t("roiUi.table.saved", { file: saved })}</InlineNotice>}
+      {rows.length > 0 && saved === csvName && (
+        <InlineNotice tone="info">{t("roiUi.table.saved", { file: saved })}</InlineNotice>
+      )}
       {answers === null && <LoadingState label={t("roiUi.loading")} />}
       {answers !== null && rows.length === 0 && (
         <p className="text-muted-foreground text-sm">{t("roiUi.table.empty")}</p>

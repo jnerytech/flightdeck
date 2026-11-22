@@ -26,7 +26,7 @@ import {
   periodProjectKeys,
   withFilter,
 } from "./domain/costs-derive.ts";
-import { type ExportNote, exportNote } from "./domain/costs-export-note.ts";
+import { type CostsExport, exportNote } from "./domain/costs-export-note.ts";
 import { awayHost, hostScope } from "./domain/costs-scope.ts";
 import { awayKey } from "./domain/data-scope.ts";
 import { QuotaCharts } from "./QuotaCharts.tsx";
@@ -115,11 +115,15 @@ export const CostsPage = memo(function CostsPage(props: {
   const setFilter = (name: keyof typeof filters, value: string) =>
     setFilters(withFilter(filters, name, value));
   // What the last press of Export CSV did; a new press clears it, and a cancel leaves it clear.
-  const [exported, setExported] = useState<ExportNote | null>(null);
+  // It describes the file of one scope and filter, so it is shown only while they are on screen.
+  const exportKey = JSON.stringify([hostId, acrossHosts, filter]);
+  const [exported, setExported] = useState<{ key: string; result: CostsExport } | null>(null);
   const exportCsv = async () => {
     setExported(null);
-    setExported(exportNote(await exportCosts(store, { acrossHosts, hostId, hosts }, filter), t));
+    const result = await exportCosts(store, { acrossHosts, hostId, hosts }, filter);
+    setExported({ key: exportKey, result });
   };
+  const exportedNote = exported?.key === exportKey ? exportNote(exported.result, t) : null;
   const byDay = summary?.byDay ?? [];
   // One set of labels for the whole screen, so a project reads the same in the list, the chart
   // and the table; two that share a folder name are told apart.
@@ -176,7 +180,7 @@ export const CostsPage = memo(function CostsPage(props: {
       }
     >
       <div className="flex flex-col gap-5">
-        {exported && <InlineNotice tone={exported.tone}>{exported.text}</InlineNotice>}
+        {exportedNote && <InlineNotice tone={exportedNote.tone}>{exportedNote.text}</InlineNotice>}
         <CostsNotices
           status={status}
           acrossHosts={acrossHosts}
