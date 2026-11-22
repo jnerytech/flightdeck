@@ -247,7 +247,7 @@ async function memoryListed(page: Page): Promise<void> {
 }
 
 const openFile = (page: Page, name: string) =>
-  page.getByRole("button", { name: new RegExp(`^(Abrir|Open) ${name.replace(".", "\\.")}$`) });
+  page.getByRole("button", { name: new RegExp(`^(Abrir|Open) ${name.replaceAll(".", "\\.")}$`) });
 
 /** A file opened and one more line typed into it: the text now differs from the saved one. */
 async function edited(page: Page): Promise<void> {
@@ -367,7 +367,8 @@ export function memoryShots(ids: DemoIds): Shot[] {
         await button(page, /^(Salvar|Save)$/).click();
         await button(page, /^(Salvar na memória|Save to memory)$/).click();
         await page
-          .getByText(/^(O arquivo mudou no disco|The file changed on disk)/)
+          // The notice in the panel, not the toast whose detail starts the same way.
+          .getByText(/^(O arquivo mudou no disco desde que|The file changed on disk since)/)
           .waitFor({ timeout: 15_000 });
       },
     },
