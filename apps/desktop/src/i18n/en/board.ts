@@ -617,5 +617,7 @@ export const board = {
     approved: "Approved {title}",
     denied: "Denied {title}",
     emptyAll: "Nothing here yet. Start a session and it shows on this board.",
+    emptyFiltered: "No session matches these filters.",
+    clearFilters: "Clear filters",
   },
 };
