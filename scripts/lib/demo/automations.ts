@@ -6,7 +6,7 @@
 import type { Automation, AutomationRun } from "@flightdeck/protocol";
 
 /** One firing kept in the history of a seeded automation. */
-export interface DemoAutomationRun {
+interface DemoAutomationRun {
   firedAt: string;
   cause: string;
   status: AutomationRun["status"];
@@ -14,7 +14,7 @@ export interface DemoAutomationRun {
 }
 
 /** What `automation.save` takes, whether to turn it on afterwards, and the firings its history shows. */
-export interface DemoAutomation {
+interface DemoAutomation {
   name: string;
   trigger: Automation["trigger"];
   action: Automation["action"];
