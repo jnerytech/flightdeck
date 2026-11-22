@@ -93,6 +93,11 @@ export const NARROW_SHOTS: readonly string[] = [
   // #4190: the Automations form's first step and its field errors at 390.
   "automacoes-gatilho",
   "automacoes-form-erros",
+  // #4236: the Memory tab, and the Knowledge and Memory states that carry long text or a form at 390.
+  "agente-memoria",
+  "agente-memoria-nome-erro",
+  "projeto-conhecimento-avisos",
+  "projeto-conhecimento-criar-erro",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */
