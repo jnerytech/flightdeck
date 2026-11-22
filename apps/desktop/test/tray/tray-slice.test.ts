@@ -97,7 +97,7 @@ describe("tray (#1596)", () => {
       slice.changed({ hosts: [] });
       expect([language, waiting()]).toEqual([language, true]);
       fire();
-      expect(log).toContainEqual({ menu: ["needs-you:none"] });
+      expect(log).toContainEqual({ menu: [] });
     }
   });
 
