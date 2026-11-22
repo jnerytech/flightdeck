@@ -89,6 +89,28 @@ describe("bg-ui: Iniciar em segundo plano on a card", () => {
     );
   });
 
+  // #4173: a modal menu marks the rest of the page aria-hidden while its links stay focusable (axe's
+  // aria-hidden-focus), as the permission-mode chip's did (#1004): the card's menu keeps the page readable.
+  test("the card's menu open leaves the page behind it out of aria-hidden", async () => {
+    await openCard(true);
+    await settle(() => screen.queryByRole("button", { name: /^Ações de / }) !== null);
+    const menu = screen.queryByRole("button", { name: /^Ações de / });
+    await act(async () => {
+      fireEvent.pointerDown(menu as HTMLElement, {
+        button: 0,
+        ctrlKey: false,
+        pointerType: "mouse",
+      });
+    });
+    await settle(
+      () =>
+        screen.queryByRole("menuitem", { name: "Iniciar em segundo plano, sem terminal" }) !== null,
+    );
+    const sidebar = document.querySelector("aside");
+    expect(sidebar !== null).toBe(true);
+    expect(sidebar?.closest("[aria-hidden='true']") !== null).toBe(false);
+  });
+
   test("a host without bg has no such button", async () => {
     await openCard(false);
     await settle(() => screen.queryByRole("button", { name: "Iniciar" }) !== null);
