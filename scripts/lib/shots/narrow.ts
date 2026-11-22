@@ -100,6 +100,11 @@ export const NARROW_SHOTS: readonly string[] = [
   "agente-mcp-novo",
   "agente-mcp-testar",
   "agente-mcp-linha-longa",
+  // #4269: the Files tab's bad name, discard and stale states and the cut Context carry long text; they wrap at 390.
+  "agente-skills-nome-invalido",
+  "agente-agentes-descartar",
+  "agente-agentes-obsoleto",
+  "agente-contexto-cortado",
   // #4163: the permission screens; a long rule or reason must wrap at 390.
   "sessao-aprovacao-risco-alto",
   "projeto-regras",
@@ -112,10 +117,12 @@ export const NARROW_SHOTS: readonly string[] = [
   // #4190: the Automations form's first step and its field errors at 390.
   "automacoes-gatilho",
   "automacoes-form-erros",
-  // #4236: the Knowledge states that carry long text or a form at 390. The two Memory prints join them
-  // once the Agent tab strip fits 390 px (#4278).
+  // #4236: the Knowledge states that carry long text or a form at 390, and the Memory list and its
+  // name error; the Agent tab strip wraps there (#4278).
   "projeto-conhecimento-avisos",
   "projeto-conhecimento-criar-erro",
+  "agente-memoria",
+  "agente-memoria-nome-erro",
   // #4215: the Personas list, the editor of one, its field errors and the row with the most buttons; they wrap at 390.
   "personas",
   "personas-editor-existing",

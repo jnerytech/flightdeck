@@ -15,7 +15,13 @@ const OFF = "off";
  * that cannot change it from the app, it says where the guard stands, as text.
  */
 export function QuotaGuard(
-  props: Readonly<{ store: AppStore; host: HostView; pauseAt: number | null }>,
+  props: Readonly<{
+    store: AppStore;
+    host: HostView;
+    pauseAt: number | null;
+    /** Several guards are on screen, so each one names its host. */
+    named?: boolean;
+  }>,
 ) {
   const { store, host, pauseAt } = props;
   const t = useT();
@@ -24,8 +30,13 @@ export function QuotaGuard(
     return (
       <p className="text-muted-foreground text-xs">
         {pauseAt === null
-          ? t("quota.guard.readOnlyOff")
-          : t("quota.guard.readOnly", { pct: Math.round(pauseAt * 100) })}
+          ? t(props.named ? "quota.guard.readOnlyOffFor" : "quota.guard.readOnlyOff", {
+              host: host.name,
+            })
+          : t(props.named ? "quota.guard.readOnlyFor" : "quota.guard.readOnly", {
+              host: host.name,
+              pct: Math.round(pauseAt * 100),
+            })}
       </p>
     );
   }
@@ -37,7 +48,7 @@ export function QuotaGuard(
     <Stack gap={1}>
       <Inline gap={2}>
         <label htmlFor={id} className="text-sm">
-          {t("quota.guard.label")}
+          {props.named ? t("quota.guard.labelFor", { host: host.name }) : t("quota.guard.label")}
         </label>
         <NativeSelect
           id={id}

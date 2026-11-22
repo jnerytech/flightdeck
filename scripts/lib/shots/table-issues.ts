@@ -1,6 +1,6 @@
 /** Part of the print table (scripts/demo-shots.ts), in print order: the Issues panel and the missing-tool cards (#4099). */
 
-import type { DepsResult } from "@flightdeck/protocol";
+import type { DepsResult, Issue } from "@flightdeck/protocol";
 import type { Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
 import { ALFA, type Shot } from "./shot.ts";
@@ -13,6 +13,46 @@ async function panelOpen(page: Page, ready: RegExp): Promise<void> {
 
 /** The demo's list: the three issues the fake gh lists, one with a card and one by an outside author. */
 const listed = (page: Page) => panelOpen(page, /^(Limitar a taxa da exportação)$/);
+
+/** One issue as `issues.list` answers it, for the prints that need a list of their own (#4259). */
+function issue(n: number, title: string, labels: string[] = ["backend"]): Issue {
+  return {
+    ref: `github:Acme/App#${n}`,
+    id: String(n),
+    title,
+    body: "",
+    url: `https://github.com/Acme/App/issues/${n}`,
+    author: "ana",
+    labels,
+    external: false,
+    createdAt: "2026-10-01T10:00:00Z",
+  };
+}
+
+/** Twelve issues, three of them about the login: the filter print keeps those three. */
+const TWELVE: Issue[] = [
+  "Corrigir o login com SSO",
+  "Limitar a taxa da exportação",
+  "Mostrar o login por SAML",
+  "Reduzir o tempo de build",
+  "Traduzir as mensagens de erro",
+  "Salvar o login entre as abas",
+  "Cachear a lista de projetos",
+  "Registrar as falhas do agente",
+  "Ordenar os cards por prioridade",
+  "Avisar quando o disco encher",
+  "Exportar o histórico em CSV",
+  "Revisar as permissões do vault",
+].map((title, i) => issue(i + 1, title));
+
+/** A full page of the cap the host reads (50), marked cut: the panel says so (#4255). */
+const FIFTY: Issue[] = Array.from({ length: 50 }, (_, i) => issue(i + 1, `Issue número ${i + 1}`));
+
+/** A title with no space to break at: the row must wrap it inside the sheet (#4258). */
+const LONG_TITLE = `Falha_ao_exportar_${"relatorio_trimestral_de_desempenho_".repeat(3)}final`;
+
+const filterBox = (page: Page) =>
+  page.getByRole("textbox", { name: /^(Filter issues|Filtrar issues)$/ });
 
 /**
  * What `deps.check` answers on every host in the tool-card prints: `git` (required) and the GitHub CLI
@@ -104,6 +144,62 @@ export function issuesShots(ids: DemoIds): Shot[] {
           .getByRole("combobox", { name: /^(Issues provider|Provedor de issues)$/ })
           .waitFor();
       },
+    },
+    {
+      name: "issues-configurar-azure",
+      route: board,
+      async prepare(page) {
+        await listed(page);
+        await page.getByRole("button", { name: /^(Configure issues|Configurar issues)$/ }).click();
+        await page
+          .getByRole("combobox", { name: /^(Issues provider|Provedor de issues)$/ })
+          .selectOption("azure");
+        await page.getByText(/WIQL/).first().waitFor({ timeout: 15_000 });
+      },
+    },
+    {
+      name: "issues-contagem",
+      route: board,
+      wire: [{ command: "issues.list", data: { issues: TWELVE } }],
+      prepare: (page) => panelOpen(page, /^12 issues$/),
+    },
+    {
+      name: "issues-contagem-filtro",
+      route: board,
+      wire: [{ command: "issues.list", data: { issues: TWELVE } }],
+      async prepare(page) {
+        await panelOpen(page, /^12 issues$/);
+        await filterBox(page).fill("login");
+        await page
+          .getByRole("dialog")
+          .getByText(/^(3 of 12 issues|3 de 12 issues)$/)
+          .waitFor({ timeout: 15_000 });
+      },
+    },
+    {
+      name: "issues-filtro-vazio",
+      route: board,
+      wire: [{ command: "issues.list", data: { issues: TWELVE } }],
+      async prepare(page) {
+        await panelOpen(page, /^12 issues$/);
+        await filterBox(page).fill("zzz");
+        await page
+          .getByRole("button", { name: /^(Clear filter|Limpar filtro)$/ })
+          .waitFor({ timeout: 15_000 });
+      },
+    },
+    {
+      name: "issues-cortada",
+      route: board,
+      wire: [{ command: "issues.list", data: { issues: FIFTY, truncated: true } }],
+      prepare: (page) =>
+        panelOpen(page, /(Showing the first 50 issues|Mostrando as primeiras 50 issues)/),
+    },
+    {
+      name: "issues-titulo-longo",
+      route: board,
+      wire: [{ command: "issues.list", data: { issues: [issue(1, LONG_TITLE)] } }],
+      prepare: (page) => panelOpen(page, new RegExp(`^${LONG_TITLE}$`)),
     },
     { name: "ferramentas-cartoes", route: tools, wire, prepare: startScreen },
     {

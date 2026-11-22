@@ -265,3 +265,83 @@ describe("session messages: the write form (#3852)", () => {
     expect(view.container.querySelector("li")?.textContent?.includes("De Revisora")).toBe(true);
   });
 });
+
+const LOADING = { en: "Loading messages", "pt-BR": "Carregando mensagens" };
+const LOAD_FAILED = {
+  en: "Could not load this session's messages.",
+  "pt-BR": "Não foi possível carregar as mensagens desta sessão.",
+};
+const RETRY = { en: "Try again", "pt-BR": "Tentar de novo" };
+const SEND_NEEDS = {
+  en: "Choose a session and write a text.",
+  "pt-BR": "Escolha uma sessão e escreva um texto.",
+};
+
+/** A store whose `messages.list` answers when `answer` is called: `null` is a refusal. */
+function slowStore(language: "en" | "pt-BR") {
+  const waiting: Array<(list: MessageInfo[] | null) => void> = [];
+  const store = {
+    hostCommand: (_host: string, command: string) => {
+      if (command === "messages.sessions") return Promise.resolve({ sessions: [peer("Reviewer")] });
+      if (command !== "messages.list") return Promise.resolve(null);
+      return new Promise((resolve) =>
+        waiting.push((list) => resolve(list ? { messages: list } : null)),
+      );
+    },
+    messaging: { onUpdated: () => () => {} },
+    subscribe: () => () => {},
+    getState: () => APP_STATE,
+    formatDateTime: (iso: string) => iso,
+    i18n: { t: translator(language) },
+  } as unknown as AppStore;
+  const answer = (list: MessageInfo[] | null) => act(async () => waiting.shift()?.(list));
+  return { store, answer };
+}
+
+describe("session messages: loading, a failed list and the Send reason (#4296)", () => {
+  for (const language of ["en", "pt-BR"] as const) {
+    test(`the list says it is loading until the host answers, then says it is empty, in ${language}`, async () => {
+      const { store, answer } = slowStore(language);
+      const view = render(<SessionMessages store={store} hostId="h" sessionId="c1" />);
+      await uiIdle();
+      const loading = () => view.container.querySelector(`[aria-label="${LOADING[language]}"]`);
+      expect(loading()).not.toBeNull();
+      expect(view.container.textContent).not.toContain(EMPTY_MESSAGES[language]);
+      await answer([]);
+      await uiIdle();
+      expect(loading()).toBeNull();
+      expect(view.container.textContent).toContain(EMPTY_MESSAGES[language]);
+    });
+
+    test(`a refused list says so and Try again loads it, in ${language}`, async () => {
+      const { store, answer } = slowStore(language);
+      const view = render(<SessionMessages store={store} hostId="h" sessionId="c1" />);
+      await uiIdle();
+      await answer(null);
+      await uiIdle();
+      expect(view.container.textContent).toContain(LOAD_FAILED[language]);
+      expect(view.container.textContent).not.toContain(EMPTY_MESSAGES[language]);
+      await act(async () => {
+        fireEvent.click(button(view.container, RETRY[language]) as HTMLElement);
+      });
+      await answer([message]);
+      await uiIdle();
+      expect(view.container.textContent).not.toContain(LOAD_FAILED[language]);
+      expect(view.container.textContent).toContain("a revisão está pronta");
+    });
+
+    test(`a disabled Send says why until there is a session and a text, in ${language}`, async () => {
+      const { store, sends } = writingStore(language, { sessions: [peer("Reviewer")] });
+      const view = render(<SessionMessages store={store} hostId="h" sessionId="c1" />);
+      await uiIdle();
+      await open(view.container, language);
+      expect(view.container.textContent).toContain(SEND_NEEDS[language]);
+      fireEvent.change(view.container.querySelector("textarea") as HTMLTextAreaElement, {
+        target: { value: "ship it" },
+      });
+      await uiIdle();
+      expect(view.container.textContent).not.toContain(SEND_NEEDS[language]);
+      expect(sends).toHaveLength(0);
+    });
+  }
+});
