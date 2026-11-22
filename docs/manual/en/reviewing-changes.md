@@ -38,7 +38,9 @@ conversation. It is where you check what the agent did and send it back what to 
   changed file has **Show changes**: its diff against HEAD, live. While you are at the bottom, the
   newest change scrolls into view as the session edits; scroll up and it stops, and **Jump to
   latest** (with how many changes came) or a scroll back to the bottom brings it back. On a host of
-  this computer the viewer also has **Open in its app** and **Show in folder**.
+  this computer the viewer also has **Open in its app** and **Show in folder**. A file you open
+  scrolls into view and takes the keyboard focus; **Close** puts the focus back on the button that
+  opened it.
 - **Inline comments:**
   - click a line number to comment on it, and shift+click another to extend the range. A removed
     line is commented on its old side. A number shows a Comment mark when you point at it or
