@@ -9,7 +9,7 @@ import { type FrameRewriter, installHolds } from "./holds.ts";
  * unheard, so the panel stays loading; `reply` answers in the page and never sends the command (a
  * change the host would really make; a `"{in 30s}"` in it is the time 30 s from the answer, #4229); `reject` answers in the page with a refusal and `stall` leaves
  * the command unanswered, both without sending it (an answer to a request the host would really
- * take, #4203); `without` takes entries out of an array of the answer (a feature the host announces). The demo's hosts are never left in the state the print shows.
+ * take, #4203); `without` takes entries out of an array of the answer (a feature the host announces) and `with` adds them (one it does not). The demo's hosts are never left in the state the print shows.
  */
 export type WireRule =
   | { command: string; refuse: string }
@@ -74,14 +74,22 @@ export function wireRewriter(rules: WireRule[]): FrameRewriter {
         return JSON.stringify(refused);
       };
       if ("refuse" in rule) return refusal(rule.refuse);
-      if ("without" in rule) {
+      if ("without" in rule || "with" in rule) {
         const data: Record<string, unknown> =
           typeof message.data === "object" && message.data !== null
             ? { ...(message.data as Record<string, unknown>) }
             : {};
-        for (const [field, gone] of Object.entries(rule.without)) {
-          const list = data[field];
-          if (Array.isArray(list)) data[field] = list.filter((item) => !gone.includes(item));
+        if ("without" in rule) {
+          for (const [field, gone] of Object.entries(rule.without)) {
+            const list = data[field];
+            if (Array.isArray(list)) data[field] = list.filter((item) => !gone.includes(item));
+          }
+        } else {
+          for (const [field, added] of Object.entries(rule.with)) {
+            const list = data[field];
+            if (Array.isArray(list))
+              data[field] = [...list, ...added.filter((item) => !list.includes(item))];
+          }
         }
         return JSON.stringify({ ...message, data });
       }

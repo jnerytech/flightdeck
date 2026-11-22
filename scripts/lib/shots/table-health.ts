@@ -1,6 +1,11 @@
 /** Part of the print table (scripts/demo-shots.ts), in print order: the states of a host's Health & dependencies the audit of #168 found (#4325). */
 
-import type { DepResult, DepsResult, DoctorResult } from "@flightdeck/protocol";
+import {
+  type DepResult,
+  type DepsResult,
+  type DoctorResult,
+  FEATURE_SERVICE_INSTALL,
+} from "@flightdeck/protocol";
 import type { Locator, Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
 import { ALFA, type Shot, showSection } from "./shot.ts";
@@ -107,6 +112,12 @@ const ALL_OK: DepsResult = healthy(
   dep("claude", "required", "ok", { version: "2.1.4", path: LONG_PATH }),
 );
 
+/** The demo host does not announce the install; the rows that offer it need it (#1200). */
+const CAN_INSTALL: WireRule = {
+  command: "host.info",
+  with: { features: [FEATURE_SERVICE_INSTALL] },
+};
+
 /** The read of each kind that worked, and every one after it refused. */
 const REFUSED_AFTER = "The host did not answer.";
 const failsAfterFirst: WireRule[] = [
@@ -165,13 +176,13 @@ export function healthShots(_ids: DemoIds): Shot[] {
       // The three rows that fix in one click: Install hooks, Add folder and Turn on start at boot.
       name: "host-saude-correcoes",
       route: { name: "host", host: ALFA },
-      wire: answers(FIXABLE),
+      wire: [...answers(FIXABLE), CAN_INSTALL],
       prepare: read,
     },
     {
       name: "host-saude-hooks-dialogo",
       route: { name: "host", host: ALFA },
-      wire: answers(FIXABLE),
+      wire: [...answers(FIXABLE), CAN_INSTALL],
       prepare: async (page) => {
         await read(page);
         await panel(page).getByRole("button", { name: INSTALL_HOOKS }).click();
@@ -181,7 +192,7 @@ export function healthShots(_ids: DemoIds): Shot[] {
     {
       name: "host-saude-servico-dialogo",
       route: { name: "host", host: ALFA },
-      wire: answers(FIXABLE),
+      wire: [...answers(FIXABLE), CAN_INSTALL],
       prepare: openService,
     },
     {
@@ -192,6 +203,7 @@ export function healthShots(_ids: DemoIds): Shot[] {
         // The re-read after the service is on finds it working, so the headline and the row agree with the note.
         { command: "deps.check", data: FIXABLE, after: serviceOn },
         { command: "doctor.run", data: DOCTOR },
+        CAN_INSTALL,
         { command: "service.install", reply: { startsAt: "boot", lingerOff: true, user: "demo" } },
       ],
       prepare: async (page) => {
