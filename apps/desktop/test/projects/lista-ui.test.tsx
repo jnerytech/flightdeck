@@ -205,7 +205,7 @@ describe("projetos-lista-ui: the Projects overview", () => {
     // The first load is still out when a host changes: a second load starts for the new set.
     const changed = empty.hosts.map((h) => (h.id === "h2" ? { ...h, status: "offline" } : h));
     rerender(view({ ...empty, hosts: changed } as never));
-    expect(settles.length).toBe(2);
+    expect(settles).toHaveLength(2);
     await act(async () => settles[1]?.());
     await waitFor(() => expect(screen.queryByText("No projects yet.")).not.toBeNull());
     await act(async () => settles[0]?.());
