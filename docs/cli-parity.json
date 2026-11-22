@@ -46,13 +46,25 @@
     "appOnly": "a device signs the removal with its own key; the host terminal clears all keys with flightdeckd approvers reset"
   },
   "approval.watch": { "cli": "approvers" },
-  "askpass.answer": {},
-  "askpass.ask": {},
-  "askpass.watch": {},
-  "assistant.cancel": {},
-  "assistant.context": {},
-  "assistant.record": {},
-  "assistant.run": {},
+  "askpass.answer": {
+    "appOnly": "the person types a password or passphrase into the app's prompt, and a terminal verb would let the session that raised the prompt answer it itself"
+  },
+  "askpass.ask": { "cli": "askpass" },
+  "askpass.watch": {
+    "appOnly": "the stream of prompts exists to show them to the person in the app; with no answer verb a shell watcher has nothing to do"
+  },
+  "assistant.cancel": {
+    "appOnly": "cancels a request that the app's wand started; an agent on a shell is itself a model and starts none"
+  },
+  "assistant.context": {
+    "appOnly": "reads the context a wand request needs; an agent on a shell builds its own context"
+  },
+  "assistant.record": {
+    "appOnly": "records what the person kept of a wand suggestion in the app; an agent keeps no suggestion"
+  },
+  "assistant.run": {
+    "appOnly": "the wand's executor: the app builds the prompt from shared code and the daemon runs it with the host's claude; an agent on a shell already holds a model"
+  },
   "autoapprove.list": { "cli": "autoapprove" },
   "autoapprove.resume": { "cli": "autoapprove" },
   "automation.list": { "cli": "automation" },
@@ -379,7 +391,9 @@
   "runenv.stop": { "cli": "runenv" },
   "runenv.trust": { "cli": "runenv" },
   "runenv.watch": { "cli": "runenv" },
-  "runtime.models": {},
+  "runtime.models": {
+    "appOnly": "lists the models of OpenCode, which the user retired on 2026-11-10 although the daemon still serves the request; no verb is added for a runtime that is going away"
+  },
   "service.install": { "cli": "service" },
   "session.applyPersona": { "cli": "session" },
   "session.clearPersona": { "cli": "session" },
