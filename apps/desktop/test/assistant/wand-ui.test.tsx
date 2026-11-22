@@ -57,7 +57,7 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
   test("an empty box that cannot be written from nothing is disabled, and says why", async () => {
     await make();
     const wand = screen.queryByRole("button", { name: "Write something first" });
-    expect(wand?.hasAttribute("disabled")).toBe(true);
+    expect(wand?.getAttribute("aria-disabled")).toBe("true");
   });
 
   test("a screen that gives no assistant has no wand", async () => {
@@ -422,12 +422,12 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     expect(
       screen
         .getByRole("button", { name: "Another AI request is running" })
-        .hasAttribute("disabled"),
-    ).toBe(true);
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
     await act(async () => store.assistant.gate.release("other"));
-    expect(screen.getByRole("button", { name: "Improve with AI" }).hasAttribute("disabled")).toBe(
-      false,
-    );
+    expect(
+      screen.getByRole("button", { name: "Improve with AI" }).hasAttribute("aria-disabled"),
+    ).toBe(false);
   });
 
   test("it reads in Portuguese", async () => {
@@ -453,7 +453,7 @@ describe("assistant-wand-ui: Settings says why it opened (issue #158)", () => {
     store.assistant.askForSetup();
     const settings = render(<AssistantSettings store={store} t={t} />);
     expect(screen.queryByRole("note")?.textContent).toBe(
-      "Choose an AI provider to use the wand on text fields.",
+      "Choose an AI provider to use the AI button on text fields.",
     );
     expect(store.assistant.wantsSetup()).toBe(false);
     settings.unmount();

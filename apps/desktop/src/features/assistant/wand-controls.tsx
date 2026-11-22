@@ -22,11 +22,16 @@ export function WandButton(props: Readonly<{ wand: Wand; t: T }>) {
   let label = wand.writes ? t("assistantWand.write") : t("assistantWand.improve");
   if (wand.needsText) label = t("assistantWand.writeFirst");
   if (wand.otherRunning) label = t("assistantWand.busy");
+  // Off for a reason the person can fix: aria-disabled, not disabled, so Tab reaches the button and
+  // its tooltip and accessible name give the reason (#4167). While this wand runs, Cancel has the focus.
+  const off = wand.needsText || wand.otherRunning;
   return (
     <IconActionButton
       type="button"
       label={label}
-      disabled={wand.needsText || wand.otherRunning || wand.state.kind === "running"}
+      disabled={wand.state.kind === "running"}
+      aria-disabled={off || undefined}
+      className={off ? "opacity-50" : undefined}
       aria-keyshortcuts={mac ? "Meta+I" : "Control+I"}
       onClick={wand.start}
     >

@@ -108,7 +108,9 @@ describe("assistant-settings-ui: the provider, in words", () => {
     await click(radio("OpenRouter (API key)"));
     expect(store.assistant.prefs().provider).toBe("openrouter");
     expect(radio("OpenRouter (API key)").checked).toBe(true);
-    const wand = screen.getByRole("checkbox", { name: "Show the wand" }) as HTMLInputElement;
+    const wand = screen.getByRole("checkbox", {
+      name: "Show the AI button on text fields",
+    }) as HTMLInputElement;
     expect(wand.checked).toBe(true);
     await click(wand);
     expect(store.assistant.prefs().enabled).toBe(false);
@@ -313,7 +315,7 @@ describe("assistant-settings-ui: the keys", () => {
     expect(only.checked).toBe(true);
     await click(only);
     expect(store.assistant.prefs().openrouterPrivate).toBe(false);
-    await click(button("OpenRouter's privacy page"));
+    await click(button("OpenRouter's privacy page (opens the browser)"));
     expect(opened).toEqual(["https://openrouter.ai/docs/guides/privacy/data-collection"]);
   });
 
@@ -465,7 +467,9 @@ describe("assistant-settings-ui: the section in Settings, in both languages", ()
     expect(within(rail).queryByRole("button", { name: "Assistente de IA" })).not.toBeNull();
     expect(screen.getByRole("radio", { name: "Claude Code em um host" })).toBeDefined();
     expect(screen.getByRole("radio", { name: "Anthropic (chave de API)" })).toBeDefined();
-    expect(screen.getByRole("checkbox", { name: "Mostrar a varinha" })).toBeDefined();
+    expect(
+      screen.getByRole("checkbox", { name: "Mostrar o botão de IA nos campos de texto" }),
+    ).toBeDefined();
     expect(screen.getByLabelText("Chave da Anthropic")).toBeDefined();
     expect(document.body.textContent).toContain(
       "Seu texto vai para api.anthropic.com com a sua chave.",
@@ -486,7 +490,9 @@ describe("assistant-settings-ui: the section in Settings, in both languages", ()
 describe("settings: the AI button is named by what the person sees (issue #4167)", () => {
   test("the switch, the hint and the setup notice say the AI button, and the hint gives the shortcut", () => {
     setup();
-    expect(screen.queryByRole("checkbox", { name: "Show the AI button on text fields" })).not.toBeNull();
+    expect(
+      screen.queryByRole("checkbox", { name: "Show the AI button on text fields" }),
+    ).not.toBeNull();
     expect(document.body.textContent).not.toContain("wand");
     expect(document.body.textContent).toContain("Ctrl+I");
   });
