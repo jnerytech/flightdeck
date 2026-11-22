@@ -469,6 +469,7 @@ export const board = {
     diff: "Mudanças",
     exitCode: "código {code}",
     checkOutput: "Saída do check {step}",
+    checkNoOutput: "O check não imprimiu nada.",
     stepConversation: "Conversa da etapa {step}",
     cardConversation: "Conversa do card",
     noSession: "Sem sessão ainda.",
