@@ -1,5 +1,5 @@
 import type { RewindPreview } from "@flightdeck/protocol";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,9 +9,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Turn } from "@/features/sessions/index.ts";
-import { ActionButton, AppDialogContent, InlineNotice } from "@/shared/feedback/index.ts";
+import {
+  ActionButton,
+  AppDialogContent,
+  ConfirmDialog,
+  InlineNotice,
+} from "@/shared/feedback/index.ts";
 import { ErrorState, LoadingState } from "@/shared/layout/index.ts";
+import { refusalText } from "../../i18n/errors.ts";
 import type { AppStore } from "../../lib/app-store.ts";
+import type { HostResult } from "../../lib/kernel.ts";
 import { TerminalButton } from "../terminal/ui.ts";
 
 export interface Target {
@@ -20,6 +27,9 @@ export interface Target {
   claudeSessionId: string;
   cwd: string;
 }
+
+/** A request the host refused, with the code, message and reason it gave. */
+export type Refused = Exclude<HostResult<unknown>, { ok: true }>;
 
 /** What rewinding does to each file, from the files' point of view. */
 function PreviewFiles(
@@ -55,16 +65,15 @@ export function RewindDialog(props: Target & { turn: Turn; onClose(): void; onDo
   const { store, hostId, claudeSessionId, turn } = props;
   const { t } = store.i18n;
   const [preview, setPreview] = useState<RewindPreview | null>(null);
+  // The preview was refused: the dialog stays open and says why, instead of closing with a banner.
+  const [previewRefused, setPreviewRefused] = useState<Refused | null>(null);
   // Why the host refused the rewind: the dialog stays open and says it, so nothing is lost silently.
   const [refusal, setRefusal] = useState<string | null>(null);
-  // The parent makes a new onClose on every render: the preview must not reload for that.
-  const close = useRef(props.onClose);
-  close.current = props.onClose;
 
   useEffect(() => {
     void store
-      .hostCommand(hostId, "rewind.preview", { claudeSessionId, turn: turn.n })
-      .then((result) => (result ? setPreview(result) : close.current()));
+      .hostRequest(hostId, "rewind.preview", { claudeSessionId, turn: turn.n })
+      .then((result) => (result.ok ? setPreview(result.data) : setPreviewRefused(result)));
   }, [store, hostId, claudeSessionId, turn.n]);
 
   const apply = async () => {
@@ -92,7 +101,14 @@ export function RewindDialog(props: Target & { turn: Turn; onClose(): void; onDo
         {preview ? (
           <PreviewFiles store={store} preview={preview} />
         ) : (
-          <LoadingState label={t("timeline.previewing")} />
+          previewRefused === null && <LoadingState label={t("timeline.previewing")} />
+        )}
+        {previewRefused !== null && (
+          <InlineNotice tone="error">
+            {t("timeline.previewFailed", {
+              reason: refusalText(previewRefused.code, previewRefused.message, t, previewRefused),
+            })}
+          </InlineNotice>
         )}
         {refusal !== null && (
           <InlineNotice tone="error">{t("timeline.applyFailed", { reason: refusal })}</InlineNotice>
@@ -198,17 +214,20 @@ export function ForkDialog(
   const [open, setOpen] = useState<"flightdeck" | "terminal">("flightdeck");
   const [withFiles, setWithFiles] = useState(false);
   const [preview, setPreview] = useState<RewindPreview | null>(null);
-  // The preview was refused: its place says so and Try again asks the host once more.
-  const [previewFailed, setPreviewFailed] = useState(false);
+  // The preview was refused: its place says why and Try again asks the host once more.
+  const [previewRefused, setPreviewRefused] = useState<Refused | null>(null);
+  // The fork was refused: the dialog stays open and says why.
+  const [forkRefused, setForkRefused] = useState<Refused | null>(null);
+  const [allowing, setAllowing] = useState(false);
   const [forked, setForked] = useState<{ claudeSessionId: string; command: string } | null>(null);
 
   const loadPreview = useCallback(() => {
-    setPreviewFailed(false);
+    setPreviewRefused(null);
     void store
-      .hostCommand(hostId, "rewind.preview", { claudeSessionId, turn: turn.n })
+      .hostRequest(hostId, "rewind.preview", { claudeSessionId, turn: turn.n })
       .then((result) => {
-        setPreview(result);
-        setPreviewFailed(result === null);
+        setPreview(result.ok ? result.data : null);
+        setPreviewRefused(result.ok ? null : result);
       });
   }, [store, hostId, claudeSessionId, turn.n]);
 
@@ -216,15 +235,26 @@ export function ForkDialog(
     if (withFiles) loadPreview();
   }, [withFiles, loadPreview]);
 
+  const refusedText = (refused: Refused) => refusalText(refused.code, refused.message, t, refused);
+  // A fork refused for its folder keeps the way out the banner's toast offers (#3550).
+  const cwdParam = forkRefused?.params?.cwd;
+  const folderToAllow =
+    forkRefused?.reason === "cwd_outside_roots" && typeof cwdParam === "string" ? cwdParam : null;
+
   const fork = async () => {
-    const result = await store.hostCommand(hostId, "session.fork", {
+    setForkRefused(null);
+    const answer = await store.hostRequest(hostId, "session.fork", {
       claudeSessionId,
       cwd,
       open,
       ...(turn.uuid ? { upToMessageId: turn.uuid } : {}),
       ...(withFiles ? { rewindTurn: turn.n } : {}),
     });
-    if (!result) return;
+    if (!answer.ok) {
+      setForkRefused(answer);
+      return;
+    }
+    const result = answer.data;
     if (withFiles) props.onRewound();
     if (result.sessionId) {
       props.onOpenSession(result.sessionId);
@@ -281,21 +311,50 @@ export function ForkDialog(
               {t("timeline.forkFiles")}
             </label>
             {props.busy && <p className="text-muted-foreground text-xs">{t("timeline.busy")}</p>}
+            {forkRefused !== null && (
+              <InlineNotice tone="error">
+                <span>{t("timeline.forkFailed", { reason: refusedText(forkRefused) })}</span>
+                {folderToAllow !== null && (
+                  <>
+                    {" "}
+                    <Button variant="outline" size="sm" onClick={() => setAllowing(true)}>
+                      {t("toast.allowRoot")}
+                    </Button>
+                  </>
+                )}
+              </InlineNotice>
+            )}
             {withFiles && (
               <>
                 <p className="text-muted-foreground text-xs">{t("timeline.forkFilesNote")}</p>
                 {preview && <PreviewFiles store={store} preview={preview} />}
-                {!preview && previewFailed && (
+                {!preview && previewRefused !== null && (
                   <ErrorState
-                    message={t("timeline.previewFailed")}
+                    message={t("timeline.previewFailed", { reason: refusedText(previewRefused) })}
                     retryLabel={t("timeline.retry")}
                     onRetry={loadPreview}
                   />
                 )}
-                {!preview && !previewFailed && <LoadingState label={t("timeline.previewing")} />}
+                {!preview && previewRefused === null && (
+                  <LoadingState label={t("timeline.previewing")} />
+                )}
               </>
             )}
           </div>
+        )}
+        {allowing && folderToAllow !== null && (
+          <ConfirmDialog
+            message={t("toast.allowRootMessage", {
+              host: store.getState().hosts.find((h) => h.id === hostId)?.name ?? "",
+              folder: folderToAllow,
+            })}
+            confirmLabel={t("toast.allowRoot")}
+            onCancel={() => setAllowing(false)}
+            onConfirm={() => {
+              setAllowing(false);
+              void store.roster.allowRoot(hostId, folderToAllow, () => void fork());
+            }}
+          />
         )}
         <DialogFooter>
           {forked ? (

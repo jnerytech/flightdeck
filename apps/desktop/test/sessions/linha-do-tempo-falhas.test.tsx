@@ -71,6 +71,10 @@ function pending() {
 const refused = (why: { reason: string; params?: Record<string, string | number> }) => ({
   refusal: { code: "refused", message: "the host said no", ...why },
 });
+const refusalOf = (data: unknown) =>
+  typeof data === "object" && data !== null && "refusal" in data
+    ? (data as ReturnType<typeof refused>).refusal
+    : null;
 
 /**
  * The timeline's button on a store whose host answers each command as the test says: a result, a
@@ -90,13 +94,12 @@ async function timeline(language: "en" | "pt-BR", answers: Record<string, Answer
   store.hostCommand = (async (_host: string, type: string) => {
     banner.push(type);
     const data = await answer(type);
-    return data !== null && typeof data === "object" && "refusal" in data ? null : data;
+    return refusalOf(data) ? null : data;
   }) as never;
   store.hostRequest = (async (_host: string, type: string) => {
     const data = await answer(type);
-    if (data !== null && typeof data === "object" && "refusal" in data) {
-      return { ok: false, ...data.refusal };
-    }
+    const refusal = refusalOf(data);
+    if (refusal) return { ok: false, ...refusal };
     return data === null
       ? { ok: false, code: "refused", message: "the host said no" }
       : { ok: true, data };
@@ -504,7 +507,7 @@ describe("linha-do-tempo-falhas", () => {
     await timeline("pt-BR", { "snapshots.list": async () => TURN_RUNNING });
     expect(alerts()).toHaveLength(1);
     expect(alerts()[0]).toContain("Não deu para carregar os turnos desta sessão: ");
-    expect(alerts()[0]).toContain("A sessão está em um turno");
+    expect(alerts()[0]).toContain("A sessão está num turno: pare-a antes de voltar.");
   });
 
   test("a refused rewind preview keeps its dialog open with the reason once, Rewind stays off and the banner is not used", async () => {
