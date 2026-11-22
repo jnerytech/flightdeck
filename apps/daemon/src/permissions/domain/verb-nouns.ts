@@ -20,6 +20,7 @@ export const VERB_NOUNS = new Set([
   "db",
   "external",
   "file",
+  "github",
   "history",
   "host",
   "issues",

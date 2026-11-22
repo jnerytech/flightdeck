@@ -39,6 +39,13 @@ export function readFile(args: CliArgs, reader: ArgReader): void {
 /** The flags only `file` verbs take, for the parser's table of flags. */
 export const FILE_FLAGS: Record<string, Handler> = {
   "--mode": setValue((args, value) => {
+    // `github start --mode card|session` (#3703) is the same flag name, with a field of its own.
+    if (args.command === "github") {
+      if (value !== "card" && value !== "session")
+        throw new Error(`--mode: card or session, got ${value}\n${USAGE}`);
+      args.githubMode = value;
+      return;
+    }
     if (value !== "name" && value !== "content")
       throw new Error(`--mode: name or content, got ${value}\n${USAGE}`);
     args.fileMode = value;
