@@ -275,7 +275,7 @@ const checkpointsRun: CommandRun = async (args, deps) => {
 };
 
 export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
-  backup: done(async (args, deps) => (await import("./maintenance.ts")).runBackup(args, deps)),
+  backup: async (args, deps) => (await import("./maintenance.ts")).runBackup(args, deps),
   restore: done(async (args, deps) => (await import("./maintenance.ts")).runRestore(args, deps)),
   update: (args, deps) => updateCommand(args, deps, asking),
   db: done(async (args, deps) => (await import("./maintenance.ts")).runDb(args, deps)),

@@ -29,6 +29,7 @@ import { externalProblem, readExternal, readNames, TEXT_FLAG } from "./external-
 import { FEED_READERS, feedProblem, LINES_FLAG, readFeedLimit } from "./feed-args.ts";
 import { FILE_FLAGS, fileProblem, readFile, takeFileFlags } from "./file-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
+import { githubProblem, readAccount, readGithub } from "./github-args.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
 import { hostHandler, hostProblem, resourcesHandler } from "./host-args.ts";
 import { issuesProblem, readIssues } from "./issues-args.ts";
@@ -324,6 +325,8 @@ const HANDLERS: Record<string, Handler> = {
   memory: readMemory,
   worktree: readWorktree,
   issues: readIssues,
+  github: readGithub,
+  account: readAccount,
   ...FEED_READERS,
   runenv: readRunenv,
   changes: readChanges,
@@ -755,6 +758,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     reviewProblem(args) ??
     memoryProblem(args) ??
     issuesProblem(args) ??
+    githubProblem(args) ??
     worktreeProblem(args) ??
     feedProblem(args) ??
     runenvProblem(args) ??

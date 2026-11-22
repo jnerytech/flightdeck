@@ -44,7 +44,8 @@ nada dispara até o `enable`: salvar sobre uma automação que estava ligada a d
 
 `enable <automação> --confirm` a liga: a partir daí ela dispara sozinha. `--confirm` é obrigatório e é só a sua
 palavra de que você leu o gatilho e a ação (`automation list` imprime o que a dispara e o que ela faz).
-`disable <automação>` a desliga e não pede nada. `remove <automação> --confirm` a apaga junto com as execuções, e
+Ligá-la exige uma conexão próxima (este computador ou a Tailscale): por uma distante o daemon recusa com `transport_refused`.
+`disable <automação>` a desliga, responde de qualquer lugar e não pede nada. `remove <automação> --confirm` a apaga junto com as execuções, e
 `--json` imprime as automações que o projeto ainda tem.
 
 Um host que não responde depois de um destes ter sido enviado deixa o resultado desconhecido: saída `2`, e a mensagem

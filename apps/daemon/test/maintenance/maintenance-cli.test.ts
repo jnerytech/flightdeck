@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type CliDeps, parseArgs, runCli } from "../../src/main.ts";
 import { statusLines } from "../../src/maintenance/domain/maintenance-cli-view.ts";
@@ -178,6 +178,47 @@ describe("flightdeckd db status, db prune, backup and doctor: --json (#3756)", (
       at: expect.any(String),
       bytes: expect.any(Number),
     });
+  });
+
+  test("backup --out an existing file is refused with exit 1, names the path and --force, and leaves the file (#3809)", async () => {
+    const { dir, config } = host();
+    const out = join(dir, "thesis.docx");
+    writeFileSync(out, "precious");
+    const got = await run(["backup", "--out", out, "--config", config]);
+    expect({
+      code: got.code,
+      out: got.out,
+      kept: readFileSync(out, "utf8") === "precious",
+    }).toEqual({
+      code: 1,
+      out: [],
+      kept: true,
+    });
+    expect([got.err.join("\n").includes(out), got.err.join("\n").includes("--force")]).toEqual([
+      true,
+      true,
+    ]);
+  });
+
+  test("the refusal under --json is one line with the stable reason target_exists (#3809)", async () => {
+    const { dir, config } = host();
+    const out = join(dir, "thesis.docx");
+    writeFileSync(out, "precious");
+    const got = await run(["backup", "--json", "--out", out, "--config", config]);
+    expect({ code: got.code, out: got.out }).toEqual({ code: 1, out: [] });
+    expect(printed(got.err)).toEqual({
+      error: expect.stringContaining(out),
+      reason: "target_exists",
+    });
+  });
+
+  test("backup --out an existing file --force replaces it and exits 0 (#3809)", async () => {
+    const { dir, config } = host();
+    const out = join(dir, "thesis.docx");
+    writeFileSync(out, "precious");
+    const got = await run(["backup", "--out", out, "--force", "--config", config]);
+    expect({ code: got.code, err: got.err }).toEqual({ code: 0, err: [] });
+    expect(readFileSync(out).subarray(0, 15).toString()).toBe("SQLite format 3");
   });
 
   test("without --json the three keep their plain lines", async () => {
