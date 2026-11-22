@@ -271,6 +271,8 @@ export const refusals = {
     automation_send_needs_card:
       "Sending to a card needs a trigger that has a card: a PR comment or a CI failure.",
     automation_create_needs_label: "Creating a card needs the issue label trigger.",
+    automation_workflow_missing: "An automation that starts a workflow needs the workflow's name.",
+    automation_label_missing: "The issue label trigger needs the label to watch for.",
     automation_name_required: "The automation needs a name.",
     automation_max_runs: "The daily limit is a whole number from 1 up.",
     automation_not_found: "The automation {id} does not exist.",

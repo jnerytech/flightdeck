@@ -37,12 +37,21 @@ export function draftOf(initial: Automation | null, zone: string): Draft {
   };
 }
 
-/** What the form refuses to send: an empty name, or a limit the daemon would refuse (not a whole number from 1 up). */
-export function draftProblems(draft: Draft): { name: boolean; max: boolean } {
+/**
+ * What the form refuses to send, as the daemon would: an empty name, a limit that is not a whole
+ * number from 1 up, an issue-label trigger with no label, and a workflow action with no usable
+ * workflow (`hasWorkflow`: the project has one to pick).
+ */
+export function draftProblems(
+  draft: Draft,
+  hasWorkflow: boolean,
+): { name: boolean; max: boolean; label: boolean; workflow: boolean } {
   const max = Number(draft.max.trim());
   return {
     name: draft.name.trim() === "",
     max: draft.max.trim() === "" || !Number.isSafeInteger(max) || max < 1,
+    label: draft.trigger === "issue_label" && draft.label.trim() === "",
+    workflow: draft.action === "start_workflow" && !hasWorkflow,
   };
 }
 

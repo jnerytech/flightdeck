@@ -48,9 +48,12 @@ export function AutomationForm(
   const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
   // The name and limit messages show after the first Save press, then follow what is typed.
   const [tried, setTried] = useState(false);
-  const problems = draftProblems(draft);
-
   const usable = props.workflows.filter((w) => w.errors.length === 0);
+  const problems = draftProblems(draft, usable.length > 0);
+  // A step that cannot work stays shut: Next says why, instead of the daemon refusing at the end.
+  const blocked = (step === 0 && problems.label) || (step === 1 && problems.workflow);
+  const blockedReason =
+    step === 0 ? t("automationsUi.form.labelMissing") : t("automationsUi.form.workflowMissing");
   const workflow = usable.some((w) => w.name === draft.workflow)
     ? draft.workflow
     : (usable[0]?.name ?? "");
@@ -84,7 +87,14 @@ export function AutomationForm(
         <DialogHeader>
           <DialogTitle>{t(initial ? "automationsUi.editTitle" : "automationsUi.new")}</DialogTitle>
         </DialogHeader>
-        <Form variant="dialog" onSubmit={() => (step < 2 ? setStep(step + 1) : void save())}>
+        <Form
+          variant="dialog"
+          onSubmit={() => {
+            if (blocked) return;
+            if (step < 2) setStep(step + 1);
+            else void save();
+          }}
+        >
           <p className="text-muted-foreground text-sm">
             {t("automationsUi.form.step", {
               n: step + 1,
@@ -240,6 +250,8 @@ export function AutomationForm(
           )}
           <FormActions
             submit={t(step < 2 ? "automationsUi.form.next" : "automationsUi.form.save")}
+            disabled={blocked}
+            disabledReason={blockedReason}
             cancel={t("common.cancel")}
             onCancel={props.onClose}
             extra={

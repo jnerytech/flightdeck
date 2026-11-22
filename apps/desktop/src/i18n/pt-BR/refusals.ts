@@ -275,6 +275,9 @@ export const refusals = {
     automation_send_needs_card:
       "Mandar para um card pede um gatilho que tenha card: comentário de PR ou falha de CI.",
     automation_create_needs_label: "Criar um card pede o gatilho de rótulo de issue.",
+    automation_workflow_missing:
+      "Uma automação que inicia um workflow precisa do nome do workflow.",
+    automation_label_missing: "O gatilho de rótulo de issue precisa do rótulo a observar.",
     automation_name_required: "A automação precisa de um nome.",
     automation_max_runs: "O limite por dia é um número inteiro de 1 em diante.",
     automation_not_found: "A automação {id} não existe.",
