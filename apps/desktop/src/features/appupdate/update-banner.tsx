@@ -2,7 +2,7 @@ import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { useStoreSlice } from "@/lib/use-store";
 import { ActionButton } from "@/shared/feedback/index.ts";
-import { Inline } from "@/shared/layout/index.ts";
+import { Inline, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
 const UPDATEBANNER_KEYS = ["appUpdate", "hosts", "settings"] as const;
@@ -42,20 +42,22 @@ export const UpdateBanner = memo(function UpdateBanner(props: { store: AppStore 
         </>
       )}
       {error && (
-        <div role="alert" className="flex flex-col gap-2">
-          <p className="text-status-needs-you">{error}</p>
-          <Inline gap={2}>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => store.router.push({ name: "settings", section: "updates" })}
-            >
-              {t("update.openSettings")}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => store.appUpdates.dismissError()}>
-              {t("update.dismissError")}
-            </Button>
-          </Inline>
+        <div role="alert">
+          <Stack gap={2}>
+            <p className="text-status-needs-you">{error}</p>
+            <Inline gap={2}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => store.router.push({ name: "settings", section: "updates" })}
+              >
+                {t("update.openSettings")}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => store.appUpdates.dismissError()}>
+                {t("update.dismissError")}
+              </Button>
+            </Inline>
+          </Stack>
         </div>
       )}
     </section>
