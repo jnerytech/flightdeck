@@ -75,7 +75,7 @@ const LABELS = (more: number) => ({
   open: "Abrir",
   more: `e mais ${more}…`,
   empty: "Nada esperando você",
-  show: "Abrir",
+  show: "Abrir o Flightdeck",
   quit: "Sair",
 });
 
