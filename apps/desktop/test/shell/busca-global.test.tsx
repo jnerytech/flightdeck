@@ -98,9 +98,9 @@ async function search(query: string) {
 }
 
 const resultTexts = () =>
-  screen.queryByRole("list", { name: "Resultados da busca" })
-    ? within(screen.queryByRole("list", { name: "Resultados da busca" }) as HTMLElement)
-        .queryAllByRole("listitem")
+  screen.queryByRole("listbox", { name: "Resultados da busca" })
+    ? within(screen.queryByRole("listbox", { name: "Resultados da busca" }) as HTMLElement)
+        .queryAllByRole("option")
         .map((li) => li.textContent ?? "")
     : [];
 

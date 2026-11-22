@@ -333,8 +333,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await input.fill("revisão do arquivo");
     await input.press("Enter");
     const hit = c.page
-      .getByRole("list", { name: c.t("searchUi.results") })
-      .getByRole("button")
+      .getByRole("listbox", { name: c.t("searchUi.results") })
+      .getByRole("option")
       .first();
     await hit.waitFor({ timeout: WAIT });
     // Long rows end in an ellipsis: the window never scrolls sideways.

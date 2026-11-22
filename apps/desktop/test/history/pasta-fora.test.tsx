@@ -112,7 +112,9 @@ describe("historico: a session in a folder the host does not allow", () => {
       fireEvent.submit(input);
     });
     const hit = () =>
-      screen.queryByRole("list", { name: "Search results" })?.querySelector("button") ?? null;
+      screen
+        .queryByRole("listbox", { name: "Search results" })
+        ?.querySelector<HTMLElement>("[role=option]") ?? null;
     await settle(() => hit() !== null);
     await click(hit());
     await settle(() => screen.queryByRole("button", { name: "Continue in Flightdeck" }) !== null);

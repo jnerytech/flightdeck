@@ -368,36 +368,41 @@ export function GlobalSearch(
               <span key={id}>{t("searchUi.silent", { host: name(id) })}</span>
             ))}
           </output>
-          <ul id={`${uid}-hits`} aria-label={t("searchUi.results")} className="flex flex-col">
+          <div
+            id={`${uid}-hits`}
+            role="listbox"
+            aria-label={t("searchUi.results")}
+            className="flex flex-col"
+          >
             {search.hits.map((hit) => {
               const when = props.store.formatDateTime(hit.ts ?? "");
               const where = `${hit.hostName} · ${basename(hit.cwd)} · ${when}`;
               const stopId = `hit:${hit.hostId}/${hit.claudeSessionId}/${hit.uuid}`;
               return (
-                <li key={`${hit.hostId}/${hit.claudeSessionId}/${hit.uuid}`}>
-                  <button
-                    type="button"
-                    id={domId(stopId)}
-                    tabIndex={-1}
-                    aria-current={stops[cursor]?.id === stopId ? "true" : undefined}
-                    className="palette-row flex w-full min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5 text-left"
-                    onClick={() => props.onOpenHit(hit)}
+                <button
+                  type="button"
+                  key={stopId}
+                  id={domId(stopId)}
+                  role="option"
+                  tabIndex={-1}
+                  aria-selected={stops[cursor]?.id === stopId}
+                  className="palette-row flex w-full min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5 text-left"
+                  onClick={() => props.onOpenHit(hit)}
+                >
+                  {/* A long title or path ends in an ellipsis; the whole text is in the tooltip. */}
+                  <span
+                    title={`${hit.hostName} · ${hit.cwd} · ${when}`}
+                    className="truncate text-muted-foreground text-xs tabular-nums"
                   >
-                    {/* A long title or path ends in an ellipsis; the whole text is in the tooltip. */}
-                    <span
-                      title={`${hit.hostName} · ${hit.cwd} · ${when}`}
-                      className="truncate text-muted-foreground text-xs tabular-nums"
-                    >
-                      {where}
-                    </span>
-                    <span title={hit.snippet.replaceAll(/[«»]/g, "")} className="truncate">
-                      <Snippet text={hit.snippet} />
-                    </span>
-                  </button>
-                </li>
+                    {where}
+                  </span>
+                  <span title={hit.snippet.replaceAll(/[«»]/g, "")} className="truncate">
+                    <Snippet text={hit.snippet} />
+                  </span>
+                </button>
               );
             })}
-          </ul>
+          </div>
         </section>
       )}
     </dialog>
