@@ -147,6 +147,7 @@ export function Team(
                   act(store.hostRequest(hostId, "teams.pause", { team: team.id }), {
                     text: t("teamsUi.done.paused", { name: team.name }),
                     focus: "resume",
+                    retry: "pause",
                   })
                 }
               >
@@ -163,6 +164,7 @@ export function Team(
                   act(store.hostRequest(hostId, "teams.resume", { team: team.id }), {
                     text: t("teamsUi.done.resumed", { name: team.name }),
                     focus: "pause",
+                    retry: "resume",
                   })
                 }
               >
