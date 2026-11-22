@@ -114,6 +114,8 @@ export interface DemoIds {
   knowledgeProject: string;
   /** The card with no PR in that project's backlog: the stage-contract and card-pins journeys use it (issues #78, #76). */
   contractCard: string;
+  /** A plugin folder that `claude plugin validate` refuses: the Plugins page's folder preview shows its errors (#3956). */
+  refusedPluginFolder: string;
   /** What `flightdeckd pair` prints for the first host, to pair it again from a first start (issue #1562). */
   alfaPairing: { address: string; port: number; token: string };
 }
@@ -912,6 +914,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       knowledgeProject: projectIds["design-system"] as string,
       updateProject: projectIds.billing as string,
       contractCard: contractCard.id,
+      refusedPluginFolder: "",
       alfaPairing: {
         address: new URL(alfa.url).hostname,
         port: Number(new URL(alfa.url).port),
