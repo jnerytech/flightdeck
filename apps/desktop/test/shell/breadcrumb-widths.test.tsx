@@ -73,4 +73,29 @@ describe("breadcrumb-widths: the header's path by window width (issue #641)", ()
     path();
     expect(nav() === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
+
+  test("wide: the current step gives way before an earlier one, so the step back to the list stays readable (#4011)", () => {
+    render(
+      <Breadcrumb
+        crumbs={[
+          { label: "Hosts", route: { name: "hub" as const } },
+          { label: "a host with a rather long name" },
+        ]}
+        label="You are in"
+        onGo={() => {}}
+      />,
+    );
+    const items = [...(nav() as HTMLElement).querySelectorAll("li")];
+    const [first, last] = [items[0], items.at(-1)] as HTMLElement[];
+    // The classes are the contract: happy-dom has no layout, the e2e `layout` journey measures the result.
+    const shrink = (li: HTMLElement) => {
+      const found = /(?:^|\s)shrink(?:-\[(\d+)\])?(?=\s|$)/.exec(li.className);
+      return found ? Number(found[1] ?? 1) : 0;
+    };
+    expect(shrink(last) > shrink(first)).toBe(true);
+    expect(shrink(first) > 0).toBe(true);
+    // The floors stay: an earlier step down to 1rem, the current one keeps 4rem.
+    expect(first.className).toContain("min-w-[1rem]");
+    expect(last.className).toContain("min-w-[4rem]");
+  });
 });
