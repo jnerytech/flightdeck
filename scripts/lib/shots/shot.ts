@@ -103,10 +103,18 @@ export const agentRoute = (ids: DemoIds): Route => ({
 export async function openTimeline(page: Page): Promise<void> {
   const button = page.getByRole("button", { name: /^(Linha do tempo|Timeline)$/ });
   const more = page.getByRole("button", { name: /^(Mais ações|More actions)$/ });
-  // A narrow session header keeps its actions in the More actions popover: wait for either one.
-  await button.or(more).first().waitFor();
-  if ((await button.count()) === 0) await more.click();
-  await button.click();
+  // A narrow session header keeps its actions in the More actions popover, and it measures its width
+  // after the first paint: each round clicks the button where it is, or opens the popover first.
+  for (let round = 1; ; round++) {
+    try {
+      await button.or(more).first().waitFor({ timeout: 10_000 });
+      if ((await button.count()) === 0) await more.click({ timeout: 5000 });
+      await button.click({ timeout: 5000 });
+      break;
+    } catch (error) {
+      if (round === 4) throw error;
+    }
+  }
   await page.waitForTimeout(1000);
 }
 
