@@ -133,7 +133,7 @@ describe("orcamentos-ui", () => {
     await online();
     await chooseFromAccountMenu("Configurações");
     await settle(() => section() !== null);
-    expect(form().getAttribute("aria-label")).toBe("Novo orçamento");
+    expect(form().getAttribute("aria-label")).toBe("Novo orçamento em alfa");
     for (const label of ["Escopo", "Período", "Limite (US$)", "Ao passar do limite"]) {
       expect(field(label).labels?.length).toBe(1);
     }
@@ -187,10 +187,10 @@ describe("orcamentos-ui", () => {
     expect(within(section() as HTMLElement).queryByText("Nenhum orçamento ainda.")).toBeNull();
     expect(screen.queryByRole("button", { name: "Cancelar edição" })).toBeNull();
     await click("Editar orçamento do host (dia)");
-    expect(form().getAttribute("aria-label")).toBe("Editar orçamento do host (dia)");
+    expect(form().getAttribute("aria-label")).toBe("Editar orçamento do host (dia) em alfa");
     expect((field("Limite (US$)") as HTMLInputElement).value).toBe("10");
     await click("Cancelar edição");
-    expect(form().getAttribute("aria-label")).toBe("Novo orçamento");
+    expect(form().getAttribute("aria-label")).toBe("Novo orçamento em alfa");
     expect((field("Limite (US$)") as HTMLInputElement).value).toBe("");
     expect(rows()).toHaveLength(1);
   });
@@ -398,8 +398,12 @@ describe("orcamentos-ui", () => {
     await sidebar.queueItem("alfa · orçamento do host (dia): 90% de US$ 10,00");
     await settle(() => section() !== null);
     expect(section()).not.toBeNull();
-    // The alert opens Settings on the budgets, not at the top (issue #190, J7).
-    expect(store.router.current).toEqual({ name: "settings", section: "budgets" });
+    // The alert opens Settings on the budgets, not at the top (issue #190, J7), on the host whose budget crossed (#3912).
+    expect(store.router.current).toEqual({
+      name: "settings",
+      section: "budgets",
+      host: store.getState().hosts[0]?.id,
+    });
     await settle(() => document.activeElement?.id === "settings-budgets");
     expect(document.activeElement?.id).toBe("settings-budgets");
   });
@@ -460,7 +464,12 @@ describe("orcamentos-ui", () => {
     });
     await settle(() => screen.queryByRole("button", { name: "Definir um orçamento" }) !== null);
     await click("Definir um orçamento");
-    expect(store.router.current).toEqual({ name: "settings", section: "budgets" });
+    // The only host is the one being read: the route names it (#3912).
+    expect(store.router.current).toEqual({
+      name: "settings",
+      section: "budgets",
+      host: store.getState().hosts[0]?.id,
+    });
   });
 
   test("a notificação de um orçamento de projeto diz o nome do projeto, não a chave", async () => {
