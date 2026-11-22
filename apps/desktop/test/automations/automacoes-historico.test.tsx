@@ -131,6 +131,19 @@ describe.each(["en", "pt-BR"] as const)("the Automations History, its words (%s)
     ]).toEqual([true, true]);
   });
 
+  test("a code whose values did not come, or that names an inherited property, shows the stored text and no bare placeholder", async () => {
+    const { items } = await history(lang, [
+      run("r1", { cause: "checks stored", causeCode: "ci_failed", causeParams: null }),
+      run("r2", { cause: "stored with constructor", causeCode: "constructor", causeParams: {} }),
+      run("r3", { status: "limited", detail: "limit stored", detailCode: "daily_limit" }),
+    ]);
+    expect({
+      stored: items.filter((i) => i.includes("stored")).length,
+      placeholder: items.some((i) => i.includes("{")),
+      bareWord: items.some((i) => i.includes("constructor") && !i.includes("stored with")),
+    }).toEqual({ stored: 3, placeholder: false, bareWord: false });
+  });
+
   test("a failed run keeps the message the host stored, as it is", async () => {
     const { items } = await history(lang, [
       run("r1", { status: "failed", detail: "no runtime for that card" }),
