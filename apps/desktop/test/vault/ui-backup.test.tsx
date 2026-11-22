@@ -5,7 +5,7 @@ import {
   previewImport,
   toFdvault,
 } from "../../src/features/vault/domain/vault-backup.ts";
-import { Vault } from "../../src/features/vault/vault.ts";
+import { type SecretMeta, Vault } from "../../src/features/vault/vault.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
@@ -355,7 +355,7 @@ describe("cofre-ui: backup", () => {
 });
 
 /** The vault entry a backup shares with `sourceVault`, so the restore sees one conflict. */
-const LOCAL_GITHUB = {
+const LOCAL_GITHUB: SecretMeta = {
   id: "shared-id",
   name: "github",
   type: "token",
@@ -364,7 +364,7 @@ const LOCAL_GITHUB = {
   createdAt: 1,
   lastUsedAt: null,
   allowedHosts: ["local"],
-} as const;
+};
 
 const alertText = () => screen.queryByRole("alert")?.textContent ?? "";
 
