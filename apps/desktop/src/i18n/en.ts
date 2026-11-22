@@ -322,6 +322,7 @@ export const en: Dictionary = {
     open: "Open the session",
     openNamed: "Open the session of {name}",
     hostGone: "That host is not connected.",
+    paused: "These sessions are paused for a message loop: {a} and {b}.",
     statuses: {
       pending: "Pending",
       delivered: "Delivered",

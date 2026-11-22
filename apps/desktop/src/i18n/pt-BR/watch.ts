@@ -177,6 +177,7 @@ export const watch = {
       'Nenhuma regra ainda. Escolha "Sempre neste projeto" quando o Claude pedir permissão e a regra aparece aqui.',
   },
   messagingRulesUi: {
+    open: "Abrir as regras de mensagens",
     title: "Mensagens entre sessões em {host}",
     intro: "Por padrão só falam sessões do mesmo projeto ou time. As exceções acrescentam pares.",
     exceptions: "Exceções",

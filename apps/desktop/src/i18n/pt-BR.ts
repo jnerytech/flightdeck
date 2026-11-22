@@ -322,6 +322,7 @@ export const ptBR = {
     open: "Abrir a sessão",
     openNamed: "Abrir a sessão de {name}",
     hostGone: "Esse host não está conectado.",
+    paused: "Estas sessões estão pausadas por um laço de mensagens: {a} e {b}.",
     statuses: {
       pending: "Pendente",
       delivered: "Entregue",

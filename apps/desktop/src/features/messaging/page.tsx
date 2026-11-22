@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { sessionProjectKeys } from "@/features/clients/index.ts";
 import { hubRows } from "@/features/sessions/index.ts";
 import { useStoreSlice } from "@/lib/use-store";
-import { ActionButton } from "@/shared/feedback/index.ts";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import {
   EmptyState,
   LoadingState,
@@ -20,6 +20,8 @@ import {
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hostsWith } from "../../lib/version.ts";
+import { RulesLink } from "./rules-link.tsx";
+import { inPausedPair, loopPairKey } from "./store.ts";
 
 const STATUSES: MessageStatus[] = ["delivered", "queued", "refused", "expired", "pending"];
 const TONE: Record<MessageStatus, string> = {
@@ -49,6 +51,7 @@ const CONVERSATIONSPAGE_KEYS = [
   "clientList",
   "clientOverrides",
   "clientSelection",
+  "loopAlerts",
 ] as const;
 
 /**
@@ -121,6 +124,8 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
     );
     return known?.title ?? `${message.toHost}/${message.toSession}`;
   };
+  // The pairs a host paused for a loop, on the hosts this page lists (#4086).
+  const paused = state.loopAlerts.filter((a) => hosts.some((h) => h.id === a.hostId));
   const openSession = (row: Row) => {
     const { message } = row;
     const host = hostOf(message);
@@ -163,6 +168,11 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
         </Toolbar>
       }
     >
+      {paused.map((alert) => (
+        <InlineNotice key={`${alert.hostId}/${loopPairKey(alert)}`}>
+          {t("conversationsUi.paused", { a: alert.from, b: alert.to })} <RulesLink store={store} />
+        </InlineNotice>
+      ))}
       {rows === null && <LoadingState label={t("conversationsUi.loading")} />}
       {rows?.length === 0 && (
         <EmptyState
@@ -202,6 +212,7 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
                 </div>
                 <p className="whitespace-pre-wrap">{m.text}</p>
                 {m.reason && <p className="text-status-error text-xs">{m.reason}</p>}
+                {inPausedPair(state.loopAlerts, m) && <RulesLink store={store} />}
                 <ActionButton
                   variant="ghost"
                   size="sm"
