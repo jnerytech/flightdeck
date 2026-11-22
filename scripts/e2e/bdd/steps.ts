@@ -321,23 +321,36 @@ const cardMenuButton = (c: Context) =>
 
 /**
  * Finish… sits under the card page's menu (#1197). The menu is not modal (#4173): a click on its button while a
- * closing dialog is still handing the focus back opens the menu and the late focus closes it again. The step
- * waits for the dialog to be gone and for the focus to be back on the button (#4262), then clicks once (#4247).
+ * closing dialog is still handing the focus back opens the menu and the late focus closes it again, in the
+ * milliseconds before the click on its item (#4247). The step waits for the dialog to be gone from the page (not
+ * only from the accessibility tree, where it leaves as its exit animation starts) and for the focus to be back on
+ * the button (#4262), then opens the menu and checks that it stayed: a menu that closed is opened again.
  * `afterDialog` is for a step that follows a dialog; the first one on a card page has none to wait for.
  */
 const fromCardMenu = async (c: Context, item: string, afterDialog: boolean) => {
   const button = cardMenuButton(c);
+  const entry = c.page.getByRole("menuitem", { name: item, exact: true });
   if (afterDialog) {
-    await c.page
-      .getByRole("dialog", { name: c.t("cardUi.finishTitle") })
-      .waitFor({ state: "detached", timeout: WAIT });
+    await c.page.waitForFunction(() => !document.querySelector('[role="dialog"]'), undefined, {
+      timeout: WAIT,
+    });
     await waitFor(
       () => button.evaluate((el) => el === document.activeElement),
       "the focus back on the card's Actions button",
     );
   }
-  await button.click();
-  await c.page.getByRole("menuitem", { name: item, exact: true }).click();
+  await waitFor(async () => {
+    if (await entry.isVisible()) {
+      // The menu can close between the check and the click: the next round opens it again.
+      return entry.click({ timeout: 1000 }).then(
+        () => true,
+        () => false,
+      );
+    }
+    // A click on a button whose menu is open would close it.
+    if ((await button.getAttribute("aria-expanded")) !== "true") await button.click();
+    return false;
+  }, `the ${item} item under the card's Actions menu`);
 };
 
 step(When, "I open the card and read the three ways to finish it", async (c) => {
