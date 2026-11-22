@@ -109,3 +109,14 @@
   right: 0;
   text-align: right;
 }
+
+/*
+ * A name that is not a button (a credential in the Files tree) in the box of a small ghost button, so
+ * it starts where the names of its siblings start and its row is as tall as theirs (#3971).
+ */
+@utility static-name {
+  display: inline-flex;
+  align-items: center;
+  height: 2rem;
+  padding-inline: 0.75rem;
+}

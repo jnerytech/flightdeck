@@ -24,6 +24,7 @@ export const changes = {
     results: "Resultados",
     hidden: "Oculto",
     changedInside: "tem mudanças",
+    retry: "Tentar de novo",
     loading: "Carregando…",
     noMatch: "Nada corresponde ao filtro.",
     truncated: "Esta pasta tem mais entradas do que as mostradas aqui.",
