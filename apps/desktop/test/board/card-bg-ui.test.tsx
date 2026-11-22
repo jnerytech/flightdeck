@@ -106,9 +106,11 @@ describe("bg-ui: Iniciar em segundo plano on a card", () => {
       () =>
         screen.queryByRole("menuitem", { name: "Iniciar em segundo plano, sem terminal" }) !== null,
     );
-    const sidebar = document.querySelector("aside");
-    expect(sidebar !== null).toBe(true);
-    expect(sidebar?.closest("[aria-hidden='true']") !== null).toBe(false);
+    // Radix hides what is not the menu with aria-hidden on the siblings along its path: none may hide a link or button.
+    const hidden = Array.from(document.querySelectorAll("[aria-hidden='true']")).filter(
+      (el) => el.querySelector("a, button") !== null,
+    );
+    expect(hidden.length).toBe(0);
   });
 
   test("a host without bg has no such button", async () => {
