@@ -1,7 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AgentMemory } from "@/features/memory/ui.ts";
 import { SubagentsSwitch } from "@/features/personas/ui.ts";
-import { Page } from "@/shared/layout/index.ts";
+import { Page, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { AgentContext } from "./agent-context.tsx";
@@ -50,11 +50,13 @@ export function AgentPage(
           </TabsContent>
         )}
         {(["claudemd", "agent", "skill"] as const).map((kind) => (
-          <TabsContent key={kind} value={kind} className="flex flex-col gap-4">
-            {kind === "agent" && withPersonas && (
-              <SubagentsSwitch store={store} hostId={hostId} projectId={projectId} />
-            )}
-            <AgentFiles store={store} hostId={hostId} projectId={projectId} kind={kind} />
+          <TabsContent key={kind} value={kind}>
+            <Stack gap={4}>
+              {kind === "agent" && withPersonas && (
+                <SubagentsSwitch store={store} hostId={hostId} projectId={projectId} />
+              )}
+              <AgentFiles store={store} hostId={hostId} projectId={projectId} kind={kind} />
+            </Stack>
           </TabsContent>
         ))}
       </Tabs>
