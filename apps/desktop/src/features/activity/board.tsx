@@ -91,6 +91,7 @@ export function ActivityBoard(
     };
     return store.respondTo(request.hostId, request.requestId, decision, held ? { held } : {});
   };
+  const searchRef = useRef<HTMLInputElement>(null);
   const set = (patch: Partial<ActivityFilter>) => setFilter({ ...filter, ...patch });
   return (
     <Page
@@ -102,6 +103,7 @@ export function ActivityBoard(
             aria-label={t("activityBoard.search")}
             placeholder={t("activityBoard.searchPlaceholder")}
             className="activity-search"
+            ref={searchRef}
             value={filter.text}
             onChange={(e) => set({ text: e.target.value })}
           />
@@ -175,7 +177,14 @@ export function ActivityBoard(
         <EmptyState
           title={t("activityBoard.emptyFiltered")}
           action={
-            <Button variant="link" onClick={() => setFilter(NO_ACTIVITY_FILTER)}>
+            <Button
+              variant="link"
+              onClick={() => {
+                setFilter(NO_ACTIVITY_FILTER);
+                // The empty state leaves with its button: keep the focus on the toolbar.
+                searchRef.current?.focus();
+              }}
+            >
               {t("activityBoard.clearFilters")}
             </Button>
           }
