@@ -3,6 +3,7 @@ import { daemonLifeRun, resourcesRun, workflowRun } from "./domain-runs.ts";
 import { externalRun, namesRun } from "./external-run.ts";
 import { feedCommands } from "./feed-run.ts";
 import type { HostCommandDeps } from "./host.ts";
+import { uiRun } from "./ui-run.ts";
 import { liveStream } from "./watch-stop.ts";
 
 type Run = ReturnType<typeof namesRun>;
@@ -33,6 +34,7 @@ export const daemonRuns = <D extends Deps>(
   external: (args: CliArgs, deps: D) =>
     asking(args, deps, externalRun(args, liveStream(args, deps))),
   names: (args: CliArgs, deps: D) => asking(args, deps, namesRun(args)),
+  ui: (args: CliArgs, deps: D) => asking(args, deps, uiRun(args)),
   resources: (args: CliArgs, deps: D) => asking(args, deps, resourcesRun(args)),
   workflow: (args: CliArgs, deps: D) =>
     asking(args, deps, workflowRun(args, liveStream(args, deps))),

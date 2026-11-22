@@ -54,6 +54,7 @@ import {
   takeTerminalFlags,
   terminalProblem,
 } from "./terminal-args.ts";
+import { readUi, UI_FLAGS, uiProblem } from "./ui-args.ts";
 import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
 import { readWatch, takeWatchFlags, WATCH_FLAGS, watchProblem } from "./watch-args.ts";
@@ -332,6 +333,7 @@ const HANDLERS: Record<string, Handler> = {
   bg: readBg,
   file: readFile,
   external: readExternal,
+  ui: readUi,
   names: readNames,
   automation: readAutomation,
   terminal: readTerminal,
@@ -573,6 +575,7 @@ const HANDLERS: Record<string, Handler> = {
   ...FILE_FLAGS,
   "--off": OFF_FLAG,
   "--text": TEXT_FLAG,
+  ...UI_FLAGS,
   ...PROJECT_FLAGS,
   ...AGENTCFG_FLAGS,
   ...MESSAGE_FLAGS,
@@ -757,6 +760,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     bgProblem(args) ??
     fileProblem(args) ??
     externalProblem(args) ??
+    uiProblem(args) ??
     actionProblem(args) ??
     automationProblem(args) ??
     projectProblem(args) ??

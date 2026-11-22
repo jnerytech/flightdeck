@@ -583,7 +583,7 @@
   },
   "trace.export": { "cli": "trace" },
   "trace.get": { "cli": "trace" },
-  "ui.set": {},
+  "ui.set": { "cli": "ui" },
   "usage.summary": { "cli": "usage" },
   "vault.approve": {
     "appOnly": "approving a request delivers the secret from the person's own screen, with the device's signed proof for a high-risk use; a terminal would put the value in shell history. flightdeckd vault deny refuses one (#3753)"
