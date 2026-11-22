@@ -1,4 +1,4 @@
-/* The Activity board (issue #151): a row of columns that scrolls inside itself, never the page. */
+/* The Activity board (issue #151): a row of columns that scrolls inside itself, never the page; below 40rem the columns stack and the page scrolls (#4243). */
 @utility activity-toolbar {
   display: flex;
   flex-wrap: wrap;
