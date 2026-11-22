@@ -314,5 +314,9 @@ export const projects = {
     hostLimit: "Limite do host",
     parallel: "Execuções em paralelo",
     saveLimit: "Salvar limite",
+    limitInvalid: "O limite é um número inteiro de pelo menos 1.",
+    limitSaved: "Limite de execuções em paralelo salvo: {count}.",
+    readFailed: "Não foi possível ler os projetos deste host.",
+    retry: "Tentar de novo",
   },
 } as const;
