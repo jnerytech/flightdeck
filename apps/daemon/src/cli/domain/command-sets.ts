@@ -7,6 +7,7 @@ import { USAGE } from "./usage.ts";
  * that adds another do not conflict (#3759).
  */
 export const JSON_COMMANDS = [
+  "account",
   "action",
   "activity",
   "agentcfg",
@@ -29,6 +30,7 @@ export const JSON_COMMANDS = [
   "doctor",
   "external",
   "file",
+  "github",
   "harness",
   "history",
   "host",
@@ -72,6 +74,7 @@ export const JSON_COMMANDS = [
   "worktree",
 ];
 export const HOST_COMMANDS = [
+  "account",
   "action",
   "activity",
   "agentcfg",
@@ -85,6 +88,7 @@ export const HOST_COMMANDS = [
   "deny",
   "external",
   "file",
+  "github",
   "harness",
   "host",
   "issues",

@@ -72,6 +72,8 @@ export interface CliArgs {
     | "logs"
     | "releases"
     | "alert"
+    | "github"
+    | "account"
     | "activity"
     | "runenv"
     | "changes"
@@ -250,7 +252,10 @@ export interface CliArgs {
     | "scan"
     | "clone"
     | "harness-apply"
-    | "harness-commit";
+    | "harness-commit"
+    | "repos"
+    | "issues"
+    | "refresh";
   /** `external message <session> --text <text>`: the Claude session id of a terminal. */
   externalSession?: string;
   /** `message send <to> <text>`. */
@@ -339,6 +344,8 @@ export interface CliArgs {
   worktreePaths?: string[];
   /** `issues list|get <project>`: the project, by name or id. */
   issuesProject?: string;
+  /** `github issues <owner/name>` (#3703): the repository. */
+  githubWords?: string[];
   /** `issues get <project> <id>` and `issues create-card <project> <ref>`: the issue's id or reference. */
   issuesId?: string;
   /** `logs tail --lines <n>`: how many lines of the daemon log, 1 to 500. */

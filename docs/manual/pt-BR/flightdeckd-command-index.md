@@ -175,3 +175,12 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 
 - [fd external](flightdeckd-external-commands.md#fd-external)
 - [fd names](flightdeckd-external-commands.md#fd-names)
+
+## Comandos do flightdeckd: GitHub e a conta Claude de um host
+
+[Ler o capítulo.](flightdeckd-github-commands.md) Suas seções:
+
+- [fd github status](flightdeckd-github-commands.md#fd-github-status)
+- [fd github repos](flightdeckd-github-commands.md#fd-github-repos)
+- [fd github issues](flightdeckd-github-commands.md#fd-github-issues)
+- [fd account](flightdeckd-github-commands.md#fd-account)

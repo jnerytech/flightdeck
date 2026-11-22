@@ -1,5 +1,6 @@
 import type { CliResult, RemoteTarget } from "../daemon-client/index.ts";
 import type { CliArgs } from "./domain/cli-args.ts";
+import { accountCliArgs, githubCliArgs } from "./domain/github-args.ts";
 import { harnessCliArgs, templatesCliArgs } from "./domain/templates-args.ts";
 import { workflowCliArgs } from "./domain/workflow-args.ts";
 
@@ -93,3 +94,31 @@ export const daemonLifeRun =
       config,
     );
   };
+
+/**
+ * What `github status|repos|issues` and `account get|refresh|watch` run once `asking` has the daemon's config (or the
+ * paired host's) (#3703). `live` is what `account watch` is given to stop and to write each line. Each domain loads
+ * only when its verb runs (cli-startup test).
+ */
+export const githubRun =
+  (args: CliArgs) =>
+  async (
+    config: { bind: string; port: number; token: string },
+    remote?: RemoteTarget,
+  ): Promise<CliResult> =>
+    (await import("../github/index.ts")).runGithubCli(
+      githubCliArgs(args),
+      config,
+      remote ? { remote } : {},
+    );
+
+export const accountRun =
+  (args: CliArgs, live: { signal: AbortSignal; write: (line: string) => void }) =>
+  async (
+    config: { bind: string; port: number; token: string },
+    remote?: RemoteTarget,
+  ): Promise<CliResult> =>
+    (await import("../account/index.ts")).runAccountCli(accountCliArgs(args), config, {
+      ...(remote ? { remote } : {}),
+      ...live,
+    });

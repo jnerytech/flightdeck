@@ -73,7 +73,8 @@ flightdeckd daemon stop --confirm [--json]
 - `update apply --confirm` faz o daemon baixar e instalar o que a checagem achou, e reiniciar. Imprime
   `update started` (`{"started":true}`) assim que o daemon baixou e verificou o binário (pode levar um minuto num
   link lento) e aceita, e não espera o reinício: rode `update check` ou `host` depois para ver a versão nova. O
-  daemon recusa até ter checado o servidor de releases uma vez, então rode `update check` antes num daemon recém-iniciado.
+  daemon recusa até ter checado o servidor de releases uma vez, então rode `update check` antes num daemon recém-iniciado. Ele troca o binário do próprio daemon, então por uma
+  conexão distante (não este computador nem a Tailscale) o daemon recusa com `transport_refused`.
 - `daemon stop --confirm` faz o daemon sair, e com ele terminam todas as sessões e terminais que ele roda. Imprime
   `stopping` (`{"stopping":true}`) na resposta do daemon. Com o serviço instalado, o serviço o sobe de novo cerca de 5 s
   depois; para mantê-lo parado, pare o serviço com `flightdeckd service stop`.

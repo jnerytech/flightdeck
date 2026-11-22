@@ -175,3 +175,12 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 
 - [fd external](flightdeckd-external-commands.md#fd-external)
 - [fd names](flightdeckd-external-commands.md#fd-names)
+
+## flightdeckd commands: GitHub and the Claude account of a host
+
+[Read the chapter.](flightdeckd-github-commands.md) Its sections:
+
+- [fd github status](flightdeckd-github-commands.md#fd-github-status)
+- [fd github repos](flightdeckd-github-commands.md#fd-github-repos)
+- [fd github issues](flightdeckd-github-commands.md#fd-github-issues)
+- [fd account](flightdeckd-github-commands.md#fd-account)

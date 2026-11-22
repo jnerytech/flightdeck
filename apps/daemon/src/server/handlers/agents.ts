@@ -260,7 +260,9 @@ export const agentsHandlers = {
     const { projectPath, language } = payload;
     return await server.needIn("personas", "store").subagents({ projectPath, language });
   },
-  "personas.publishAgent": async (payload, { server }) => {
+  "personas.publishAgent": async (payload, { ws, server }) => {
+    // It writes a project agent, which can steer every session of the project: near only, as agentcfg.write is (#3815).
+    requireVaultTransport(ws.data.origin, "personas.publishAgent", server.opts.log);
     return await server.needIn("personas", "store").publishAgent(payload);
   },
   "personas.resolve": async (payload, { server }) => {
@@ -282,7 +284,9 @@ export const agentsHandlers = {
   "personas.remove": async (payload, { server }) => {
     await server.needIn("personas", "store").remove(payload.scope, payload.id, payload.projectPath);
   },
-  "personas.trust": async (payload, { server }) => {
+  "personas.trust": async (payload, { ws, server }) => {
+    // A trusted persona of a repository is delivered to sessions as instructions: near only (#3815).
+    requireVaultTransport(ws.data.origin, "personas.trust", server.opts.log);
     return await server
       .needIn("personas", "store")
       .trust(payload.projectPath, payload.id, payload.hash);

@@ -47,6 +47,8 @@ export interface Located {
   /** Where its links lead; `null` when the file is not there. */
   real: string | null;
   realRoot: string;
+  /** Where the file is, or would be created, links resolved. */
+  landing: string;
 }
 
 /**
@@ -87,7 +89,7 @@ export async function located(root: string, realRoot: string, path: string): Pro
       { path },
     );
   }
-  return { full, real, realRoot };
+  return { full, real, realRoot, landing: where };
 }
 
 /**
