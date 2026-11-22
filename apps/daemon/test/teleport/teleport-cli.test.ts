@@ -354,4 +354,60 @@ describe("flightdeckd session teleport, stopped half way (issue #3704)", () => {
     expect(result.err.join("\n")).toContain("server");
     expect(types(src)).not.toContain("session.meta.set");
   });
+
+  test("an import that takes longer than one step still lands: it has five steps, not one", async () => {
+    const slow = {
+      ...TARGET,
+      "teleport.finish": async () => {
+        await Bun.sleep(600);
+        return { sessionId: "t-s1", worktree: "/srv/api-wt", branch: "tp/x" };
+      },
+    };
+    const dst = fakeDaemon(slow, TARGET_TOKEN);
+    const src = fakeDaemon(SOURCE);
+    const result = await direct(src, dst, { stepMs: 300 });
+    expect(result.code).toBe(0);
+    expect(types(src)).toContain("session.meta.set");
+  });
+
+  test("Ctrl-C while the target is still connecting says cancelled at once and asks the source nothing", async () => {
+    const stop = new AbortController();
+    const dst = fakeDaemon(TARGET, TARGET_TOKEN, { helloDelayMs: 3000 });
+    const src = fakeDaemon(SOURCE);
+    setTimeout(() => stop.abort(), 100);
+    const started = performance.now();
+    const result = await direct(src, dst, { signal: stop.signal });
+    expect(result.code).toBe(1);
+    expect(result.err.join("\n")).toContain("cancelled");
+    expect(performance.now() - started).toBeLessThan(2000);
+    expect(types(src)).not.toContain("teleport.prepare");
+  });
+
+  test("Ctrl-C while the source lists its sessions says cancelled, and nothing is prepared", async () => {
+    const stop = new AbortController();
+    const src = fakeDaemon({
+      ...SOURCE,
+      "session.list": async () => {
+        stop.abort();
+        await Bun.sleep(1500);
+        return { sessions: [] };
+      },
+    });
+    const dst = fakeDaemon(TARGET, TARGET_TOKEN);
+    const started = performance.now();
+    const result = await direct(src, dst, { signal: stop.signal });
+    expect(result.code).toBe(1);
+    expect(result.err.join("\n")).toContain("cancelled");
+    expect(performance.now() - started).toBeLessThan(1200);
+    expect(types(src)).not.toContain("teleport.prepare");
+  });
+
+  test("a source that does not answer a step names the call and the step's own seconds, exit 2", async () => {
+    const src = fakeDaemon({ ...SOURCE, "teleport.prepare": () => undefined });
+    const dst = fakeDaemon(TARGET, TARGET_TOKEN);
+    const result = await direct(src, dst, { stepMs: 300 });
+    expect(result.code).toBe(2);
+    expect(result.err.join("\n")).toContain("teleport.prepare");
+    expect(result.err.join("\n")).toContain("in 1 s");
+  });
 });
