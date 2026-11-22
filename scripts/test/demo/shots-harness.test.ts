@@ -80,6 +80,12 @@ describe("the harness prints (#4110)", () => {
     expect(named("projeto-harness-compartilhar")?.wire).toBeUndefined();
   });
 
+  test("the refused-preview print answers the templates the dialog starts from too, so the shot does not depend on what the demo host holds", () => {
+    const rule = wired("projeto-harness-preview-recusa", "harness.templates.list");
+    const data = rule && "data" in rule ? (rule.data as { templates: unknown[] }) : null;
+    expect(data?.templates.length).toBeGreaterThan(0);
+  });
+
   test("the templates prints answer the list: two templates, none, and two with the delete asked", () => {
     for (const [name, size] of [
       ["host-modelos-harness", 2],
@@ -133,5 +139,14 @@ describe("the harness prints (#4110)", () => {
     expect(settings).toBeGreaterThan(-1);
     expect(section).toBeGreaterThan(settings);
     expect(del).toBeGreaterThan(section);
+  });
+
+  test("no print clicks once its dialog is open, so none confirms a share, a delete, an apply or a commit", async () => {
+    for (const name of NAMES) {
+      const made = await calls(name);
+      const dialog = made.findIndex((call) => call.includes("alertdialog"));
+      if (dialog === -1) continue;
+      expect(made.slice(dialog)).not.toContain("click()");
+    }
   });
 });
