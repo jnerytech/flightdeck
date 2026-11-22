@@ -3517,8 +3517,8 @@ step(
     await c.page
       .getByText(c.t("connections.import.created", { n: 1 }), { exact: true })
       .waitFor({ timeout: WAIT });
-    await sshRow(c, name)
-      .getByText(`ops@${sshName(c, name)}.example.test`, { exact: true })
-      .waitFor({ timeout: WAIT });
+    // The user and host the seeded config gave it: data, not a dictionary text.
+    const given = `ops@${sshName(c, name)}.example.test`;
+    await sshRow(c, name).getByText(given, { exact: true }).waitFor({ timeout: WAIT });
   },
 );
