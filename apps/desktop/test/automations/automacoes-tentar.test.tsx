@@ -77,7 +77,7 @@ describe.each(["en", "pt-BR"] as const)("the Automations page, a refused load (%
     });
     expect(screen.queryByRole("alert")?.textContent?.includes(w.failed)).toBe(true);
     expect(screen.queryByText(w.empty)).toBeNull();
-    expect(screen.queryByRole("button", { name: w.retry }) !== null).toBe(true);
+    expect(screen.queryByRole("button", { name: w.retry })).not.toBeNull();
     await click(w.retry);
     await settle(() => screen.queryByRole("listitem", { name: w.row }) !== null);
     expect(screen.queryByRole("alert")).toBeNull();
@@ -90,7 +90,7 @@ describe.each(["en", "pt-BR"] as const)("the Automations page, a refused load (%
     await page(lang, (type) => (type === "automation.list" ? { automations: [AUTOMATION] } : null));
     await settle(() => screen.queryByRole("listitem", { name: w.row }) !== null);
     expect(screen.queryByRole("alert")?.textContent?.includes(w.failed)).toBe(true);
-    expect(screen.queryByRole("listitem", { name: w.row }) !== null).toBe(true);
+    expect(screen.queryByRole("listitem", { name: w.row })).not.toBeNull();
   });
 });
 
