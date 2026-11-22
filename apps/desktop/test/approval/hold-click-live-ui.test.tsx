@@ -95,6 +95,28 @@ describe("a click on the Hold button is answered (issue #4162)", () => {
     expect(said()).not.toContain("does not approve");
   });
 
+  test("Given a hold that ran long and then a plain click later, Then only the later click is answered", async () => {
+    const { calls } = card("en", "high");
+    await fire(() => {
+      const button = hold();
+      if (button) fireEvent.pointerDown(button);
+    });
+    await settle(() => calls.length === 1);
+    await fire(() => {
+      const button = hold();
+      if (!button) return;
+      fireEvent.pointerUp(button);
+      fireEvent.click(button);
+    });
+    expect(said()).not.toContain("does not approve");
+    await fire(() => {
+      const button = hold();
+      if (button) fireEvent.click(button);
+    });
+    expect(said()).toContain("A click does not approve");
+    expect(calls).toHaveLength(1);
+  });
+
   test("Given pt-BR, Then the hint is in Portuguese", async () => {
     card("pt-BR", "high");
     await fire(() => {
