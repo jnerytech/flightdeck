@@ -66,7 +66,7 @@ async function setup(opts: { stale: boolean; cwd?: string }) {
   });
   // The Sessões screen behind it also lists the transcript: wait for the search's own results.
   const results = () =>
-    screen.queryByRole("list", { name: "Resultados da busca" })?.querySelector("button") ?? null;
+    screen.queryByRole("listbox", { name: "Resultados da busca" })?.querySelector("[role=option]") ?? null;
   await settle(() => results() !== null);
   const hit = results();
   await act(async () => {

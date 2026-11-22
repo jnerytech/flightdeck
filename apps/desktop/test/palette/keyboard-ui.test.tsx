@@ -120,20 +120,32 @@ describe("palette-keyboard: the history hits are in the arrow walk (#3887)", () 
   test("the walk goes on to the next hit, and the chosen one is marked and named by the input", async () => {
     const { opened } = open({ search: search("u1", "u2") });
     await toHit(2);
-    const results = within(screen.getByRole("list", { name: "Search results" }));
-    const second = results.getAllByRole("button")[1] as HTMLElement;
+    const results = within(screen.getByRole("listbox", { name: "Search results" }));
+    const [first, second] = results.getAllByRole("option") as HTMLElement[];
     expect({
-      current: second.getAttribute("aria-current"),
-      named: input().getAttribute("aria-activedescendant") === second.id && second.id !== "",
-    }).toEqual({ current: "true", named: true });
+      chosen: [first?.getAttribute("aria-selected"), second?.getAttribute("aria-selected")],
+      named: input().getAttribute("aria-activedescendant") === second?.id && second?.id !== "",
+    }).toEqual({ chosen: ["false", "true"], named: true });
     await key("Enter");
     expect(opened).toEqual(["u2"]);
   });
 
+  test("the hits are options of a listbox like the rows, and none is selected before an arrow", () => {
+    open({ search: search("u1", "u2") });
+    const box = screen.queryByRole("listbox", { name: "Search results" });
+    const options = within(box as HTMLElement).queryAllByRole("option");
+    expect({
+      box: box !== null,
+      count: options.length,
+      selected: options.map((o) => o.getAttribute("aria-selected")),
+      listItems: within(box as HTMLElement).queryAllByRole("listitem").length,
+    }).toEqual({ box: true, count: 2, selected: ["false", "false"], listItems: 0 });
+  });
+
   test("a hit is chosen with the arrows, not by Tab: it is out of the tab order", () => {
     open({ search: search("u1") });
-    const results = within(screen.getByRole("list", { name: "Search results" }));
-    expect(results.getAllByRole("button").map((b) => b.tabIndex)).toEqual([-1]);
+    const results = within(screen.getByRole("listbox", { name: "Search results" }));
+    expect(results.getAllByRole("option").map((b) => b.tabIndex)).toEqual([-1]);
   });
 });
 
@@ -222,10 +234,8 @@ describe("palette-keyboard: the input is a combobox over the lists (#3887)", () 
 
   test("it says it is expanded and controls every list of the palette", () => {
     open({ search: search("u1") });
-    const lists = [
-      ...screen.getAllByRole("listbox"),
-      screen.getByRole("list", { name: "Search results" }),
-    ];
+    const lists = screen.getAllByRole("listbox");
+    expect(lists.some((l) => l.getAttribute("aria-label") === "Search results")).toBe(true);
     expect({
       expanded: input().getAttribute("aria-expanded"),
       controls: (input().getAttribute("aria-controls") ?? "").split(" ").sort(),

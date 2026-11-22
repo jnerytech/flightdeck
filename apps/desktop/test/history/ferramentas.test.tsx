@@ -77,7 +77,7 @@ async function openReader() {
     fireEvent.submit(input);
   });
   await settle(() => screen.queryAllByText(/inicial/).length > 0);
-  const hit = screen.queryByRole("list", { name: "Resultados da busca" })?.querySelector("button");
+  const hit = screen.queryByRole("listbox", { name: "Resultados da busca" })?.querySelector("[role=option]");
   await act(async () => {
     fireEvent.click(hit as HTMLElement);
   });

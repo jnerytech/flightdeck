@@ -74,8 +74,8 @@ async function press(key: string) {
 
 const resultTexts = () =>
   [
-    ...(screen.queryByRole("list", { name: "Resultados da busca" })?.querySelectorAll("li") ?? []),
-  ].map((li) => li.textContent ?? "");
+    ...(screen.queryByRole("listbox", { name: "Resultados da busca" })?.querySelectorAll("[role=option]") ?? []),
+  ].map((option) => option.textContent ?? "");
 
 /** One host with a live session, a project ("flamingo") and a card, and one history transcript. */
 async function setup() {
