@@ -284,8 +284,8 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
       control.fail?.(new RequestError("invalid_state", "x", "teleport_no_project"));
     });
     await shows(TEXT.en.refused);
-    // The host went offline while the move ran: the list no longer has it.
-    targets.length = 0;
+    // The host went offline while the move ran: the list has another one now.
+    targets.splice(0, targets.length, { id: "h3", name: "nas" });
     await click("Try again");
     const next = screen.queryByRole("button", { name: TEXT.en.next });
     // The first step is back with no host picked: no repository field, nothing moves.
