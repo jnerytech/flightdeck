@@ -112,7 +112,8 @@
 
 ## Tray
 
-The tray icon has Open, the **Needs you (N)** submenu and Quit. The submenu lists up to 10 open
+The tray icon has **Open Flightdeck**, the **Needs you (N)** submenu and Quit. Until the app has loaded
+it shows only **Flightdeck**; the rest joins it as soon as the app has set its language. The submenu lists up to 10 open
 requests, from managed and terminal sessions, oldest to newest, as `host · session · tool: input
 summary` (for example `pc · api · Bash: npm test`).
 

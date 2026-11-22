@@ -265,12 +265,16 @@ async fn oauth_loopback_cancel(app: tauri::AppHandle, id: u64) -> Result<(), Str
     .await
 }
 
-/// The tray's "Abrir" and "Sair" items, its "Precisa de você (N)" submenu, and whether closing
-/// hides to the tray. Their texts come translated from the frontend (phase 10).
+/// The tray's Open and Quit items, its "Needs you (N)" submenu, and whether closing hides to the
+/// tray. Their texts come translated from the frontend (phase 10); until its first `tray_set_menu`
+/// the menu holds only the first item, named by the product, so no language shows (#4120).
 struct TrayState {
+    menu: Menu<Wry>,
     show: MenuItem<Wry>,
     needs_you: Submenu<Wry>,
     quit: MenuItem<Wry>,
+    /// The page has sent its labels, so the submenu and Quit are in the menu.
+    labelled: AtomicBool,
     close_to_tray: AtomicBool,
 }
 
@@ -313,7 +317,7 @@ fn menu_text(text: &str) -> String {
     }
 }
 
-/// The submenu's only line while nothing waits; at start-up it has no translation yet.
+/// The submenu's only line while nothing waits.
 fn nothing_waiting(app: &tauri::AppHandle, text: &str) -> tauri::Result<MenuItem<Wry>> {
     MenuItem::new(app, menu_text(text), false, None::<&str>)
 }
@@ -359,6 +363,12 @@ fn tray_set_menu(
             .map_err(err)?;
         needs_you.append(&rest).map_err(err)?;
     }
+    // The first labels: the submenu and Quit join the menu now that they are translated and complete.
+    join_once(&state.labelled, || {
+        state.menu.append(&state.needs_you)?;
+        state.menu.append(&state.quit)
+    })
+    .map_err(err)?;
     Ok(())
 }
 
@@ -533,12 +543,38 @@ fn set_close_to_tray(state: State<TrayState>, enabled: bool) {
     state.close_to_tray.store(enabled, Ordering::Relaxed);
 }
 
+/// What the tray's first item says before the page has sent its translated labels (#4120): the
+/// product's name, which is the same in every language.
+const STARTUP_OPEN_TEXT: &str = "Flightdeck";
+
+/// Whether closing the window hides it to the tray. Before the page has sent its labels the tray has
+/// no Quit, so a close then exits instead of leaving the app with no way out (#4120).
+fn close_hides_to_tray(close_to_tray: bool, labelled: bool) -> bool {
+    close_to_tray && labelled
+}
+
+/// Runs `join` the first time only, and counts it as done only when it worked: a failed join is tried
+/// again by the next call, and the flag then still says the tray has no Quit (#4120).
+fn join_once<E>(done: &AtomicBool, join: impl FnOnce() -> Result<(), E>) -> Result<(), E> {
+    if done
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
+        return Ok(());
+    }
+    let joined = join();
+    if joined.is_err() {
+        done.store(false, Ordering::SeqCst);
+    }
+    joined
+}
+
 fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
-    let open = MenuItem::with_id(app, "open", "Abrir", true, None::<&str>)?;
-    let needs_you = Submenu::with_id(app, "needs-you", "Precisa de você (0)", true)?;
-    needs_you.append(&nothing_waiting(app.handle(), "Nada esperando você")?)?;
-    let quit = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open, &needs_you, &quit])?;
+    let open = MenuItem::with_id(app, "open", STARTUP_OPEN_TEXT, true, None::<&str>)?;
+    // The submenu and Quit are built now but join the menu with the first `tray_set_menu`.
+    let needs_you = Submenu::with_id(app, "needs-you", STARTUP_OPEN_TEXT, true)?;
+    let quit = MenuItem::with_id(app, "quit", STARTUP_OPEN_TEXT, true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&open])?;
     let mut tray = TrayIconBuilder::with_id("main")
         .tooltip("Flightdeck")
         .menu(&menu)
@@ -563,9 +599,11 @@ fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
     }
     tray.build(app)?;
     Ok(TrayState {
+        menu,
         show: open,
         needs_you,
         quit,
+        labelled: AtomicBool::new(false),
         close_to_tray: AtomicBool::new(true),
     })
 }
@@ -628,7 +666,11 @@ pub fn run() {
             // Closing the window keeps the app running in the tray, unless turned off.
             if let WindowEvent::CloseRequested { api, .. } = event {
                 let state = window.app_handle().state::<TrayState>();
-                if state.close_to_tray.load(Ordering::Relaxed) {
+                let hides = close_hides_to_tray(
+                    state.close_to_tray.load(Ordering::Relaxed),
+                    state.labelled.load(Ordering::SeqCst),
+                );
+                if hides {
                     api.prevent_close();
                     let _ = window.hide();
                 }
@@ -694,5 +736,44 @@ mod badge_tests {
         assert!(!badge_image_ok(1));
         assert!(!badge_image_ok(32 * 32 * 3));
         assert!(!badge_image_ok(32 * 32 * 4 + 1));
+    }
+}
+
+#[cfg(test)]
+mod tray_startup_tests {
+    use super::*;
+
+    #[test]
+    fn the_tray_starts_with_the_product_name_and_no_translated_text() {
+        assert_eq!(STARTUP_OPEN_TEXT, "Flightdeck");
+    }
+
+    #[test]
+    fn the_join_runs_once_and_a_failed_one_is_tried_again() {
+        let done = AtomicBool::new(false);
+        let mut runs = 0;
+        let failing = join_once(&done, || -> Result<(), ()> {
+            runs += 1;
+            Err(())
+        });
+        assert!(failing.is_err());
+        assert!(!done.load(Ordering::SeqCst));
+        for _ in 0..2 {
+            let working = join_once(&done, || -> Result<(), ()> {
+                runs += 1;
+                Ok(())
+            });
+            assert!(working.is_ok());
+        }
+        assert!(done.load(Ordering::SeqCst));
+        assert_eq!(runs, 2);
+    }
+
+    #[test]
+    fn a_close_before_the_tray_has_its_quit_exits_instead_of_hiding() {
+        assert!(!close_hides_to_tray(true, false));
+        assert!(close_hides_to_tray(true, true));
+        assert!(!close_hides_to_tray(false, true));
+        assert!(!close_hides_to_tray(false, false));
     }
 }

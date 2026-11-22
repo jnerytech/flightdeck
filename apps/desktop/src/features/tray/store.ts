@@ -52,8 +52,11 @@ export interface TrayCore {
  */
 export class TraySlice {
   private status: TrayStatus | null = null;
-  /** The submenu last sent, and the debounce that will send the next one. */
-  private menuSent = JSON.stringify(trayMenu([]));
+  /**
+   * The submenu last sent, and the debounce that will send the next one. None is sent yet: until
+   * the first one the shell's tray shows only the product name, so the first change always sends (#4120).
+   */
+  private menuSent: string | null = null;
   private menuTimer: unknown = null;
   /** The title the window has now, so the platform is told only when it changes. */
   private titleShown = "Flightdeck";

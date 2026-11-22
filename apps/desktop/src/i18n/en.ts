@@ -148,7 +148,7 @@ export const en: Dictionary = {
     deny: "Deny",
     open: "Open",
     more: "and {n} more…",
-    show: "Open",
+    show: "Open Flightdeck",
     quit: "Quit",
     idle: "Flightdeck: nothing waiting for you",
     waiting: {
@@ -158,6 +158,10 @@ export const en: Dictionary = {
     plainWaiting: {
       one: "Flightdeck: {n} task waiting for your answer ({hosts})",
       other: "Flightdeck: {n} tasks waiting for your answer ({hosts})",
+    },
+    moreHosts: {
+      one: "and {n} more host",
+      other: "and {n} more hosts",
     },
     autoApproved: {
       one: "{n} automatic approval",
@@ -285,7 +289,7 @@ export const en: Dictionary = {
   ...terminal,
   ...telemetry,
   bg: {
-    region: "Background session",
+    region: "Background session {name}",
     state: {
       working: "working",
       blocked: "waiting for you",
@@ -293,10 +297,18 @@ export const en: Dictionary = {
       failed: "failed",
       stopped: "stopped",
     },
+    stateUnknown: "state: {state}",
     waitingFor: "waiting for: {what}",
     cost: "cost {cost}",
     stop: "Stop",
     respawn: "Restart",
+    stopTitle: "Stop session",
+    stopConfirm: 'Stop "{name}"? The running session ends.',
+    stopOff: "The session is not running.",
+    respawnOff: "The session is still working.",
+    stopFailed: "Could not stop the session.",
+    respawnFailed: "Could not restart the session.",
+    noScreen: 'Cannot open "{name}": the host did not report its Claude session.',
     attach: "Bring to the terminal",
     message: "Message",
     send: "Send",

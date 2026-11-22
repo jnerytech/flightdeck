@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { PendingPermission, SessionSummary } from "@flightdeck/protocol";
-import { trayStatus } from "../../src/features/tray/domain/tray.ts";
+import { trayMenu, trayStatus } from "../../src/features/tray/domain/tray.ts";
+import { translator } from "../../src/i18n/index.ts";
 import { BADGE_SIZE, badgeRgba } from "../../src/platform/tauri/badge-icon.ts";
 
 const pending = (n: number): PendingPermission[] =>
@@ -200,5 +201,92 @@ describe("badge-icon: the taskbar badge (issue #632)", () => {
 
   test("the count is the default mode", () => {
     expect(rgbaOf(4).join()).toBe(rgbaOf(4, "count").join());
+  });
+});
+
+// #4119: the top-level item and a request's action are two different things, so they are two different words.
+describe("the tray's top-level item is not called like a request's action (#4119)", () => {
+  test.each(["en", "pt-BR"] as const)("in %s the two labels differ", (lang) => {
+    const { labels } = trayMenu([], translator(lang));
+    expect(labels.show === labels.open).toBe(false);
+  });
+
+  test("the top-level item names the app, the action stays plain", () => {
+    expect(trayMenu([], translator("en")).labels).toMatchObject({
+      show: "Open Flightdeck",
+      open: "Open",
+    });
+    expect(trayMenu([], translator("pt-BR")).labels).toMatchObject({
+      show: "Abrir o Flightdeck",
+      open: "Abrir",
+    });
+  });
+});
+
+/** Windows shows 127 characters of a tooltip (a 128-character buffer with its terminator). */
+const TOOLTIP_MAX = 127;
+
+const waiting = (name: string, n: number) => ({ name, sessions: [session(n)] });
+
+// #4121: the breakdown keeps the hosts with the most requests and says how many it dropped.
+describe("the tray tooltip fits the 127 characters Windows shows (#4121)", () => {
+  const eight = Array.from({ length: 8 }, (_, i) => waiting(`workstation-${i}`, 8 - i));
+
+  test.each(["en", "pt-BR"] as const)(
+    "in %s eight hosts are cut to the limit, the biggest first, the total kept, the dropped counted",
+    (lang) => {
+      const { tooltip } = trayStatus(eight, translator(lang));
+      const kept: string[] = tooltip.match(/workstation-\d: \d/g) ?? [];
+      const dropped = 8 - kept.length;
+      expect(tooltip.length).toBeLessThanOrEqual(TOOLTIP_MAX);
+      expect(kept.length).toBeGreaterThan(0);
+      expect(dropped).toBeGreaterThan(0);
+      expect(kept).toEqual(eight.slice(0, kept.length).map((h, i) => `${h.name}: ${8 - i}`));
+      expect(tooltip).toContain("36 "); // 8+7+...+1, whatever the hosts that fit
+      expect(
+        tooltip.endsWith(lang === "en" ? `and ${dropped} more hosts)` : `e mais ${dropped} hosts)`),
+      ).toBe(true);
+    },
+  );
+
+  test("one dropped host reads in the singular", () => {
+    const names = ["a".repeat(50), "b".repeat(50)];
+    expect(
+      trayStatus(
+        names.map((n) => waiting(n, 1)),
+        translator("en"),
+      ).tooltip,
+    ).toBe(`Flightdeck: 2 requests waiting for you (${names[0]}: 1, and 1 more host)`);
+    expect(
+      trayStatus(
+        names.map((n) => waiting(n, 1)),
+        translator("pt-BR"),
+      ).tooltip,
+    ).toBe(`Flightdeck: 2 pedidos esperando você (${names[0]}: 1, e mais 1 host)`);
+  });
+
+  test("a short list is told as before", () => {
+    expect(trayStatus([waiting("pc", 2), waiting("vps", 1)], translator("en")).tooltip).toBe(
+      "Flightdeck: 3 requests waiting for you (pc: 2, vps: 1)",
+    );
+  });
+
+  test("hosts are dropped before the automatic approvals are", () => {
+    const { tooltip } = trayStatus(eight, translator("en"), 12);
+    expect(tooltip.length).toBeLessThanOrEqual(TOOLTIP_MAX);
+    expect(tooltip.endsWith(" · 12 automatic approvals")).toBe(true);
+    expect(tooltip).toContain("more hosts)");
+  });
+
+  test("one host with a very long name still fits", () => {
+    const { tooltip } = trayStatus([waiting("x".repeat(300), 1)], translator("en"), 3);
+    expect(tooltip.length).toBeLessThanOrEqual(TOOLTIP_MAX);
+    expect(tooltip.startsWith("Flightdeck: 1 request waiting for you (")).toBe(true);
+  });
+
+  test("a cut never leaves half of an emoji before the ellipsis", () => {
+    const { tooltip } = trayStatus([waiting("😀".repeat(200), 1)], translator("en"), 3);
+    expect(tooltip.length).toBeLessThanOrEqual(TOOLTIP_MAX);
+    expect(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(tooltip)).toBe(false);
   });
 });
