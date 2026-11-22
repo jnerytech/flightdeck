@@ -34,6 +34,10 @@ function setup(
     delete?: "ok" | "refused";
     /** The first listing fails (the host does not answer), the next ones work. */
     listFailsOnce?: boolean;
+    /** The first listing never answers. */
+    listHangs?: boolean;
+    /** Every listing after a delete fails (the host went away meanwhile). */
+    listFailsAfterDelete?: boolean;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -43,9 +47,12 @@ function setup(
   let templates = [...(options.templates ?? [SHOP, SOLO])];
   const sent: Array<[string, unknown, unknown]> = [];
   let listFailed = false;
+  let deleted = false;
   store.hostCommand = (async (_host: string, type: string, payload: unknown, asked?: unknown) => {
     sent.push([type, payload, asked]);
     if (type === "harness.templates.list") {
+      if (options.listHangs) return new Promise(() => undefined);
+      if (options.listFailsAfterDelete && deleted) return null;
       if (options.listFailsOnce && !listFailed) {
         listFailed = true;
         return null;
@@ -55,6 +62,7 @@ function setup(
     if (type === "harness.templates.delete") {
       if (options.delete === "refused") return null;
       const { id } = payload as { id: string };
+      deleted = true;
       templates = templates.filter((template) => template.id !== id);
       return { id };
     }
@@ -156,6 +164,71 @@ describe("harness-templates-ui: the host lists its Claude Code setup templates a
     await click(button("Try again"));
     await settle(() => shown("Shop setup"), 5000, "the listing after trying again");
     expect([looking, shown("Could not load the templates.")]).toEqual([false, false]);
+  });
+
+  test("a confirmed delete puts the focus on the next row's Delete button", async () => {
+    const { view } = setup();
+    render(view);
+    await settle(() => button("Delete template Shop setup") !== null, 5000, "the Delete button");
+    await click(button("Delete template Shop setup"));
+    await settle(() => dialog() !== null, 5000, "the confirmation");
+    await click(within(dialog() as HTMLElement).queryByRole("button", { name: "Delete template" }));
+    await settleMaybe(() => document.activeElement?.getAttribute("aria-label") !== null);
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Delete template Solo");
+  });
+
+  test("deleting the last row puts the focus on the line that says the list is empty", async () => {
+    const { view } = setup({ templates: [SOLO] });
+    render(view);
+    await settle(() => button("Delete template Solo") !== null, 5000, "the Delete button");
+    await click(button("Delete template Solo"));
+    await settle(() => dialog() !== null, 5000, "the confirmation");
+    await click(within(dialog() as HTMLElement).queryByRole("button", { name: "Delete template" }));
+    const said = "No templates yet. Share a project's setup to make one.";
+    await settleMaybe(() => shown(said) && document.activeElement?.textContent === said);
+    expect(document.activeElement?.textContent).toBe(said);
+  });
+
+  test("a refused delete puts the focus back on that row's Delete button", async () => {
+    const { view, deletes } = setup({ delete: "refused" });
+    render(view);
+    await settle(() => button("Delete template Solo") !== null, 5000, "the Delete button");
+    await click(button("Delete template Solo"));
+    await settle(() => dialog() !== null, 5000, "the confirmation");
+    await click(within(dialog() as HTMLElement).queryByRole("button", { name: "Delete template" }));
+    await settle(() => deletes().length === 1, 5000, "the delete sent");
+    await settleMaybe(() => document.activeElement?.getAttribute("aria-label") !== null);
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Delete template Solo");
+  });
+
+  test("the wait for the host is a status and a failed listing is an alert", async () => {
+    const waiting = setup({ listHangs: true });
+    render(waiting.view);
+    await uiIdle();
+    const status = screen.queryByRole("status")?.textContent;
+    cleanup();
+    const failing = setup({ listFailsOnce: true });
+    render(failing.view);
+    await settleMaybe(() => shown("Could not load the templates."));
+    expect([status, screen.queryByRole("alert")?.textContent]).toEqual([
+      "Looking for templates…",
+      "Could not load the templates.",
+    ]);
+  });
+
+  test("a listing that fails after a delete hides the list it can no longer vouch for", async () => {
+    const { view } = setup({ listFailsAfterDelete: true });
+    render(view);
+    await settle(() => button("Delete template Shop setup") !== null, 5000, "the Delete button");
+    await click(button("Delete template Shop setup"));
+    await settle(() => dialog() !== null, 5000, "the confirmation");
+    await click(within(dialog() as HTMLElement).queryByRole("button", { name: "Delete template" }));
+    await settleMaybe(() => shown("Could not load the templates."));
+    expect([shown("Could not load the templates."), shown("Solo"), shown("Shop setup")]).toEqual([
+      true,
+      false,
+      false,
+    ]);
   });
 
   test("a refused delete leaves the template in the list", async () => {
