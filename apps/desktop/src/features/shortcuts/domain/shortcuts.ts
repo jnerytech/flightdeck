@@ -28,7 +28,7 @@ export type ShortcutGroup =
 /** One shortcut, for the cheat sheet and for the palette's hints. */
 export interface ShortcutDef {
   id: string;
-  /** The action the app runs; absent for a shortcut a screen handles itself (j, k, A, N). */
+  /** The action the app runs; absent for a shortcut a screen handles itself (j, k, a, n). */
   action?: ShortcutAction;
   /** The keys in order. `Mod` is Ctrl, or ⌘ on a Mac. A chord is a letter then another letter. */
   keys: string[];
@@ -70,15 +70,20 @@ export const SHORTCUTS: ShortcutDef[] = [
   def("go-settings", "navigation", ["g", ","], "shortcuts.goSettings", "go-settings", true),
   def("tab-new", "tabs", ["Mod", "T"], "shortcuts.tabNew"),
   def("tab-close", "tabs", ["Mod", "W"], "shortcuts.tabClose"),
-  def("tab-recent", "tabs", ["Mod", "Tab"], "shortcuts.tabRecent"),
+  def("tab-next", "tabs", ["Mod", "Tab"], "shortcuts.tabNext"),
+  def("tab-previous", "tabs", ["Mod", "Shift", "Tab"], "shortcuts.tabPrevious"),
+  def("tab-reopen", "tabs", ["Mod", "Shift", "T"], "shortcuts.tabReopen"),
+  def("tab-move-left", "tabs", ["Mod", "Shift", "PageUp"], "shortcuts.tabMoveLeft"),
+  def("tab-move-right", "tabs", ["Mod", "Shift", "PageDown"], "shortcuts.tabMoveRight"),
+  def("tab-split", "tabs", ["Mod", "\\"], "shortcuts.tabSplit"),
   def("tab-number", "tabs", ["Mod", "1…9"], "shortcuts.tabNumber"),
   def("view-number", "views", ["Alt", "1…7"], "shortcuts.viewNumber"),
   def("view-terminal", "views", ["Ctrl", "`"], "shortcuts.viewTerminal"),
   def("list-next", "lists", ["j"], "shortcuts.listNext"),
   def("list-previous", "lists", ["k"], "shortcuts.listPrevious"),
   def("list-open", "lists", ["Enter"], "shortcuts.listOpen"),
-  def("approve", "approvals", ["A"], "shortcuts.approve"),
-  def("deny", "approvals", ["N"], "shortcuts.deny"),
+  def("approve", "approvals", ["a"], "shortcuts.approve"),
+  def("deny", "approvals", ["n"], "shortcuts.deny"),
   def("dismiss", "approvals", ["Esc"], "shortcuts.dismiss"),
   def("board-move", "board", ["←↑↓→"], "shortcuts.boardMove"),
   def("board-start", "board", ["s"], "shortcuts.boardStart"),
