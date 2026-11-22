@@ -5,7 +5,7 @@ import { releasesRewriter, releasesScript } from "../../lib/shots/releases.ts";
 /**
  * #4059: the What's new dialog has four states (loading, none, error, the list) that the demo's
  * hosts cannot be left in: they read GitHub's releases. The print answers `releases.list` in the
- * page, so every machine prints the same and no request leaves it.
+ * page, so every machine prints the same (the loading print still sends the request, and drops the host's answer).
  */
 const ask = (id: string, type: string) => JSON.stringify({ id, type, payload: {} });
 const ack = (id: string, data: object) => JSON.stringify({ type: "ack", id, ok: true, data });
@@ -66,8 +66,29 @@ describe("shots-releases: what the page answers to releases.list", () => {
     expect([rewriter.fromHost(other), rewriter.fromHost("not json")]).toEqual([other, "not json"]);
   });
 
-  test("the script puts the page's WebSocket behind the rewriter in the chosen mode", () => {
-    const script = releasesScript("error");
-    expect([script.includes("WebSocket"), script.includes('("error")')]).toEqual([true, true]);
+  test("the init script alone wraps the window's WebSocket: the request is answered in the page and never sent", () => {
+    class FakeSocket {
+      sent: string[] = [];
+      heard: unknown[] = [];
+      send(data: string) {
+        this.sent.push(data);
+      }
+      addEventListener(type: string, listener: (event: { data: unknown }) => void) {
+        if (type === "message") this.heard.push(listener);
+      }
+    }
+    const page = { WebSocket: FakeSocket as unknown as typeof WebSocket };
+    new Function("window", releasesScript("error"))(page);
+    const socket = new page.WebSocket("ws://x") as unknown as FakeSocket;
+    const got: unknown[] = [];
+    socket.addEventListener("message", (event) => got.push(event.data));
+    socket.send(ask("r1", "releases.list"));
+    return Promise.resolve().then(() => {
+      expect([socket.sent, got.map((frame) => read(String(frame)).ok)]).toEqual([[], [false]]);
+    });
+  });
+
+  test("the init script calls no transpile helper", () => {
+    expect(releasesScript("list").match(/\b__\w+/g) ?? []).toEqual([]);
   });
 });

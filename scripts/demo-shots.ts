@@ -188,8 +188,6 @@ function seedStorage(seed: StorageSeed): void {
       "flightdeck.teleportPreview",
       // The update banner's print turns the automatic update off (#4059): not for the next print, whose card needs it on.
       "flightdeck.autoUpdate",
-      // Opening What's new marks this version as seen (#4059): the next print shows the account menu's dot as before.
-      "flightdeck.whatsNewSeen",
     ]) {
       localStorage.removeItem(key);
     }

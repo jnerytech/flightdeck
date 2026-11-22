@@ -6,8 +6,9 @@ export type ReleasesMode = "list" | "error" | "loading" | "none";
 /**
  * The demo's hosts read the app's releases from GitHub, so a print would show whatever was published
  * last and could fail on a rate limit. The What's new prints wrap the page's sockets with this: the
- * answer to `releases.list` is made in the page and never sent (`list`, `error`), left unanswered
- * (`loading`), or the hosts stop offering the feed, so the dialog says no host can read it (`none`).
+ * answer to `releases.list` is made in the page and never sent (`list`, `error`), the host's answer
+ * is dropped so the dialog stays on its loading line (`loading`), or the hosts stop offering the
+ * feed, so the dialog says no host can read it (`none`).
  *
  * It goes into the page as its source (`releasesScript`), so it uses nothing outside its own body.
  */
@@ -58,9 +59,8 @@ export function releasesRewriter(mode: ReleasesMode): FrameRewriter {
       const message = parse(frame);
       const type = message?.type;
       const id = message?.id;
-      if (typeof id === "string" && (type === "releases.list" || type === "host.info")) {
-        asked.set(id, type);
-      }
+      const noted = mode === "none" ? "host.info" : mode === "loading" ? "releases.list" : "";
+      if (typeof id === "string" && type === noted) asked.set(id, noted);
       return frame;
     },
     fromHost(frame) {
