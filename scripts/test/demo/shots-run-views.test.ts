@@ -113,3 +113,74 @@ describe("the preview page and the workflow timeline's prints (#4287)", () => {
     ]);
   });
 });
+
+/** What a print's `prepare` did on a page that runs the callbacks it is given. */
+type Seen = { waits: string[]; attributes: string[]; scripts: string[]; scriptFrames: string[] };
+
+async function prepared(name: string): Promise<Seen> {
+  const seen: Seen = { waits: [], attributes: [], scripts: [], scriptFrames: [] };
+  const word = (arg: unknown): string => (arg instanceof RegExp ? arg.source : String(arg));
+  const target = (label: string): Record<string, unknown> => ({
+    getByRole: (role: string, options?: { name?: unknown }) =>
+      target(`${label} > ${role} ${word(options?.name)}`),
+    getByText: (text: unknown) => target(`${label} > text ${word(text)}`),
+    waitFor: async () => {
+      seen.waits.push(label);
+    },
+    evaluate: async (run: (el: unknown, arg: unknown) => void, arg: unknown) =>
+      run(
+        { setAttribute: (key: string, value: string) => seen.attributes.push(`${key}=${value}`) },
+        arg,
+      ),
+  });
+  const frame = (label: string) => ({
+    addScriptTag: async (options: { path: string }) => {
+      seen.scripts.push(options.path);
+      seen.scriptFrames.push(label);
+    },
+  });
+  const main = frame("main");
+  const page = {
+    ...target("page"),
+    locator: (selector: string) => target(`locator ${selector}`),
+    frameLocator: (selector: string) => target(`frame ${selector}`),
+    frames: () => [main, frame("inner")],
+    mainFrame: () => main,
+  };
+  await shotOf(name)?.prepare?.(page as never);
+  return seen;
+}
+
+describe("what each preview and timeline print waits for (#4287)", () => {
+  test("the preview print fills the frame with its own page, waits for it, and gives that frame axe", async () => {
+    const seen = await prepared("previa-ambiente");
+    expect(
+      seen.attributes.some((a) => a.startsWith("srcdoc=") && a.includes("<h1>Cart</h1>")),
+    ).toBe(true);
+    expect(
+      seen.waits.some((wait) => wait.startsWith("frame iframe") && wait.includes("Cart")),
+    ).toBe(true);
+    // The print's axe run asks every frame: the frame without axe would hold it for a minute.
+    expect([seen.scriptFrames, seen.scripts.every((path) => path.endsWith("axe.min.js"))]).toEqual([
+      ["inner"],
+      true,
+    ]);
+  });
+
+  test("the refused preview waits for the refusal in both languages", async () => {
+    const seen = await prepared("previa-recusada");
+    expect(
+      seen.waits.some((wait) => wait.includes("Only 127") && wait.includes("localhost abrem aqui")),
+    ).toBe(true);
+  });
+
+  test("each timeline waits for its own title: the status in both languages", async () => {
+    const waits = async (name: string) => (await prepared(name)).waits.join("\n");
+    expect(await waits("card-run-rodando")).toMatch(
+      /Workflow run.*Workflow feature.*running\|em andamento/,
+    );
+    expect(await waits("card-run-cota")).toMatch(/running\|em andamento/);
+    expect(await waits("card-run-falhou")).toMatch(/failed\|falhou/);
+    expect(await waits("card-run-passo-longo")).toMatch(/running\|em andamento/);
+  });
+});
