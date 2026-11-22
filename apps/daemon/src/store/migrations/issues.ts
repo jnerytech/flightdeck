@@ -259,5 +259,9 @@ export const ISSUES: readonly string[] = [
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
+  `, // Issue #4083: why a message was refused, as a key and its values, for the app to translate.
+  `
+  ALTER TABLE session_messages ADD COLUMN reason_key TEXT;
+  ALTER TABLE session_messages ADD COLUMN reason_params TEXT;
   `,
 ];

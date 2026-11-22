@@ -37,12 +37,23 @@ import {
   limits,
   type Party,
   type Policy,
-  sizeError,
+  type Refusal,
+  textRefusal,
   validatePolicy,
 } from "./domain/policy.ts";
+import { relayedWhy } from "./domain/refusal.ts";
 import { relayOf } from "./domain/relay.ts";
 import type { EndpointInfo, Endpoints } from "./endpoints.ts";
 import { type MessagePatch, type MessageRow, MessageStore, type NewMessage } from "./store.ts";
+
+/** A refusal as the sender is told: the English words, and the key and values to translate. */
+const refusedResult = (id: string, { reason, key, params }: Refusal): SendResult => ({
+  id,
+  status: "refused",
+  reason,
+  reasonKey: key ?? null,
+  reasonParams: params ?? null,
+});
 
 // The tests build frames and peers from these; the entry does not export them.
 export type { ListedSession, MessagingFrame, PeerSession } from "./domain/peers.ts";
@@ -84,6 +95,7 @@ export class Messaging {
       this.update(id, {
         status: "expired",
         reason: "the daemon restarted before delivery",
+        why: { key: "messaging_restarted" },
         at: this.ms(),
       });
     }
@@ -165,7 +177,8 @@ export class Messaging {
     const untrusted = this.opts.endpoints.untrusted(sender.id);
     const target = this.dir.target(input.to);
     if ("error" in target) {
-      return this.refused(sender, input.to, input.text, target.error, untrusted);
+      const { error: reason, reason: key, params } = target;
+      return this.refused(sender, input.to, input.text, { reason, key, params }, untrusted);
     }
     const verdict = this.check(sender, target, input.text);
     if (verdict) {
@@ -219,23 +232,32 @@ export class Messaging {
   }
 
   /** The reason a message cannot go, or null. A loop pauses the pair. */
-  private check(sender: Party, target: Target, text: string): string | null {
+  private check(sender: Party, target: Target, text: string): Refusal | null {
     const to = addressOf(target.party);
     const from = addressOf(sender);
-    const size = sizeError(text);
+    const size = textRefusal(text);
     if (size) return size;
     const allowed = access(sender, target.party, this.policy);
-    if (!allowed.ok) return allowed.reason;
+    if (!allowed.ok) return { reason: allowed.reason, key: allowed.code };
     const key = pairKey(from, to);
     if (this.isPaused(key)) {
-      return "the pair is paused by a message loop; release it in Settings";
+      return {
+        reason: "the pair is paused by a message loop; release it in Settings",
+        key: "messaging_pair_paused",
+      };
     }
     const limit = limits(from, to, this.store.history(), this.ms(), this.policy);
     if (!limit.ok) {
       if (limit.kind === "loop") this.pause(key, from, to);
-      return limit.reason;
+      const { reason, key: limitKey, params } = limit;
+      return { reason, key: limitKey, params };
     }
-    if (!target.receives) return target.reason ?? "the session does not receive messages";
+    if (!target.receives) {
+      return {
+        reason: target.reason ?? "the session does not receive messages",
+        ...(target.reasonKey ? { key: target.reasonKey } : {}),
+      };
+    }
     return null;
   }
 
@@ -267,33 +289,51 @@ export class Messaging {
     const existing = this.store.row(message.id);
     if (existing) return relayAnswer(existing);
     const from: Party = { ...message.from };
-    const refuse = (reason: string, to?: Party): SendResult => {
+    const refuse = (refusal: Refusal, to?: Party): SendResult => {
       this.insert({
         id: message.id,
         sender: from,
         to: to ?? blankParty(message.toSession, message.toHost),
         text: message.text,
         status: "refused",
-        reason,
+        reason: refusal.reason,
+        why: refusal,
         teamId: null,
         kind: message.kind,
         untrusted: message.untrusted,
         formatted: null,
         createdAt: message.createdAt,
       });
-      return { id: message.id, status: "refused", reason };
+      return refusedResult(message.id, refusal);
     };
-    if (message.kind !== "session") return refuse("only session messages cross hosts");
+    if (message.kind !== "session") {
+      return refuse({
+        reason: "only session messages cross hosts",
+        key: "messaging_relay_session_only",
+      });
+    }
     if (message.toHost !== this.opts.host) {
-      return refuse(`the message is for another host (${message.toHost}), not this one`);
+      return refuse({
+        reason: `the message is for another host (${message.toHost}), not this one`,
+        key: "messaging_relay_other_host",
+        params: { host: message.toHost },
+      });
     }
     const info = this.opts.endpoints.list().find((e) => e.id === message.toSession);
-    if (!info) return refuse(`session ${message.toHost}/${message.toSession} not found`);
+    if (!info) {
+      const address = `${message.toHost}/${message.toSession}`;
+      return refuse({
+        reason: `session ${address} not found`,
+        key: "messaging_target_not_found",
+        params: { address },
+      });
+    }
     const to = this.dir.partyOf(info);
     const target: Target = {
       party: to,
       receives: info.controllable,
       reason: info.reason,
+      reasonKey: info.reasonKey ?? null,
       local: info,
     };
     const verdict = this.check(from, target, message.text);
@@ -321,12 +361,18 @@ export class Messaging {
   /** The app tells how a relayed message ended at the recipient's daemon (may come twice). */
   relayed(
     id: string,
-    result: { status: "delivered" | "queued" | "refused"; reason?: string | null },
+    result: {
+      status: "delivered" | "queued" | "refused";
+      reason?: string | null;
+      reasonKey?: string | null;
+      reasonParams?: Params | null;
+    },
   ): void {
     if (!this.store.row(id)) return;
     this.update(id, {
       status: result.status,
       reason: result.reason ?? null,
+      why: relayedWhy(result.reasonKey, result.reasonParams),
       at: this.ms(),
       relayed: true,
     });
@@ -353,7 +399,7 @@ export class Messaging {
     const from = blankParty(FLIGHTDECK, this.opts.host);
     const record = (
       status: MessageInfo["status"],
-      reason: string | null,
+      refusal: Refusal | null,
       formatted: string | null,
     ) =>
       this.insert({
@@ -362,22 +408,27 @@ export class Messaging {
         to: target,
         text,
         status,
-        reason,
+        reason: refusal?.reason ?? null,
+        why: refusal ?? undefined,
         teamId,
         kind,
         untrusted: false,
         formatted,
       });
     if (!info) {
-      const reason = `session ${to} not found`;
-      record("refused", reason, null);
-      return { id, status: "refused", reason };
+      const refusal = {
+        reason: `session ${to} not found`,
+        key: "messaging_target_not_found",
+        params: { address: to },
+      };
+      record("refused", refusal, null);
+      return refusedResult(id, refusal);
     }
     const formatted = formatSystemMessage(kind, text);
     const outcome = this.delivery.handOver(info, id, formatted);
     if ("refusal" in outcome) {
       record("refused", outcome.refusal, null);
-      return { id, status: "refused", reason: outcome.refusal };
+      return refusedResult(id, outcome.refusal);
     }
     record(outcome.status, null, formatted);
     return { id, status: outcome.status, reason: null };
@@ -430,6 +481,7 @@ export class Messaging {
       this.update(id, {
         status: "expired",
         reason: "the app did not relay it within 24 hours: the message was not sent",
+        why: { key: "messaging_relay_expired" },
         at: now,
       });
     }
@@ -457,7 +509,7 @@ export class Messaging {
     sender: Party,
     to: string,
     text: string,
-    reason: string,
+    refusal: Refusal,
     untrusted: boolean,
     target?: Party,
   ): SendResult {
@@ -469,12 +521,13 @@ export class Messaging {
       to: target ?? blankParty(sessionId, host ?? this.opts.host),
       text,
       status: "refused",
-      reason,
+      reason: refusal.reason,
+      why: refusal,
       teamId: null,
       kind: "session",
       untrusted,
       formatted: null,
     });
-    return { id, status: "refused", reason };
+    return refusedResult(id, refusal);
   }
 }

@@ -177,14 +177,16 @@ describe("issues-ui: o painel no board", () => {
     await openBoard();
     await openPanel();
     await settle(() => rows() === 2);
-    await click("Criar card", issueRow(1));
+    await click("Criar card de Acme/App#1", issueRow(1));
     await settle(() => !!within(panel()).queryByText("Card criado"));
     const row = issueRow(1) as HTMLElement;
     expect(within(row).getByText("Card criado")).toBeTruthy();
-    expect(within(row).queryByRole("button", { name: "Criar card" })).toBeNull();
+    expect(within(row).queryByRole("button", { name: "Criar card de Acme/App#1" })).toBeNull();
     // The other issue still offers it.
     expect(
-      within(issueRow(2) as HTMLElement).getByRole("button", { name: "Criar card" }),
+      within(issueRow(2) as HTMLElement).getByRole("button", {
+        name: "Criar card de Acme/App#2",
+      }),
     ).toBeTruthy();
     await click("Fechar", panel());
     await settle(() => screen.queryByLabelText("Card Issue 1") !== null);
@@ -197,7 +199,7 @@ describe("issues-ui: o painel no board", () => {
     const { opened } = await openBoard();
     await openPanel();
     await settle(() => rows() === 2);
-    await click("Criar card", issueRow(2));
+    await click("Criar card de Acme/App#2", issueRow(2));
     await settle(() => !!within(panel()).queryByText("Card criado"));
     await click("Fechar", panel());
     await settle(() => screen.queryByLabelText("Card Tela de cobrança") !== null);
@@ -214,9 +216,15 @@ describe("issues-ui: o painel no board", () => {
     await openBoard();
     await openPanel();
     await settle(() => rows() === 2);
-    await click("Criar card", issueRow(1));
+    await click("Criar card de Acme/App#1", issueRow(1));
     await settle(() => !!within(panel()).queryByText("Card criado"));
-    await click("Abrir card", issueRow(1));
+    await settle(
+      () =>
+        within(issueRow(1) as HTMLElement).queryByRole("button", {
+          name: "Abrir card de Acme/App#1",
+        }) !== null,
+    );
+    await click("Abrir card de Acme/App#1", issueRow(1));
     await settle(() => screen.queryByRole("button", { name: "Abrir issue Acme/App#1" }) !== null);
     expect(screen.getByRole("button", { name: "Abrir issue Acme/App#1" })).toBeTruthy();
   });

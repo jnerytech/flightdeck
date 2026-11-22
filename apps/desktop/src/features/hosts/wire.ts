@@ -12,6 +12,7 @@ interface HostsState {
 /** Builds the hosts' health slice from the store's kernel (#1596): `deps.check` and `doctor.run`. */
 export function wireHealth(
   kernel: AppKernel<ReturnType<HealthCore["state"]> & HostsState>,
+  onDeps?: HealthCore["onDeps"],
 ): HealthSlice {
   return new HealthSlice({
     state: () => kernel.state(),
@@ -20,6 +21,7 @@ export function wireHealth(
     deps: (hostId) => kernel.hostRequest(hostId, "deps.check", {}),
     doctor: (hostId) => kernel.hostRequest(hostId, "doctor.run", { appVersion: APP_VERSION }),
     now: () => kernel.now(),
+    onDeps,
   });
 }
 

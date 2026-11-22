@@ -147,6 +147,16 @@ export const agent = {
       agentName: "Nome do agente",
       skillName: "Nome da skill",
       create: "Criar",
+      rule: {
+        agent: "Letras, dígitos, _, . e -, começando por letra ou dígito.",
+        skill: "Letras, dígitos, _, . e -, começando por letra ou dígito.",
+        claudemd: "Um caminho que termina em CLAUDE.md, ou CLAUDE.local.md.",
+      },
+      refused: {
+        agent: "Esse nome não é permitido.",
+        skill: "Esse nome não é permitido.",
+        claudemd: "Esse caminho não é permitido.",
+      },
       pick: "Escolha um arquivo da lista.",
       content: "Conteúdo de {path}",
       name: "Nome",

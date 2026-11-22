@@ -17,6 +17,7 @@ export interface Target {
   party: Party;
   receives: boolean;
   reason: string | null;
+  reasonKey?: string | null;
   local: EndpointInfo | null;
 }
 
@@ -127,6 +128,7 @@ export class Directory {
         party: this.partyOf(info),
         receives: info.controllable,
         reason: info.reason,
+        reasonKey: info.reasonKey ?? null,
         local: info,
       };
     }

@@ -18,6 +18,7 @@ function slice(
   let state = initialHealthState();
   let clock = 1000;
   const asked = { deps: 0, doctor: 0 };
+  const told: Array<Record<string, DepsResult>> = [];
   const core: HealthCore = {
     state: () => state,
     update: (patch) => {
@@ -33,8 +34,10 @@ function slice(
       return answers.doctor ?? { ok: true, data: DOCTOR };
     },
     now: () => clock,
+    onDeps: (deps) => told.push(deps),
   };
   return {
+    told,
     health: new HealthSlice(core),
     state: () => state,
     asked,
@@ -46,6 +49,15 @@ function slice(
 }
 
 describe("health slice: a host's dependencies and doctor", () => {
+  test("the dependencies are told after a good read, with what is kept, and not after a failed one (issue #4098)", async () => {
+    const s = slice(["depsCheck"]);
+    await s.health.check("h1");
+    expect(s.told).toEqual([{ h1: DEPS }]);
+    const failing = slice(["depsCheck"], { deps: { ok: false, message: "no" } });
+    await failing.health.check("h1");
+    expect(failing.told).toEqual([]);
+  });
+
   test("a host that announces neither half is not asked, and nothing is kept", async () => {
     const s = slice([]);
     await s.health.check("h1");

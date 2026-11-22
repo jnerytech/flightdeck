@@ -395,7 +395,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     // The demo is seeded once for both languages, so the second language finds the card made by
     // the first, and Criar card is only there when nobody has made it yet.
     const row = c.page.locator("li", { hasText: title });
-    const create = row.getByRole("button", { name: c.t("issuesUi.createCard"), exact: true });
+    // Its name is "Create card for <issue>", so the visible text is matched as part of it.
+    const create = row.getByRole("button", { name: c.t("issuesUi.createCard") });
     await create.or(row.getByText(c.t("issuesUi.cardCreated"), { exact: true })).waitFor({
       timeout: WAIT,
     });

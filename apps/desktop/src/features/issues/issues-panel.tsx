@@ -91,14 +91,38 @@ function IssueRow(
     store: AppStore;
     issue: Issue;
     card: Card | null;
-    onCreate(): void;
+    /** Makes the card; the refusal's text, or null once it was made. */
+    onCreate(): Promise<string | null>;
     onOpenCard(cardId: string): void;
   }>,
 ) {
   const { store, issue, card } = props;
   const { t } = store.i18n;
+  const [error, setError] = useState<string | null>(null);
+  /** The host made the card: the row says so until the card arrives, and the focus follows it. */
+  const [made, setMade] = useState(false);
+  const open = useRef<HTMLButtonElement>(null);
+  const item = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    if (!made || !card || !open.current) return;
+    // The focus follows the card only while it is still where Create card was: nowhere (the page,
+    // a node that left it, or the sheet itself, where the dialog parks it) or in this row. A person
+    // who moved on, to the filter say, keeps theirs.
+    const at = document.activeElement;
+    const nowhere =
+      !at || at === document.body || !at.isConnected || at.getAttribute("role") === "dialog";
+    if (nowhere || item.current?.contains(at)) open.current.focus();
+    setMade(false);
+  }, [made, card]);
+  const create = async () => {
+    setError(null);
+    const refusal = await props.onCreate();
+    if (refusal) setError(refusal);
+    else setMade(true);
+  };
   return (
     <li
+      ref={item}
       aria-label={t("issuesUi.row", { number: issueNumber(issue.ref), title: issue.title })}
       className="flex flex-col gap-2 rounded-md border bg-card p-3 text-sm"
     >
@@ -130,19 +154,33 @@ function IssueRow(
         ))}
       </div>
       <div className="flex items-center gap-2">
-        {card ? (
+        {card || made ? (
           <>
             <span className="text-muted-foreground text-xs">{t("issuesUi.cardCreated")}</span>
-            <Button variant="outline" size="sm" onClick={() => props.onOpenCard(card.id)}>
-              {t("issuesUi.openCard")}
-            </Button>
+            {card && (
+              <Button
+                ref={open}
+                variant="outline"
+                size="sm"
+                aria-label={t("issuesUi.openCardOf", { issue: issueLabel(issue.ref) })}
+                onClick={() => props.onOpenCard(card.id)}
+              >
+                {t("issuesUi.openCard")}
+              </Button>
+            )}
           </>
         ) : (
-          <Button variant="outline" size="sm" onClick={props.onCreate}>
+          <ActionButton
+            variant="outline"
+            size="sm"
+            aria-label={t("issuesUi.createCardFor", { issue: issueLabel(issue.ref) })}
+            onClick={create}
+          >
             {t("issuesUi.createCard")}
-          </Button>
+          </ActionButton>
         )}
       </div>
+      {error && !card && <InlineNotice tone="error">{error}</InlineNotice>}
     </li>
   );
 }
@@ -224,11 +262,13 @@ export function IssuesPanel(
     // A project that was not connected loads in the effect above, as its `configured` turns on.
     if (configured) void load();
   };
-  const create = (issue: Issue) =>
-    void store.hostCommand(hostId, "issues.createCard", {
+  const create = async (issue: Issue) => {
+    const result = await store.hostRequest(hostId, "issues.createCard", {
       projectId: project.id,
       issueRef: issue.ref,
     });
+    return result.ok ? null : refusalText(result.code, result.message, t, result);
+  };
 
   const shown = filterIssues(issues ?? [], filter);
   const provider = project.issues?.provider === "azure" ? "azure" : "github";

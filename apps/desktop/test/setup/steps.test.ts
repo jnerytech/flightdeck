@@ -196,7 +196,7 @@ const dep = (id: string, group: DepResult["group"], state: DepResult["state"]): 
   ({ id, group, state, breaks: [], fix: [] }) as unknown as DepResult;
 
 describe("setup-steps: missing tools get a quiet card (issue #164)", () => {
-  test("what is missing, required first; what is there or does not apply is left out", () => {
+  test("what is missing or out of date, required first; what is there or does not apply is left out (issue #4098)", () => {
     const found = missingTools({
       items: [
         dep("gh", "optional", "missing"),
@@ -206,7 +206,7 @@ describe("setup-steps: missing tools get a quiet card (issue #164)", () => {
         dep("tailscale", "optional", "outdated"),
       ],
     });
-    expect(found.map((d) => d.id)).toEqual(["claude", "gh"]);
+    expect(found.map((d) => d.id)).toEqual(["claude", "gh", "tailscale"]);
     expect(missingTools(undefined)).toEqual([]);
     expect(missingTools({ items: [] })).toEqual([]);
   });
@@ -256,6 +256,47 @@ describe("setup-steps: what the person chose (issue #164)", () => {
     s.markNotified();
     s.dismissTool("gh@h1");
     expect(told).toBe(3);
+  });
+
+  test("several restored notes leave the list in one write, and the listeners are told once (issue #4098)", () => {
+    const kept = memory();
+    const s = new SetupSettings(kept.storage);
+    for (const id of ["gh@h1", "claude@h1", "az@h2"]) s.dismissTool(id);
+    let told = 0;
+    s.subscribe(() => told++);
+    s.restoreTools(["gh@h1", "az@h2"]);
+    expect(new SetupSettings(kept.storage).dismissedTools()).toEqual(["claude@h1"]);
+    expect(told).toBe(1);
+  });
+
+  test("a dismissal is forgotten once its host reports the tool in place; the others stay (issue #4098)", () => {
+    const kept = memory();
+    const s = new SetupSettings(kept.storage);
+    for (const id of ["gh@h1", "claude@h1", "gh@h2", "az@h3"]) s.dismissTool(id);
+    let told = 0;
+    s.subscribe(() => told++);
+    s.clearInstalled({
+      h1: { items: [dep("gh", "optional", "ok"), dep("claude", "required", "missing")] },
+      h2: { items: [dep("gh", "optional", "outdated")] },
+    });
+    expect(new SetupSettings(kept.storage).dismissedTools()).toEqual([
+      "claude@h1",
+      "gh@h2",
+      "az@h3",
+    ]);
+    expect(told).toBe(1);
+    s.clearInstalled({ h1: { items: [dep("claude", "required", "missing")] }, h9: undefined });
+    expect(told).toBe(1);
+  });
+
+  test("a note dismissed for an out-of-date tool is forgotten once the tool is in place (issue #4098)", () => {
+    const kept = memory();
+    const s = new SetupSettings(kept.storage);
+    for (const id of ["gh~outdated@h1", "git~outdated@h1"]) s.dismissTool(id);
+    s.clearInstalled({
+      h1: { items: [dep("gh", "optional", "ok"), dep("git", "required", "outdated")] },
+    });
+    expect(s.dismissedTools()).toEqual(["git~outdated@h1"]);
   });
 
   test("a restored tool leaves the dismissed list, for good, and the listeners are told", () => {

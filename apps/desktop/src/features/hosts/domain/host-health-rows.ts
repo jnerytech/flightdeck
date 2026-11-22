@@ -2,6 +2,7 @@ import type { DepResult, DoctorCheckResult } from "@flightdeck/protocol";
 import type { Key, T } from "../../../i18n/index.ts";
 import {
   type DepLook,
+  depBreaksText,
   depLook,
   depsSummary,
   fixFor,
@@ -77,12 +78,7 @@ export function depRow(item: DepResult, env: RowEnv): HealthRow {
       item.minVersion ? t("hostDeps.minVersion", { version: item.minVersion }) : null,
       item.path ?? null,
     ].filter((part): part is string => part !== null),
-    breaks:
-      lacking && item.breaks.length > 0
-        ? t("hostDeps.without", {
-            features: item.breaks.map((f) => t(`hostDeps.breaks.${f}` as Key)).join(", "),
-          })
-        : null,
+    breaks: lacking ? depBreaksText(item, t) : null,
     copy: lacking ? fixFor(item, os) : null,
     page: lacking ? fixPageFor(item, os) : null,
     step: note ? t(`hostDeps.fixNote.${note}` as Key) : null,

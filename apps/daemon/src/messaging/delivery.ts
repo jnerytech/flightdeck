@@ -1,4 +1,5 @@
 import { FlightdeckError } from "../kernel/index.ts";
+import type { Refusal } from "./domain/policy.ts";
 import type { EndpointInfo, Endpoints } from "./endpoints.ts";
 import type { MessagePatch } from "./store.ts";
 
@@ -7,6 +8,13 @@ export interface DeliveryOptions {
   /** Records how a message ended; the service stamps the time. */
   settle: (id: string, patch: Omit<MessagePatch, "at">) => void;
 }
+
+/** A refusal of the endpoint, with the key and values it carries for the app (#4083). */
+const refusalOf = ({ message, reason: key, params }: FlightdeckError): Refusal => ({
+  reason: message,
+  ...(key ? { key } : {}),
+  ...(params ? { params } : {}),
+});
 
 /**
  * Hands a message to a session of this host and keeps the messages that cannot go yet: a managed
@@ -37,7 +45,7 @@ export class Delivery {
     info: EndpointInfo,
     id: string,
     formatted: string,
-  ): { status: "delivered" | "queued" } | { refusal: string } {
+  ): { status: "delivered" | "queued" } | { refusal: Refusal } {
     const current = this.opts.endpoints.list().find((e) => e.id === info.id) ?? info;
     if (current.kind === "terminal" && current.state === "waiting") {
       const list = this.held.get(info.id) ?? [];
@@ -50,7 +58,7 @@ export class Delivery {
       if (status === "queued") this.waiting.set(id, { to: info.id, formatted });
       return { status };
     } catch (error) {
-      if (error instanceof FlightdeckError) return { refusal: error.message };
+      if (error instanceof FlightdeckError) return { refusal: refusalOf(error) };
       throw error;
     }
   }
@@ -69,7 +77,12 @@ export class Delivery {
           this.opts.settle(item.id, { status: "delivered" });
         }
       } catch (error) {
-        this.opts.settle(item.id, { status: "refused", reason: (error as Error).message });
+        const refusal = error instanceof FlightdeckError ? refusalOf(error) : undefined;
+        this.opts.settle(item.id, {
+          status: "refused",
+          reason: (error as Error).message,
+          ...(refusal ? { why: refusal } : {}),
+        });
       }
     }
   }

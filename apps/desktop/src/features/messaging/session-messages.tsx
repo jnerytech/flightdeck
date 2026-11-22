@@ -3,9 +3,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { reasonText } from "@/i18n/errors.ts";
 import { useStoreSlice } from "@/lib/use-store";
-import { ActionButton } from "@/shared/feedback/index.ts";
-import { Field, NativeSelect } from "@/shared/layout/index.ts";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
+import { Field, Inline, NativeSelect, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { RulesLink } from "./rules-link.tsx";
 import { inPausedPair } from "./store.ts";
@@ -93,16 +94,19 @@ export function SessionMessages(
   };
 
   return (
-    <section className="flex flex-col gap-3 text-sm">
+    <Stack gap={3} className="text-sm">
       {writing ? (
-        <div className="flex flex-col gap-2 rounded-lg border p-3">
+        <Stack gap={2} className="rounded-lg border p-3">
           <Field label={t("sessionMessages.to")}>
             {(control) => (
               <NativeSelect
                 {...control}
                 ref={toField}
                 value={to}
-                onChange={(e) => setTo(e.target.value)}
+                onChange={(e) => {
+                  setResult(null);
+                  setTo(e.target.value);
+                }}
               >
                 {(targets ?? []).map((s) => (
                   <option key={s.address} value={s.address}>
@@ -121,25 +125,23 @@ export function SessionMessages(
                 {...control}
                 ref={textField}
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => {
+                  setResult(null);
+                  setText(e.target.value);
+                }}
               />
             )}
           </Field>
-          <div className="flex gap-2">
+          <Inline gap={2}>
             <ActionButton disabled={!to || !text.trim()} onClick={() => send()}>
               {t("sessionMessages.send")}
             </ActionButton>
             <Button variant="ghost" onClick={closeForm}>
               {t("sessionMessages.cancel")}
             </Button>
-          </div>
-          {result && (
-            <output aria-label={t("sessionMessages.result")} className="block">
-              {t(`conversationsUi.statuses.${result.status}`)}
-              {result.reason ? ` · ${result.reason}` : ""}
-            </output>
-          )}
-        </div>
+          </Inline>
+          {result && <SendResultNotice store={store} result={result} />}
+        </Stack>
       ) : (
         <Button
           ref={writeButton}
@@ -153,10 +155,10 @@ export function SessionMessages(
       {messages.length === 0 ? (
         <p className="text-muted-foreground">{t("sessionMessages.empty")}</p>
       ) : (
-        <ul aria-label={t("sessionMessages.list")} className="flex flex-col gap-2">
+        <Stack as="ul" label={t("sessionMessages.list")} gap={2}>
           {messages.map((m) => (
             <li key={m.id} className="flex flex-col gap-1 rounded-lg border bg-card p-3">
-              <div className="flex flex-wrap items-center gap-2 text-xs">
+              <Inline gap={2} className="text-xs">
                 <time dateTime={m.createdAt} className="text-muted-foreground tabular-nums">
                   {store.formatDateTime(m.createdAt)}
                 </time>
@@ -169,14 +171,36 @@ export function SessionMessages(
                   {otherSide(m)}
                 </span>
                 <strong>{t(`conversationsUi.statuses.${m.status}`)}</strong>
-              </div>
+              </Inline>
               <p className="whitespace-pre-wrap">{m.text}</p>
-              {m.reason && <p className="text-status-error text-xs">{m.reason}</p>}
+              {m.reason && (
+                <p className="text-status-error text-xs">
+                  {reasonText(t, m.reason, m.reasonKey, m.reasonParams)}
+                </p>
+              )}
               {inPausedPair(loopAlerts, m) && <RulesLink store={store} />}
             </li>
           ))}
-        </ul>
+        </Stack>
       )}
-    </section>
+    </Stack>
   );
+}
+
+/** How a send went: a refusal is announced at once (an alert), a delivered or queued one is a polite status. */
+function SendResultNotice(props: Readonly<{ store: AppStore; result: SendResult }>) {
+  const { t } = props.store.i18n;
+  const { result } = props;
+  const status = t(`conversationsUi.statuses.${result.status}`);
+  if (result.status !== "refused") {
+    return (
+      <output aria-label={t("sessionMessages.result")} className="block">
+        {status}
+      </output>
+    );
+  }
+  const why = result.reason
+    ? reasonText(t, result.reason, result.reasonKey, result.reasonParams)
+    : "";
+  return <InlineNotice tone="error">{why ? `${status} · ${why}` : status}</InlineNotice>;
 }

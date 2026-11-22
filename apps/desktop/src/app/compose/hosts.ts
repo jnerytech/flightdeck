@@ -142,7 +142,9 @@ interface HostsDeps {
 export function composeHosts(kernel: AppKernel<AppState>, deps: HostsDeps): HostSlices {
   const { platform } = deps;
   const projectList = wireProjects(kernel);
-  const health = wireHealth(kernel);
+  const setup = new SetupSettings(platform.storage);
+  // A tool found in place on a host ends the note the person dismissed about it (#4098).
+  const health = wireHealth(kernel, (found) => setup.clearInstalled(found));
   const account = wireAccount(kernel);
   const hostUpdate = wireHostUpdate(kernel, {
     patch: (hostId, patch) => deps.updateHost(hostId, (h) => ({ ...h, ...patch })),
@@ -234,7 +236,7 @@ export function composeHosts(kernel: AppKernel<AppState>, deps: HostsDeps): Host
       stop: (hostId, cardId) => kernel.hostCommand(hostId, "runenv.stop", { cardId }),
     }),
     projectList,
-    setup: new SetupSettings(platform.storage),
+    setup,
     setupProbes: new SetupProbes({
       host: (hostId) => {
         const host = kernel.state().hosts.find((h) => h.id === hostId);

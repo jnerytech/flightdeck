@@ -19,6 +19,9 @@ export type MessageStatus = z.infer<typeof MessageStatus>;
 export const MessageKind = z.enum(["session", "system", "idle"]);
 export type MessageKind = z.infer<typeof MessageKind>;
 
+/** The values a refusal's text fills in (#4083). */
+const ReasonParams = z.record(z.string(), z.union([z.string(), z.number()]));
+
 export const MessageInfo = z.object({
   id: z.string(),
   fromSession: z.string(),
@@ -28,6 +31,9 @@ export const MessageInfo = z.object({
   text: z.string(),
   status: MessageStatus,
   reason: z.string().nullable(),
+  /** Why it was refused, for the app to write in its language; `reason` stays the English words. */
+  reasonKey: z.string().nullable().optional(),
+  reasonParams: ReasonParams.nullable().optional(),
   createdAt: z.string(),
   deliveredAt: z.string().nullable(),
   teamId: z.string().nullable(),
@@ -81,6 +87,8 @@ export const SendResult = z.object({
   id: z.string(),
   status: z.enum(["delivered", "queued", "refused"]),
   reason: z.string().nullable(),
+  reasonKey: z.string().nullable().optional(),
+  reasonParams: ReasonParams.nullable().optional(),
 });
 export type SendResult = z.infer<typeof SendResult>;
 
@@ -259,6 +267,8 @@ export const collaborationCommands = [
       id: z.string().min(1),
       status: z.enum(["delivered", "queued", "refused"]),
       reason: z.string().nullable().optional(),
+      reasonKey: z.string().nullable().optional(),
+      reasonParams: ReasonParams.nullable().optional(),
     }),
   ),
   /** This host's sessions as the app hands them to the other daemons (`messages.peers`). */
