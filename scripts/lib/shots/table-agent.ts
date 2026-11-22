@@ -218,7 +218,11 @@ export function agentShots(ids: DemoIds): Shot[] {
       // The rewind of turn 2 applied: the notice says so and offers Undo.
       name: "linha-do-tempo-desfeito",
       route: { name: "session", host: ALFA, id: ids.rewindSession },
-      wire: [{ command: "rewind.apply", as: "rewind.preview" }],
+      wire: [
+        { command: "rewind.apply", as: "rewind.preview" },
+        // The Undo comes from the host's undo preview, and the demo's host has no rewind to undo.
+        { command: "rewind.undoPreview", as: "rewind.preview" },
+      ],
       prepare: async (page) => {
         await openTimeline(page);
         await page
