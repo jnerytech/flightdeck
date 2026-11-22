@@ -51,7 +51,7 @@ is in a turn, and when there is nothing to undo. If the connection is cut after 
 the files may or may not have been put back and exits `2`: look at them with `preview` and `snapshots list` before
 you try again.
 
-A rewind that would change a file Claude Code reads as configuration (anything in a `.claude` folder, a `CLAUDE.md` or `CLAUDE.local.md`) or a file that has another hard link needs a near connection (this computer or Tailscale): from a distant one the daemon refuses with `transport_refused` before it writes anything. Any other rewind works from anywhere.
+A rewind that would change a file Claude Code reads as configuration (anything in a `.claude` folder, a `CLAUDE.md`, a `CLAUDE.local.md` or a `.mcp.json`) or a file that has another hard link needs a near connection (this computer or Tailscale): from a distant one the daemon refuses with `transport_refused` before it writes anything. The same goes for a fork that rewinds the files first (`session.fork` with a rewind turn). Any other rewind works from anywhere.
 
 A session's own shell cannot run `rewind apply` or `rewind undo` without the person approving it in the app.
 
