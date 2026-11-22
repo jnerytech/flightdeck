@@ -198,7 +198,9 @@ describe("projetos-lista-ui: the Projects overview", () => {
     );
     expect(screen.queryByText("No projects yet.")).toBeNull();
     rerender(view(only("offline")));
-    expect(screen.queryByRole("status", { name: "Loading projects" })).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByRole("status", { name: "Loading projects" })).toBeNull(),
+    );
     expect(
       screen.queryByText("alfa is offline. Its projects show again when it reconnects."),
     ).not.toBeNull();

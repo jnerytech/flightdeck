@@ -26,12 +26,25 @@ export function useProjectCards(
   store: ProjectCardsStore,
   state: ProjectCardsState & Omit<HubRowState, "hosts">,
 ): ProjectCard[] {
+  return useProjectCardsRead(store, state).cards;
+}
+
+/**
+ * The cards, and whether the hosts' project lists were read for the hosts as they are now: the
+ * palette's load settled (an answer or a refusal) after the last change of a host's status, so a
+ * screen can tell "not read yet" from "no projects" (#3922).
+ */
+export function useProjectCardsRead(
+  store: ProjectCardsStore,
+  state: ProjectCardsState & Omit<HubRowState, "hosts">,
+): { cards: ProjectCard[]; read: boolean } {
   const [costs, setCosts] = useState<Record<string, CostsSummary | undefined>>({});
+  const [settledFor, setSettledFor] = useState<string | null>(null);
   // The projects and their cards come from the palette's load; the week's cost from each host.
   const hostKey = state.hosts.map((h) => `${h.id}:${h.status}`).join(",");
   // biome-ignore lint/correctness/useExhaustiveDependencies: reload when the hosts' set or status changes
   useEffect(() => {
-    void store.palette.load();
+    void store.palette.load().finally(() => setSettledFor(hostKey));
     const today = store.today();
     // A host that is not online keeps no figure: it is asked again when it comes back.
     const online = new Set(state.hosts.filter((h) => h.status === "online").map((h) => h.id));
@@ -45,7 +58,7 @@ export function useProjectCards(
       });
     }
   }, [store, hostKey]);
-  return useMemo(
+  const cards = useMemo(
     () =>
       buildProjectCards({
         hosts: state.hosts
@@ -65,4 +78,5 @@ export function useProjectCards(
       }),
     [state, store, costs],
   );
+  return { cards, read: settledFor === hostKey };
 }
