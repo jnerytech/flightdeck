@@ -6,7 +6,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { reasonText } from "@/i18n/errors.ts";
 import { useStoreSlice } from "@/lib/use-store";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
-import { Field, Inline, NativeSelect, Stack } from "@/shared/layout/index.ts";
+import {
+  ErrorState,
+  Field,
+  Inline,
+  LoadingState,
+  NativeSelect,
+  Stack,
+} from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { RulesLink } from "./rules-link.tsx";
 import { inPausedPair } from "./store.ts";
@@ -21,7 +28,10 @@ export function SessionMessages(
   const { store, hostId, sessionId } = props;
   const { t } = store.i18n;
   const { loopAlerts } = useStoreSlice(store, ["loopAlerts"] as const);
-  const [messages, setMessages] = useState<MessageInfo[]>([]);
+  // Null until the host has answered, so a slow or refused list does not read as "no messages" (#4296).
+  const [messages, setMessages] = useState<MessageInfo[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const answered = useRef(false);
   const [writing, setWriting] = useState(false);
   // Null until the host has answered; the sessions this one may message, which also name the rows.
   const [targets, setTargets] = useState<MessagingSession[] | null>(null);
@@ -37,8 +47,13 @@ export function SessionMessages(
   const load = useCallback(async () => {
     const list = await store.hostCommand(hostId, "messages.list", { session: sessionId });
     if (list) {
+      answered.current = true;
+      setLoadFailed(false);
       setMessages([...list.messages].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+      return;
     }
+    // A reload that fails keeps the messages already shown; only a first load has nothing to show.
+    if (!answered.current) setLoadFailed(true);
   }, [store, hostId, sessionId]);
   const loadTargets = useCallback(async () => {
     const found = await store.hostCommand(hostId, "messages.sessions", {
@@ -133,7 +148,11 @@ export function SessionMessages(
             )}
           </Field>
           <Inline gap={2}>
-            <ActionButton disabled={!to || !text.trim()} onClick={() => send()}>
+            <ActionButton
+              disabled={!to || !text.trim()}
+              disabledReason={t("sessionMessages.sendNeeds")}
+              onClick={() => send()}
+            >
               {t("sessionMessages.send")}
             </ActionButton>
             <Button variant="ghost" onClick={closeForm}>
@@ -152,9 +171,21 @@ export function SessionMessages(
           {t("sessionMessages.write")}
         </Button>
       )}
-      {messages.length === 0 ? (
+      {messages === null && loadFailed && (
+        <ErrorState
+          message={t("sessionMessages.loadFailed")}
+          retryLabel={t("sessionMessages.retry")}
+          onRetry={() => {
+            setLoadFailed(false);
+            void load();
+          }}
+        />
+      )}
+      {messages === null && !loadFailed && <LoadingState label={t("sessionMessages.loading")} />}
+      {messages?.length === 0 && (
         <p className="text-muted-foreground">{t("sessionMessages.empty")}</p>
-      ) : (
+      )}
+      {messages !== null && messages.length > 0 && (
         <Stack as="ul" label={t("sessionMessages.list")} gap={2}>
           {messages.map((m) => (
             <li key={m.id} className="flex flex-col gap-1 rounded-lg border bg-card p-3">
