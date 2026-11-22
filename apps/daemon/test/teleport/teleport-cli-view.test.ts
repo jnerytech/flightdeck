@@ -10,31 +10,34 @@ import {
   summaryLines,
 } from "../../src/teleport/domain/teleport-cli-view.ts";
 
-const manifest = (over: Partial<TeleportManifest> = {}): TeleportManifest =>
-  ({
-    id: "pkg-1",
-    sessionId: "s1",
-    claudeSessionId: "claude-1",
-    cwd: "/work/api",
-    model: null,
-    permissionMode: "default",
-    persona: null,
-    expiresAt: "2026-11-21T12:00:00.000Z",
-    parts: [
-      { name: "transcript", size: 512, sha256: "a".repeat(64) },
-      { name: "code", size: 3 * 1024 * 1024, sha256: "b".repeat(64) },
-      { name: "extra", size: 2048, sha256: "c".repeat(64) },
-    ],
-    secrets: { lines: 0, labels: [] },
-    git: null,
-    ...over,
-  }) as TeleportManifest;
+const manifest = (over: Partial<TeleportManifest> = {}): TeleportManifest => ({
+  id: "pkg-1",
+  sessionId: "s1",
+  claudeSessionId: "claude-1",
+  cwd: "/work/api",
+  model: null,
+  permissionMode: "default",
+  persona: null,
+  expiresAt: "2026-11-21T12:00:00.000Z",
+  parts: [
+    { name: "transcript", size: 2048, sha256: "a".repeat(64) },
+    { name: "code", size: 3 * 1024 * 1024, sha256: "b".repeat(64) },
+  ],
+  secrets: { lines: 0, labels: [] },
+  ...over,
+});
 
 describe("teleport CLI words (issue #3704)", () => {
   test("the summary gives sizes in the unit that reads best, a default model and no persona", () => {
     const lines = summaryLines("api", "server", manifest());
     expect(lines[1]).toBe("model default, permission mode default, persona none");
-    expect(lines[2]).toBe("parts: transcript 512 B, code 3.0 MB, extra 2.0 KB");
+    expect(lines[2]).toBe("parts: transcript 2.0 KB, code 3.0 MB");
+    const small = summaryLines(
+      "api",
+      "server",
+      manifest({ parts: [{ name: "transcript", size: 512, sha256: "a".repeat(64) }] }),
+    );
+    expect(small[2]).toBe("parts: transcript 512 B");
   });
 
   test("with no code and no secret line it says so", () => {
@@ -56,7 +59,7 @@ describe("teleport CLI words (issue #3704)", () => {
     const lines = summaryLines(
       "api",
       "server",
-      manifest({ git, secrets: { lines: 1, labels: [] } } as Partial<TeleportManifest>),
+      manifest({ git, secrets: { lines: 1, labels: [] } }),
     );
     expect(lines[3]).toBe("code: branch (detached), 1 commit ahead of origin/main, 1 file changed");
     expect(lines[4]).toBe("secrets: 1 line looks like one: they move with the session");
@@ -68,9 +71,8 @@ describe("teleport CLI words (issue #3704)", () => {
       permissionMode: "default",
       persona: null,
       parts: [
-        { name: "transcript", size: 512 },
+        { name: "transcript", size: 2048 },
         { name: "code", size: 3 * 1024 * 1024 },
-        { name: "extra", size: 2048 },
       ],
       git: null,
       secrets: { lines: 0, labels: [] },
