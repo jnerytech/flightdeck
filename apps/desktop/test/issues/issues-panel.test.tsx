@@ -131,6 +131,7 @@ const LANGS = [
     cardCreated: "Card created",
     createFor: (n: number) => `Create card for Acme/App#${n}`,
     openFor: (n: number) => `Open card of Acme/App#${n}`,
+    cut: (n: number) => `Showing the first ${n} issues. Narrow the search under Configure issues.`,
   },
   {
     lang: "pt-BR",
@@ -145,6 +146,8 @@ const LANGS = [
     cardCreated: "Card criado",
     createFor: (n: number) => `Criar card de Acme/App#${n}`,
     openFor: (n: number) => `Abrir card de Acme/App#${n}`,
+    cut: (n: number) =>
+      `Mostrando as primeiras ${n} issues. Restrinja a busca em Configurar issues.`,
   },
 ] as const;
 
@@ -281,6 +284,26 @@ describe("issues panel: a late answer", () => {
     });
     expect(rows()).toBe(1);
     expect(within(panel()).queryByText("Issue number 7")).not.toBeNull();
+  });
+});
+
+describe.each(LANGS)("issues panel: a cut list ($lang)", (words) => {
+  test("a list the host says was cut shows a note, and a complete one does not (#4255)", async () => {
+    const cut: Answer = { ok: true, data: { issues: [issue(1), issue(2)], truncated: true } };
+    const h = host({ list: [cut, listed(1, 2)] });
+    show(h.store(words.lang), words.lang, project("p1", { provider: "github" }));
+    await settle(() => rows() === 2);
+    expect(within(panel()).queryByText(words.cut(2))).not.toBeNull();
+    await press(words.refresh);
+    await settle(() => within(panel()).queryByText(words.cut(2)) === null);
+    expect(rows()).toBe(2);
+  });
+
+  test("an older host's answer, with no such field, shows no note (#4255)", async () => {
+    const h = host({ list: [listed(1, 2)] });
+    show(h.store(words.lang), words.lang, project("p1", { provider: "github" }));
+    await settle(() => rows() === 2);
+    expect(within(panel()).queryByText(words.cut(2))).toBeNull();
   });
 });
 

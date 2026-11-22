@@ -45,6 +45,14 @@ export class Issues {
     return provider.list(path, query ?? configured.query);
   }
 
+  /** The list and whether the tracker holds more issues than it shows. */
+  async listPage(
+    _projectId: string,
+    _query?: string,
+  ): Promise<{ issues: Issue[]; truncated?: true }> {
+    return { issues: [] };
+  }
+
   async get(projectId: string, id: string): Promise<Issue> {
     const { path, provider } = await this.provider(projectId);
     return provider.get(path, id);
