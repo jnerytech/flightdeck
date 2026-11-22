@@ -19,6 +19,7 @@ const WORDS = {
   en: {
     switch: "Personas as subagents",
     agents: "Agents",
+    tabs: "Agent configuration",
     mcp: "MCP",
     plain: "MCP, CLAUDE.md, agents and skills of this project.",
     withMemory: "MCP, CLAUDE.md, agents, skills, memory and context of this project.",
@@ -28,6 +29,7 @@ const WORDS = {
   "pt-BR": {
     switch: "Personas como subagentes",
     agents: "Agentes",
+    tabs: "Configuração do agente",
     mcp: "MCP",
     plain: "MCP, CLAUDE.md, agentes e skills deste projeto.",
     withMemory: "MCP, CLAUDE.md, agentes, skills, memória e contexto deste projeto.",
@@ -98,6 +100,13 @@ describe.each(["en", "pt-BR"] as const)("the agent screen's tabs (%s)", (lang) =
     cleanup();
     await screenOf(lang, [], []);
     expect(screen.queryByText(w.plain)).not.toBeNull();
+  });
+
+  test("the tab strip wraps instead of running past a narrow window (#4278)", async () => {
+    await screenOf(lang, ["memory"], []);
+    const list = screen.queryByRole("tablist", { name: w.tabs });
+    expect(list).not.toBeNull();
+    expect(list?.className.split(" ").includes("tabs-wrap")).toBe(true);
   });
 
   test("the live line shows only when the session reported a status", async () => {
