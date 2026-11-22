@@ -218,6 +218,12 @@ describe("issues-ui: o painel no board", () => {
     await settle(() => rows() === 2);
     await click("Criar card de Acme/App#1", issueRow(1));
     await settle(() => !!within(panel()).queryByText("Card criado"));
+    await settle(
+      () =>
+        within(issueRow(1) as HTMLElement).queryByRole("button", {
+          name: "Abrir card de Acme/App#1",
+        }) !== null,
+    );
     await click("Abrir card de Acme/App#1", issueRow(1));
     await settle(() => screen.queryByRole("button", { name: "Abrir issue Acme/App#1" }) !== null);
     expect(screen.getByRole("button", { name: "Abrir issue Acme/App#1" })).toBeTruthy();

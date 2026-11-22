@@ -128,6 +128,7 @@ const LANGS = [
     loading: "Loading issues",
     failed: "Could not list the issues",
     retry: "Try again",
+    cardCreated: "Card created",
     createFor: (n: number) => `Create card for Acme/App#${n}`,
     openFor: (n: number) => `Open card of Acme/App#${n}`,
   },
@@ -141,6 +142,7 @@ const LANGS = [
     loading: "Carregando issues",
     failed: "Não consegui listar as issues",
     retry: "Tentar de novo",
+    cardCreated: "Card criado",
     createFor: (n: number) => `Criar card de Acme/App#${n}`,
     openFor: (n: number) => `Abrir card de Acme/App#${n}`,
   },
@@ -322,11 +324,55 @@ describe.each(LANGS)("issues panel rows ($lang)", (words) => {
     expect(alertText()).toBe("");
   });
 
+  test("a card made but not arrived yet says so and leaves no Create card to press", async () => {
+    const h = host({ list: [listed(1)], create: [created] });
+    render(<Switch store={h.store(words.lang)} id="p1" />);
+    await settle(() => rows() === 1);
+    await press(words.createFor(1));
+    await settle(() => button(words.createFor(1)) === null);
+    expect(within(panel()).queryByText(words.cardCreated)).not.toBeNull();
+    expect(h.creates()).toBe(1);
+  });
+
+  test("a refusal does not outlive the card, which may arrive by another route", async () => {
+    const h = host({ list: [listed(1)], create: [refused] });
+    const store = h.store(words.lang);
+    const view = render(<Switch store={store} id="p1" />);
+    await settle(() => rows() === 1);
+    await press(words.createFor(1));
+    await settle(() => alertText() !== "");
+    await act(async () => {
+      view.rerender(<Switch store={store} id="p1" cards={[card(1)]} />);
+    });
+    expect(alertText()).toBe("");
+  });
+
+  test("the focus stays where the person moved while the card was being made", async () => {
+    let release: (answer: Answer) => void = () => undefined;
+    const held = () => new Promise<Answer>((resolve) => (release = resolve));
+    const h = host({ list: [listed(1)], create: [held] });
+    const store = h.store(words.lang);
+    const view = render(<Switch store={store} id="p1" />);
+    await settle(() => rows() === 1);
+    button(words.createFor(1))?.focus();
+    await press(words.createFor(1));
+    const filter = within(panel()).getByRole("textbox") as HTMLInputElement;
+    filter.focus();
+    await act(async () => release(created));
+    await act(async () => {
+      view.rerender(<Switch store={store} id="p1" cards={[card(1)]} />);
+    });
+    await settle(() => button(words.openFor(1)) !== null);
+    expect(document.activeElement).toBe(filter);
+  });
+
   test("after a create, the focus goes to that row's Open card once the card arrives", async () => {
     const h = host({ list: [listed(1)], create: [created] });
     const store = h.store(words.lang);
     const view = render(<Switch store={store} id="p1" />);
     await settle(() => rows() === 1);
+    // A press with the mouse or the keyboard leaves the focus on the button.
+    button(words.createFor(1))?.focus();
     await press(words.createFor(1));
     await act(async () => {
       view.rerender(<Switch store={store} id="p1" cards={[card(1)]} />);
