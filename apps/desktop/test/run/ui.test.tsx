@@ -94,7 +94,7 @@ describe("run-ui", () => {
     expect(shown[1] ?? "").not.toContain("turno");
     expect(text("Orçamento")).toContain("Turnos: 1 de 10");
     expect(text("Orçamento")).toContain("Custo estimado: US$ 0,50 de US$ 2,00");
-    expect(text("Orçamento")).toContain("Minutos: 0.0 (sem limite)");
+    expect(text("Orçamento")).toContain("Minutos: 0,0 (sem limite)");
     const turns = screen.queryByRole("meter", { name: "Turnos" });
     expect(turns?.getAttribute("value")).toBe("1");
     expect(turns?.getAttribute("max")).toBe("10");
