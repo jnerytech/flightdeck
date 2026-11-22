@@ -10,9 +10,17 @@ export type SettingsGroupName = (typeof SETTINGS_GROUPS)[number];
 const slotOf = (name: SettingsGroupName) => `settings-group-${name}`;
 const bodyOf = (name: SettingsGroupName) => `settings-group-body-${name}`;
 
+/** A group body holds a panel: a child that is not a `HostGate` wrapper, or a gate with something inside. */
+function hasPanel(body: Element | null): boolean {
+  if (!body) return false;
+  return [...body.children].some((child) =>
+    child.hasAttribute("data-gate") ? (child.firstElementChild?.childElementCount ?? 0) > 0 : true,
+  );
+}
+
 /**
  * Which groups hold a panel. A panel that does not apply to the host (no feature, nothing to
- * show) renders nothing, so a group is empty when its body has no element; the groups are
+ * show) renders nothing, so a group is empty when its body has no panel element; the groups are
  * re-read when a body gains or loses one (the host announces its features after the first paint).
  */
 export function useShownGroups(root: RefObject<HTMLElement | null>): SettingsGroupName[] {
@@ -25,12 +33,14 @@ export function useShownGroups(root: RefObject<HTMLElement | null>): SettingsGro
       body: el.querySelector(`[data-slot="${bodyOf(name)}"]`),
     }));
     const read = () => {
-      const next = bodies.filter((b) => (b.body?.childElementCount ?? 0) > 0).map((b) => b.name);
+      const next = bodies.filter((b) => hasPanel(b.body)).map((b) => b.name);
       setShown((prev) => (prev.join() === next.join() ? prev : next));
     };
     read();
     const observer = new MutationObserver(read);
-    for (const { body } of bodies) if (body) observer.observe(body, { childList: true });
+    // The subtree: a panel inside a `HostGate` shows up under its fieldset, not under the group.
+    for (const { body } of bodies)
+      if (body) observer.observe(body, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, [root]);
   return shown;

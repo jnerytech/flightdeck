@@ -155,6 +155,12 @@ describe("the Settings tab of a host that is not online (#3870)", () => {
     ]).toEqual([true, false]);
   });
 
+  test("a gate with no panel inside does not make its group appear", () => {
+    settings("offline", "en", false);
+    const groups = screen.queryAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+    expect(groups).toEqual(["Connection"]);
+  });
+
   test("an app in Portuguese says it in Portuguese", () => {
     const store = settings("offline", "pt-BR");
     const text = document.body.textContent ?? "";

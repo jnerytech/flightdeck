@@ -495,6 +495,7 @@ export const hosts = {
     needsOnline: "{host} is offline: reconnect it to change this.",
     needsConnection: "{host} is not connected yet: wait for it to answer.",
     needsUpdate: "Update the daemon on {host} to change this.",
+    asOf: "Last known state, as of {when}.",
     rootsNeeded: "Type the folder to allow.",
     bypassTitle: "Sessions without permission prompts",
     bypassHint:
