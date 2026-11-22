@@ -29,8 +29,10 @@ unblocked. A badge on the bell counts the unread ones.
   (`9+` past nine). It is the bell's count, row for row, so it falls as you read and goes when the
   list is clear; a source you muted sends no entry and so adds nothing. It comes back with the
   count the next time the app starts.
-- **Mark all as read** keeps the list; **Clear** empties it. The list is kept on this computer
-  (the newest 500) and survives a restart. Esc closes the panel.
+- **Mark all as read** keeps the list; **Clear** empties it. Each says what it did and moves the
+  focus to the panel's title. After **Clear** an **Undo** line puts the entries back, read or unread
+  as they were, for as long as the panel stays open. The list is kept on this computer (the newest
+  500) and survives a restart. Esc closes the panel.
 - A read row has **Mark as unread** (named for its row; hover or focus it) to come back to it later.
 - The OS notifications are sent as before unless you tune them (below). The center only keeps a
   copy, so one that is never sent (the window had focus) is not in it either.
