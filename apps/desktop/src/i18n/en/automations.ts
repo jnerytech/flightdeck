@@ -198,6 +198,7 @@ export const automations = {
     hideRunsButton: "Hide runs",
     noRuns: "No runs yet",
     exit: "exit {code}",
+    runOutput: "Output of the run at {time}",
     timedOut: "timed out",
     truncated: "output cut",
     requester: { you: "You", claude: "Claude", automation: "Automation", workflow: "Workflow" },
