@@ -42,10 +42,14 @@
   &:hover {
     background-color: var(--accent);
   }
-  &:hover .inbox-mark {
+  /* A row that holds the focus shows its control and hides its time, as a hover does (#4031): the
+     two share one corner. */
+  &:hover .inbox-mark,
+  &:focus-within .inbox-mark {
     opacity: 1;
   }
-  &:hover .inbox-time {
+  &:hover .inbox-time,
+  &:focus-within .inbox-time {
     visibility: hidden;
   }
 }
@@ -105,4 +109,8 @@
   height: 0.5rem;
   border-radius: 9999px;
   background-color: var(--primary);
+}
+/* Why an answer from a row was not done (#4032), under the row's buttons. */
+@utility inbox-failure {
+  margin: 0 0.5rem 0.375rem;
 }

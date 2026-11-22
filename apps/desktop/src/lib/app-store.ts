@@ -548,7 +548,7 @@ export class AppStore {
     requestId: string,
     decision: "allow" | "deny",
     answer: Answer = {},
-  ): Promise<void> {
+  ): ReturnType<AppStore["permissions"]["respondTo"]> {
     return this.permissions.respondTo(hostId, requestId, decision, answer);
   }
 

@@ -28,6 +28,9 @@ const WORDS = {
     settings: "Notification settings",
     master: "Show notifications",
     count: (n: number) => `Happened ${n} times`,
+    markedRead: (title: string) => `Marked as read: ${title}`,
+    markedUnread: (title: string) => `Marked as unread: ${title}`,
+    dismissed: (title: string) => `Dismissed: ${title}`,
   },
   "pt-BR": {
     bell: /^Notificações/,
@@ -39,6 +42,9 @@ const WORDS = {
     settings: "Configurar notificações",
     master: "Mostrar notificações",
     count: (n: number) => `Aconteceu ${n} vezes`,
+    markedRead: (title: string) => `Marcada como lida: ${title}`,
+    markedUnread: (title: string) => `Marcada como não lida: ${title}`,
+    dismissed: (title: string) => `Descartada: ${title}`,
   },
 } as const;
 
@@ -115,6 +121,50 @@ describe.each(["en", "pt-BR"] as const)("the notification center, names and time
       name: w.dismiss("Session G"),
     });
     expect(button).not.toBeNull();
+  });
+
+  /** What the panel's polite status says now, and what holds the focus. */
+  const said = (panel: HTMLElement) =>
+    panel.querySelector('[data-slot="inbox-live"]')?.textContent ?? "";
+  const pickOf = (panel: HTMLElement, element: Element | null) =>
+    element instanceof HTMLButtonElement &&
+    element.classList.contains("inbox-pick") &&
+    panel.contains(element);
+
+  test("Mark as read says so and puts the focus on a row's pick button, not on the page (#4030)", async () => {
+    const panel = await openPanel(lang, [ENTRY("A", today(30)), ENTRY("B", today(20))]);
+    await act(async () => {
+      fireEvent.click(within(panel).getByRole("button", { name: w.markRead("Session A") }));
+    });
+    expect(said(panel)).toBe(w.markedRead("Session A"));
+    expect(pickOf(panel, document.activeElement)).toBe(true);
+  });
+
+  test("Mark as unread says so and puts the focus on a row's pick button (#4030)", async () => {
+    const panel = await openPanel(lang, [
+      ENTRY("A", today(30)),
+      ENTRY("C", today(10), { read: true }),
+    ]);
+    await act(async () => {
+      fireEvent.click(within(panel).getByRole("button", { name: w.markUnread("Session C") }));
+    });
+    expect(said(panel)).toBe(w.markedUnread("Session C"));
+    expect(pickOf(panel, document.activeElement)).toBe(true);
+  });
+
+  test("Dismiss says so and the focus goes to the row now in its place (#4030)", async () => {
+    const panel = await openPanel(lang, [
+      ENTRY("G", today(30), {
+        route: { name: "card", host: "h-gone", projectId: "p", cardId: "c" },
+      }),
+      ENTRY("B", today(20)),
+    ]);
+    await act(async () => {
+      fireEvent.click(within(panel).getByRole("button", { name: w.dismiss("Session G") }));
+    });
+    expect(said(panel)).toBe(w.dismissed("Session G"));
+    expect(document.activeElement?.textContent).toContain("Session B");
+    expect(pickOf(panel, document.activeElement)).toBe(true);
   });
 
   test("a row of an earlier day shows its day, a row of today only its time", async () => {

@@ -21,6 +21,13 @@ import { NotificationCenter, type RowRequest, UnreadBadge } from "./notification
 /** Requests that are answered in full where they are shown (a question, a plan), never from a row. */
 const ASKED_IN_FULL = new Set(["AskUserQuestion", "ExitPlanMode"]);
 
+const failureOf = (failure: string | undefined) => (failure ? { failure } : {});
+const withoutKey = (map: ReadonlyMap<string, string>, key: string) => {
+  const next = new Map(map);
+  next.delete(key);
+  return next;
+};
+
 /** The bell in the top bar: the unread rows and the notification center. */
 export function NotificationBell(
   props: Readonly<{
@@ -34,6 +41,8 @@ export function NotificationBell(
   const [open, setOpen] = useState(false);
   /** The requests an answer is on its way for, by `host/request`. */
   const [answering, setAnswering] = useState<ReadonlySet<string>>(new Set());
+  /** Why an answer from a row was not done, by `host/request`, until the next try. */
+  const [refused, setRefused] = useState<ReadonlyMap<string, string>>(new Map());
   const state = store.getState();
   const waiting = needsYou(state, t);
   const itemOf = (entry: InboxEntry) => {
@@ -75,20 +84,23 @@ export function NotificationBell(
       risk: item.risk,
       ...(item.riskReason ? { reason: item.riskReason } : {}),
       pending: answering.has(`${item.hostId}/${item.requestId}`),
+      ...failureOf(refused.get(`${item.hostId}/${item.requestId}`)),
     };
   };
   const respond = async (row: InboxRow, decision: "allow" | "deny", held: boolean) => {
     const item = itemOf(row.entry);
     if (!item) return;
     const key = `${item.hostId}/${item.requestId}`;
+    setRefused((now) => withoutKey(now, key));
     setAnswering((now) => new Set(now).add(key));
     try {
-      await store.respondTo(
+      const result = await store.respondTo(
         item.hostId,
         item.requestId,
         decision,
         decision === "allow" ? { held } : {},
       );
+      if (result?.ok === false) setRefused((now) => new Map(now).set(key, result.reason));
     } finally {
       setAnswering((now) => {
         const next = new Set(now);

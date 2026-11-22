@@ -6,6 +6,7 @@ import { PopoverContent } from "@/components/ui/popover";
 import { SWITCHABLE } from "@/features/notifications/index.ts";
 import { ApprovalActions, RiskSeal } from "@/features/permissions/ui.ts";
 import type { Key } from "@/i18n";
+import { InlineNotice } from "@/shared/feedback/index.ts";
 import { Inline, Stack } from "@/shared/layout/index.ts";
 import { formatDateTime, formatWhen } from "../../i18n/format.ts";
 import type { T } from "../../i18n/index.ts";
@@ -30,6 +31,8 @@ export interface RowRequest {
   risk: RiskLevel | undefined;
   reason?: string;
   pending: boolean;
+  /** Why the last answer from this row was not done, until the next try. */
+  failure?: string;
 }
 
 /** One row: the dot and the title (bold) when unread, what it is about, and what a click does. */
@@ -117,6 +120,13 @@ function InboxItem(
             onDeny={() => props.onDeny(row)}
           />
         </fieldset>
+      )}
+      {request?.failure && (
+        <div data-slot="inbox-failure" className="inbox-failure">
+          <InlineNotice tone="error">
+            {t("inbox.notDone", { reason: request.failure })}
+          </InlineNotice>
+        </div>
       )}
       {unread && (
         <span className="inbox-mark">
@@ -215,36 +225,64 @@ export function NotificationCenter(
     heading.current?.focus();
   };
   /**
-   * The row being answered: when it leaves, the answer is said and the focus goes to the row now in
-   * its place. An answer that never took (the host refused it) is let go after a while, so a later
-   * departure of that row does not pull the focus.
+   * The row an action was done on. When the row leaves (an answer, a dismissal) or has moved (marked
+   * read or unread), the action is said and the focus goes to the row now in its place; a pressed
+   * button is gone by then. An answer the host refused leaves its row in place: its failure shows in
+   * the row and the focus returns to the button pressed. An answer that never took is let go after a
+   * while, so a later departure of that row does not pull the focus.
    */
-  const answering = useRef<{ id: string; at: number; words: string; since: number } | null>(null);
-  const answer = (row: InboxRow, decision: "allow" | "deny", run: () => void) => {
+  const settling = useRef<{
+    id: string;
+    at: number;
+    words: string;
+    since: number;
+    stays: boolean;
+    decision?: "allow" | "deny";
+    /** The answer was typed on the row (A or N): the focus returns there, not to a button. */
+    keyed: boolean;
+  } | null>(null);
+  const settle = (
+    row: InboxRow,
+    words: string,
+    options: { stays?: boolean; decision?: "allow" | "deny" },
+    run: () => void,
+  ) => {
     const rows = [...(list.current?.querySelectorAll("li[data-entry]") ?? [])];
     const at = rows.findIndex((li) => (li as HTMLElement).dataset.entry === row.entry.id);
-    const subject = row.entry.subject ?? row.entry.title;
-    const outcome = t(`approval.resolved.${decision}` as Key);
-    answering.current = {
+    settling.current = {
       id: row.entry.id,
       at: Math.max(at, 0),
-      words: `${subject}: ${outcome}`,
+      words,
       since: Date.now(),
+      stays: options.stays ?? false,
+      keyed: document.activeElement?.classList.contains("inbox-pick") ?? false,
+      ...(options.decision ? { decision: options.decision } : {}),
     };
     run();
   };
+  const titleOf = (row: InboxRow) => row.entry.subject ?? row.entry.title;
+  const answer = (row: InboxRow, decision: "allow" | "deny", run: () => void) =>
+    settle(row, `${titleOf(row)}: ${t(`approval.resolved.${decision}` as Key)}`, { decision }, run);
   useEffect(() => {
-    const waiting = answering.current;
+    const waiting = settling.current;
     if (!waiting) return;
     if (Date.now() - waiting.since > ANSWER_WAIT_MS) {
-      answering.current = null;
+      settling.current = null;
       return;
     }
-    const still = [...(list.current?.querySelectorAll("li[data-entry]") ?? [])].some(
-      (li) => (li as HTMLElement).dataset.entry === waiting.id,
+    const row = [...(list.current?.querySelectorAll<HTMLElement>("li[data-entry]") ?? [])].find(
+      (li) => li.dataset.entry === waiting.id,
     );
-    if (still) return;
-    answering.current = null;
+    const failed = row?.querySelector('[data-slot="inbox-failure"]') != null;
+    if (failed) {
+      settling.current = null;
+      const buttons = [...(row?.querySelectorAll<HTMLElement>("fieldset button") ?? [])];
+      const pressed = waiting.decision === "deny" ? buttons.at(-1) : buttons[0];
+      (waiting.keyed ? row?.querySelector<HTMLElement>(".inbox-pick") : pressed)?.focus();
+      return;
+    }
+    if (row && !waiting.stays) return;
+    settling.current = null;
     setSaid(waiting.words);
     const picks = [...(list.current?.querySelectorAll<HTMLElement>(".inbox-pick") ?? [])];
     (picks[Math.min(waiting.at, picks.length - 1)] ?? heading.current)?.focus();
@@ -339,9 +377,24 @@ export function NotificationCenter(
                     onPick={props.onPick}
                     onApprove={(r, held) => answer(r, "allow", () => props.onApprove(r, held))}
                     onDeny={(r) => answer(r, "deny", () => props.onDeny(r))}
-                    onMarkRead={props.onMarkRead}
-                    onMarkUnread={props.onMarkUnread}
-                    onDismiss={props.onDismiss}
+                    onMarkRead={(r) =>
+                      settle(r, t("inbox.markedRead", { title: titleOf(r) }), { stays: true }, () =>
+                        props.onMarkRead(r),
+                      )
+                    }
+                    onMarkUnread={(r) =>
+                      settle(
+                        r,
+                        t("inbox.markedUnread", { title: titleOf(r) }),
+                        { stays: true },
+                        () => props.onMarkUnread(r),
+                      )
+                    }
+                    onDismiss={(r) =>
+                      settle(r, t("inbox.dismissed", { title: titleOf(r) }), {}, () =>
+                        props.onDismiss(r),
+                      )
+                    }
                   />
                 ))}
               </ul>
