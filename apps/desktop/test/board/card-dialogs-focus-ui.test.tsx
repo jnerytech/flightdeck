@@ -108,7 +108,7 @@ async function cancel(name: string, cancelLabel: string) {
   await settle(() => dialog(name) === null);
 }
 
-describe("card-dialogs-focus-ui: Cancel in a dialog the Actions menu opens gives the focus back to Actions (#4272)", () => {
+describe("card-dialogs-focus-ui: Cancel or Escape in a dialog the Actions menu opens gives the focus back to Actions (#4272)", () => {
   for (const language of ["en", "pt-BR"] as const) {
     const words = WORDS[language];
     const kit = { act, fireEvent, screen };
@@ -140,6 +140,17 @@ describe("card-dialogs-focus-ui: Cancel in a dialog the Actions menu opens gives
       setup(language);
       await chooseFromCardMenu(kit, words.actions, words.startWith);
       await cancel(words.startDialog, words.cancel);
+      expect(await settleMaybe(() => actionsHasFocus(words.actions))).toBe(true);
+    });
+
+    test(`Escape on the Start with dialog (${language})`, async () => {
+      setup(language);
+      await chooseFromCardMenu(kit, words.actions, words.startWith);
+      await settle(() => dialog(words.startDialog) !== null);
+      await act(async () => {
+        fireEvent.keyDown(dialog(words.startDialog) as HTMLElement, { key: "Escape" });
+      });
+      await settle(() => dialog(words.startDialog) === null);
       expect(await settleMaybe(() => actionsHasFocus(words.actions))).toBe(true);
     });
 
