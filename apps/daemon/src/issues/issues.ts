@@ -8,6 +8,7 @@ import { git } from "../git/index.ts";
 import { GithubIssues, githubCoords } from "../github/index.ts";
 import { FlightdeckError, UNTRUSTED_MARK } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/index.ts";
+import { ISSUE_LIMIT } from "../pr/index.ts";
 import { azureCoords } from "../pr-hosts/index.ts";
 import { parseIssueRef } from "./domain/issue-ref.ts";
 import { AzureIssues, type IssueProvider } from "./providers.ts";
@@ -41,16 +42,22 @@ export class Issues {
   constructor(private readonly opts: IssuesOptions) {}
 
   async list(projectId: string, query?: string): Promise<Issue[]> {
-    const { path, provider, configured } = await this.provider(projectId);
-    return provider.list(path, query ?? configured.query);
+    return (await this.listPage(projectId, query)).issues;
   }
 
-  /** The list and whether the tracker holds more issues than it shows. */
+  /**
+   * The list and whether the tracker holds more issues than it shows. The providers ask for one
+   * issue more than the limit: that extra one is how a cut shows, and it is dropped here.
+   */
   async listPage(
-    _projectId: string,
-    _query?: string,
+    projectId: string,
+    query?: string,
   ): Promise<{ issues: Issue[]; truncated?: true }> {
-    return { issues: [] };
+    const { path, provider, configured } = await this.provider(projectId);
+    const found = await provider.list(path, query ?? configured.query);
+    return found.length > ISSUE_LIMIT
+      ? { issues: found.slice(0, ISSUE_LIMIT), truncated: true }
+      : { issues: found };
   }
 
   async get(projectId: string, id: string): Promise<Issue> {

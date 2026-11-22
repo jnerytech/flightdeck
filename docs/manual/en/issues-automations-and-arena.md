@@ -20,6 +20,8 @@ default, because it writes to the provider).
   closes the card closes the issue (`Fixes #n` or `AB#id`).
 - An issue from an **External author** is marked. Its text is third-party content: the card's
   automatic approval stays suspended until you resume it.
+- The list holds at most 50 issues. When the tracker has more, a note says so: narrow the search
+  under **Configure issues**.
 - Only `http` and `https` addresses are ever opened.
 
 ## Automations

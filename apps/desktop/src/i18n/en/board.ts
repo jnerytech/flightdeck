@@ -265,6 +265,7 @@ export const board = {
     filter: "Filter issues",
     filterPlaceholder: "Title, label or author",
     none: "No issues found",
+    cut: "Showing the first {n} issues. Narrow the search under Configure issues.",
     loading: "Loading issues",
     reload: "Refresh",
     retry: "Try again",

@@ -44,7 +44,7 @@ export class AzureIssues implements IssueProvider {
     );
     const me = await this.me(cwd);
     return Promise.all(
-      items.slice(0, ISSUE_LIMIT).map(async (item) => {
+      items.slice(0, ISSUE_LIMIT + 1).map(async (item) => {
         // A WIQL of your own may not select the fields an issue needs.
         const full = item.fields["System.Title"] ? item : await this.show(cwd, String(item.id));
         return this.toIssue(full, me);
