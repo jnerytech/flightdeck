@@ -17,6 +17,19 @@
   }
 }
 
+/* A control and the help under it, in the control's column of a setting row (#3843). */
+@utility setting-control {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+@utility setting-note {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+
 /* The help under a checkbox, indented to its words (the box and the 8 px gap). */
 @utility setting-hint {
   display: block;
