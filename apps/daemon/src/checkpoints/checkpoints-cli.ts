@@ -17,6 +17,7 @@ import {
   snapshotsLines,
   turnFilesLines,
   undoneLines,
+  undoPreviewLines,
 } from "./domain/checkpoints-cli-view.ts";
 
 /** `session` is the Claude session id; `n` and `turn` are the snapshot's number, as `snapshots list` prints it. */
@@ -24,7 +25,8 @@ export type CheckpointsCliArgs =
   | { action: "list"; session: string; json?: boolean }
   | { action: "files"; session: string; n: number; json?: boolean }
   | { action: "preview" | "apply"; session: string; turn: number; json?: boolean }
-  | { action: "undo"; session: string; json?: boolean };
+  | { action: "undo"; session: string; json?: boolean }
+  | { action: "undoPreview"; session: string; json?: boolean };
 
 /** What a write that lost its connection may have done: the person looks before trying again. */
 const UNSURE =
@@ -67,6 +69,10 @@ export function runCheckpointsCli(
         note.wrote = true;
         const done = await daemon.call("rewind.undo", { claudeSessionId, confirm: true });
         return shown(args.json, done, () => undoneLines(args.session, done));
+      }
+      if (args.action === "undoPreview") {
+        const preview = await daemon.call("rewind.undoPreview", { claudeSessionId });
+        return shown(args.json, preview, () => undoPreviewLines(args.session, preview));
       }
       const preview = await daemon.call("rewind.preview", { claudeSessionId, turn: args.turn });
       return shown(args.json, preview, () => rewindPreviewLines(args.session, args.turn, preview));

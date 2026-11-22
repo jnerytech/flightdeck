@@ -5,7 +5,7 @@
 Os verbos que leem os snapshots git que o Flightdeck tira em volta de cada turno de uma sessão do Claude, o que voltar
 a um deles mudaria, e o trace da sessão: seus turnos, chamadas de ferramenta e subagentes com tempo e custo. Funcionam
 como os outros comandos do `flightdeckd`: veja [o que todos têm em comum](flightdeckd-commands.md#o-que-todos-têm-em-comum).
-Todos só leem, exceto `rewind apply` e `rewind undo`, que devolvem arquivos e exigem `--confirm`. Aceitam
+Todos só leem, exceto `rewind apply` e `rewind undo` (sem `--preview`), que devolvem arquivos e exigem `--confirm`. Aceitam
 `--host <nome>` para rodar em um host pareado e `--json` para imprimir o valor que o daemon devolve.
 
 `<sessão>` é o id da sessão do Claude, o que os comandos de histórico imprimem. Uma sessão que o daemon não conhece é
@@ -38,6 +38,16 @@ fd rewind preview 3f9c1a 2
 SDK ou por um snapshot: os arquivos e as linhas adicionadas e removidas. Não muda arquivo nem referência; no caminho do snapshot o git pode guardar os objetos da árvore de trabalho, e depois os coleta.
 
 ```sh
+fd rewind undo 3f9c1a --preview
+```
+
+`undo <sessão> --preview` diz o que o `undo` mudaria agora: os arquivos que diferem entre o estado guardado antes do
+último rewind e o checkout como está, com as linhas adicionadas e removidas. Isso inclui as edições feitas depois do
+rewind, que um undo sobrescreveria. Não aceita `--confirm`, não escreve nada, e `--preview` com `--confirm` é recusado
+com saída `1`. Depois que o undo rodou, ou quando o checkout já é igual ao estado guardado, imprime `no file changed`.
+Sem rewind para desfazer, o daemon recusa com saída `1`.
+
+```sh
 fd rewind apply 3f9c1a 2 --confirm
 fd rewind undo 3f9c1a --confirm
 ```
@@ -52,7 +62,7 @@ podem ou não ter sido devolvidos e sai com `2`: olhe os arquivos com `preview` 
 
 Um rewind que mudaria um arquivo que o Claude Code lê como configuração (qualquer coisa numa pasta `.claude`, um `CLAUDE.md`, um `CLAUDE.local.md` ou um `.mcp.json`) ou um arquivo que tem outro hard link exige uma conexão próxima (este computador ou a Tailscale): por uma distante o daemon recusa com `transport_refused` antes de escrever qualquer coisa. O mesmo vale para uma bifurcação que volta os arquivos antes (`session.fork` com um turno de volta). Qualquer outro rewind funciona de qualquer lugar.
 
-O shell de uma sessão não roda `rewind apply` nem `rewind undo` sem a pessoa aprovar no app.
+O shell de uma sessão não roda `rewind apply` nem `rewind undo` sem a pessoa aprovar no app; `rewind undo --preview` só lê, então roda sem isso.
 
 ## fd trace
 

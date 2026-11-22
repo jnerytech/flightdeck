@@ -26,6 +26,20 @@ describe("risk rules: a session rewinding its own checkout through flightdeckd f
     ).toEqual([]);
   });
 
+  test("rewind undo --preview reads, but with --confirm in the line it is rated as the undo it may be (#4041)", () => {
+    expect(
+      wrongReasons([
+        ["fd rewind undo s1 --preview --confirm", REASON],
+        ["fd rewind undo s1 --confirm --preview", REASON],
+        ["fd rewind undo s1 --confirm --host --preview", REASON],
+        ["fd rewind undo s1 --preview --confirm=true", REASON],
+        ["fd rewind undo s1 --preview && fd rewind undo s1 --confirm", REASON],
+        ["fd rewind apply s1 2 --preview --confirm", REASON],
+        ["fd rewind apply s1 2 --preview", REASON],
+      ]),
+    ).toEqual([]);
+  });
+
   test("a verb the shell expands could be any of them, so it is high", () => {
     expect(
       wrongReasons([

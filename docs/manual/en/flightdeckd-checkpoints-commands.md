@@ -5,7 +5,7 @@
 The verbs that read the git snapshots Flightdeck takes around each turn of a Claude session, what rewinding to one
 would change, and the trace of the session: its turns, tool calls and subagents with their time and cost. They work
 as the other `flightdeckd` commands do: see [what they all share](flightdeckd-commands.md#what-they-all-share). All of
-them only read, except `rewind apply` and `rewind undo`, which put files back and need `--confirm`. They take
+them only read, except `rewind apply` and `rewind undo` (without `--preview`), which put files back and need `--confirm`. They take
 `--host <name>` to run on a paired host, and `--json` to print the value the daemon returns.
 
 `<session>` is the Claude session id, the one the history commands print. A session the daemon does not know is
@@ -38,6 +38,16 @@ fd rewind preview 3f9c1a 2
 it through the SDK's checkpoint or through a snapshot: the files, and the lines added and removed. It changes no file and no ref; on the snapshot path git may store the objects of the working tree, which it collects later.
 
 ```sh
+fd rewind undo 3f9c1a --preview
+```
+
+`undo <session> --preview` says what `undo` would change right now: the files that differ between the state saved
+before the last rewind and the checkout as it is, with the lines added and removed. That includes edits made after
+the rewind, which an undo would overwrite. It takes no `--confirm`, writes nothing, and `--preview` with `--confirm`
+is refused with exit `1`. Once the undo has run, or when the checkout already equals the saved state, it prints
+`no file changed`. With no rewind to undo the daemon refuses with exit `1`.
+
+```sh
 fd rewind apply 3f9c1a 2 --confirm
 fd rewind undo 3f9c1a --confirm
 ```
@@ -53,7 +63,7 @@ you try again.
 
 A rewind that would change a file Claude Code reads as configuration (anything in a `.claude` folder, a `CLAUDE.md`, a `CLAUDE.local.md` or a `.mcp.json`) or a file that has another hard link needs a near connection (this computer or Tailscale): from a distant one the daemon refuses with `transport_refused` before it writes anything. The same goes for a fork that rewinds the files first (`session.fork` with a rewind turn). Any other rewind works from anywhere.
 
-A session's own shell cannot run `rewind apply` or `rewind undo` without the person approving it in the app.
+A session's own shell cannot run `rewind apply` or `rewind undo` without the person approving it in the app; `rewind undo --preview` only reads, so it runs without that.
 
 ## fd trace
 

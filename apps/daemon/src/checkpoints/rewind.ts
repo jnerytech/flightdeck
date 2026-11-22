@@ -66,9 +66,10 @@ export class Rewinder {
     return sdk ?? (await this.restore(target));
   }
 
-  /** What `undo` would change: the files that differ between the saved state and the working tree. */
-  async undoPreview(_claudeSessionId: string): Promise<RewindPreview> {
-    return { via: "snapshot", files: [], insertions: 0, deletions: 0 };
+  /** What `undo` would change: the files that differ between the saved state and the working tree. Writes nothing. */
+  async undoPreview(claudeSessionId: string): Promise<RewindPreview> {
+    const row = await this.inRoots(this.newestSafety(claudeSessionId));
+    return (await this.snapshotDiff(row)).preview;
   }
 
   /** Goes back to the state saved before the last rewind. */
@@ -78,15 +79,20 @@ export class Rewinder {
     guard?: () => void,
   ): Promise<RewindPreview> {
     this.allowed(claudeSessionId, confirm);
+    const row = await this.inRoots(this.newestSafety(claudeSessionId));
+    if (guard) await this.guardFiles(row.repo, (await this.snapshotDiff(row)).preview.files, guard);
+    return this.restore(row);
+  }
+
+  /** The state saved before the session's last rewind; the one `undo` and its preview both read. */
+  private newestSafety(claudeSessionId: string): SnapshotRow {
     const safety = this.opts.snapshots
       .list(claudeSessionId)
       .reverse()
       .find((s) => s.kind === "safety");
     if (!safety)
       throw new FlightdeckError("not_found", "no rewind to undo in this session", "rewind_nothing");
-    const row = await this.inRoots(safety);
-    if (guard) await this.guardFiles(row.repo, (await this.snapshotDiff(row)).preview.files, guard);
-    return this.restore(row);
+    return safety;
   }
 
   private async guardFiles(
