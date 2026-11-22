@@ -1,5 +1,6 @@
 import type { SendResult } from "@flightdeck/protocol";
 import type { Party } from "./policy.ts";
+import { paramsOf } from "./refusal.ts";
 
 /** A party known only by its place: no name, persona, project or team (a notice target, Flightdeck itself, a session not found). */
 export function blankParty(id: string, host: string): Party {
@@ -16,11 +17,17 @@ export function relayAnswer(existing: {
   id: string;
   status: string;
   reason: string | null;
+  reason_key: string | null;
+  reason_params: string | null;
 }): SendResult {
   return {
     id: existing.id,
     status:
       existing.status === "delivered" || existing.status === "queued" ? existing.status : "refused",
     reason: existing.reason,
+    // Only a refusal has a key: a delivered answer keeps its two fields.
+    ...(existing.reason_key
+      ? { reasonKey: existing.reason_key, reasonParams: paramsOf(existing.reason_params) }
+      : {}),
   };
 }

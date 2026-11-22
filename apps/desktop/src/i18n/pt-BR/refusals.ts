@@ -42,6 +42,21 @@ export const refusals = {
       "As sessões não são do mesmo projeto nem do mesmo time, e nenhuma exceção em Configurações libera este par.",
     messaging_read_other_host: "A sessão é de outro host: o read_session só lê sessões deste host.",
     messaging_policy_invalid: "As regras de mensagens não valem: {errors}",
+    messaging_text_empty: "A mensagem está vazia.",
+    messaging_text_too_big: "A mensagem passa de 32 KB.",
+    messaging_pair_paused:
+      "Essas duas sessões estão pausadas depois de um ciclo de mensagens: libere o par em Configurações.",
+    messaging_limit_loop:
+      "Mais de {messages} mensagens em {minutes} minutos foram e voltaram entre essas sessões: o par foi pausado.",
+    messaging_limit_pair:
+      "O limite de {limit} mensagens por hora entre essas duas sessões foi atingido.",
+    messaging_limit_session: "O limite de {limit} mensagens por hora desta sessão foi atingido.",
+    messaging_session_ended: "A sessão terminou.",
+    messaging_restarted: "O daemon reiniciou antes de a mensagem ser entregue.",
+    messaging_relay_expired:
+      "O app não levou a mensagem ao outro host em 24 horas: ela não foi enviada.",
+    messaging_relay_session_only: "Só mensagens entre sessões passam para outro host.",
+    messaging_relay_other_host: "A mensagem é para o host {host}, não para este.",
     project_no_issues:
       "Este projeto não tem integração de issues: configure nas definições do projeto.",
     card_contract_unmet: "Este card não está pronto para {column}: falta {needs}.",

@@ -28,6 +28,8 @@ export interface EndpointInfo {
   /** Whether it takes messages; `reason` says why not. */
   controllable: boolean;
   reason: string | null;
+  /** The key of `reason`, for the app to translate (#4083). */
+  reasonKey?: string | null;
 }
 
 export interface ReadMessage {
@@ -100,6 +102,8 @@ const PLAIN_REASON =
 const ENDED_REASON = "the session has ended";
 const notControllableReason = (state: string): string =>
   state === "ended" ? ENDED_REASON : PLAIN_REASON;
+const notControllableKey = (state: string): string =>
+  state === "ended" ? "messaging_session_ended" : "messaging_plain_session";
 /** `read_session` shows at most this many messages, each cut to 8 KB. */
 const MAX_READ = 20;
 
@@ -155,6 +159,7 @@ export class LocalEndpoints implements Endpoints {
         state,
         controllable: state !== "ended",
         reason: state === "ended" ? ENDED_REASON : null,
+        reasonKey: state === "ended" ? "messaging_session_ended" : null,
       };
     });
     for (const s of this.opts.external.list()) {
@@ -170,6 +175,7 @@ export class LocalEndpoints implements Endpoints {
         state,
         controllable,
         reason: controllable ? null : notControllableReason(state),
+        reasonKey: controllable ? null : notControllableKey(state),
       });
     }
     return infos;

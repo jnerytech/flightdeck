@@ -1,4 +1,4 @@
-import type { MessageInfo, RelayMessage } from "@flightdeck/protocol";
+import type { MessageInfo, RelayMessage, SendResult } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 
 /**
@@ -23,6 +23,13 @@ export interface RelayDeps {
 const onlineHost = (deps: RelayDeps, hostName: string) =>
   deps.hosts().find((h) => h.online && h.hostName === hostName);
 
+type Result = Pick<SendResult, "reason" | "reasonKey" | "reasonParams"> & { status: string };
+
+/** The key and values of a refusal, when it has them: the origin's app writes the reason with them (#4083). */
+const whyOf = ({ reasonKey, reasonParams }: Pick<Result, "reasonKey" | "reasonParams">) => ({
+  ...(reasonKey ? { reasonKey, reasonParams: reasonParams ?? null } : {}),
+});
+
 /** A `messages.relay` frame from `fromId`: carried to the host it names, the result told back. */
 export async function relayMessage(
   deps: RelayDeps,
@@ -32,7 +39,7 @@ export async function relayMessage(
   const target = onlineHost(deps, message.toHost);
   // Not reachable now: it waits in the origin's queue, which replays it when the app reconnects.
   if (!target) return;
-  let result: { status: string; reason?: string | null };
+  let result: Result;
   try {
     // The recipient's daemon checks its own rules again: what it refuses comes back with why.
     result = (await deps.call(target.id, "messages.relay", { message })) as typeof result;
@@ -43,6 +50,7 @@ export async function relayMessage(
     id: message.id,
     status: result.status,
     reason: result.reason ?? null,
+    ...whyOf(result),
   });
 }
 
@@ -61,6 +69,7 @@ export async function relayUpdate(
     id: message.id,
     status: message.status,
     reason: message.reason,
+    ...whyOf(message),
   });
 }
 

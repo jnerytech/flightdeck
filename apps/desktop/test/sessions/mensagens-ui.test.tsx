@@ -26,6 +26,10 @@ const click = async (name: string | RegExp) => {
   });
 };
 
+/** The alert that says how a send went (the page may hold other alerts, such as a toast). */
+const refusedResult = () =>
+  screen.queryAllByRole("alert").find((el) => (el.textContent ?? "").includes("Recusada")) ?? null;
+
 /** The terminal session c1 of a daemon, on its screen. */
 async function open(features = ["messaging"]) {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
@@ -154,14 +158,10 @@ describe("sessao-mensagens-ui: the Mensagens tab of a session", () => {
       });
     });
     await click("Enviar");
-    await settle(() =>
-      (screen.queryByRole("status", { name: "Resultado do envio" })?.textContent ?? "").includes(
-        "outro projeto",
-      ),
-    );
-    expect(screen.queryByRole("status", { name: "Resultado do envio" })?.textContent).toContain(
-      "Recusada",
-    );
+    // A refusal is announced at once (an alert); a delivered or queued send is a polite status.
+    await settle(() => (refusedResult()?.textContent ?? "").includes("outro projeto"));
+    expect(refusedResult()?.textContent).toContain("Recusada");
+    expect(screen.queryByRole("status", { name: "Resultado do envio" })).toBeNull();
   });
 
   test("a sent message reads as sent, and Cancelar closes the form", async () => {
@@ -225,5 +225,73 @@ describe("sessao-mensagens-ui: a paused pair (#4086)", () => {
       fireEvent.click(link as HTMLElement);
     });
     expect(store.router.current).toEqual({ name: "settings", section: "messaging" });
+  });
+});
+
+describe("sessao-mensagens-ui: a refusal reads in the app's language and its result follows the form (#4083, #4087)", () => {
+  const fillAndSend = async (text: string) => {
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Texto da mensagem"), { target: { value: text } });
+    });
+    await click("Enviar");
+  };
+  const openForm = async () => {
+    await click("Mensagens");
+    await click("Mandar para outra sessão…");
+    await settle(
+      () => (screen.queryByLabelText("Para") as HTMLSelectElement | null)?.options.length === 2,
+    );
+  };
+
+  test("a refused send shows the reason in Portuguese, and a refused row of the list too", async () => {
+    const { daemon } = await open();
+    daemon.messaging.send = {
+      id: "m2",
+      status: "refused",
+      reason: "limit of 3 per hour per session",
+      reasonKey: "messaging_limit_session",
+      reasonParams: { limit: 3 },
+    };
+    daemon.messaging.messages = [
+      {
+        ...(daemon.messaging.messages[0] as object),
+        id: "m8",
+        status: "refused",
+        reason: "the sessions are not in the same project or the same team",
+        reasonKey: "messaging_no_route",
+        text: "linha recusada",
+      },
+    ];
+    await openForm();
+    await fillAndSend("oi");
+    await settle(() => refusedResult() !== null);
+    const alert = refusedResult()?.textContent ?? "";
+    expect(alert.includes("O limite de 3 mensagens por hora desta sessão foi atingido.")).toBe(
+      true,
+    );
+    expect(alert.includes("limit of 3 per hour")).toBe(false);
+    const list = screen.queryByRole("list", { name: "Mensagens desta sessão" });
+    await settle(() => (list?.textContent ?? "").includes("não são do mesmo projeto"));
+    expect((list?.textContent ?? "").includes("the sessions are not in the same project")).toBe(
+      false,
+    );
+  });
+
+  test("the result of a send goes away when the text or the recipient changes", async () => {
+    const { daemon } = await open();
+    daemon.messaging.send = { id: "m2", status: "refused", reason: "outro projeto" };
+    await openForm();
+    await fillAndSend("oi");
+    await settle(() => refusedResult() !== null);
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Texto da mensagem"), { target: { value: "oi!" } });
+    });
+    expect(refusedResult()).toBeNull();
+    await fillAndSend("oi!");
+    await settle(() => refusedResult() !== null);
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Para"), { target: { value: "h/s9" } });
+    });
+    expect(refusedResult()).toBeNull();
   });
 });

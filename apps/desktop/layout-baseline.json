@@ -91,7 +91,7 @@
   "src/features/maintenance/maintenance-section.tsx": 2,
   "src/features/messaging/page.tsx": 3,
   "src/features/messaging/rules-section.tsx": 14,
-  "src/features/messaging/session-messages.tsx": 14,
+  "src/features/messaging/session-messages.tsx": 4,
   "src/features/needs-you/details.tsx": 4,
   "src/features/needs-you/entry-row.tsx": 8,
   "src/features/needs-you/page.tsx": 11,
