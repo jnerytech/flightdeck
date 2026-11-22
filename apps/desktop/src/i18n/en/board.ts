@@ -187,7 +187,9 @@ export const board = {
     position: "{ahead} ahead, {behind} behind {base}",
     updateFromBase: "Update from the base",
     updated: "Card updated from the base.",
+    upToDate: "Already up to date with {base}.",
     merge: "Merge and archive",
+    nothingToMerge: "Nothing ahead of {base} to merge.",
     mergeMessage:
       "The card's work goes into {base}; its worktree and branch are removed and the card moves to Done. This cannot be undone.",
     modeLabel: "Merge mode",
@@ -198,6 +200,8 @@ export const board = {
     merged: "Card done: the work went into {base}.",
     prComments: "PR comments",
     prEmpty: "No comments on the PR.",
+    prFailed: "Could not read the PR comments.",
+    prRetry: "Try again",
     prNote: "Flightdeck only reads the comments: nothing is posted to the PR.",
     select: "Select the comment by {author}",
     review: "review",

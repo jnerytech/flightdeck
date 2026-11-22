@@ -1,5 +1,5 @@
 import type { Card, ChangesResult } from "@flightdeck/protocol";
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,7 +10,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AssistField } from "@/features/assistant/ui.ts";
 import { useT } from "@/i18n/context";
@@ -38,6 +37,8 @@ export function CardReview(
   const t = useT();
   const { store, hostId, card, changes } = props;
   const [refusal, setRefusal] = useState<string | null>(null);
+  const upToDateId = useId();
+  const nothingId = useId();
   const [merging, setMerging] = useState(false);
   const [mode, setMode] = useState<Mode>("merge");
   /** The commit message the person confirmed (issue #162); empty keeps the host's default. */
@@ -84,20 +85,38 @@ export function CardReview(
         <output aria-label={t("cardReview.positionLabel")} className="text-sm tabular-nums">
           {t("cardReview.position", { ahead, behind, base })}
         </output>
-        <ActionButton variant="outline" size="sm" disabled={behind === 0} onClick={() => update()}>
+        <ActionButton
+          variant="outline"
+          size="sm"
+          disabled={behind === 0}
+          aria-describedby={behind === 0 ? upToDateId : undefined}
+          onClick={() => update()}
+        >
           {t("cardReview.updateFromBase")}
         </ActionButton>
         {!card.prUrl && (
-          <Button
+          <ActionButton
             variant="outline"
             size="sm"
             disabled={ahead === 0}
+            aria-describedby={ahead === 0 ? nothingId : undefined}
             onClick={() => setMerging(true)}
           >
             {t("cardReview.merge")}
-          </Button>
+          </ActionButton>
         )}
       </div>
+      {/* Why a button is off, as lines of their own: two side by side would overlap. */}
+      {behind === 0 && (
+        <p id={upToDateId} className="text-muted-foreground text-xs">
+          {t("cardReview.upToDate", { base })}
+        </p>
+      )}
+      {ahead === 0 && !card.prUrl && (
+        <p id={nothingId} className="text-muted-foreground text-xs">
+          {t("cardReview.nothingToMerge", { base })}
+        </p>
+      )}
       {refusal && (
         <div
           role="alert"

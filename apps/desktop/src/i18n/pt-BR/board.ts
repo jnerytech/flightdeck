@@ -182,7 +182,9 @@ export const board = {
     position: "{ahead} à frente, {behind} atrás de {base}",
     updateFromBase: "Atualizar com a base",
     updated: "Card atualizado com a base.",
+    upToDate: "Já está em dia com {base}.",
     merge: "Merge e arquivar",
+    nothingToMerge: "Nada à frente de {base} para entrar no merge.",
     mergeMessage:
       "O trabalho do card entra em {base}; a worktree e a branch dele saem e o card vai para Concluído. Isso não se desfaz.",
     modeLabel: "Modo do merge",
@@ -193,6 +195,8 @@ export const board = {
     merged: "Card concluído: o trabalho entrou em {base}.",
     prComments: "Comentários do PR",
     prEmpty: "Nenhum comentário no PR.",
+    prFailed: "Não consegui ler os comentários do PR.",
+    prRetry: "Tentar de novo",
     prNote: "O Flightdeck só lê os comentários: nada é postado no PR.",
     select: "Selecionar o comentário de {author}",
     review: "revisão",

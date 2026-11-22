@@ -47,6 +47,8 @@ export function PrRow(
   const facts = prFacts(card, props.now, t, stance.kind !== "conflict");
   const heldId = useId();
   const mergeable = props.canMerge && canMergeCardPr(card);
+  const showMerge = mergeable && stance.kind !== "conflict";
+  const showUpdate = Boolean(card.worktreePath);
   const where = [props.row.hostName, props.row.projectName].filter(Boolean).join(" · ");
   return (
     <li data-slot="pr-row" className="rounded-md border px-3 py-2 text-sm">
@@ -100,28 +102,30 @@ export function PrRow(
         {props.withWatch && props.watch && (
           <p className="text-muted-foreground text-xs">{watchText(t, props.watch)}</p>
         )}
-        <Inline gap={2}>
-          {mergeable && stance.kind !== "conflict" && (
-            <ActionButton
-              variant={stance.kind === "held" ? "outline" : "default"}
-              size="sm"
-              aria-describedby={stance.kind === "held" ? `${titleId} ${heldId}` : titleId}
-              onClick={props.onMerge}
-            >
-              {t("cardMergePr.action")}
-            </ActionButton>
-          )}
-          {card.worktreePath && (
-            <ActionButton
-              variant={stance.kind === "conflict" ? "default" : "outline"}
-              size="sm"
-              aria-describedby={titleId}
-              onClick={props.onUpdate}
-            >
-              {t("cardReview.updateFromBase")}
-            </ActionButton>
-          )}
-        </Inline>
+        {(showMerge || showUpdate) && (
+          <Inline gap={2}>
+            {showMerge && (
+              <ActionButton
+                variant={stance.kind === "held" ? "outline" : "default"}
+                size="sm"
+                aria-describedby={stance.kind === "held" ? `${titleId} ${heldId}` : titleId}
+                onClick={props.onMerge}
+              >
+                {t("cardMergePr.action")}
+              </ActionButton>
+            )}
+            {showUpdate && (
+              <ActionButton
+                variant={stance.kind === "conflict" ? "default" : "outline"}
+                size="sm"
+                aria-describedby={titleId}
+                onClick={props.onUpdate}
+              >
+                {t("cardReview.updateFromBase")}
+              </ActionButton>
+            )}
+          </Inline>
+        )}
         {mergeable && stance.kind === "held" && (
           <p id={heldId} className="text-muted-foreground text-xs">
             {t("pullRequests.heldHint", { why: t(`pullRequests.heldWhy.${stance.why}` as Key) })}
