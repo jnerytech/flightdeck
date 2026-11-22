@@ -93,6 +93,8 @@
   /* A line under the head, across the lane, between the status and its cards (#114). */
   margin-inline: -0.5rem;
   padding: 0 0.75rem 0.5rem;
+  /* Room for a name on two lines (#3878), so every lane's cards start at the same height. */
+  min-height: 2.3rem;
   border-bottom: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
   & > button {
     margin-inline-start: auto;
@@ -111,6 +113,7 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 /* The count of a column, a small pill. */
