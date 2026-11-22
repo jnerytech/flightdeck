@@ -220,9 +220,8 @@ describe("home-scope-ui: Home adds up the hosts in the data scope (#126)", () =>
       });
       const group = screen.queryByRole("group", { name });
       expect(group !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
-      expect(
-        within(group as HTMLElement).queryByRole("menuitemradio", { name: "alfa" }) !== null, // NOSONAR: the boolean keeps a DOM node out of the failure diff
-      ).toBe(true);
+      const alfa = within(group as HTMLElement).queryByRole("menuitemradio", { name: "alfa" });
+      expect(alfa).not.toBeNull();
     },
   );
 

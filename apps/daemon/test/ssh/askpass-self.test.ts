@@ -54,7 +54,7 @@ describe("the askpass helper calls back the command the daemon was started with 
     process.env.FLIGHTDECK_SELF = "/evil/helper";
     try {
       const text = await helperOf({});
-      expect(text.includes("/evil/helper")).toBe(false);
+      expect(text).not.toContain("/evil/helper");
     } finally {
       if (before === undefined) delete process.env.FLIGHTDECK_SELF;
       else process.env.FLIGHTDECK_SELF = before;

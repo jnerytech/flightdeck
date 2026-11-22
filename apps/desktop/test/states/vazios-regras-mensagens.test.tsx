@@ -163,9 +163,9 @@ describe("session messages: the write form (#3852)", () => {
         fireEvent.click(button(view.container, SEND[language]) as HTMLElement);
       });
       await uiIdle();
-      expect(sends.length).toBe(1);
-      expect(box.value === "").toBe(true);
-      expect(document.activeElement === box).toBe(true);
+      expect(sends).toHaveLength(1);
+      expect(box.value).toBe("");
+      expect(document.activeElement === box).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
       expect((button(view.container, SEND[language]) as HTMLButtonElement).disabled).toBe(true);
       expect(view.container.querySelector("output")).not.toBeNull();
     });
@@ -181,7 +181,7 @@ describe("session messages: the write form (#3852)", () => {
         fireEvent.click(button(view.container, SEND[language]) as HTMLElement);
       });
       await uiIdle();
-      expect(box.value === "ship it").toBe(true);
+      expect(box.value).toBe("ship it");
     });
 
     test(`opening the form focuses To and Cancel returns to the write button, in ${language}`, async () => {
@@ -189,12 +189,12 @@ describe("session messages: the write form (#3852)", () => {
       const view = render(<SessionMessages store={store} hostId="h" sessionId="c1" />);
       await uiIdle();
       await open(view.container, language);
-      expect(document.activeElement === view.container.querySelector("select")).toBe(true);
+      expect(document.activeElement === view.container.querySelector("select")).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
       await act(async () => {
         fireEvent.click(button(view.container, CANCEL[language]) as HTMLElement);
       });
       await uiIdle();
-      expect(document.activeElement === button(view.container, WRITE[language])).toBe(true);
+      expect(document.activeElement === button(view.container, WRITE[language])).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
     });
 
     test(`a result of an earlier send does not show again on reopening, in ${language}`, async () => {
@@ -213,7 +213,7 @@ describe("session messages: the write form (#3852)", () => {
         fireEvent.click(button(view.container, CANCEL[language]) as HTMLElement);
       });
       await open(view.container, language);
-      expect(view.container.querySelector("output") === null).toBe(true);
+      expect(view.container.querySelector("output") === null).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
     });
 
     test(`with no session to message, one line says so, in ${language}`, async () => {

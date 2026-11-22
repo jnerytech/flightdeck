@@ -305,7 +305,7 @@ describe("the run panel keeps the focus where the person pressed, and its lists 
 
   test("a trusted panel with no process yet has no empty list", async () => {
     await panel("en", run({ status: "idle" }));
-    expect(screen.queryByRole("list", { name: "Processes" }) === null).toBe(true);
+    expect(screen.queryByRole("list", { name: "Processes" }) === null).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
   });
 
   test("the process list is named, in both languages", async () => {
@@ -314,10 +314,10 @@ describe("the run panel keeps the focus where the person pressed, and its lists 
       processes: [proc({ status: "running", exitCode: null })],
     });
     await panel("en", live);
-    expect(screen.queryByRole("list", { name: "Processes" }) !== null).toBe(true);
+    expect(screen.queryByRole("list", { name: "Processes" })).not.toBeNull();
     cleanup();
     await panel("pt-BR", live);
-    expect(screen.queryByRole("list", { name: "Processos" }) !== null).toBe(true);
+    expect(screen.queryByRole("list", { name: "Processos" })).not.toBeNull();
   });
 
   test("a command with a long token wraps inside the trust list", async () => {

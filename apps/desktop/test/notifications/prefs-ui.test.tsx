@@ -199,11 +199,10 @@ describe("notify-prefs-ui: the master switch and what it governs (issue #4005)",
         name: "Mostrar notificações",
       }),
     );
-    expect(
-      within(screen.getByRole("region", { name: "Notificações" })).queryByText(
-        "Ligue Mostrar notificações para enviar um teste.",
-      ) !== null,
-    ).toBe(true);
+    const hint = within(screen.getByRole("region", { name: "Notificações" })).queryByText(
+      "Ligue Mostrar notificações para enviar um teste.",
+    );
+    expect(hint).not.toBeNull();
   });
 });
 
@@ -251,7 +250,7 @@ describe("notify-prefs-ui: the mutes the lists cannot show (issue #4007)", () =>
         (input) => input.closest("label")?.textContent ?? "",
       ),
     ).toEqual(["Mute alfa", "Mute api (alfa)"]);
-    expect(within(panel()).queryByRole("group", { name: "beta" }) !== null).toBe(true);
+    expect(within(panel()).queryByRole("group", { name: "beta" })).not.toBeNull();
   });
 });
 

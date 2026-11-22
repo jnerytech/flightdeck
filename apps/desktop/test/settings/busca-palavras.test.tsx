@@ -122,7 +122,7 @@ describe.each(["en", "pt-BR"] as const)("settings search words (%s)", (language)
     expect(within(group as HTMLElement).queryByRole("checkbox", { name: w.setup })).toBeNull();
     const setupBox = within(panel).getByRole("checkbox", { name: w.setup });
     const after = setupBox.compareDocumentPosition(group as HTMLElement);
-    expect((after & Node.DOCUMENT_POSITION_FOLLOWING) !== 0).toBe(true);
+    expect(after & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
     const boxes = within(panel).getAllByRole("checkbox");
     // The group closes the panel: the last checkbox of the panel is the one inside it.
     expect((group as HTMLElement).contains(boxes.at(-1) ?? null)).toBe(true);

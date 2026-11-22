@@ -159,7 +159,7 @@ describe.each(["en", "pt-BR"] as const)("snippets-ui: busy actions (%s)", (langu
     await press(w.remove);
     await settle(() => rowNames().join() === "status");
     await afterAnswer();
-    expect(document.activeElement === screen.getByLabelText(w.search)).toBe(true);
+    expect(document.activeElement === screen.getByLabelText(w.search)).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
   });
 
   test("cancelling the removal gives the focus back to that row's Remove", async () => {
@@ -168,7 +168,7 @@ describe.each(["en", "pt-BR"] as const)("snippets-ui: busy actions (%s)", (langu
     await press(w.cancel);
     await settle(() => screen.queryByRole("alertdialog") === null);
     await afterAnswer();
-    expect(document.activeElement === button(w.removeFor)).toBe(true);
+    expect(document.activeElement === button(w.removeFor)).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
   });
 
   test("a removed row's Remove stays busy until the list is read again", async () => {
