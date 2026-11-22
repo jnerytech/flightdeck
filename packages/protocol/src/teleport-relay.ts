@@ -1,0 +1,246 @@
+/**
+ * Issue #100, slice 3a, moved here by #3704: a session moves from one host to another. The caller asks the
+ * source for a package, shows the person what moves (counts only: no text of the transcript or the code
+ * reaches the summary), relays the package's parts chunk by chunk to the target, and has the target
+ * import it. Whatever stops it (a no, a cancel, a refusal, a host that went) cleans both sides. The app and
+ * `flightdeckd session teleport` both call it; each gives its own `refuse`, the error it shows a refusal as.
+ */
+import type { z } from "zod";
+import {
+  type TeleportAbortPayload,
+  type TeleportCancelPayload,
+  type TeleportFinishPayload,
+  type TeleportManifest,
+  TeleportManifestSchema,
+  type TeleportPreparePayload,
+  type TeleportReadPayload,
+  type TeleportReceivePayload,
+  type TeleportResults,
+  type TeleportWritePayload,
+} from "./teleport.ts";
+
+/** The commands a move sends to its hosts, each with its payload and what the host answers. */
+export interface TeleportCommands {
+  "teleport.prepare": [z.infer<typeof TeleportPreparePayload>, TeleportResults["teleport.prepare"]];
+  "teleport.read": [z.infer<typeof TeleportReadPayload>, TeleportResults["teleport.read"]];
+  "teleport.cancel": [z.infer<typeof TeleportCancelPayload>, TeleportResults["teleport.cancel"]];
+  "teleport.receive": [z.infer<typeof TeleportReceivePayload>, TeleportResults["teleport.receive"]];
+  "teleport.write": [z.infer<typeof TeleportWritePayload>, TeleportResults["teleport.write"]];
+  "teleport.abort": [z.infer<typeof TeleportAbortPayload>, TeleportResults["teleport.abort"]];
+  "teleport.finish": [z.infer<typeof TeleportFinishPayload>, TeleportResults["teleport.finish"]];
+  /** A move that landed archives the source's copy (#870). */
+  "session.meta.set": [{ claudeSessionId: string; archived: boolean }, unknown];
+}
+
+/** One host's command channel: a connection's `request`, injected so tests use fakes. */
+export type TeleportRequest = <T extends keyof TeleportCommands>(
+  type: T,
+  payload: TeleportCommands[T][0],
+) => Promise<TeleportCommands[T][1]>;
+
+/** What the person sees before saying yes: counts and sizes, never a secret or its kind. */
+export interface TeleportSummary {
+  branch: string | null;
+  /** Commits past the base on origin. */
+  ahead: number;
+  /** Files the working tree changes, new ones included. */
+  changed: number;
+  /** Bytes that travel, every part together. */
+  bytes: number;
+  /** Lines that look like secrets, in the transcript and the code together. */
+  secretLines: number;
+}
+
+export interface TeleportRun {
+  source: TeleportRequest;
+  target: TeleportRequest;
+  sessionId: string;
+  /** The repository on the target, picked by the person. */
+  repo: string;
+  confirm(summary: TeleportSummary): Promise<boolean>;
+  onProgress?(sent: number, total: number): void;
+  signal?: AbortSignal;
+  /** How long a clean-up step may take before the move gives up on it. */
+  cleanupMs?: number;
+  /** The error for a source that sent what does not hold together, with the reason the person can read. */
+  refuse(reason: "teleport_corrupt" | "teleport_incomplete"): Error;
+}
+
+export type TeleportOutcome =
+  | { kind: "moved"; sessionId: string; worktree: string; branch: string }
+  | { kind: "declined" }
+  | { kind: "cancelled" };
+
+/** How long the clean-up may take before the move gives up on it. */
+const CLEANUP_MS = 5_000;
+/** Control and format characters (direction marks among them). */
+const MARKS = /[\p{Cc}\p{Cf}]/gu;
+/** Line and paragraph separators, and every space that is not the plain one: each reads as a space or a break. */
+const SPACES = /[\p{Zl}\p{Zp}]|(?! )\p{Zs}/gu;
+
+/** A host's text shown as the plain text it is: no mark that could disguise it, at most `max` long. */
+export const plainText = (text: string, max: number): string =>
+  text.replace(MARKS, "").replace(SPACES, " ").replace(/ {2,}/g, " ").trim().slice(0, max);
+
+export function teleportSummary(manifest: TeleportManifest): TeleportSummary {
+  const branch = manifest.git?.branch ? plainText(manifest.git.branch, 255) : null;
+  return {
+    branch: branch || null,
+    ahead: manifest.git?.ahead ?? 0,
+    changed: manifest.git?.changed ?? 0,
+    bytes: manifest.parts.reduce((sum, part) => sum + part.size, 0),
+    // The count only: the scanner's kinds stay on the hosts (and are not yet translated, #714).
+    secretLines: manifest.secrets.lines,
+  };
+}
+
+/** The move was cancelled: not an error, an outcome. */
+class Cancelled extends Error {}
+
+const ignore = () => {};
+
+/** The package id a source's answer names, when it is one: the source's own, never made up. */
+function packageId(prepared: unknown): string | null {
+  const named = TeleportManifestSchema.shape.id.safeParse(
+    (prepared as { id?: unknown } | null)?.id,
+  );
+  return named.success ? named.data : null;
+}
+
+export async function teleportSession(run: TeleportRun): Promise<TeleportOutcome> {
+  const { source, target } = run;
+  let prepared: unknown;
+  try {
+    // A source that answers after a cancel still drops the package it made.
+    prepared = await unlessCancelled(
+      run.signal,
+      source("teleport.prepare", { sessionId: run.sessionId }),
+      (late) => {
+        const lateId = packageId(late);
+        if (lateId) source("teleport.cancel", { id: lateId }).catch(ignore);
+      },
+    );
+  } catch (error) {
+    if (error instanceof Cancelled) return { kind: "cancelled" };
+    throw error;
+  }
+  // The source's manifest is checked as the target would: sizes, parts, names. One that is not a
+  // manifest is refused before anything else uses it; its package is still freed when it names one.
+  const checked = TeleportManifestSchema.safeParse(prepared);
+  if (!checked.success) {
+    const named = packageId(prepared);
+    if (named) await cleanUp(run, named, null);
+    throw run.refuse("teleport_corrupt");
+  }
+  const manifest = checked.data as TeleportManifest;
+  let id: string | null = null;
+  let landed = false;
+  try {
+    if (!(await run.confirm(teleportSummary(manifest)))) return { kind: "declined" };
+    if (run.signal?.aborted) return { kind: "cancelled" };
+    // A target that opens its inbox after a cancel still drops it.
+    id = (
+      await unlessCancelled(run.signal, target("teleport.receive", { manifest }), (late) => {
+        if (typeof late?.id === "string") target("teleport.abort", { id: late.id }).catch(ignore);
+      })
+    ).id;
+    await relay(run, manifest, id);
+    // The last chance to stop: once the target imports, the session is there.
+    if (run.signal?.aborted) throw new Cancelled();
+    const done = await target("teleport.finish", { id, repo: run.repo });
+    landed = true;
+    return { kind: "moved", ...done };
+  } catch (error) {
+    if (error instanceof Cancelled) return { kind: "cancelled" };
+    throw error;
+  } finally {
+    await cleanUp(run, manifest.id, landed ? null : id, landed ? manifest.claudeSessionId : null);
+  }
+}
+
+/**
+ * Both hosts drop what they hold for this move, at once and for a limited time: a host that went or
+ * does not answer never hides why the move stopped, nor holds it. A move that landed also archives
+ * the copy it left on the source (#870): the session lives on the target now, and the target
+ * shows it again if it ever comes back.
+ */
+async function cleanUp(
+  run: TeleportRun,
+  packageId: string,
+  received: string | null,
+  moved: string | null = null,
+) {
+  const steps = [
+    ...(received ? [run.target("teleport.abort", { id: received })] : []),
+    run.source("teleport.cancel", { id: packageId }),
+    ...(moved ? [run.source("session.meta.set", { claudeSessionId: moved, archived: true })] : []),
+  ];
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise((resolve) => {
+    timer = setTimeout(resolve, run.cleanupMs ?? CLEANUP_MS);
+  });
+  await Promise.race([Promise.allSettled(steps), limit]);
+  clearTimeout(timer);
+}
+
+/**
+ * A host's answer during the transfer, or the cancel, whichever comes first: a host that does not
+ * answer never holds a move the person stopped. The clean-up then drops what the target holds.
+ */
+function unlessCancelled<T>(
+  signal: AbortSignal | undefined,
+  work: Promise<T>,
+  /** What to free when the host answers after the cancel. */
+  late?: (value: T) => void,
+): Promise<T> {
+  if (!signal) return work;
+  const abandon = () => {
+    work.then((value) => late?.(value), ignore);
+    return new Cancelled();
+  };
+  if (signal.aborted) return Promise.reject(abandon());
+  return new Promise<T>((resolve, reject) => {
+    const stop = () => reject(abandon());
+    signal.addEventListener("abort", stop, { once: true });
+    // Settled first: the cancel no longer applies to this answer.
+    const done = () => signal.removeEventListener("abort", stop);
+    work.then(
+      (value) => {
+        done();
+        resolve(value);
+      },
+      (error: unknown) => {
+        done();
+        reject(error);
+      },
+    );
+  });
+}
+
+/** Every part, chunk by chunk, from the source's package to the target's, never past its size. */
+async function relay(run: TeleportRun, manifest: TeleportManifest, id: string): Promise<void> {
+  const total = manifest.parts.reduce((sum, part) => sum + part.size, 0);
+  let sent = 0;
+  for (const part of manifest.parts) {
+    let offset = 0;
+    while (offset < part.size) {
+      const reading = run.source("teleport.read", { id: manifest.id, part: part.name, offset });
+      const chunk = await unlessCancelled(run.signal, reading); // NOSONAR: each chunk starts where the last one ended
+      // A chunk that does not move on, or goes past the part, ends the move: a broken source never
+      // keeps the app spinning.
+      if (chunk.next <= offset) throw run.refuse("teleport_incomplete");
+      if (chunk.next > part.size) throw run.refuse("teleport_corrupt");
+      const writing = run.target("teleport.write", {
+        id,
+        part: part.name,
+        offset,
+        data: chunk.data,
+      });
+      await unlessCancelled(run.signal, writing); // NOSONAR: the target takes the chunks in order, at their offsets
+      sent += chunk.next - offset;
+      offset = chunk.next;
+      run.onProgress?.(sent, total);
+      if (chunk.eof && offset < part.size) throw run.refuse("teleport_incomplete");
+    }
+  }
+}
