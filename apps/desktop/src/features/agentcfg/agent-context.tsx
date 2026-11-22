@@ -1,8 +1,8 @@
 import type { ContextBudget } from "@flightdeck/protocol";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { InlineNotice } from "@/shared/feedback/index.ts";
-import { ListRow, LoadingState, Stack } from "@/shared/layout/index.ts";
+import { ErrorState, ListRow, LoadingState, Stack } from "@/shared/layout/index.ts";
 import { formatNumber } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { contextPath } from "./domain/file-list.ts";
@@ -18,13 +18,29 @@ export function AgentContext(
   const { t } = store.i18n;
   const number = (value: number) => formatNumber(value, store.i18n.lang);
   const [budget, setBudget] = useState<ContextBudget | null>(null);
+  const [failed, setFailed] = useState(false);
+  // Only the latest ask counts: a late answer of another project or host, or of an earlier try, is dropped.
+  const asked = useRef(0);
 
-  useEffect(() => {
-    void store
-      .hostCommand(hostId, "memory.budget", { projectId })
-      .then((result) => setBudget(result));
+  const load = useCallback(async () => {
+    const mine = ++asked.current;
+    setFailed(false);
+    setBudget(null);
+    const result = await store.hostCommand(hostId, "memory.budget", { projectId });
+    if (mine !== asked.current) return;
+    if (result) setBudget(result);
+    else setFailed(true);
   }, [store, hostId, projectId]);
 
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  if (failed) {
+    return (
+      <ErrorState message={t("agent.loadFailed")} retryLabel={t("agent.retry")} onRetry={load} />
+    );
+  }
   if (!budget) return <LoadingState label={t("agent.loading")} />;
   const { memory } = budget;
   const cut = memory.cutBy !== null;
