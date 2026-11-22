@@ -99,12 +99,12 @@ export const hosts = {
     hostKey: {
       confirmTitle: "Chave do servidor de {name}",
       confirmMessage:
-        "Primeira conexão com {name}. Compare o fingerprint com o que o dono do servidor informa, ou que o ssh-keyscan mostra no servidor, antes de confiar nesta chave.",
+        "Primeira conexão com {name}. Compare a impressão digital com a que o dono do servidor informa, ou com a que o ssh-keyscan mostra no servidor, antes de confiar nesta chave.",
       confirm: "Confirmar chave do servidor",
       changedTitle: "A chave do servidor mudou",
       changedMessage: "{name} mostrou uma chave diferente da salva. A conexão foi bloqueada.",
       changedNext:
-        "Para seguir: edite o destino, escolha Esquecer chave do servidor, conecte de novo e confira o novo fingerprint com o dono do servidor.",
+        "Para seguir: edite o destino, escolha Esquecer chave do servidor, conecte de novo e confira a nova impressão digital com o dono do servidor.",
       pinned: "Chave salva",
       fingerprint: "Impressão digital (SHA256)",
       copy: "Copiar impressão digital",
