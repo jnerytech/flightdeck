@@ -442,6 +442,28 @@ describe("cofre-ui: backup, focus, announcements and a failed restore", () => {
     });
   });
 
+  test("pressing Aplicar twice while the restore runs applies the preview once and shows it is busy", async () => {
+    const { store } = await open(await backupText());
+    let calls = 0;
+    let release: (() => void) | null = null;
+    store.secrets.applyImport = () => {
+      calls += 1;
+      return new Promise((resolve) => {
+        release = () => resolve({ added: 1, overwritten: 0, skipped: 0 });
+      });
+    };
+    await fill("Frase-senha do arquivo", PASS);
+    await click("Importar cofre");
+    await click("Aplicar");
+    const busy = screen.queryByRole("button", { name: "Aplicar" })?.getAttribute("aria-busy");
+    await click("Aplicar");
+    await act(async () => {
+      (release as (() => void) | null)?.();
+    });
+    await uiIdle();
+    expect({ calls, busy }).toEqual({ calls: 1, busy: "true" });
+  });
+
   test("a restore that succeeds is announced as a status and the focus returns to the file passphrase", async () => {
     await open(await backupText());
     await fill("Frase-senha do arquivo", PASS);
