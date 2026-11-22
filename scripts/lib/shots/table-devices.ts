@@ -126,7 +126,7 @@ export function devicesShots(_ids: DemoIds): Shot[] {
           command: "approval.challenge",
           reply: { nonce: "demo", daemonId: "demo", expiresInMs: 60_000 },
         },
-        { command: "approval.revoke", reply: undefined },
+        { command: "approval.revoke", reply: null },
       ],
       prepare: panelShows(ON, revokeOther),
     },

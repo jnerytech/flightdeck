@@ -172,7 +172,7 @@ export function demoPlatform(platform: Platform, search = ""): Platform {
       : platform;
   // #4154: the prints of the approving-devices panel need a key store; the page's dataset tells them which host it asked about.
   const keysMode = params.get("approvalKeys");
-  const withFolder =
+  const withKeys =
     keysMode === "enrolled" || keysMode === "empty"
       ? {
           ...folderPlatform,
@@ -187,7 +187,7 @@ export function demoPlatform(platform: Platform, search = ""): Platform {
     // #4059: every check fails, so the update banner shows its error.
     const failing = () => Promise.reject(new Error("The update server did not answer"));
     return {
-      ...withFolder,
+      ...withKeys,
       updater: {
         supported: true,
         check: failing,
@@ -197,9 +197,9 @@ export function demoPlatform(platform: Platform, search = ""): Platform {
       },
     };
   }
-  if (!version || !/^\d+\.\d+\.\d+$/.test(version)) return withFolder;
+  if (!version || !/^\d+\.\d+\.\d+$/.test(version)) return withKeys;
   return {
-    ...withFolder,
+    ...withKeys,
     updater: {
       supported: true,
       check: () => Promise.resolve({ version, notes: "" }),
