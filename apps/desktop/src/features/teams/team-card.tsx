@@ -21,6 +21,7 @@ import {
   type TeamConfirm,
 } from "./domain/new-team.ts";
 import { NewMember } from "./new-member.tsx";
+import { TeamGoal } from "./team-goal.tsx";
 import { TeamMemberRow } from "./team-member-row.tsx";
 import { TeamOutcome } from "./team-outcome.tsx";
 import { useModes } from "./use-modes.ts";
@@ -115,8 +116,8 @@ export function Team(
           </DropdownMenu>
         )}
       </div>
+      <TeamGoal t={t} goal={team.goal} />
       {props.status?.outcome && <TeamOutcome t={t} outcome={props.status.outcome} />}
-      <p className="text-muted-foreground whitespace-pre-wrap">{team.goal}</p>
       <ul className="flex flex-col gap-1">
         {team.members.map((member) => (
           <TeamMemberRow

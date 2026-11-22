@@ -129,6 +129,8 @@ export const personas = {
     emptyAction: "Create the first team",
     new: "New team",
     goal: "Goal",
+    goalMore: "Show more",
+    goalLess: "Show less",
     name: "Team name",
     project: "Project",
     coordinatorPersona: "Coordinator persona (optional)",

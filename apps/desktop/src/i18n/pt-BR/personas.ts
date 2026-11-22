@@ -124,6 +124,8 @@ export const personas = {
     emptyAction: "Criar o primeiro time",
     new: "Novo time",
     goal: "Objetivo",
+    goalMore: "Mostrar mais",
+    goalLess: "Mostrar menos",
     name: "Nome do time",
     project: "Projeto",
     coordinatorPersona: "Persona da coordenadora (opcional)",
