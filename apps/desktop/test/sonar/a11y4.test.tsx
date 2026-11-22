@@ -159,7 +159,7 @@ describe("sonar-a11y4: a session tile keeps its roles, names, keys and click tar
     expect(within(um).getByLabelText("Last lines").tagName).toBe("OUTPUT");
   });
 
-  test("Tab goes tile, Open, the request's Approve and Deny, then the message box; the next tile follows", async () => {
+  test("Tab goes tile, Open, the request's Approve and Deny, then the AI button and the message box; the next tile follows", async () => {
     await tiles(["pede", "quieta"]);
     await waitFor(
       () => tileEls().length === 2 && tileEls()[0]?.getAttribute("aria-label") === "pede",
@@ -167,16 +167,18 @@ describe("sonar-a11y4: a session tile keeps its roles, names, keys and click tar
     const first = tileEls()[0] as HTMLElement;
     await waitFor(() => within(first).queryByRole("group", { name: "Request" }) !== null);
     const stops = tabStops(first);
-    expect(stops.slice(0, 5)).toEqual([
+    expect(stops.slice(0, 6)).toEqual([
       "section:pede",
       "button:Open pede",
       "button:Approve",
       "button:Deny",
+      "button:Write something first", // #4167: the AI button is off for lack of text, and its reason is reachable
       "textarea:Message to pede",
     ]);
     expect(tabStops(tileEls()[1] as HTMLElement)).toEqual([
       "section:quieta",
       "button:Open quieta",
+      "button:Write something first",
       "textarea:Message to quieta",
     ]);
   });
