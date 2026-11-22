@@ -1,6 +1,6 @@
 import type { WorktreeItem, WorktreesResult } from "@flightdeck/protocol";
 import { TriangleAlert } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
@@ -79,6 +79,7 @@ function Row(
 export function HostWorktrees(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
+  const reasonId = useId();
   const lang = store.i18n.lang;
   const [data, setData] = useState<WorktreesResult | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
@@ -256,16 +257,23 @@ export function HostWorktrees(props: Readonly<{ store: AppStore; host: HostView 
                   />
                 ))}
               </ul>
+              {/* The reason is a line of the panel, not ActionButton's box hung off the button: at 390 px
+                  that box covered the next group (#3999, as #3862 for the host overview). */}
               <ActionButton
                 variant="destructive"
                 size="sm"
                 className="self-start"
                 disabled={chosen.length === 0 || removing}
-                disabledReason={t("worktrees.removeNeeds")}
+                aria-describedby={chosen.length === 0 ? reasonId : undefined}
                 onClick={() => setConfirming(true)}
               >
                 {removeLabel}
               </ActionButton>
+              {chosen.length === 0 && (
+                <p id={reasonId} className="text-muted-foreground text-xs">
+                  {t("worktrees.removeNeeds")}
+                </p>
+              )}
             </>
           )}
         </>
