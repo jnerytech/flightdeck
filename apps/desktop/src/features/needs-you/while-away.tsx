@@ -165,15 +165,15 @@ export function WhileAway(
   const { t } = store.i18n;
   const box = useRef<HTMLElement>(null);
   // The panel is capped and scrolls inside: a fade and a line for screen readers say it holds more, and
-  // the box is a tab stop while it scrolls, so the keyboard can reach the rest (#3919).
-  const more = useMoreBelow(box, view);
+  // the box is a tab stop while it scrolls at all, so the keyboard can reach the rest (#3919).
+  const { more, scrollable } = useMoreBelow(box);
   return (
     <section
       ref={box}
       aria-label={t("away.title")}
       data-slot="while-away"
-      tabIndex={more ? 0 : undefined}
-      className="max-h-[45%] overflow-y-auto border-b p-4 focus-visible:outline-2 focus-visible:outline-ring"
+      tabIndex={scrollable ? 0 : undefined}
+      className="max-h-[45%] scroll-pb-8 overflow-y-auto border-b p-4 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
     >
       <Stack gap={3}>
         <Inline gap={2}>
@@ -197,7 +197,7 @@ export function WhileAway(
       {more && (
         // No height of its own: the fade hangs above the visible bottom edge, so no line is moved or hidden.
         <div data-slot="away-more" className="pointer-events-none sticky bottom-0">
-          <div className="absolute inset-x-0 bottom-0 top-[-2rem] bg-gradient-to-t from-background to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 top-[-2rem] bg-linear-to-t from-background to-transparent" />
           <span className="sr-only">{t("away.scrollMore")}</span>
         </div>
       )}
