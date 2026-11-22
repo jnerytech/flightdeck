@@ -25,6 +25,8 @@ export const USAGE = [
   "     fd vault decisions [<secret>] [--days <1-365>] [--limit <1-1000>] [--json] [--config <file>]   (who used which secret, and how it went)",
   "     fd vault report [--days <1-365>] [--csv] [--json] [--config <file>]   (uses by secret, requester and outcome)",
   "     fd vault rules <secret> [--json] [--config <file>]   (the secret's tags and rules)",
+  "     fd vault watch [--json] [--config <file>]   (each secret request and each use, as it comes, until Ctrl-C)",
+  "     fd vault deny <requestId> [--json] [--config <file>]   (refuses a request that waits for the app; the run that waits for it fails)",
   "     fd vault rules preview <secret> --requester you|claude|automation|workflow --purpose ssh|action|run_with_secret [--action <name>] [--host <h>] [--project <p>] [--session <s>] [--tag <t>]... [--risk low|medium|high] [--approval always|never|first-per-session] [--at <time>] [--json] [--config <file>]   (what a use would get; records nothing)",
   "     fd project add <folder> [--name <name>] [--base-branch <branch>] [--pr-provider github|azure-devops|none] [--setup-script <command|none>] [--prompt-template <text>] [--auto-approve on|off] [--host <h>] [--json] [--config <file>]   (puts the folder on the board; a setup script runs in every card, so ask the person first)",
   "     fd project update <name or id> [--name <name>] [--base-branch <branch>] [--pr-provider github|azure-devops|none] [--setup-script <command|none>] [--prompt-template <text>] [--auto-approve on|off] [--default-hours <0-1000|none>] [--persona-subagents all|project|none] [--host <h>] [--json] [--config <file>]   (changes only the fields you pass)",

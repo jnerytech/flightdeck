@@ -62,38 +62,28 @@ function personaFlags(args: PersonaArgs): Array<[string, unknown, readonly strin
   ];
 }
 
+/** A flag name another command takes too, with the commands whose own `...Problem` checks it. */
+const CHECKED_ELSEWHERE = new Map<string, readonly string[]>([
+  // `team new --name` is the team's name, checked by `teamProblem`; `project add|update --name` is the project's, by `projectProblem`.
+  // `automation save --name` is the automation's, checked by `automationProblem`; `template start --name` is the task's, by `templatesProblem`.
+  ["--name", ["team", "project", "automation", "template"]],
+  // `budget set` takes the scope too: `budgetProblem` checks it.
+  ["--scope", ["budget"]],
+  // `review add|update --body` is the comment's: `reviewProblem` checks it.
+  ["--body", ["review"]],
+  // `costs summary|export --model` filters by model; `roi` refuses it: both checked by `costsProblem`.
+  ["--model", ["costs", "roi"]],
+  // `runenv trust --hash` is the run.yaml's hash, checked by `runenvProblem`; `snippet trust --hash` is the project file's, checked by `snippetProblem`; `workflow trust --hash` is the workflow's, by `workflowProblem`.
+  ["--hash", ["runenv", "snippet", "action", "knowledge", "workflow"]],
+  // `knowledge create --body-file` is the document's text: `knowledgeProblem` checks it.
+  ["--body-file", ["knowledge"]],
+]);
+
 /** A flag of another verb; the commands that share a flag name check their own. */
 function personaStrayFlag(args: PersonaArgs): string | undefined {
   for (const [flag, value, verbs] of personaFlags(args)) {
     if (value === undefined) continue;
-    // `team new --name` is the team's name, checked by `teamProblem`; `project add|update --name` is the project's, by `projectProblem`.
-    // `automation save --name` is the automation's, checked by `automationProblem`.
-    if (
-      flag === "--name" &&
-      (args.command === "team" ||
-        args.command === "project" ||
-        args.command === "automation" ||
-        args.command === "template")
-    )
-      continue;
-    // `budget set` takes the scope too: `budgetProblem` checks it.
-    if (flag === "--scope" && args.command === "budget") continue;
-    // `review add|update --body` is the comment's: `reviewProblem` checks it.
-    if (flag === "--body" && args.command === "review") continue;
-    // `costs summary|export --model` filters by model; `roi` refuses it: both checked by `costsProblem`.
-    if (flag === "--model" && (args.command === "costs" || args.command === "roi")) continue;
-    // `runenv trust --hash` is the run.yaml's hash, checked by `runenvProblem`; `snippet trust --hash` is the project file's, checked by `snippetProblem`; `workflow trust --hash` is the workflow's, by `workflowProblem`.
-    if (
-      flag === "--hash" &&
-      (args.command === "runenv" ||
-        args.command === "snippet" ||
-        args.command === "action" ||
-        args.command === "knowledge" ||
-        args.command === "workflow")
-    )
-      continue;
-    // `knowledge create --body-file` is the document's text: `knowledgeProblem` checks it.
-    if (flag === "--body-file" && args.command === "knowledge") continue;
+    if (CHECKED_ELSEWHERE.get(flag)?.includes(args.command)) continue;
     if (args.command !== "persona" || !verbs.includes(args.action as string))
       return `${flag}: this flag only applies to flightdeckd persona ${verbs.join(", ")}`;
   }

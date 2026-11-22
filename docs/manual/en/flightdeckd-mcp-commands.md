@@ -35,9 +35,10 @@ refused with exit `1`.
 
 `test <project> <server>` prints the exact command (or link) that a test of the server would run, and starts nothing.
 With `--confirm` it starts the server, as the app's Test button does, and prints the tools and the resources it offers
-(`tools: a, b`, `resources: none`). Read the preview first: the server is a command from the project's `.mcp.json`.
+(`tools: a, b`, `resources: none`). Read the preview first: the server is a command from the project's `.mcp.json`. Starting it needs a near connection (this
+computer or Tailscale): over a far one the daemon refuses `--confirm`. The preview answers anywhere.
 
-`save <project> <file> --confirm` adds a server to the project's `.mcp.json`, or replaces the one of the same name, and
+`save <project> <file> --confirm` (a near connection only: the server is a command a session starts) adds a server to the project's `.mcp.json`, or replaces the one of the same name, and
 prints the servers. The file is JSON (`-` reads it from standard input) with the fields of a server: `name`, and
 `type` (`stdio`, `http` or `sse`), `command`, `args`, `env`, `url` and `headers`. A field it does not know is refused,
 so a typo does not save a server that runs nothing. Secrets go in the file, never on the command line, where the
@@ -49,7 +50,7 @@ command the host will run.
 `--confirm`.
 
 `toggle <project> <server> --enable | --disable` turns a server on or off for the project's next sessions and prints
-the servers. `--enable` lets the server run, so it needs `--confirm`; `--disable` only stops it and takes none (and
+the servers. `--enable` lets the server run, so it needs `--confirm` and a near connection (this computer or Tailscale); `--disable` only stops it and takes none (and
 refuses `--confirm`). `--session <id>` also refreshes that live session. A server of your own user file (`read-only`)
 is refused.
 

@@ -30,12 +30,19 @@ export const projectHandlers = {
       maxParallelRuns: board.maxParallelRuns,
     };
   },
-  "project.add": async (payload, { server }) => {
+  "project.add": async (payload, { ws, server }) => {
+    // A setup script runs with `sh -c` on the host when a card starts: setting one is near only, as
+    // trusting a run config is. Anything else about a project answers anywhere (#3807).
+    if (payload.setupScript?.trim())
+      requireVaultTransport(ws.data.origin, "project.add", server.opts.log);
     const board = server.need("board");
     return await board.forWire(await board.addProject(payload));
   },
-  "project.update": async (payload, { server }) => {
+  "project.update": async (payload, { ws, server }) => {
     const { projectId, ...patch } = payload;
+    // Setting a setup script is near only; clearing it (null or blank) is not (#3807).
+    if (patch.setupScript?.trim())
+      requireVaultTransport(ws.data.origin, "project.update", server.opts.log);
     const board = server.need("board");
     return await board.forWire(board.updateProject(projectId, patch));
   },

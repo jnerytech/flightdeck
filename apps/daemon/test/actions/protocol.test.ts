@@ -167,6 +167,11 @@ describe("acoes-protocolo", () => {
     const request = (await poll(() => requestsOf(app)[0])) as { requestId: string };
     expect(await app.request("vault.deny", { requestId: request.requestId })).toMatchObject({
       ok: true,
+      data: { denied: true },
+    });
+    expect(await app.request("vault.deny", { requestId: "gone" })).toMatchObject({
+      ok: true,
+      data: { denied: false },
     });
     expect(await running).toMatchObject({ ok: false, error: { code: "invalid_state" } });
   });
