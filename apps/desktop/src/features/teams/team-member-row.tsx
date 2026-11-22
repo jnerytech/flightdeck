@@ -1,12 +1,13 @@
 import type { TeamMember } from "@flightdeck/protocol";
 import { Copy } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PersonaPicker } from "@/features/personas/ui.ts";
 import { sessionLabel, useDraft } from "@/features/sessions/index.ts";
 import { useStoreSlice } from "@/lib/use-store";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import { FieldRow } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
@@ -40,6 +41,8 @@ export function TeamMemberRow(
     member: TeamMember;
     report: { text: string; at: string } | null;
     open: boolean;
+    /** The host is working on taking this worker out: its Remove button waits (#4020). */
+    removing: boolean;
     /** True once the host took it. */
     onPersona(persona: string, label: string): Promise<boolean>;
     onRemove(label: string): void;
@@ -55,6 +58,8 @@ export function TeamMemberRow(
     member.role === "worker" ? member.cardId : null,
   );
   const [persona, setPersona, savedPersona] = useDraft(member.persona ?? "");
+  const unchanged = persona === (member.persona ?? "");
+  const unchangedId = useId();
   const listed = personas[props.hostId];
   // Issue #101: the member's name in the person's language, by its persona, as everywhere else.
   const label =
@@ -179,20 +184,30 @@ export function TeamMemberRow(
               idsOnly
             />
           </div>
-          <Button
+          <ActionButton
             variant="outline"
+            data-action="persona"
             aria-label={t("teamsUi.setPersona", { name: label })}
+            disabled={unchanged}
+            aria-describedby={unchanged ? unchangedId : undefined}
             onClick={async () => {
               const sent = persona;
               if (await props.onPersona(sent, label)) savedPersona(sent);
             }}
           >
             {t("teamsUi.setPersonaButton")}
-          </Button>
+          </ActionButton>
+          {unchanged && (
+            <span id={unchangedId} className="sr-only">
+              {t("teamsUi.personaUnchanged")}
+            </span>
+          )}
           {member.role === "worker" && (
             <Button
               variant="outline"
               aria-label={t("teamsUi.remove", { name: label })}
+              disabled={props.removing}
+              aria-busy={props.removing || undefined}
               onClick={() => props.onRemove(label)}
             >
               {t("teamsUi.removeButton")}

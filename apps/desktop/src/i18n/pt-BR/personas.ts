@@ -197,6 +197,7 @@ export const personas = {
     persona: "Persona de {name}",
     setPersona: "Trocar persona de {name}",
     setPersonaButton: "Trocar persona",
+    personaUnchanged: "Escolha outra persona para trocar.",
     remove: "Remover {name}",
     removeButton: "Remover",
     removeMessage: "Tirar {name} do time? A sessão dela é parada e o card fica no board.",

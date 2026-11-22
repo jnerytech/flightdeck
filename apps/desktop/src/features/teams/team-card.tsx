@@ -42,7 +42,7 @@ export function Team(
 ) {
   const { store, hostId, team } = props;
   const { t } = store.i18n;
-  const { rowRef, text, setText, notice, act, sendAll, runConfirmed } = useTeamActions({
+  const { rowRef, text, setText, notice, removing, act, sendAll, runConfirmed } = useTeamActions({
     store,
     hostId,
     team,
@@ -120,13 +120,18 @@ export function Team(
             member={member}
             report={reportOf(member.name)}
             open={open}
+            removing={removing === member.name}
             onPersona={(persona, label) =>
               act(
                 store.hostRequest(hostId, "teams.update", {
                   team: team.id,
                   persona: { member: member.name, persona: persona.trim() || null },
                 }),
-                { text: t("teamsUi.done.persona", { name: label }) },
+                {
+                  text: t("teamsUi.done.persona", { name: label }),
+                  focus: { member: member.name },
+                  retry: { member: member.name, control: "persona" },
+                },
               )
             }
             onRemove={(label) => setConfirm({ kind: "remove", member: member.name, label })}
