@@ -10,7 +10,7 @@ const KEYS = ["account"] as const;
 
 /** The account card of one host, wired to the app: it watches the host's account while on screen. */
 export function HostAccount(
-  props: Readonly<{ store: AppStore; host: HostView; cooldownMs?: number }>,
+  props: Readonly<{ store: AppStore; host: HostView; cooldownMs?: number; loadingMs?: number }>,
 ) {
   const { store, host } = props;
   const state = useStoreSlice(store, KEYS).account[host.id];

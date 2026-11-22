@@ -15,6 +15,10 @@ export interface AccountCardProps {
   now: number;
   formatTime: (iso: string) => string;
   refreshing: boolean;
+  /** The read ended and the host still refuses a sooner one: Refresh is off, and says why. */
+  cooling?: boolean;
+  /** The host has not answered in the time the screen waits: say so, with a way to ask again. */
+  timedOut?: boolean;
   copied: boolean;
   onRefresh: () => void;
   onCopy: () => void;
