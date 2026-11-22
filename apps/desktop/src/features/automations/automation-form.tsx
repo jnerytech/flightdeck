@@ -55,7 +55,7 @@ export function AutomationForm(
   const exprRef = useRef<HTMLInputElement>(null);
   const tzRef = useRef<HTMLInputElement>(null);
   const zonesId = useId();
-  const zones = useRef(timeZones()).current;
+  const [zones] = useState(timeZones);
   useEffect(() => {
     if (focusField && step === 0) {
       (focusField === "expr" ? exprRef : tzRef).current?.focus();
@@ -65,7 +65,7 @@ export function AutomationForm(
   const set = (patch: Partial<Draft>) => {
     setDraft({ ...draft, ...patch });
     setNotice(null);
-    if (fieldError && fieldError.field in patch) setFieldError(null);
+    if (fieldError && (fieldError.field in patch || "trigger" in patch)) setFieldError(null);
   };
   // The name and limit messages show after the first Save press, then follow what is typed.
   const [tried, setTried] = useState(false);
@@ -125,8 +125,10 @@ export function AutomationForm(
           variant="dialog"
           onSubmit={() => {
             if (blocked) return;
-            if (step < 2) setStep(step + 1);
-            else void save();
+            if (step < 2) {
+              setNotice(null);
+              setStep(step + 1);
+            } else void save();
           }}
         >
           <p className="text-muted-foreground text-sm">
@@ -305,7 +307,14 @@ export function AutomationForm(
             onCancel={props.onClose}
             extra={
               step > 0 && (
-                <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setNotice(null);
+                    setStep(step - 1);
+                  }}
+                >
                   {t("automationsUi.form.back")}
                 </Button>
               )
