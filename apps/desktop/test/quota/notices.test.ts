@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { translator } from "../../src/i18n/index.ts";
 import { AppStore } from "../../src/lib/app-store.ts";
 import { memoryPlatform } from "../fixtures.ts";
 
@@ -10,8 +11,13 @@ import { memoryPlatform } from "../fixtures.ts";
 const WEEK = 7 * 24 * 3_600_000;
 const RESET = Date.UTC(2026, 10, 12, 18, 0, 0);
 
-const reading = (utilization: number, resetsAt: number | null, status = "allowed") => ({
-  pauseAt: 0.95,
+const reading = (
+  utilization: number | null,
+  resetsAt: number | null,
+  status = "allowed",
+  pauseAt: number | null = 0.95,
+) => ({
+  pauseAt,
   windows: [
     {
       window: "seven_day",
@@ -46,7 +52,8 @@ function hosts(answer: (host: string, poll: number) => unknown) {
   };
   // Only the quota raises a notice here: every bell entry is one.
   const notices = () => store.getState().inbox.length;
-  return { store, refresh, notices };
+  const bodies = () => store.getState().inbox.map((entry) => entry.body);
+  return { store, refresh, notices, bodies };
 }
 
 describe("quota-notices: one notice per account, window and level (#933)", () => {
@@ -123,6 +130,37 @@ describe("quota-notices: one notice per account, window and level (#933)", () =>
     await refresh();
     await refresh();
     expect(notices()).toBe(2);
+    store.dispose();
+  });
+});
+
+// #4304: with the guard on Never, a window the plan rejected or at 100% is still told, once.
+describe("quota-notices: the guard on Never silences the thresholds, not the plan's facts (#4304)", () => {
+  test("a window at 100% notifies once per reset; one under 100% never does", async () => {
+    let utilization = 0.97;
+    const { store, refresh, notices } = hosts(() => reading(utilization, RESET, "allowed", null));
+    await refresh();
+    expect(notices()).toBe(0);
+    utilization = 1;
+    await refresh();
+    await refresh();
+    expect(notices()).toBe(1);
+    store.dispose();
+  });
+
+  test("a rejected window with no percent notifies once and says the plan refused it, not 0%", async () => {
+    const { store, refresh, notices, bodies } = hosts(() => reading(null, RESET, "rejected", null));
+    await refresh();
+    await refresh();
+    expect(notices()).toBe(1);
+    expect(bodies()[0]?.includes("0%")).toBe(false);
+    // The store speaks the platform's language: the text is the dictionary's, in either one.
+    const told = (lang: "en" | "pt-BR") =>
+      translator(lang)("notify.quotaRejected", {
+        host: "host-a",
+        window: translator(lang)("quota.windows.seven_day"),
+      });
+    expect([told("en"), told("pt-BR")]).toContain(bodies()[0] as string);
     store.dispose();
   });
 });
