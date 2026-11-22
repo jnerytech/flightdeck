@@ -152,7 +152,7 @@ for (const [lang, t] of [
         risk: "high",
         word: t.approval.risk.high,
         reason: "deletes files",
-        name: `alfa · Backend tests (${t.approval.risk.high}): Bash: npm test --silent`,
+        name: `alfa · Backend tests: Bash: npm test --silent (${t.approval.risk.high})`,
       });
     });
 
@@ -223,11 +223,11 @@ for (const [lang, t] of [
       expect([low, high, look()]).toEqual([
         {
           seal: t.approval.risk.low,
-          name: `alfa · Backend tests (${t.approval.risk.low}): Bash: npm test --silent`,
+          name: `alfa · Backend tests: Bash: npm test --silent (${t.approval.risk.low})`,
         },
         {
           seal: t.approval.risk.high,
-          name: `alfa · Backend tests (${t.approval.risk.high}): Bash: npm test --silent`,
+          name: `alfa · Backend tests: Bash: npm test --silent (${t.approval.risk.high})`,
         },
         { seal: null, name: "alfa · Backend tests: Bash: npm test --silent" },
       ]);
