@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useId, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { type ProjectCard, useProjectCards } from "@/features/projects/index.ts";
 import { ProjectCardTile } from "@/features/projects/ui.ts";
@@ -10,7 +10,7 @@ import {
   sessionLineText,
 } from "@/features/sessions/index.ts";
 import { ActionButton } from "@/shared/feedback/index.ts";
-import { CardGrid, Inline, Panel } from "@/shared/layout/index.ts";
+import { CardGrid, Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { SessionCard, STATE_TONES } from "../sessions/ui.ts";
@@ -55,6 +55,7 @@ export function HostOverview(
       t,
     ],
   );
+  const reasonId = useId();
   const projects = hostProjectCards(useProjectCards(store, state), host.id);
   return (
     <>
@@ -63,19 +64,28 @@ export function HostOverview(
         label={t("hostHome.sessionsTitle", { host: host.name })}
       >
         {rows.length === 0 ? (
-          <Inline gap={3}>
+          <Stack gap={2}>
             <p className="text-muted-foreground text-sm">
               {away ? t("hostHome.noSessionsAway", { host: host.name }) : t("hostHome.noSessions")}
             </p>
-            <ActionButton
-              size="sm"
-              disabled={away}
-              disabledReason={hostDownReason(host.status, host.name, t)}
-              onClick={props.onNewSession}
-            >
-              {t("hostHome.newSession")}
-            </ActionButton>
-          </Inline>
+            {/* The reason is a line of the panel, not ActionButton's box hung off the button: in this
+                column that box ran past the card and the window (#3862). */}
+            <Inline gap={3}>
+              <ActionButton
+                size="sm"
+                disabled={away}
+                aria-describedby={away ? reasonId : undefined}
+                onClick={props.onNewSession}
+              >
+                {t("hostHome.newSession")}
+              </ActionButton>
+              {away && (
+                <p id={reasonId} className="text-muted-foreground text-xs">
+                  {hostDownReason(host.status, host.name, t)}
+                </p>
+              )}
+            </Inline>
+          </Stack>
         ) : (
           <>
             <CardGrid>
