@@ -74,12 +74,12 @@ describe("file-viewer-failures: a refused read can be run again (#3972)", () => 
     const { store, reads, up } = host(true);
     await show(store);
     await press("README.md");
-    expect(screen.queryByText("host is busy")).not.toBeNull();
+    expect(screen.queryByText(/host is busy/)).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Try again" })).not.toBeNull();
     up();
     await press("Try again");
     expect(reads).toEqual(["README.md", "README.md"]);
-    expect(screen.queryByText("host is busy")).toBeNull();
+    expect(screen.queryByText(/host is busy/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
