@@ -73,7 +73,7 @@ export function KnowledgePanel(
   // Enter) comes before the host answers and would write with the hash the first one used up.
   const writing = useRef(new Set<string>());
   const pickers = useRef(new Map<string, HTMLSelectElement>());
-  const filters = useRef<HTMLDivElement>(null);
+  const filters = useRef<HTMLFieldSetElement>(null);
   const refocus = useRef<string | null>(null);
   // Try again keeps the failed view on screen (the button is where the focus is) until the host answers.
   const [retrying, setRetrying] = useState(false);
@@ -260,7 +260,11 @@ export function KnowledgePanel(
         <p className="text-sm">{t("projectPage.knowledge.empty")}</p>
       ) : (
         <>
-          <div ref={filters} className="flex flex-wrap gap-2">
+          <fieldset
+            ref={filters}
+            aria-label={t("projectPage.knowledge.filterLabel")}
+            className="flex flex-wrap gap-2"
+          >
             {(["all", ...STATUSES] as const).map((status) => (
               <Button
                 key={status}
@@ -276,8 +280,11 @@ export function KnowledgePanel(
                 })}
               </Button>
             ))}
-          </div>
-          <ul className="flex flex-col gap-2">
+          </fieldset>
+          {shown.length === 0 && (
+            <p className="text-sm">{t("projectPage.knowledge.noneWithStatus")}</p>
+          )}
+          <ul aria-label={title} className="flex flex-col gap-2">
             {shown.map((entry) => (
               <li key={entry.path} className="flex flex-col gap-1 rounded-md border p-2">
                 <span className="flex flex-wrap items-center gap-2">

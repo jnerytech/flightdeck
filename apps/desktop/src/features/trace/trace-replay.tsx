@@ -124,10 +124,23 @@ export function TraceReplay(
               {step.result && <span className="text-xs">{step.result}</span>}
             </Stack>
           )}
+          {/* Said aloud when the person steps (#3935). A screen reader speaks only text that changes
+              inside a region that was already polite, so the region stays polite and holds no text
+              while the replay plays, one step a second. */}
+          <div aria-live="polite" aria-atomic="true" className="sr-only">
+            {step && !playing
+              ? [nodeTitle(step, t), nodeNumbers(step, t), step.input, step.result]
+                  .filter(Boolean)
+                  .join(". ")
+              : ""}
+          </div>
           {changed && changed.files.length > 0 && (
             <Stack gap={1}>
-              <span className="text-xs">{t("trace.files")}</span>
-              <Stack as="ul" gap={1}>
+              {/* The list carries this name itself; the heading is not read a second time. */}
+              <span aria-hidden="true" className="text-xs">
+                {t("trace.files")}
+              </span>
+              <Stack as="ul" label={t("trace.files")} gap={1}>
                 {changed.files.map((file) => (
                   <li key={file.path} className="text-xs">
                     {file.path + " · " + t(`trace.${file.change}` as never)}

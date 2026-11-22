@@ -116,6 +116,38 @@ describe("knowledge-panel-ui: the library of a project on its page (#76)", () =>
     ]).toEqual([true, false, "true", "false"]);
   });
 
+  test("a filter with no document says so instead of leaving the list blank, and goes away on a filter with some", async () => {
+    render(setup({ list: { truncated: false, entries: [entry("docs/adr/0001-a.md")] } }).view);
+    await waitFor(() => expect(screen.queryByText("docs/adr/0001-a.md")).not.toBeNull());
+    const none = () => within(panel()).queryByText("No documents with this status.");
+    expect(none()).toBeNull();
+    fireEvent.click(within(panel()).getByRole("button", { name: "Obsolete (0)" }));
+    expect(none()).not.toBeNull();
+    fireEvent.click(within(panel()).getByRole("button", { name: "Valid (1)" }));
+    expect(none()).toBeNull();
+  });
+
+  test("the filters are a named group and the documents a named list", async () => {
+    render(setup().view);
+    await waitFor(() => expect(screen.queryByText("Use the outbox")).not.toBeNull());
+    expect(within(panel()).queryByRole("group", { name: "Filter by status" })).not.toBeNull();
+    expect(within(panel()).queryByRole("list", { name: "Project knowledge" })).not.toBeNull();
+  });
+
+  test("the empty-filter line and the group name come in Portuguese too", async () => {
+    render(
+      setup({
+        language: "pt-BR",
+        list: { truncated: false, entries: [entry("docs/adr/0001-a.md")] },
+      }).view,
+    );
+    await waitFor(() => expect(screen.queryByText("docs/adr/0001-a.md")).not.toBeNull());
+    const region = screen.getByRole("region", { name: "Conhecimento do projeto" });
+    expect(within(region).queryByRole("group", { name: "Filtrar por status" })).not.toBeNull();
+    fireEvent.click(within(region).getByRole("button", { name: "Obsoleto (0)" }));
+    expect(within(region).queryByText("Nenhum documento com este status.")).not.toBeNull();
+  });
+
   test("a warning and a problem are written out, not only coloured", async () => {
     render(setup().view);
     await waitFor(() => expect(screen.queryByText("Use the outbox")).not.toBeNull());

@@ -55,6 +55,8 @@ export const projects = {
       hint: "The project's PRDs, RFCs, ADRs and specs, with the status each one says it has in its front matter.",
       filter: "{status} ({n})",
       all: "All",
+      filterLabel: "Filter by status",
+      noneWithStatus: "No documents with this status.",
       status: {
         valid: "Valid",
         transitional: "Transitional",
