@@ -5,7 +5,7 @@ import { ntfsName } from "../../kernel/index.ts";
  * Code reads it: anything inside a `.claude` folder at any depth (settings that declare hooks and
  * permissions, agents, skills, commands, rules) and a `CLAUDE.md` or `CLAUDE.local.md`. A write
  * there decides what a session does, so it needs what `agentcfg.write` needs. Any separator, any
- * case and the spellings a Windows filesystem folds (trailing dots, a stream) count, and a leading
+ * case and the spellings a Windows filesystem folds (trailing dots, a stream, a short name) count, and a leading
  * `./` or an empty step does not matter.
  */
 export function isClaudeConfig(path: string): boolean {
@@ -15,6 +15,10 @@ export function isClaudeConfig(path: string): boolean {
     .map(ntfsName);
   const name = steps.at(-1);
   return (
-    steps.slice(0, -1).includes(".claude") || name === "claude.md" || name === "claude.local.md"
+    steps.slice(0, -1).includes(".claude") ||
+    name === "claude.md" ||
+    name === "claude.local.md" ||
+    // The 8.3 short name of `CLAUDE.local.md`, which Windows opens as the file itself.
+    /^claude~\d+\.md$/.test(name ?? "")
   );
 }

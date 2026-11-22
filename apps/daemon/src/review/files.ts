@@ -193,13 +193,19 @@ export class ReviewFiles {
     return searchRepository(real, search, { ...this.opts.search, ...(signal ? { signal } : {}) });
   }
 
-  /** Runs `guard` when the file shapes Claude Code's sessions: by its path, or (a file not there yet too) by where its links lead. */
+  /** Runs `guard` when the file shapes Claude Code's sessions: by its path, by where its links lead (a file not there yet too), or because another hard link shares its content. */
   private guardClaudeConfig(
-    where: { realRoot: string; landing: string },
+    where: { realRoot: string; landing: string; linked: boolean },
     path: string,
     guard?: () => void,
   ): void {
-    if (isClaudeConfig(path) || isClaudeConfig(relative(where.realRoot, where.landing))) guard?.();
+    // A file with another hard link may be a settings file under another name: the link itself says it.
+    if (
+      where.linked ||
+      isClaudeConfig(path) ||
+      isClaudeConfig(relative(where.realRoot, where.landing))
+    )
+      guard?.();
   }
 
   /**

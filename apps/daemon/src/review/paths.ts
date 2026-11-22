@@ -49,6 +49,8 @@ export interface Located {
   realRoot: string;
   /** Where the file is, or would be created, links resolved. */
   landing: string;
+  /** The file is there and has another hard link: a write changes that name's content too. */
+  linked: boolean;
 }
 
 /**
@@ -89,7 +91,8 @@ export async function located(root: string, realRoot: string, path: string): Pro
       { path },
     );
   }
-  return { full, real, realRoot, landing: where };
+  const linked = real !== null && ((await lstat(real).catch(() => null))?.nlink ?? 1) > 1;
+  return { full, real, realRoot, landing: where, linked };
 }
 
 /**
