@@ -44,7 +44,12 @@ export function budgetsSharingName(budgets: readonly Budget[]): Set<string> {
   }
   return new Set(
     budgets
-      .filter((b) => b.projectKey && (keysByName.get(projectName(b.projectKey))?.size ?? 0) > 1)
+      .filter(
+        (b) =>
+          b.scope === "project" &&
+          b.projectKey &&
+          (keysByName.get(projectName(b.projectKey))?.size ?? 0) > 1,
+      )
       .map((b) => b.id),
   );
 }

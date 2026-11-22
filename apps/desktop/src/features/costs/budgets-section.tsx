@@ -104,6 +104,9 @@ export function BudgetsSection(
   );
   const hidden = budgets.length - visible.length;
   const sameName = budgetsSharingName(visible);
+  /** A row's name for the buttons and the bar: the key joins it when another row has the same project name. */
+  const rowName = (b: Budget) =>
+    sameName.has(b.id) ? `${budgetLabel(b, t)} (${b.projectKey})` : budgetLabel(b, t);
   const [spentOn, setSpentOn] = useState<string[]>([]);
   // The keys a project budget can name are the ones the host has seen: those with usage in the
   // last 30 days and those a budget already uses.
@@ -241,7 +244,7 @@ export function BudgetsSection(
                           <Button
                             variant="ghost"
                             size="sm"
-                            aria-label={t("budgetsUi.edit", { label: budgetLabel(budget, t) })}
+                            aria-label={t("budgetsUi.edit", { label: rowName(budget) })}
                             data-action="edit"
                             onClick={() => {
                               setDraft(draftOf(budget));
@@ -253,7 +256,7 @@ export function BudgetsSection(
                           <Button
                             variant="ghost"
                             size="sm"
-                            aria-label={t("budgetsUi.remove", { label: budgetLabel(budget, t) })}
+                            aria-label={t("budgetsUi.remove", { label: rowName(budget) })}
                             onClick={() => setRemoving(budget)}
                           >
                             {t("budgetsUi.removeShort")}
@@ -263,7 +266,7 @@ export function BudgetsSection(
                     />
                     <Meter
                       label={t("budgetsUi.meter", {
-                        label: budgetLabel(budget, t),
+                        label: rowName(budget),
                         percent: Math.round(budget.fraction * 100),
                       })}
                       value={Math.min(budget.fraction, 1)}
@@ -440,7 +443,7 @@ export function BudgetsSection(
       </Panel>
       {removing && (
         <ConfirmDialog
-          message={t("budgetsUi.removeMessage", { label: budgetLabel(removing, t) })}
+          message={t("budgetsUi.removeMessage", { label: rowName(removing) })}
           confirmLabel={t("budgetsUi.removeConfirm")}
           destructive
           onConfirm={async () => {
