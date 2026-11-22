@@ -44,9 +44,13 @@ export function offerBackup(win: OfferWindow): void {
       dispatchEvent(event: Event): boolean;
     };
     if (tag.toLowerCase() !== "input") return element;
+    const own = element.click?.bind(element);
     element.click = () => {
+      // Only the file input the picker made: the type is set after the element is created.
+      if ((element as { type?: string }).type !== "file") return own?.();
       const kept = win.__saved;
       Object.defineProperty(element, "files", {
+        configurable: true,
         value: kept
           ? [{ name: kept.name, size: kept.text.length, text: async () => kept.text }]
           : null,

@@ -18,7 +18,7 @@ type Handle = {
 type Picker = (options: { suggestedName: string }) => Promise<Handle>;
 
 describe("the backup prints (#4001)", () => {
-  test("the table prints the schedule, the filled export form and the saved backup, all on Settings > Backup", () => {
+  test("the table prints the schedule, the export form, the saved backup and the restore states, all on Settings > Backup", () => {
     expect(backupShots().map((shot) => shot.name)).toEqual([
       "configuracoes-backup-agenda",
       "configuracoes-backup-exportar",
@@ -49,6 +49,7 @@ describe("the backup prints (#4001)", () => {
 
   describe("the file offer", () => {
     type Input = {
+      type: string;
       files: Array<{ name: string; size: number; text(): Promise<string> }> | null;
       addEventListener(type: string, listener: () => void): void;
       dispatchEvent(event: Event): boolean;
@@ -57,6 +58,7 @@ describe("the backup prints (#4001)", () => {
     const fakeInput = (): Input => {
       const listeners = new Map<string, Array<() => void>>();
       return {
+        type: "",
         files: null,
         addEventListener: (type, listener) => listeners.set(type, [listener]),
         dispatchEvent: (event) => {
@@ -68,6 +70,7 @@ describe("the backup prints (#4001)", () => {
     };
     const pick = (win: OfferWindow) => {
       const input = win.document.createElement("input") as Input;
+      input.type = "file";
       const seen: string[] = [];
       input.addEventListener("change", () => seen.push("change"));
       input.addEventListener("cancel", () => seen.push("cancel"));
@@ -91,6 +94,18 @@ describe("the backup prints (#4001)", () => {
       const win: OfferWindow = { document: { createElement: () => fakeInput() } };
       offerBackup(win);
       expect(pick(win).seen).toEqual(["cancel"]);
+    });
+
+    test("an input that is not a file input keeps its own click", () => {
+      let clicked = 0;
+      const win: OfferWindow = {
+        document: { createElement: () => ({ ...fakeInput(), click: () => clicked++ }) },
+      };
+      offerBackup(win);
+      const input = win.document.createElement("input") as Input;
+      input.type = "text";
+      input.click();
+      expect(clicked).toBe(1);
     });
 
     test("an element that is not an input is left as the page made it", () => {
