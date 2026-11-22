@@ -422,8 +422,11 @@ export const en: Dictionary = {
     checkNow: "Check for updates now",
     upToDate: "You are on the latest version",
     shortcut: "Global shortcut",
+    shortcutKeys: "Key combination",
     shortcutNote:
-      "Brings Flightdeck to the front with the search open, even in the background. Inside the app, Ctrl+K still opens the search.",
+      "Type the keys joined with +. For example: Ctrl+Alt+J. It brings Flightdeck to the front with the search open, even in the background. Inside the app, Ctrl+K still opens the search.",
+    showShortcuts: "Show the keyboard shortcuts",
+    previewGroup: "Preview features",
     saveShortcut: "Save shortcut",
     shortcutUnchanged: "Nothing changed",
     shortcutUnavailable: "global shortcut unavailable on this platform",

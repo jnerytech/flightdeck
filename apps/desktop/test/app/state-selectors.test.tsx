@@ -126,6 +126,7 @@ function Frame(props: {
           density="comfortable"
           go={noop}
           onOpenRequest={noop}
+          onShortcuts={noop}
         />
       </TooltipProvider>
     </TContext.Provider>

@@ -32,11 +32,12 @@ async function openSettings(supported = true) {
   await settle(() => !supported || registered.length > 0);
   await chooseFromAccountMenu("Configurações");
   // Settings is a lazy screen: its chunk may still be loading when the click returns.
-  await settle(() => screen.queryByRole("textbox", { name: "Atalho global" }) !== null);
+  await settle(() => screen.queryByRole("textbox", { name: "Combinação de teclas" }) !== null);
   return { ...mem, registered };
 }
 
-const field = () => screen.getByRole("textbox", { name: "Atalho global" }) as HTMLInputElement;
+const field = () =>
+  screen.getByRole("textbox", { name: "Combinação de teclas" }) as HTMLInputElement;
 const type = (value: string) =>
   act(async () => {
     fireEvent.change(field(), { target: { value } });

@@ -176,12 +176,13 @@ export const chrome = {
     backup: "Backup",
     words: {
       appearance:
-        "theme dark light system density list font size terminal language english portuguese",
+        "theme dark light system density list font size terminal language english portuguese cache timer tab order ctrl+tab reader screen reader",
       clients: "clients customers manage",
-      window: "window tray close autostart start with windows",
-      notifications: "notifications notify alerts sound mute snooze bell team test",
+      window:
+        "window tray close autostart start with windows setup checklist teleport preview features",
+      notifications: "notifications notify alerts sound file volume mute snooze bell team test",
       updates: "updates version check notify",
-      shortcut: "global shortcut keyboard search hotkey",
+      shortcut: "global shortcut shortcuts keyboard key combination search hotkey",
       budgets: "budget limit cost spend quota",
       watch: "watch pull request pr ci fix checks",
       messaging: "messages conversations rules agents",

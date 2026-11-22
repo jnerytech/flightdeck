@@ -267,6 +267,7 @@ describe("setup-ui: bringing the row back from Settings (issue #164)", () => {
         onCloseToTray={() => {}}
         onAutostart={() => {}}
         onGlobalShortcut={() => {}}
+        onShortcuts={() => {}}
         appUpdate={{ upToDate: false } as never}
         onCheckUpdate={() => {}}
         onNotifyUpdates={() => {}}

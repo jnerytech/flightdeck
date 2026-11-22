@@ -187,8 +187,9 @@ leva o foco além da barra de título e da barra lateral, para a própria tela (
 ## Atalho global
 
 `Ctrl+Alt+F` traz o app para frente com a busca global aberta, mesmo com ele em segundo plano ou
-na bandeja. Para mudar, abra **Configurações → Atalho global**, digite a combinação e clique em
-**Salvar atalho**.
+na bandeja. Para mudar, abra **Configurações → Atalho global**, digite a combinação no campo
+**Combinação de teclas** e clique em **Salvar atalho**. **Mostrar os atalhos do teclado** abre a lista
+de atalhos do app.
 
 - Formato `Modificadores+Tecla`, por exemplo `Ctrl+Shift+Y`. A tecla é uma letra, um dígito ou
   `F1` a `F24`, e é preciso ao menos `Ctrl`, `Alt` ou `Super`.

@@ -422,8 +422,11 @@ export const ptBR = {
     checkNow: "Procurar atualização agora",
     upToDate: "Você está na versão mais recente",
     shortcut: "Atalho global",
+    shortcutKeys: "Combinação de teclas",
     shortcutNote:
-      "Traz o Flightdeck para frente com a busca aberta, mesmo em segundo plano. Dentro do app, Ctrl+K continua abrindo a busca.",
+      "Digite as teclas ligadas por +. Por exemplo: Ctrl+Alt+J. Ele traz o Flightdeck para frente com a busca aberta, mesmo em segundo plano. Dentro do app, Ctrl+K continua abrindo a busca.",
+    showShortcuts: "Mostrar os atalhos do teclado",
+    previewGroup: "Recursos em prévia",
     saveShortcut: "Salvar atalho",
     shortcutUnchanged: "Nada mudou",
     shortcutUnavailable: "atalho global indisponível nesta plataforma",

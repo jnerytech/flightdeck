@@ -118,7 +118,9 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
       </TContext.Provider>,
     );
     await uiIdle();
-    await expectBusyOnce("Fazer backup agora", backup.calls, () => backup.settle(null));
+    await expectBusyOnce("Fazer backup do banco deste host", backup.calls, () =>
+      backup.settle(null),
+    );
     await expectBusyOnce("Simular", prune.calls, () => prune.settle(null));
   });
 

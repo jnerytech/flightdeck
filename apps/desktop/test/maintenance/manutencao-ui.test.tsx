@@ -28,7 +28,7 @@ async function confirmWith(name: string) {
 }
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/app/App.tsx");
-const { formatBytes } = await import("../../src/features/maintenance/maintenance-section.tsx");
+const { formatBytes } = await import("../../src/shared/lib/index.ts");
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
@@ -110,18 +110,18 @@ describe("manutencao-ui", () => {
     }
   });
 
-  test("Fazer backup agora cria o arquivo e atualiza o último backup", async () => {
+  test("Fazer backup do banco deste host cria o arquivo e atualiza o último backup", async () => {
     const d = await setup();
     await openMaintenance();
     await waitFor(() => expect(fact("Último backup")).toBe("nenhum ainda"));
-    await click("Fazer backup agora");
+    await click("Fazer backup do banco deste host");
     await waitFor(() => expect(fact("Último backup")).not.toBe("nenhum ainda"));
-    expect(fact("Último backup")).toMatch(/.+ \(\d+(\.\d)? (B|KB|MB)\)$/);
+    expect(fact("Último backup")).toMatch(/.+ \(\d+(,\d)? (B|KB|MB)\)$/);
     const backups = join(d.root, "data", "backups");
     expect(existsSync(backups) ? readdirSync(backups) : []).toHaveLength(1);
   });
 
-  test("Simular conta sem apagar; Limpar pede confirmação e apaga", async () => {
+  test("Simular conta sem apagar; Limpar dados antigos pede confirmação e apaga", async () => {
     const d = await setup();
     const sessionId = await endedSession(d);
     const before = eventCount(d, sessionId);
@@ -129,28 +129,26 @@ describe("manutencao-ui", () => {
     await openMaintenance();
     await waitFor(() => expect(fact("Última limpeza")).toBe("nenhuma ainda"));
     await click("Simular");
-    await waitFor(() =>
-      expect(section().textContent).toContain(`seriam apagados: eventos ${before}`),
-    );
+    await waitFor(() => expect(section().textContent).toContain(`Nada foi apagado.`));
     expect(eventCount(d, sessionId)).toBe(before);
-    expect(section().textContent).toContain("(simulação)");
+    expect(section().textContent).toContain(`estas linhas: eventos ${before}`);
     // Cancelling the confirmation keeps everything.
-    await click("Limpar");
+    await click("Limpar dados antigos");
     expect(text()).toContain("Apagar os dados antigos deste host");
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     });
     expect(eventCount(d, sessionId)).toBe(before);
-    await click("Limpar");
-    await confirmWith("Limpar");
-    // "seriam apagados: …" also contains "apagados: …": wait for the cleanup's own message, with
-    // the simulation's gone (the panel clears the last outcome when an action starts).
+    await click("Limpar dados antigos");
+    await confirmWith("Limpar dados antigos");
+    // The cleanup's own message, with the simulation's gone (the panel clears the last outcome
+    // when an action starts).
     await waitFor(() => {
-      expect(section().textContent).toContain(`apagados: eventos ${before}`);
-      expect(section().textContent).not.toContain("seriam apagados");
+      expect(section().textContent).toContain(`Linhas apagadas: eventos ${before}`);
+      expect(section().textContent).not.toContain("Nada foi apagado");
     });
     expect(eventCount(d, sessionId)).toBe(0);
-    expect(section().textContent).not.toContain("(simulação)");
+    expect(fact("Última limpeza")).not.toBe("nenhuma ainda");
   });
 
   test("host que não anuncia maintenance não tem a seção", async () => {
