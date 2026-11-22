@@ -432,6 +432,51 @@ describe("assistant-settings-ui: the models and the profiles", () => {
     expect(used[1]?.includes("Card title")).toBe(true);
   });
 
+  test("a profile no kind of text uses says nothing about what it is used for", async () => {
+    setup();
+    await click(radio("Anthropic (API key)"));
+    await settle(() => screen.queryByRole("combobox", { name: "Quick model" }) !== null);
+    await click(button("Advanced"));
+    const table = within(screen.getByRole("table"));
+    for (const select of table.getAllByRole("combobox")) {
+      await act(async () => {
+        fireEvent.change(select, { target: { value: "careful" } });
+      });
+    }
+    expect(document.body.textContent).not.toContain("Used for: .");
+  });
+
+  test("the models are read again once the key is saved", async () => {
+    let keyed = false;
+    setup({
+      api: {
+        setKey: () => {
+          keyed = true;
+        },
+        models: () => {
+          if (!keyed) throw { reason: "assistant_not_configured" };
+          return ANTHROPIC_MODELS;
+        },
+      },
+    });
+    await click(radio("Anthropic (API key)"));
+    await settle(() => document.body.textContent?.includes("Save a key above") === true);
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Anthropic key"), {
+        target: { value: "sk-ant-aaaabbbb" },
+      });
+    });
+    await click(
+      within(screen.getByRole("group", { name: "Anthropic" })).getByRole("button", {
+        name: "Save key",
+      }),
+    );
+    await settle(() => document.body.textContent?.includes("Key saved · …bbbb") === true);
+    await act(async () => {});
+    expect(screen.queryByRole("combobox", { name: "Quick model" })).not.toBeNull();
+    expect(document.body.textContent).not.toContain("Save a key above");
+  });
+
   test("a host that was agreed to already is chosen from the picker without asking again", async () => {
     const { store } = setup();
     await act(async () => {

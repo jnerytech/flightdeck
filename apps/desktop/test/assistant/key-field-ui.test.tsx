@@ -214,3 +214,75 @@ describe("key-field-ui: a status that cannot be read", () => {
     });
   });
 });
+
+describe("key-field-ui: what the person was told stays true", () => {
+  /**
+   * The store reads both providers after a save (two calls); the field's own read is the third one
+   * after the person pressed Save. `onFieldRead` is what that third read does.
+   */
+  async function mountThenSave(onFieldRead: () => void | Promise<void>) {
+    let armed = false;
+    let readsAfterSave = 0;
+    await mount({
+      keyStatus: () => {
+        if (armed && ++readsAfterSave === 3) return onFieldRead();
+      },
+    });
+    await settle(() => button("Replace") !== null);
+    armed = true;
+    await click(button("Replace"));
+    await typeKey("sk-ant-ccccdddd");
+    await click(button("Save key"));
+  }
+
+  test("the focus reaches Replace even when the status is slow to read again", async () => {
+    const hold = gate();
+    let reading = false;
+    await mountThenSave(() => {
+      reading = true;
+      return hold.done;
+    });
+    await settle(() => reading);
+    hold.open();
+    await settle(() => document.body.textContent?.includes("Key saved · …dddd") === true);
+    expect(focused(button("Replace"))).toBe(true);
+  });
+
+  test("a key stored but not read back does not leave the old one on screen", async () => {
+    await uncaught(async () => {
+      await mountThenSave(() => {
+        throw { reason: "assistant_key_store" };
+      });
+      await settle(() => button("Try again") !== null);
+      expect(document.body.textContent).not.toContain("Key saved · …bbbb");
+      expect(field()).toBeNull();
+      await click(button("Try again"));
+      await settle(() => document.body.textContent?.includes("Key saved · …dddd") === true);
+    });
+  });
+
+  test("a failed removal is not repeated once the person moves on to Replace or Test", async () => {
+    await uncaught(async () => {
+      await mount({
+        deleteKey: () => {
+          throw { reason: "assistant_key_store" };
+        },
+      });
+      await settle(() => button("Remove") !== null);
+      const remove = async () => {
+        await click(button("Remove"));
+        await click(
+          within(screen.getByRole("alertdialog")).getByRole("button", { name: "Remove" }),
+        );
+        await settle(() => screen.queryByRole("alert") !== null);
+      };
+      await remove();
+      await click(button("Test"));
+      await settle(() => screen.queryByRole("status") !== null);
+      expect(screen.queryByRole("alert")).toBeNull();
+      await remove();
+      await click(button("Replace"));
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+  });
+});
