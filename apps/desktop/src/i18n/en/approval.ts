@@ -74,6 +74,7 @@ export const approval = {
     requestShow: "Show the text",
     requestTextLabel: "Text for the enrolled device",
     requestWaiting: "Waiting for the other device to add this one.",
+    notListed: "This device is not listed yet.",
     requestCheck: "Check again",
     addBadText:
       'That is not a text made by another device\'s "Show the text" button. Copy it again, whole.',

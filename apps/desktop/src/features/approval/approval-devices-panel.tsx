@@ -69,18 +69,28 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
   const addBox = useRef<HTMLDivElement>(null);
   // The most devices this panel saw: protection that drops to none after that was not turned off here.
   const seen = useRef(0);
+  // A read that fails after the list was shown keeps the list and says so (#4157); a first read that fails has none to keep.
+  const shown = useRef(false);
+  const [stale, setStale] = useState(false);
   const reload = useCallback(async () => {
     try {
       const status = await store.approval.status(host.id);
       seen.current = Math.max(seen.current, status.keys.length);
+      shown.current = true;
+      setStale(false);
       setView({ kind: "ready", status });
+      return status;
     } catch {
-      setView({ kind: "failed" });
+      if (shown.current) setStale(true);
+      else setView({ kind: "failed" });
+      return null;
     }
   }, [store, host.id]);
   useEffect(() => {
     // Another host: what was seen on the last one says nothing about this one.
     seen.current = 0;
+    shown.current = false;
+    setStale(false);
     setView({ kind: "loading" });
     setDone(null);
     setProblem(null);
@@ -157,6 +167,27 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
       </div>
     );
   const hint = <p className="text-muted-foreground text-xs">{t("approvalDevices.hint")}</p>;
+  /** The host's devices could not be read: an alert, and the way to try again. */
+  const readFailed = (view.kind === "failed" || stale) && (
+    <Stack gap={2}>
+      <InlineNotice tone="error">{t("approvalDevices.loadFailed")}</InlineNotice>
+      <Inline>
+        <ActionButton variant="outline" onClick={reload}>
+          {t("approvalDevices.retry")}
+        </ActionButton>
+      </Inline>
+    </Stack>
+  );
+  /** Asks the host again whether it lists this device now, and says so when it still does not. */
+  const check = async () => {
+    setWhere("add");
+    setDone(null);
+    setProblem(null);
+    const status = await reload();
+    if (status && !status.keys.some((key) => key.keyId === status.thisKeyId)) {
+      setDone(t("approvalDevices.notListed"));
+    }
+  };
   // First in the panel, and always mounted: it takes the focus back when the person dismisses.
   const heardNotices = (
     <div ref={heardBox} tabIndex={-1}>
@@ -191,16 +222,10 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
       <Panel title={t("approvalDevices.title")} slot="host-section-approval">
         {heardNotices}
         {hint}
-        <output className="block text-sm">
-          {t(view.kind === "failed" ? "approvalDevices.loadFailed" : "approvalDevices.loading")}
-        </output>
-        {view.kind === "failed" && (
-          <Inline>
-            <ActionButton variant="outline" onClick={reload}>
-              {t("approvalDevices.retry")}
-            </ActionButton>
-          </Inline>
+        {view.kind === "loading" && (
+          <output className="block text-sm">{t("approvalDevices.loading")}</output>
         )}
+        {readFailed}
         {result("list")}
       </Panel>
     );
@@ -213,6 +238,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
     <Panel title={t("approvalDevices.title")} slot="host-section-approval">
       {heardNotices}
       {hint}
+      {readFailed}
       <p className="text-sm">
         {t(status.protectionOff ? "approvalDevices.off" : "approvalDevices.on")}
       </p>
@@ -408,7 +434,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
                 </p>
                 <output className="block text-sm">{t("approvalDevices.requestWaiting")}</output>
                 <Inline>
-                  <ActionButton variant="outline" onClick={reload}>
+                  <ActionButton variant="outline" onClick={check}>
                     {t("approvalDevices.requestCheck")}
                   </ActionButton>
                   <ActionButton

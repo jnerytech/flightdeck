@@ -74,6 +74,7 @@ export const approval = {
     requestShow: "Mostrar o texto",
     requestTextLabel: "Texto para o dispositivo já cadastrado",
     requestWaiting: "Aguardando o outro dispositivo adicionar este.",
+    notListed: "Este dispositivo ainda não está na lista.",
     requestCheck: "Verificar de novo",
     addBadText:
       'Isso não é um texto gerado pelo botão "Mostrar o texto" de outro dispositivo. Copie de novo, inteiro.',
