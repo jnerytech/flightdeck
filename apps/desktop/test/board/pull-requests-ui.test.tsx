@@ -363,6 +363,20 @@ describe("pull-requests-ui: a row that cannot be merged says why (#3633)", () =>
     ]).toEqual([false, true]);
   });
 
+  // #3893: with no Merge PR and no Update from the base, no empty strip sits before the hint.
+  test("a row with no button draws no empty container before its hint", () => {
+    open({ cards: { "h1/a": card("a", { checksState: "failing", worktreePath: null }) } });
+    const empty = [...row("Card a").querySelectorAll("div")].filter(
+      (el) => el.childElementCount === 0 && el.textContent === "",
+    );
+    expect([inRow("Card a").queryAllByRole("button").length, empty.length]).toEqual([0, 0]);
+  });
+
+  test("a row with a button still draws its actions", () => {
+    open({ cards: { "h2/b": card("b") } });
+    expect(inRow("Card b").queryAllByRole("button").length).toBeGreaterThan(0);
+  });
+
   test("a watch that is off says to turn it on from the card", () => {
     open({
       cards: { "h1/a": card("a") },
