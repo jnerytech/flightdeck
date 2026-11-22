@@ -271,7 +271,7 @@ export function BudgetsSection(
                     data-budget={budget.id}
                     aria-current={editing?.id === budget.id ? "true" : undefined}
                     className={
-                      editing?.id === budget.id ? "rounded-md ring-2 ring-ring/60" : undefined
+                      editing?.id === budget.id ? "rounded-md ring-2 ring-ring" : undefined
                     }
                   >
                     <Stack gap={1}>
@@ -508,6 +508,8 @@ export function BudgetsSection(
             const at = visible.findIndex((b) => b.id === gone.id);
             // A budget the list does not show (the client changed meanwhile) leaves the focus where it is.
             const next = at < 0 ? undefined : (visible[at + 1] ?? visible[at - 1]);
+            // The form held the budget just removed: it goes back to a new one.
+            if (draft.id === gone.id) setDraft(EMPTY);
             setDone(t("budgetsUi.done.removed", { label: budgetLabel(gone, t) }));
             setFocus({ kind: "gone", id: gone.id, next: next?.id ?? null });
           }}
