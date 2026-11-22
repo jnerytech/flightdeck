@@ -27,7 +27,7 @@ export function hostDuplicates(
   const taken: Partial<Record<"name" | "address", string>> = {};
   const byName = hosts.find((h) => sameName(h.name, draft.name));
   if (byName) taken.name = byName.name;
-  const mine = endpoint(draftUrl(draft));
+  const mine = endpoint(draftUrl({ ...draft, address: draft.address.trim() }));
   const byAddress = mine === null ? undefined : hosts.find((h) => endpoint(h.url) === mine);
   if (byAddress) taken.address = byAddress.name;
   return taken;
