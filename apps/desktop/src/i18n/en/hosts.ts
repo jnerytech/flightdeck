@@ -262,6 +262,8 @@ export const hosts = {
     missingAddress: "Fill in the address.",
     missingToken: "Fill in the token.",
     badPort: "The port must be a number from 1 to 65535.",
+    duplicateName: "Another host, {host}, already has this name.",
+    duplicateAddress: "{host} already uses this address and port.",
     pairScheme: "That is not a flightdeck:// link.",
     pairAddress: "The link has no host address.",
     pairPort: "The link's port is not valid.",

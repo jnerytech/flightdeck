@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { AppStore } from "@/lib/app-store.ts";
 import type { Route } from "@/lib/router.ts";
+import { useStoreSlice } from "@/lib/use-store";
 import { Page } from "@/shared/layout/index.ts";
 import { draftUrl } from "./domain/host-draft.ts";
 import { FirstRun } from "./first-run.tsx";
@@ -16,6 +17,7 @@ export function AddHost(
   }>,
 ) {
   const [error, setError] = useState<string | null>(null);
+  const { hosts } = useStoreSlice(props.store, ["hosts"]);
   const submit = async (draft: HostDraft) => {
     setError(null);
     const result = await props.store.roster.testAndAdd({
@@ -45,6 +47,7 @@ export function AddHost(
               }
             : {})}
           error={error}
+          hosts={hosts}
           onSubmit={(draft) => submit(draft)}
         />
       </div>
