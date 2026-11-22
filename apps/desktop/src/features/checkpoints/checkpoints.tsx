@@ -26,7 +26,9 @@ function TurnRow(
     /** The id of the panel's busy notice, which says why the rewind is off. */
     busyId: string;
     files: SnapshotFiles | undefined;
-    onToggle(): void;
+    /** The last read of this turn's files was refused. */
+    filesFailed: boolean;
+    onToggle(): Promise<void>;
     onRewind(): void;
     onFork(): void;
   }>,
@@ -52,11 +54,19 @@ function TurnRow(
       <p className="line-clamp-3 whitespace-pre-wrap break-words">{turn.prompt ?? ""}</p>
       {turn.files === "changed" && (
         <div className="flex flex-col gap-1">
-          <Button variant="ghost" size="sm" className="self-start" onClick={props.onToggle}>
+          <ActionButton variant="ghost" size="sm" className="self-start" onClick={props.onToggle}>
             {props.files
               ? t("timeline.hideFiles", { n: turn.ordinal })
               : t("timeline.showFiles", { n: turn.ordinal })}
-          </Button>
+          </ActionButton>
+          {props.filesFailed && (
+            <InlineNotice tone="error">
+              <span>{t("timeline.filesFailed", { n: turn.ordinal })}</span>{" "}
+              <ActionButton variant="outline" size="sm" onClick={props.onToggle}>
+                {t("timeline.retry")}
+              </ActionButton>
+            </InlineNotice>
+          )}
           {props.files && (
             <ul className="flex flex-col gap-1">
               {props.files.files.map((file) => (
@@ -119,6 +129,8 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
   // The first load was refused: the sheet says so and offers a new try, instead of loading for ever.
   const [failed, setFailed] = useState(false);
   const [files, setFiles] = useState<Record<number, SnapshotFiles>>({});
+  // The turns whose files the host refused to read: the row says so and offers a new try.
+  const [filesFailed, setFilesFailed] = useState<Record<number, true>>({});
   const [rewinding, setRewinding] = useState<Turn | null>(null);
   const [forking, setForking] = useState<Turn | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -140,11 +152,13 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
       setFiles(({ [turn.n]: _closed, ...rest }) => rest);
       return;
     }
+    setFilesFailed(({ [turn.n]: _retried, ...rest }) => rest);
     const result = await store.hostCommand(hostId, "snapshots.files", {
       claudeSessionId,
       n: turn.n,
     });
     if (result) setFiles((all) => ({ ...all, [turn.n]: result }));
+    else setFilesFailed((all) => ({ ...all, [turn.n]: true }));
   };
 
   const rewound = (turn: Turn) => {
@@ -199,7 +213,8 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
             busy={props.busy}
             busyId={busyId}
             files={files[turn.n]}
-            onToggle={() => void toggle(turn)}
+            filesFailed={filesFailed[turn.n] === true}
+            onToggle={() => toggle(turn)}
             onRewind={() => setRewinding(turn)}
             onFork={() => setForking(turn)}
           />
