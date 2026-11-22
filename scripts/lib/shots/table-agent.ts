@@ -1,6 +1,7 @@
 /** Part of the print table (scripts/demo-shots.ts), in print order. */
 import type { Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
+import { DEMO_MESSAGE_ASK, DEMO_MESSAGE_REFUSED } from "../e2e/journeys.ts";
 import {
   ALFA,
   agentRoute,
@@ -22,6 +23,25 @@ async function openForkWithFiles(page: Page): Promise<void> {
   await page
     .getByRole("checkbox", { name: /^(Voltar os arquivos também|Also rewind the files)$/ })
     .check();
+}
+
+/** A session's Messages tab, open with the messages the host holds for it listed (#4088). */
+async function openMessagesTab(page: Page): Promise<void> {
+  await page.getByRole("tab", { name: /^(Mensagens|Messages)$/ }).click();
+  await page.getByText(DEMO_MESSAGE_ASK).first().waitFor();
+}
+
+/** The Messages tab with its form open and a text sent that the host refuses (#4088). */
+async function sendRefusedMessage(page: Page): Promise<void> {
+  await openMessagesTab(page);
+  await page
+    .getByRole("button", { name: /^(Mandar para outra sessão…|Send to another session…)$/ })
+    .click();
+  await page
+    .getByRole("textbox", { name: /^(Texto da mensagem|Message text)$/ })
+    .fill(DEMO_MESSAGE_REFUSED);
+  await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
+  await page.getByText(/(The limit of|O limite de) 20 /).waitFor();
 }
 
 export function agentShots(ids: DemoIds): Shot[] {
@@ -533,6 +553,37 @@ export function agentShots(ids: DemoIds): Shot[] {
     },
     {
       name: "configuracoes-mensagens",
+      route: { name: "settings" },
+      prepare: showSection(/^(Messages between sessions on|Mensagens entre sessões em) /),
+    },
+    // Issue #4088: the Conversations page with a delivered row, a refused one with its reason and one
+    // to a host the demo does not have; a session's Messages tab, and with a refused send; and the
+    // paused pair and the exception under Settings > Messages between sessions.
+    { name: "conversas", route: { name: "conversations" } },
+    {
+      name: "sessao-mensagens",
+      route: { name: "session", host: ALFA, id: ids.idleSession },
+      prepare: openMessagesTab,
+    },
+    {
+      name: "sessao-mensagens-recusa",
+      route: { name: "session", host: ALFA, id: ids.idleSession },
+      wire: [
+        {
+          command: "messages.send",
+          data: {
+            id: "demo-refused-send",
+            status: "refused",
+            reason: "The limit of 20 messages per hour between these two sessions was reached.",
+            reasonKey: "messaging_limit_pair",
+            reasonParams: { limit: 20 },
+          },
+        },
+      ],
+      prepare: sendRefusedMessage,
+    },
+    {
+      name: "configuracoes-mensagens-pausa",
       route: { name: "settings" },
       prepare: showSection(/^(Messages between sessions on|Mensagens entre sessões em) /),
     },

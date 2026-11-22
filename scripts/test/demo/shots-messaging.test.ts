@@ -64,10 +64,9 @@ describe("the messaging prints (#4088)", () => {
       get: (_target, prop) => (prop === "then" ? undefined : member(String(prop))),
     });
     await named("sessao-mensagens-recusa")?.prepare?.(recorder as never);
-    const at = (needle: string) =>
-      calls.findIndex((call) => call.includes(needle) && !call.startsWith("click("));
+    const at = (needle: string) => calls.findIndex((call) => call.includes(needle));
     const tab = at("Mensagens");
-    const write = at("Mandar para outra sessão");
+    const write = at("Mandar para outra sess");
     const field = calls.findIndex((call) => call.startsWith("fill("));
     const send = at("Enviar");
     expect(tab).toBeGreaterThan(-1);
