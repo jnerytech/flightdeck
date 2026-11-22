@@ -20,20 +20,27 @@ const SAYS = {
     address: "Fill in the address.",
     token: "Fill in the token.",
     port: "The port must be a number from 1 to 65535.",
+    nameTaken: "Another host, My PC, already has this name.",
+    addressTaken: "My PC already uses this address and port.",
   },
   "pt-BR": {
     name: "Preencha o nome.",
     address: "Preencha o endereço.",
     token: "Preencha o token.",
     port: "A porta deve ser um número de 1 a 65535.",
+    nameTaken: "Outro host, My PC, já tem esse nome.",
+    addressTaken: "My PC já usa esse endereço e porta.",
   },
 } as const;
 
-function form(lang: "en" | "pt-BR", error: string | null = null) {
+/** The one host the list already holds, for the duplicate checks (#3884). */
+const LISTED = [{ name: "My PC", url: "ws://100.64.0.1:7420/v1/ws" }];
+
+function form(lang: "en" | "pt-BR", error: string | null = null, hosts = LISTED) {
   const submitted: unknown[] = [];
   const ui = (error: string | null) => (
     <TContext.Provider value={translator(lang)}>
-      <HostForm error={error} onSubmit={(draft) => submitted.push(draft)} />
+      <HostForm error={error} hosts={hosts} onSubmit={(draft) => submitted.push(draft)} />
     </TContext.Provider>
   );
   const view = render(ui(error));
@@ -135,6 +142,44 @@ for (const [lang, t] of [
       expect(
         invalid(t.hostForm.name) || invalid(t.hostForm.address) || invalid(t.hostForm.token),
       ).toBe(false);
+    });
+  });
+
+  describe(`host-form-errors (${lang}): a name or address another host has (#3884)`, () => {
+    const complete = async (patch: { name?: string; address?: string }) => {
+      const page = form(lang);
+      await fill(t.hostForm.name, patch.name ?? "pc");
+      await fill(t.hostForm.address, patch.address ?? "100.64.0.9");
+      await fill(t.hostForm.token, "abc");
+      await submit(t.hostForm.submit);
+      return page;
+    };
+
+    test("a name another host has is said on the name field, takes the focus and sends nothing", async () => {
+      const page = await complete({ name: " my pc " });
+      expect([invalid(t.hostForm.name), described(field(t.hostForm.name))]).toEqual([
+        true,
+        says.nameTaken,
+      ]);
+      expect(invalid(t.hostForm.address)).toBe(false);
+      expect(document.activeElement === field(t.hostForm.name)).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+      expect(page.submitted).toEqual([]);
+    });
+
+    test("an address and port another host uses is said on the address field and sends nothing", async () => {
+      const page = await complete({ address: "100.64.0.1" });
+      expect([invalid(t.hostForm.address), described(field(t.hostForm.address))]).toEqual([
+        true,
+        says.addressTaken,
+      ]);
+      expect(invalid(t.hostForm.name)).toBe(false);
+      expect(page.submitted).toEqual([]);
+    });
+
+    test("a name and an address nobody has are sent as before", async () => {
+      const page = await complete({});
+      expect(page.submitted).toHaveLength(1);
+      expect(invalid(t.hostForm.name) || invalid(t.hostForm.address)).toBe(false);
     });
   });
 

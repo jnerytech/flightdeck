@@ -26,6 +26,9 @@ const TEXT = {
     copyDoctor: "Copy flightdeckd doctor",
     submit: "Test and add",
     missing: "Fill in the name.",
+    address: "Address",
+    token: "Token",
+    taken: "Another host, one, already has this name.",
   },
   "pt-BR": {
     steps: "Primeiros passos",
@@ -36,6 +39,9 @@ const TEXT = {
     copyDoctor: "Copiar flightdeckd doctor",
     submit: "Testar e adicionar",
     missing: "Preencha o nome.",
+    address: "Endereço",
+    token: "Token",
+    taken: "Outro host, one, já tem esse nome.",
   },
 } as const;
 
@@ -119,6 +125,23 @@ describe("host-guide: Add a host (issue #1199)", () => {
       });
       expect(fold(text.byHand)?.open).toBe(true);
       expect(screen.queryByText(text.missing)).not.toBeNull();
+    });
+
+    test(`${language}: a name the listed host already has is refused on the page before any test (#3884)`, async () => {
+      const { text } = await secondHostPage(language);
+      for (const [label, value] of [
+        [text.name, "ONE"],
+        [text.address, "100.64.0.9"],
+        [text.token, "abc"],
+      ] as const) {
+        await act(async () => {
+          fireEvent.change(screen.queryByLabelText(label) as HTMLElement, { target: { value } });
+        });
+      }
+      await act(async () => {
+        fireEvent.click(screen.queryByRole("button", { name: text.submit }) as HTMLElement);
+      });
+      expect(screen.queryByText(text.taken)).not.toBeNull();
     });
 
     test(`${language}: the same error twice opens a fold the person closed in between`, async () => {
