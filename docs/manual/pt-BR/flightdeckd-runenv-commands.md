@@ -31,7 +31,8 @@ recusado com saída `1`.
 `watch` imprime a execução de cada cartão a cada mudança, uma linha para cada, até Ctrl-C.
 
 `trust <projeto> --hash <hash> --confirm` deixa o host executar os comandos do `run.yaml` do projeto. Passe o hash inteiro, de 64 caracteres,
-que o `config` imprimiu depois de você ler o arquivo: se o arquivo mudou desde então, o host recusa e nada é aceito.
+que o `config` imprimiu depois de você ler o arquivo: se o arquivo mudou desde então, o host recusa e nada é aceito. Confiar deixa o host executar os
+comandos, então exige uma conexão próxima (este computador ou a Tailscale): por uma conexão distante o daemon recusa.
 Imprime o arquivo como o `config`. `start <cartão> --confirm` executa a preparação e os processos do cartão e imprime
 a execução como o `get`. Os dois exigem `--confirm`, porque fazem o host executar comandos. `stop <cartão>` os
 encerra e não exige nada. Uma sessão que rode `trust` ou `start` no próprio shell por você é parada no pedido de

@@ -224,7 +224,8 @@ lê o remoto origin e define o provedor de PR quando ele é GitHub ou Azure DevO
 mostra um CLAUDE.md rascunhado (uma chamada ao modelo; não grava nada), e `fd project harness-export <pasta> <id> <título>`
 salva a configuração de agentes da pasta como um modelo naquele host. Um script de preparação roda em todo card e
 `--auto-approve` muda o que é aprovado sem perguntar, então uma sessão que executa isso pelo shell para até você
-aprovar.
+aprovar. Definir um script de preparação exige uma conexão próxima (este computador ou a Tailscale): por uma conexão
+distante o daemon recusa. Limpá-lo não tem esse limite.
 
 Para gravar o harness por um terminal, salve a prévia (`fd project harness-preview <pasta> --parts claudeMd,hooks
 --json > preview.json`), leia-a e rode `fd project harness-apply <pasta> --parts claudeMd,hooks --digests preview.json
