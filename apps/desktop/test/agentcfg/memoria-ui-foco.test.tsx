@@ -172,10 +172,9 @@ describe.each(["en", "pt-BR"] as const)(
       await press(w.add);
       await fill(w.fileName, "draft");
       await press(w.cancel);
-      expect({
-        form: screen.queryByLabelText(w.fileName) !== null,
-        onNew: focused() === screen.queryByRole("button", { name: w.add }),
-      }).toEqual({ form: false, onNew: true });
+      const form = screen.queryByLabelText(w.fileName) !== null;
+      const onNew = focused() === screen.queryByRole("button", { name: w.add });
+      expect({ form, onNew }).toEqual({ form: false, onNew: true });
     });
 
     test("Escape in the name field closes the form like Cancel, and a reopened form is empty", async () => {
@@ -187,10 +186,8 @@ describe.each(["en", "pt-BR"] as const)(
       });
       const closed = screen.queryByLabelText(w.fileName) === null;
       await press(w.add);
-      expect({
-        closed,
-        empty: (screen.queryByLabelText(w.fileName) as HTMLInputElement).value,
-      }).toEqual({ closed: true, empty: "" });
+      const empty = (screen.queryByLabelText(w.fileName) as HTMLInputElement).value;
+      expect({ closed, empty }).toEqual({ closed: true, empty: "" });
     });
 
     test("a new file's editor has the focus and says it is new until it is saved", async () => {
@@ -205,7 +202,8 @@ describe.each(["en", "pt-BR"] as const)(
       await press(w.save);
       await press(w.confirmSave);
       await settle(() => screen.queryByText(w.saved) !== null);
-      expect({ before, after: header() }).toEqual({
+      const after = header();
+      expect({ before, after }).toEqual({
         before: { focus: true, says: true },
         after: false,
       });
