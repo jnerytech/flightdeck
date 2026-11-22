@@ -47,6 +47,11 @@ export const board = {
   board: {
     cardActions: "Actions for {title}",
     startCard: "Start card",
+    startFor: "Starts “{title}”.",
+    startLoading: "Reading the project’s workflows…",
+    startWorkflowsFailed: "The project’s workflows could not be read.",
+    startRetry: "Try again",
+    startWithout: "Start without a workflow",
     startQueued: "the card is already queued",
     startRunning: "the card is already running",
     moveTo: "Move to {column}",

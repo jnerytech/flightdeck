@@ -250,6 +250,25 @@ describe("board-ui: projects, columns, filters, drag and the card menu", () => {
     expect(board.getBoard(board.listProjects()[0]?.id ?? "").columns[0]?.cards).toEqual([]);
   });
 
+  test("Excluir…: ao fechar o diálogo, por Cancelar ou por Excluir card, o foco fica no board e não na página", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    await createCard("Sobrando", "d");
+    await createCard("Outro", "d");
+    const insideBoard = () =>
+      document.querySelector('[data-slot="board-columns"]')?.contains(document.activeElement) ??
+      false;
+    await cardMenu("Sobrando", "Excluir…");
+    await click("Cancelar");
+    await settle(() => dialog() === null);
+    expect(insideBoard()).toBe(true);
+    expect(document.activeElement?.closest("li")?.getAttribute("data-card") ?? "").not.toBe("");
+    await cardMenu("Sobrando", "Excluir…");
+    await click("Excluir card");
+    await settle(() => cardItem("Sobrando") === null);
+    expect(insideBoard()).toBe(true);
+  });
+
   test("Excluir… de um card que já começou explica a recusa e oferece Descartar card no lugar", async () => {
     const { repo, board } = await setup();
     await openBoard(repo);
