@@ -66,6 +66,8 @@ export const PersonasPage = memo(function PersonasPage(props: {
   /** Where the person was when the editor opened: the scroll, and whose Edit button to come back to. */
   const opener = useRef<{ id: string; top: number } | null>(null);
   const keyOf = (p: AppPersona | "new") => (p === "new" ? "new" : `${p.scope}:${p.id}`);
+  /** The Edit button of a persona, or `new` for New persona: the controls that stay on while an action runs. */
+  const editButton = (id: string) => document.querySelector<HTMLElement>(`[data-edit="${id}"]`);
   const scroller = () =>
     list.current?.closest<HTMLElement>("[data-slot='scroll-area-viewport']") ?? null;
   const openEditor = (p: AppPersona | "new") => {
@@ -78,7 +80,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
   // biome-ignore lint/correctness/useExhaustiveDependencies: `personas` is how a saved list asks to be looked at again
   useLayoutEffect(() => {
     if (editing !== null || !opener.current) return;
-    const button = document.querySelector<HTMLElement>(`[data-edit="${opener.current.id}"]`);
+    const button = editButton(opener.current.id);
     if (!button) return;
     const box = scroller();
     if (box) box.scrollTop = opener.current.top;
@@ -127,21 +129,23 @@ export const PersonasPage = memo(function PersonasPage(props: {
   const act = async <R,>(
     p: AppPersona,
     action: Action,
-    request: Promise<HostResult<R>>,
+    request: () => Promise<HostResult<R>>,
     onDone: (data: R) => Promise<void> | string,
   ) => {
+    if (running.current) return;
     running.current = true;
     const seen = view.current;
     setNotice(null);
     setPending({ id: keyOf(p), action });
     try {
-      const result = await request;
-      if (seen !== view.current) return;
+      const result = await request();
       if (!result.ok) {
         const reason = refusalText(result.code, result.message, t, result);
         setNotice({ tone: "error", text: t("personas.actionFailed", { name: p.name, reason }) });
         return;
       }
+      // The person moved to another project or host meanwhile: what this answer says is not about the list they see.
+      if (seen !== view.current) return;
       const done = onDone(result.data);
       if (typeof done === "string") setNotice({ tone: "info", text: done });
       else await done;
@@ -152,11 +156,18 @@ export const PersonasPage = memo(function PersonasPage(props: {
   };
 
   const trust = async (p: AppPersona) => {
-    if (!hostId || !p.hash || running.current) return;
+    if (!hostId || !p.hash) return;
+    // The Trust button turns off while the host answers, and a trusted card loses it: the Edit button stays.
+    editButton(p.id)?.focus();
     await act(
       p,
       "trust",
-      store.hostRequest(hostId, "personas.trust", { projectPath: project, id: p.id, hash: p.hash }),
+      () =>
+        store.hostRequest(hostId, "personas.trust", {
+          projectPath: project,
+          id: p.id,
+          hash: p.hash as string,
+        }),
       reload,
     );
   };
@@ -164,44 +175,48 @@ export const PersonasPage = memo(function PersonasPage(props: {
   const remove = async (p: AppPersona) => {
     setRemoving(null);
     if (p.scope === "app") {
+      setNotice(null);
       store.personas.global.remove(p.id);
       return reload();
     }
-    if (!hostId || running.current || (p.scope !== "host" && p.scope !== "project")) return;
+    const { scope } = p;
+    if (!hostId || (scope !== "host" && scope !== "project")) return;
     await act(
       p,
       "remove",
-      store.hostRequest(hostId, "personas.remove", {
-        scope: p.scope,
-        id: p.id,
-        ...(p.scope === "project" ? { projectPath: project } : {}),
-      }),
+      () =>
+        store.hostRequest(hostId, "personas.remove", {
+          scope,
+          id: p.id,
+          ...(scope === "project" ? { projectPath: project } : {}),
+        }),
       reload,
     );
   };
 
   const reset = async (p: AppPersona) => {
-    if (!hostId || running.current) return;
+    if (!hostId) return;
     await act(
       p,
       "reset",
-      store.hostRequest(hostId, "personas.reset", { id: p.id, language }),
+      () => store.hostRequest(hostId, "personas.reset", { id: p.id, language }),
       reload,
     );
   };
 
   const publish = async (p: AppPersona) => {
     setPublishing(null);
-    if (!hostId || !project || running.current) return;
+    if (!hostId || !project) return;
     await act(
       p,
       "publish",
-      store.hostRequest(hostId, "personas.publishAgent", {
-        id: p.id,
-        projectPath: project,
-        language,
-        confirm: true,
-      }),
+      () =>
+        store.hostRequest(hostId, "personas.publishAgent", {
+          id: p.id,
+          projectPath: project,
+          language,
+          confirm: true,
+        }),
       (done) => t("personas.published", { name: p.name, path: done.path }),
     );
   };
@@ -382,6 +397,8 @@ export const PersonasPage = memo(function PersonasPage(props: {
           destructive
           onConfirm={() => void remove(removing)}
           onCancel={() => setRemoving(null)}
+          // The removed card is gone after the host answers: the focus goes to a control that stays.
+          onRestoreFocus={() => editButton("new")?.focus()}
         />
       )}
       {resetting && (
@@ -394,6 +411,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
             void reset(resetting);
           }}
           onCancel={() => setResetting(null)}
+          onRestoreFocus={() => editButton(resetting.id)?.focus()}
         />
       )}
       {publishing && (
@@ -402,6 +420,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
           confirmLabel={t("personas.publish")}
           onConfirm={() => void publish(publishing)}
           onCancel={() => setPublishing(null)}
+          onRestoreFocus={() => editButton(publishing.id)?.focus()}
         />
       )}
     </Page>
