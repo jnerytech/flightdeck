@@ -65,8 +65,8 @@ function host(queues: { list: Array<Answer | (() => Promise<Answer>)>; update?: 
   return { store, sent, lists: () => sent.filter(([type]) => type === "issues.list").length };
 }
 
-const project = (id: string, issues: IssuesConfig | null): Project =>
-  ({ id, name: id, issues }) as never;
+const project = (id: string, issues: Omit<IssuesConfig, "commentOnPr"> | null): Project =>
+  ({ id, name: id, issues: issues && { commentOnPr: false, ...issues } }) as never;
 
 function Harness(props: Readonly<{ store: never; lang: "en" | "pt-BR"; start: Project }>) {
   const [current, setCurrent] = useState(props.start);
