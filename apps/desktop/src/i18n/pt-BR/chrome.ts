@@ -180,7 +180,7 @@ export const chrome = {
         "tema escuro claro sistema densidade lista fonte tamanho terminal idioma inglês português contador cache ordem abas ctrl+tab leitor de tela",
       clients: "clientes gerenciar",
       window:
-        "janela bandeja fechar iniciar com o windows lista de configuração inicial configuração inicial teleport recursos em prévia",
+        "janela bandeja fechar iniciar com o windows configuração inicial teleport recursos em prévia",
       notifications:
         "notificações avisos alertas som arquivo volume silenciar adiar sino time teste",
       updates: "atualizações versão verificar avisar",

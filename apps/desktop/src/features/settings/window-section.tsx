@@ -51,8 +51,8 @@ export function WindowSection(
         />
         {t("setup.restore")}
       </label>
-      <fieldset>
-        <legend className="setting-hint">{t("prefs.previewGroup")}</legend>
+      <fieldset className="setting-group">
+        <legend className="font-medium text-sm">{t("prefs.previewGroup")}</legend>
         <label className={check}>
           <input
             type="checkbox"
