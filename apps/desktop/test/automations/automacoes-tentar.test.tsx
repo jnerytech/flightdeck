@@ -17,12 +17,14 @@ type Lang = "en" | "pt-BR";
 const WORDS = {
   en: {
     failed: "Could not read the automations. Check that the host is connected.",
+    workflowsFailed: "Could not read the workflows. Check that the host is connected.",
     retry: "Try again",
     empty: "No automations in this project",
     row: "Automation nightly",
   },
   "pt-BR": {
     failed: "Não deu para ler as automações. Veja se o host está conectado.",
+    workflowsFailed: "Não deu para ler os workflows. Veja se o host está conectado.",
     retry: "Tentar de novo",
     empty: "Nenhuma automação neste projeto",
     row: "Automação nightly",
@@ -86,10 +88,10 @@ describe.each(["en", "pt-BR"] as const)("the Automations page, a refused load (%
     expect(loads.every((a) => JSON.stringify(a.options) === '{"retry":false}')).toBe(true);
   });
 
-  test("a refused workflow list is an alert too, and the automations stay", async () => {
+  test("a refused workflow list is an alert that names the workflows, and the automations stay", async () => {
     await page(lang, (type) => (type === "automation.list" ? { automations: [AUTOMATION] } : null));
     await settle(() => screen.queryByRole("listitem", { name: w.row }) !== null);
-    expect(screen.queryByRole("alert")?.textContent?.includes(w.failed)).toBe(true);
+    expect(screen.queryByRole("alert")?.textContent?.includes(w.workflowsFailed)).toBe(true);
     expect(screen.queryByRole("listitem", { name: w.row })).not.toBeNull();
   });
 });
