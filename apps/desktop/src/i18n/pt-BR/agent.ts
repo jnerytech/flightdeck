@@ -72,6 +72,7 @@ export const agent = {
     title: "Agente de {project}",
     crumb: "Agente",
     subtitle: "MCP, CLAUDE.md, agentes e skills deste projeto.",
+    subtitleMemory: "MCP, CLAUDE.md, agentes, skills, memória e contexto deste projeto.",
     tabs: "Configuração do agente",
     tabMcp: "MCP",
     tabClaudeMd: "CLAUDE.md",

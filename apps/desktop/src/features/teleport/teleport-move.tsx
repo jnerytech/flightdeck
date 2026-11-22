@@ -3,9 +3,11 @@
  * (online, with teleport, not its own), the repository on the target (typed, or picked from the
  * folders that host allows), the store's relay, and the session opened where it landed.
  */
-import { memo, useRef, useState } from "react";
+import type { Project } from "@flightdeck/protocol";
+import { memo, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/shared/layout/index.ts";
 import { useT } from "../../i18n/context.tsx";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { useStoreSlice } from "../../lib/use-store.ts";
@@ -16,7 +18,7 @@ import { failureText, TeleportDialog } from "./teleport-dialog.tsx";
 
 const TELEPORT_KEYS = ["hosts"] as const;
 
-/** The repository on the target: a typed path, and Browse where that host can list its folders. */
+/** The repository on the target: a typed path, the projects that host knows, and Browse where it can list its folders. */
 function RepoField(
   props: Readonly<{
     store: AppStore;
@@ -27,9 +29,37 @@ function RepoField(
 ) {
   const t = useT();
   const [browsing, setBrowsing] = useState(false);
-  const { host } = props;
+  const { host, store } = props;
+  const hostId = host?.id;
+  // Keyed by host: the render right after a new target is picked never shows the previous host's projects.
+  const [loaded, setLoaded] = useState<{ hostId: string; projects: Project[] } | null>(null);
+  const known = loaded && loaded.hostId === hostId ? loaded.projects : [];
+  useEffect(() => {
+    if (!hostId) return;
+    let current = true;
+    void store.projectList.load(hostId).then((projects) => {
+      if (current) setLoaded({ hostId, projects: projects ?? [] });
+    });
+    return () => {
+      current = false;
+    };
+  }, [store, hostId]);
   return (
     <>
+      {known.length > 0 && (
+        <NativeSelect
+          aria-label={t("teleportUi.known")}
+          value={known.some((p) => p.path === props.value) ? props.value : ""}
+          onChange={(e) => e.target.value && props.onChange(e.target.value)}
+        >
+          <option value="">{t("teleportUi.pickKnown")}</option>
+          {known.map((project) => (
+            <option key={project.id} value={project.path}>
+              {`${project.name} — ${project.path}`}
+            </option>
+          ))}
+        </NativeSelect>
+      )}
       <Input
         aria-label={t("teleportUi.repo")}
         value={props.value}

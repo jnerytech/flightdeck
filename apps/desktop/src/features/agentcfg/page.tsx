@@ -1,7 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AgentMemory } from "@/features/memory/ui.ts";
 import { SubagentsSwitch } from "@/features/personas/ui.ts";
-import { Page } from "@/shared/layout/index.ts";
+import { Page, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { AgentContext } from "./agent-context.tsx";
@@ -21,11 +21,12 @@ export function AgentPage(
   const { t } = store.i18n;
   const host = store.getState().hosts.find((h) => h.id === hostId);
   const withMemory = hasFeature(host?.hostInfo?.features, "memory", false);
+  const withPersonas = hasFeature(host?.hostInfo?.features, "personas", false);
   return (
-    <Page title={t("agent.title", { project: props.projectName })} subtitle={t("agent.subtitle")}>
-      {hasFeature(host?.hostInfo?.features, "personas", false) && (
-        <SubagentsSwitch store={store} hostId={hostId} projectId={projectId} />
-      )}
+    <Page
+      title={t("agent.title", { project: props.projectName })}
+      subtitle={t(withMemory ? "agent.subtitleMemory" : "agent.subtitle")}
+    >
       <Tabs defaultValue="mcp">
         <TabsList aria-label={t("agent.tabs")}>
           <TabsTrigger value="mcp">{t("agent.tabMcp")}</TabsTrigger>
@@ -50,7 +51,12 @@ export function AgentPage(
         )}
         {(["claudemd", "agent", "skill"] as const).map((kind) => (
           <TabsContent key={kind} value={kind}>
-            <AgentFiles store={store} hostId={hostId} projectId={projectId} kind={kind} />
+            <Stack gap={4}>
+              {kind === "agent" && withPersonas && (
+                <SubagentsSwitch store={store} hostId={hostId} projectId={projectId} />
+              )}
+              <AgentFiles store={store} hostId={hostId} projectId={projectId} kind={kind} />
+            </Stack>
           </TabsContent>
         ))}
       </Tabs>

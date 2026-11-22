@@ -438,6 +438,7 @@ export const hosts = {
     reconnecting: "Reconectando…",
     still: "Continua desconectado.",
     copy: "Copiar o comando {command}",
+    copyWsl: "Copiar o trecho do /etc/wsl.conf",
     copied: "Copiado",
     hintLinux: "No host, confira se o daemon está rodando e se ele sobe no boot:",
     hintWsl:

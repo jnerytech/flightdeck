@@ -201,26 +201,31 @@ describe("host-offline-ui", () => {
         return true;
       },
     });
-    const commands = [
-      "systemctl --user status flightdeckd",
-      "sudo loginctl enable-linger $USER",
-      "systemd=true",
-    ];
-    for (const command of commands) {
-      const button = screen.queryByRole("button", { name: `Copiar o comando ${command}` });
+    // The WSL step is a file snippet, not a command: it copies the [boot] header with the key (#4012).
+    const snippet = "[boot]\nsystemd=true";
+    const buttons = [
+      [
+        "Copiar o comando systemctl --user status flightdeckd",
+        "systemctl --user status flightdeckd",
+      ],
+      ["Copiar o comando sudo loginctl enable-linger $USER", "sudo loginctl enable-linger $USER"],
+      ["Copiar o trecho do /etc/wsl.conf", snippet],
+    ] as const;
+    for (const [name] of buttons) {
+      const button = screen.queryByRole("button", { name });
       expect(button).not.toBeNull();
       await act(async () => {
         fireEvent.click(button as HTMLElement);
       });
     }
-    expect(copied).toEqual(commands);
+    expect(copied).toEqual(buttons.map(([, text]) => text));
   });
 
   test("a copy that lands says so in the banner's live region, and one the clipboard refuses says nothing (#3694)", async () => {
     let lands = true;
     const region = await banner(OFFLINE, { onCopy: async () => lands });
     const live = within(region).getByRole("status");
-    const button = screen.queryByRole("button", { name: "Copiar o comando systemd=true" });
+    const button = screen.queryByRole("button", { name: "Copiar o trecho do /etc/wsl.conf" });
     expect(button).not.toBeNull();
     lands = false;
     await act(async () => {
@@ -256,7 +261,7 @@ describe("host-offline-ui", () => {
       fireEvent.click(screen.getByRole("button", { name: "Reconectar agora" }));
     });
     rerender(view({ ...OFFLINE, status: "connecting" }));
-    const button = screen.queryByRole("button", { name: "Copiar o comando systemd=true" });
+    const button = screen.queryByRole("button", { name: "Copiar o trecho do /etc/wsl.conf" });
     expect(button).not.toBeNull();
     await act(async () => {
       fireEvent.click(button as HTMLElement);
@@ -274,7 +279,7 @@ describe("host-offline-ui", () => {
 
   test("a copy while an automatic retry is trying is still announced, since no Reconnect answer is waiting (#3694)", async () => {
     const region = await banner({ ...OFFLINE, status: "connecting" });
-    const button = screen.queryByRole("button", { name: "Copiar o comando systemd=true" });
+    const button = screen.queryByRole("button", { name: "Copiar o trecho do /etc/wsl.conf" });
     expect(button).not.toBeNull();
     await act(async () => {
       fireEvent.click(button as HTMLElement);
@@ -309,6 +314,7 @@ describe("host-offline-ui", () => {
     expect(
       screen.queryByRole("button", { name: "Copy the command sudo loginctl enable-linger $USER" }),
     ).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Copy the /etc/wsl.conf snippet" })).not.toBeNull();
   });
 
   test("a Windows host's two service commands have a copy button each (#3694)", async () => {
