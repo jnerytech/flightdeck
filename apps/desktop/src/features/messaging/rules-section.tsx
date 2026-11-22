@@ -86,7 +86,7 @@ export function MessagingRulesSection(
   const [retention, setRetention] = useState("");
   const adding = useBusy();
   const saving = useBusy();
-  // The refusal of a row's own button, shown next to that row: `exceptions:<id>` or `paused:<pair>` (#4085).
+  // The refusal of a row's own button, shown next to that row; keyed by list name, a colon and the row's id (#4085).
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const rowButtons = useRef(new Map<string, HTMLButtonElement | null>());
   const headings = useRef<Record<List, HTMLHeadingElement | null>>({
