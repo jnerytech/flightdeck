@@ -304,6 +304,18 @@ describe("conversas-ui: a row names its sessions (#4294)", () => {
     expect(row.querySelector('[title="h/s2"]') !== null).toBe(true);
   });
 
+  test("two ends with the same name keep their addresses visible, so the row still tells them apart", async () => {
+    const { daemon, list } = await open();
+    daemon.hub.managed = [managed("s1", "api"), managed("s2", "api")];
+    daemon.messaging.messages = [message({ id: "m1" })];
+    await goToList(list, 1);
+    const row = list()?.children[0] as HTMLElement;
+    await settleMaybe(() => (row.textContent ?? "").includes("api"));
+    expect(row.textContent).toContain("api");
+    expect(row.textContent).toContain("h/s1");
+    expect(row.textContent).toContain("h/s2");
+  });
+
   test("a session the hub does not know keeps its address, and the Open button's name is unchanged", async () => {
     const { daemon, list } = await open();
     daemon.hub.managed = [managed("s1", "revisor")];
