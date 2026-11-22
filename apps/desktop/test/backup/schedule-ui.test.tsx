@@ -151,7 +151,7 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
     await click("Set passphrase");
     const shortKept = store.backupScheduler.hasPassphrase;
     await type("Passphrase for this session", PASS);
-    await click("Use it");
+    await click("Set passphrase");
     await waitFor(() => files.size === 1 || undefined, "the backup file").catch(() => null);
     expect([
       shortKept,
@@ -204,7 +204,7 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
     await click("Choose folder");
     await click("Every day");
     await type("Passphrase for this session", PASS);
-    await click("Use it");
+    await click("Set passphrase");
     expect(said("could not be saved")).toBe(true);
   });
 

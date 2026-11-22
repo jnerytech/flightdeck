@@ -52,7 +52,7 @@ export function isDue(schedule: BackupSchedule, now: number): boolean {
 }
 
 /** What the screen says about the next run: the reason it cannot run, or when it is due (#4000). */
-export type NextBackup = { waitingFor: SkipReason } | { at: number } | null;
+export type NextBackup = { waitingFor: Exclude<SkipReason, "failed"> } | { at: number } | null;
 
 /** What a run needs besides the schedule: whether a folder is stored, the passphrase is in memory and Drive is signed in. */
 export interface RunReadiness {
@@ -65,12 +65,15 @@ export interface RunReadiness {
  * The next run, by the same rules `isDue` and the run use: null when the schedule is off, the first
  * reason a run would be skipped, or the time the next period ends (now, when a run is owed).
  */
-export function nextBackup(
-  _schedule: BackupSchedule,
-  _ready: RunReadiness,
-  _now: number,
-): NextBackup {
-  return null;
+export function nextBackup(schedule: BackupSchedule, ready: RunReadiness, now: number): NextBackup {
+  if (schedule.cadence === "off") return null;
+  const onDrive = schedule.target === "drive";
+  // The order of `pickTarget` in run-schedule.ts: folder, then passphrase, then Drive sign-in.
+  if (!onDrive && (schedule.folder === "" || !ready.hasFolder)) return { waitingFor: "no-folder" };
+  if (!ready.hasPassphrase) return { waitingFor: "no-passphrase" };
+  if (onDrive && !ready.driveSignedIn) return { waitingFor: "drive-auth" };
+  if (schedule.lastRunAt === null || schedule.lastRunAt > now) return { at: now };
+  return { at: Math.max(now, schedule.lastRunAt + PERIOD[schedule.cadence]) };
 }
 
 export function backupFileName(now: number): string {

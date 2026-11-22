@@ -7,7 +7,7 @@ import type { AppStore } from "@/lib/app-store";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 import { useBusy } from "@/shared/hooks/index.ts";
 import { Field, Form, FormActions, Panel, Stack } from "@/shared/layout/index.ts";
-import type { Cadence, ScheduleTarget } from "./domain/backup-schedule.ts";
+import { type Cadence, nextBackup, type ScheduleTarget } from "./domain/backup-schedule.ts";
 
 const CADENCES: readonly Cadence[] = ["off", "daily", "weekly"];
 const TARGETS: readonly ScheduleTarget[] = ["folder", "drive"];
@@ -53,6 +53,17 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
   const waiting = schedule.cadence !== "off" && !scheduler.hasPassphrase;
   // Drive is a choice only where a client id is configured; a saved Drive target means the folder without it.
   const onDrive = scheduler.driveAvailable && schedule.target === "drive";
+  // #4000: when the next run is due, or what it waits for, by the rules the run itself follows.
+  const now = Date.now();
+  const next = nextBackup(
+    schedule,
+    {
+      hasFolder: scheduler.folder !== null,
+      hasPassphrase: scheduler.hasPassphrase,
+      driveSignedIn: scheduler.driveSignedIn,
+    },
+    now,
+  );
 
   return (
     <Panel title={t("backupSchedule.title")}>
@@ -197,7 +208,7 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
               )}
             </Field>
             <FormActions
-              submit={t("backupSchedule.usePassphrase")}
+              submit={t("backupSchedule.setPassphrase")}
               busy={using.busy}
               disabled={passphrase.length < MIN_PASSPHRASE}
               disabledReason={t("backupSchedule.passphraseNeeds")}
@@ -223,6 +234,17 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
                 when: formatDateTime(new Date(schedule.lastRunAt).toISOString(), t.lang),
               })}
         </p>
+        {next && (
+          <p className="text-muted-foreground text-sm">
+            {"waitingFor" in next
+              ? t(`backupSchedule.nextWaiting.${next.waitingFor}`)
+              : next.at <= now
+                ? t("backupSchedule.nextDueNow")
+                : t("backupSchedule.nextDue", {
+                    when: formatDateTime(new Date(next.at).toISOString(), t.lang),
+                  })}
+          </p>
+        )}
       </Stack>
     </Panel>
   );
