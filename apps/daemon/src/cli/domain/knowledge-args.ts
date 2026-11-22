@@ -73,17 +73,19 @@ export function knowledgeFlags(others: Record<string, Handler>): Record<string, 
 
 const ONLY = "this flag only applies to flightdeckd knowledge";
 
-/** What is wrong with the knowledge flags and verbs, or undefined; the other commands never carry them. */
-export function knowledgeProblem(args: CliArgs): string | undefined {
-  if (args.command !== "knowledge") return undefined;
-  const verb = args.action;
-  const feedFlag = args.knowledgeFeed ? "--on" : "--off";
+/** A flag on a verb that does not take it. */
+function strayFlagProblem(args: CliArgs, verb: string | undefined): string | undefined {
   if (args.knowledgeStatus !== undefined && verb !== "set-status")
     return `--status: ${ONLY} set-status`;
   if (args.hash !== undefined && verb !== "set-status") return `--hash: ${ONLY} set-status`;
   if (args.knowledgeFeed !== undefined && verb !== "set-feed")
-    return `${feedFlag}: ${ONLY} set-feed`;
+    return `${args.knowledgeFeed ? "--on" : "--off"}: ${ONLY} set-feed`;
   if (args.bodyFile !== undefined && verb !== "create") return `--body-file: ${ONLY} create`;
+  return undefined;
+}
+
+/** What a verb cannot run without, and the shape of its values. */
+function verbProblem(args: CliArgs, verb: string | undefined): string | undefined {
   if (verb === "set-status" && args.knowledgeStatus === undefined)
     return "knowledge set-status needs --status";
   if (verb === "set-status" && args.hash === undefined) return "knowledge set-status needs --hash";
@@ -96,6 +98,12 @@ export function knowledgeProblem(args: CliArgs): string | undefined {
   if (verb === "create" && (args.knowledgeTitle ?? "").length > TITLE_MAX)
     return `knowledge create: the title is longer than ${TITLE_MAX} characters`;
   return undefined;
+}
+
+/** What is wrong with the knowledge flags and verbs, or undefined; the other commands never carry them. */
+export function knowledgeProblem(args: CliArgs): string | undefined {
+  if (args.command !== "knowledge") return undefined;
+  return strayFlagProblem(args, args.action) ?? verbProblem(args, args.action);
 }
 
 /** What the knowledge runner takes from the parsed arguments (checked by `readKnowledge` and `knowledgeProblem`). */

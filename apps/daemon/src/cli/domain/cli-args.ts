@@ -140,7 +140,6 @@ export interface CliArgs {
     | "since"
     | "message"
     | "respawn"
-    | "templates"
     | "validation-template"
     | "pr-create"
     | "update-from-base"
