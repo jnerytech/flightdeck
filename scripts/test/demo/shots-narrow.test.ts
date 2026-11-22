@@ -27,6 +27,10 @@ describe("shots-narrow: the narrow windows demo:shots re-measures (#641)", () =>
     expect(narrowSizes("dark", "sino-painel")).toHaveLength(3);
   });
 
+  test("#4243: the Activity board is re-measured narrow, where its columns stack", () => {
+    expect(narrowSizes("dark", "atividade")).toHaveLength(3);
+  });
+
   test("a light print, or a print not in the list, is not", () => {
     expect(narrowSizes("light", "board")).toHaveLength(0);
     expect(narrowSizes("dark", "paleta")).toHaveLength(0);
