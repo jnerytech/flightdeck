@@ -129,11 +129,8 @@ export function MessagingRulesSection(
   const exceptions = rules.policy.exceptions ?? [];
   // The host keeps whole days from 1 up and refuses anything else; the saved value needs no second save.
   const days = Number(retention);
-  const retentionChanged =
-    retention.trim() !== "" &&
-    Number.isInteger(days) &&
-    days >= 1 &&
-    days !== rules.policy.retentionDays;
+  const retentionValid = retention.trim() !== "" && Number.isInteger(days) && days >= 1;
+  const retentionChanged = retentionValid && days !== rules.policy.retentionDays;
   const save = async (patch: Partial<Policy>): Promise<boolean> => {
     const result = await store.hostRequest(hostId, "messaging.rules.set", {
       policy: { ...rules.policy, ...patch },
@@ -276,7 +273,11 @@ export function MessagingRulesSection(
           <FormActions
             submit={t("messagingRulesUi.saveRetention")}
             disabled={!retentionChanged}
-            disabledReason={t("messagingRulesUi.retentionSame")}
+            disabledReason={t(
+              retentionValid
+                ? "messagingRulesUi.retentionSame"
+                : "messagingRulesUi.retentionInvalid",
+            )}
             busy={saving.busy}
           />
         </Form>

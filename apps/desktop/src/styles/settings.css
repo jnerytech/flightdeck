@@ -15,6 +15,10 @@
     grid-template-columns: 12rem minmax(0, 1fr);
     gap: 1rem;
   }
+  /* A control with a note under it: the label sits on the control's line, not between the two (#3843). */
+  &:has(> .setting-control) {
+    align-items: baseline;
+  }
 }
 
 /* A control and the help under it, in the control's column of a setting row (#3843). */

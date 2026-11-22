@@ -197,6 +197,7 @@ export const watch = {
     retention: "Retention (days)",
     saveRetention: "Save retention",
     retentionSame: "Change the number of days to save.",
+    retentionInvalid: "Enter a whole number of days, 1 or more.",
     paused: "Pairs paused for a loop",
     noPaused: "No pair is paused.",
     loading: "Reading the message rules of {host}…",
