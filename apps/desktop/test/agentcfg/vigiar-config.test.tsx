@@ -124,7 +124,7 @@ describe("vigiar-config: the PR watch of each project, in Configurações", () =
       });
     const seen: Array<[boolean | undefined, string | undefined]> = [[save()?.disabled, why()]];
     await rounds("2");
-    seen.push([save()?.disabled, undefined]);
+    seen.push([save()?.disabled, why()]);
     await rounds("3");
     seen.push([save()?.disabled, why()]);
     expect(seen).toEqual([
@@ -132,6 +132,15 @@ describe("vigiar-config: the PR watch of each project, in Configurações", () =
       [false, undefined],
       [true, "Altere uma configuração para salvar."],
     ]);
+    // Blanks the save would drop are no change either.
+    await act(async () => {
+      fireEvent.change(field("Checks locais (um comando por linha)"), {
+        target: {
+          value: `${(field("Checks locais (um comando por linha)") as HTMLTextAreaElement).value}\n  \n`,
+        },
+      });
+    });
+    expect([save()?.disabled, why()]).toEqual([true, "Altere uma configuração para salvar."]);
   });
 
   test("each project's controls sit in a group named by the project (#3864)", async () => {
