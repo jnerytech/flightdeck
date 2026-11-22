@@ -55,6 +55,15 @@ describe("risk rules: the maintenance commands from a session's shell (#3756)", 
     ).toEqual([]);
   });
 
+  test("a --force that xargs adds to a backup line is high too (#3809)", () => {
+    expect(
+      wrongReasons([
+        ["echo --force | xargs fd backup --out /tmp/c.db", HIDDEN],
+        ["printf -- --force | xargs flightdeckd backup --out /tmp/c.db", HIDDEN],
+      ]),
+    ).toEqual([]);
+  });
+
   test("a backup whose path is named --force, or a card named backup, is not a forced backup", () => {
     expect(
       notHigh([

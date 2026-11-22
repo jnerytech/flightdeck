@@ -138,6 +138,37 @@ describe("backupNow with a target that already exists (#3809)", () => {
     });
   });
 
+  test("force never replaces the database the daemon has open, nor its -wal and -shm", async () => {
+    const dir = tempDir();
+    const live = join(dir, "flightdeck.db");
+    const db = new Database(live);
+    db.exec("PRAGMA journal_mode=WAL; CREATE TABLE t (x); INSERT INTO t VALUES (1)");
+    const names = [live, `${live}-wal`, `${live}-shm`];
+    const got: Array<string | undefined> = [];
+    for (const name of names) {
+      const error = await backupNow(db, tempDir(), NOW, name, true).catch(
+        (e: { code?: string }) => e,
+      );
+      got.push((error as { code?: string }).code);
+    }
+    const rows = db.query("SELECT x FROM t").all();
+    db.close();
+    expect({ got, rows }).toEqual({
+      got: ["target_exists", "target_exists", "target_exists"],
+      rows: [{ x: 1 }],
+    });
+  });
+
+  test.skipIf(skipLinks)("force replaces a regular file or a link only, never a pipe", async () => {
+    const out = join(tempDir(), "pipe.db");
+    Bun.spawnSync(["mkfifo", out]);
+    const got = await refusal(out, true);
+    expect({ code: got?.code, stillPipe: lstatSync(out).isFIFO() }).toEqual({
+      code: "target_exists",
+      stillPipe: true,
+    });
+  });
+
   test("a force that fails to write the copy leaves the old file as it was, and no temporary file", async () => {
     const dir = tempDir();
     const out = join(dir, "thesis.docx");
