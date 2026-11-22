@@ -173,7 +173,7 @@ export function changesShots(ids: DemoIds): Shot[] {
       // ...and after it, the offer to undo with the seconds left. The host's file is not reverted.
       name: "card-mudancas-desfazer",
       route: card,
-      wire: [{ command: "changes.revert", reply: { path: FAKE_FILE, undoUntil: "{in 25s}" } }],
+      wire: [{ command: "changes.revert", reply: { path: FAKE_FILE, undoUntil: "{in 60s}" } }],
       prepare: async (page) => {
         await openChanges(page, FAKE_FILE);
         await revertButton(page, FAKE_FILE).click();
@@ -275,7 +275,7 @@ export function changesShots(ids: DemoIds): Shot[] {
         await page.getByRole("button", { name: MERGE }).click();
         await page.getByRole("alertdialog").getByRole("button", { name: MERGE }).click();
         // The page keeps an empty alert region for focus; the refusal is the one with text.
-        await page.getByRole("alert").filter({ hasText: /\S/ }).waitFor();
+        await page.getByRole("alert").filter({ hasText: "The merge stopped" }).waitFor();
       },
     },
     {
@@ -313,6 +313,7 @@ export function changesShots(ids: DemoIds): Shot[] {
         await page.getByRole("button", { name: CHANGES_TAB }).click();
         await page
           .getByText(/^(Could not read the PR comments\.|Não consegui ler os comentários do PR\.)$/)
+          .first()
           .waitFor({ timeout: 15_000 });
       },
     },
