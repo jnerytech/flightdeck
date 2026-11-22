@@ -175,6 +175,75 @@ describe("projetos-lista-ui: the Projects overview", () => {
     expect(screen.queryByText("No projects yet.")).not.toBeNull();
   });
 
+  test("before the project lists are read it shows the loading state, not the empty one", async () => {
+    const { store, view, state } = setup();
+    // The palette's load has not answered yet: the lists are unknown, not empty.
+    let settle = () => {};
+    store.palette.load = () => new Promise<void>((resolve) => (settle = resolve));
+    render(view({ ...state, projects: {} } as never));
+    expect(screen.queryByRole("status", { name: "Loading projects" })).not.toBeNull();
+    expect(screen.queryByText("No projects yet.")).toBeNull();
+    await act(async () => settle());
+    await waitFor(() => expect(screen.queryByText("No projects yet.")).not.toBeNull());
+    expect(screen.queryByRole("status", { name: "Loading projects" })).toBeNull();
+  });
+
+  test("a slow earlier load that settles after a newer one does not bring the loading state back", async () => {
+    const { store, view, state } = setup();
+    const settles: Array<() => void> = [];
+    store.palette.load = () => new Promise<void>((resolve) => settles.push(resolve));
+    const empty = { ...state, projects: {} };
+    const { rerender } = render(view(empty as never));
+    // The first load is still out when a host changes: a second load starts for the new set.
+    const changed = empty.hosts.map((h) => (h.id === "h2" ? { ...h, status: "offline" } : h));
+    rerender(view({ ...empty, hosts: changed } as never));
+    expect(settles.length).toBe(2);
+    await act(async () => settles[1]?.());
+    await waitFor(() => expect(screen.queryByText("No projects yet.")).not.toBeNull());
+    await act(async () => settles[0]?.());
+    expect(screen.queryByText("No projects yet.")).not.toBeNull();
+    expect(screen.queryByRole("status", { name: "Loading projects" })).toBeNull();
+  });
+
+  test("a host still connecting shows the loading state, an offline one says so", async () => {
+    const { view, state } = setup();
+    const only = (status: string) =>
+      ({ ...state, projects: {}, hosts: [{ ...host("h1", "alfa"), status }] }) as never;
+    const { rerender } = render(view(only("connecting")));
+    await waitFor(() =>
+      expect(screen.queryByRole("status", { name: "Loading projects" })).not.toBeNull(),
+    );
+    expect(screen.queryByText("No projects yet.")).toBeNull();
+    rerender(view(only("offline")));
+    await waitFor(() =>
+      expect(screen.queryByRole("status", { name: "Loading projects" })).toBeNull(),
+    );
+    expect(
+      screen.queryByText("alfa is offline. Its projects show again when it reconnects."),
+    ).not.toBeNull();
+  });
+
+  test("a host that answered with no projects ends the wait even while another one connects", async () => {
+    const { store, view, state } = setup();
+    store.palette.load = async () => {};
+    const hosts = [host("h1", "alfa"), { ...host("h2", "beta"), status: "connecting" }];
+    render(view({ ...state, projects: {}, hosts } as never));
+    await waitFor(() => expect(screen.queryByText("No projects yet.")).not.toBeNull());
+    expect(screen.queryByRole("status", { name: "Loading projects" })).toBeNull();
+  });
+
+  test("once the cards are there a host that reconnects never brings the loading state back", async () => {
+    const { store, view, state } = setup();
+    const { rerender } = render(view());
+    await waitFor(() => expect(names().length).toBeGreaterThan(0));
+    // The next load never answers: the cards on screen stay, with no loading state over them.
+    store.palette.load = () => new Promise<void>(() => {});
+    const beta = state.hosts.map((h) => (h.id === "h2" ? { ...h, status: "connecting" } : h));
+    rerender(view({ ...state, hosts: beta } as never));
+    expect(screen.queryByRole("status", { name: "Loading projects" })).toBeNull();
+    expect(names().sort()).toEqual(["api", "web"]);
+  });
+
   test("in Portuguese the labels and the plural follow the dictionary", async () => {
     const { view } = setup({ language: "pt-BR" });
     render(view());
