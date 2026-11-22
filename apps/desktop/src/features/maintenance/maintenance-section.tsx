@@ -89,6 +89,15 @@ export function MaintenanceSection(props: Readonly<{ store: AppStore; hostId: st
   const cleanupText = cleanup
     ? store.formatDateTime(cleanup.at) + dryRunNote
     : t("maintenance.noCleanup");
+  const noStatus = failed ? (
+    <ErrorState
+      message={t("maintenance.loadFailed")}
+      retryLabel={t("maintenance.retry")}
+      onRetry={() => void refresh(true)}
+    />
+  ) : (
+    <p className="text-muted-foreground text-sm">{t("maintenance.asking")}</p>
+  );
   return (
     <section aria-label={t("maintenance.title")}>
       <Panel title={t("maintenance.title")}>
@@ -111,19 +120,11 @@ export function MaintenanceSection(props: Readonly<{ store: AppStore; hostId: st
               { id: "lastCleanup", label: t("maintenance.fields.lastCleanup"), value: cleanupText },
             ]}
           />
-        ) : failed ? (
-          <ErrorState
-            message={t("maintenance.loadFailed")}
-            retryLabel={t("maintenance.retry")}
-            onRetry={() => void refresh(true)}
-          />
         ) : (
-          <p className="text-muted-foreground text-sm">{t("maintenance.asking")}</p>
+          noStatus
         )}
         {/* Always in the tree (empty, it takes no room but is not hidden), so a screen reader hears the outcome when it fills in. */}
-        <p role="status" className="text-sm empty:sr-only">
-          {result}
-        </p>
+        <output className="block text-sm empty:sr-only">{result}</output>
         <div className="flex gap-2">
           <ActionButton variant="outline" size="sm" onClick={() => backup()}>
             {t("maintenance.backup")}
