@@ -7,6 +7,7 @@ const { act, cleanup, fireEvent, render, within, waitFor } = await import("@test
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/app/App.tsx");
+const { requestLink } = await import("../../src/features/inbox/domain/request-link.ts");
 
 const stores: Array<{ dispose(): void }> = [];
 afterEach(() => {
@@ -191,5 +192,33 @@ describe("inbox-sino-ui: which notification is unread, and what each one is abou
       fireEvent.click(within(gone).getByRole("button", { name: "Descartar Card X" }));
     });
     expect(store.getState().inbox.map((e) => e.id)).toEqual(["2"]);
+  });
+
+  test("a click on a request row that no longer waits keeps the panel open, marks nothing and says why (#4200)", async () => {
+    const { store } = await setup([
+      ASK("1", 30, { subject: "Pedido", link: requestLink("h", "gone-1"), read: false }),
+    ]);
+    const panel = await open();
+    const [row] = rows(panel) as [HTMLElement];
+    expect(within(row).queryByText("O que isto citava não existe mais.") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    // The row has a live region of its own, outside its button, quiet until the click.
+    expect(within(row).queryByRole("status")?.textContent).toBe("");
+    expect(within(row).queryByRole("status")?.closest("button") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    await act(async () => {
+      fireEvent.click(within(row).getByRole("button", { name: /^(?!Marcar|Descartar).*Pedido/ }));
+    });
+    expect(screen.queryByRole("dialog") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(store.getState().inbox.map((e) => e.read)).toEqual([false]);
+    const why = "Nada a abrir: este pedido não espera mais resposta. Descarte-o para limpar.";
+    expect(within(row).queryByRole("status")?.textContent).toBe(why);
+    expect(within(row).queryByText(why) === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    // Closing the panel forgets the click: the next time the row is as it was.
+    await act(async () => {
+      fireEvent.keyDown(panel, { key: "Escape" });
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    const again = await open();
+    expect(within(rows(again)[0] as HTMLElement).queryByRole("status")?.textContent).toBe("");
+    expect(within(again).queryByText(why) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });
