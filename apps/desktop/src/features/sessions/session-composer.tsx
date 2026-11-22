@@ -1,12 +1,21 @@
 import type { EffortLevel } from "@flightdeck/protocol";
 import { AtSign, BookText, CornerDownLeft, Plus, Square } from "lucide-react";
-import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  type FocusEvent,
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { useWand, type WandBinding } from "@/features/assistant/index.ts";
 import { WandButton, WandPanel } from "@/features/assistant/ui.ts";
 import type { PromptSnippets } from "@/features/snippets/index.ts";
 import { PromptMenu } from "@/features/snippets/ui.ts";
 import { ActionButton, ConfirmDialog, IconActionButton } from "@/shared/feedback/index.ts";
+import { focusLost } from "@/shared/hooks/index.ts";
 import { isBusy } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
 import { ActivityLine } from "./activity-line";
@@ -108,18 +117,26 @@ export function SessionComposer(props: Readonly<SessionComposerProps>) {
   const { attached, setAttached, refusal, setRefusal, attach } = useComposerImages(props.images);
 
   const sendShown = text.trim() !== "" || attached.length > 0;
-  // Read while the render runs, before React removes anything: did a button of the message card
-  // (Send, Stop, Queue) hold the focus? Those buttons leave the page when a send or the end of a
-  // turn changes what the card offers, and the focus would fall to the page body (#3813).
-  const card = box.current?.closest('[data-slot="composer-card"]');
-  const held = document.activeElement;
-  const buttonHeld = useRef(false);
-  buttonHeld.current = Boolean(card && held && held !== box.current && card.contains(held));
+  // The button of the message card (Send, Stop, Queue) that holds the focus. These buttons leave
+  // the page when a send or the end of a turn changes what the card offers, and the focus would
+  // fall to the page body (#3813). A blur that fires because the button was removed keeps it.
+  const heldButton = useRef<HTMLElement | null>(null);
+  const holdFocus = {
+    onFocus: (e: FocusEvent<HTMLElement>) => {
+      heldButton.current = e.currentTarget;
+    },
+    onBlur: (e: FocusEvent<HTMLElement>) => {
+      if (e.currentTarget.isConnected) heldButton.current = null;
+    },
+  };
   // biome-ignore lint/correctness/useExhaustiveDependencies: the buttons change with these two
   useLayoutEffect(() => {
-    // Only a focus that fell to the body goes to the box: one that moved on its own stays.
-    const lost = document.activeElement === document.body || document.activeElement === null;
-    if (buttonHeld.current && lost) box.current?.focus();
+    const held = heldButton.current;
+    // Only a focus that fell to the body when its button was removed goes to the box.
+    if (held && !held.isConnected && focusLost()) {
+      heldButton.current = null;
+      box.current?.focus();
+    }
   }, [working, sendShown]);
 
   const { queued, enqueue, remove } = useComposerQueue({
@@ -275,13 +292,19 @@ export function SessionComposer(props: Readonly<SessionComposerProps>) {
           />
           {working ? (
             <>
-              <ActionButton variant="outline" aria-keyshortcuts="Enter" onClick={submit}>
+              <ActionButton
+                variant="outline"
+                aria-keyshortcuts="Enter"
+                onClick={submit}
+                {...holdFocus}
+              >
                 {t("session.queueAdd")}
               </ActionButton>
               <ActionButton
                 variant="destructive"
                 aria-label={t("session.stopTurn")}
                 onClick={() => actions.interrupt()}
+                {...holdFocus}
               >
                 <Square aria-hidden="true" />
                 {t("session.interrupt")}
@@ -294,6 +317,7 @@ export function SessionComposer(props: Readonly<SessionComposerProps>) {
                 aria-label={t("session.send")}
                 aria-keyshortcuts="Enter"
                 onClick={submit}
+                {...holdFocus}
               >
                 <CornerDownLeft aria-hidden="true" />
               </ActionButton>
