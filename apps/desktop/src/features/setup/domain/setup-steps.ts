@@ -200,6 +200,13 @@ export function missingTools(deps: { items: DepResult[] } | undefined): DepResul
   ];
 }
 
+const OUTDATED_MARK = "~outdated";
+
+/** The id of a tool's note on a host: the out-of-date note is not the missing one. */
+export function toolNoteId(tool: DepResult, hostId: string): string {
+  return `${tool.id}${tool.state === "outdated" ? OUTDATED_MARK : ""}@${hostId}`;
+}
+
 /** The dismissed notes whose tool a host now reports as in place: a later problem is a new note. */
 function installedDismissals(
   dismissed: readonly string[],
@@ -207,7 +214,9 @@ function installedDismissals(
 ): string[] {
   return dismissed.filter((id) => {
     const at = id.lastIndexOf("@");
-    const tool = deps[id.slice(at + 1)]?.items.find((d) => d.id === id.slice(0, at));
+    // An out-of-date note carries its own id, so one dismissed while the tool was lacking does not hide it.
+    const name = id.slice(0, at).replace(OUTDATED_MARK, "");
+    const tool = deps[id.slice(at + 1)]?.items.find((d) => d.id === name);
     return tool?.state === "ok";
   });
 }

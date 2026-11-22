@@ -1,7 +1,7 @@
 import { Info } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
-import { missingTools } from "@/features/setup/index.ts";
+import { missingTools, toolNoteId } from "@/features/setup/index.ts";
 import { useT } from "@/i18n/context";
 import { Inline } from "@/shared/layout/index.ts";
 import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
@@ -145,7 +145,7 @@ export function MissingToolsCards(
           depBreaksText(tool, t),
         ].filter((part) => part !== null);
         return {
-          id: `${tool.id}@${host.id}`,
+          id: toolNoteId(tool, host.id),
           tool: name,
           host: host.name,
           title: t(outdated ? "setup.tools.titleOutdated" : "setup.tools.title", named),
