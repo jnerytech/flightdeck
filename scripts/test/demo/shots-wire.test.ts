@@ -170,7 +170,19 @@ describe("shots-wire: the states the table prints (#3982)", () => {
     expect(named("linha-do-tempo-desfeito")?.wire).toEqual([
       { command: "rewind.apply", as: "rewind.preview" },
       // The Undo comes from the host's undo preview, and the demo's host has no rewind to undo.
-      { command: "rewind.undoPreview", as: "rewind.preview" },
+      {
+        command: "rewind.undoPreview",
+        as: "snapshots.list",
+        data: {
+          via: "snapshot",
+          files: [
+            { path: "README.md", change: "modified" },
+            { path: "src/cart.ts", change: "deleted" },
+          ],
+          insertions: expect.any(Number),
+          deletions: expect.any(Number),
+        },
+      },
     ]);
     expect(named("linha-do-tempo-falhou")?.wire).toEqual([
       { command: "snapshots.list", refuse: expect.stringContaining("snapshot") },
