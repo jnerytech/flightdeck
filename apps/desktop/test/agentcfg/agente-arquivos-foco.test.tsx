@@ -189,14 +189,17 @@ describe.each(["en", "pt-BR"] as const)(
       const closed = field(w.agentName) === null;
       const onNew = focused() === screen.queryByRole("button", { name: w.add });
       await press(w.add);
-      expect({ closed, onNew, reopened: field(w.agentName)?.value, editor: field(w.name) }).toEqual(
-        {
-          closed: true,
-          onNew: true,
-          reopened: "",
-          editor: null,
-        },
-      );
+      expect({
+        closed,
+        onNew,
+        reopened: field(w.agentName)?.value,
+        noEditor: field(w.name) === null,
+      }).toEqual({
+        closed: true,
+        onNew: true,
+        reopened: "",
+        noEditor: true,
+      });
     });
 
     test("Escape in the name field closes the form like Cancel and reaches no parent", async () => {
@@ -217,7 +220,7 @@ describe.each(["en", "pt-BR"] as const)(
       }
       expect({
         closed: field(w.agentName) === null,
-        onNew: focused() === screen.queryByRole("button", { name: w.add }),
+        onNew: document.activeElement?.textContent === w.add,
         reached,
       }).toEqual({ closed: true, onNew: true, reached: false });
     });
