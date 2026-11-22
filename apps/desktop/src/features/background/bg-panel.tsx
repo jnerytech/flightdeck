@@ -60,9 +60,13 @@ export const BgPanel = memo(function BgPanel(props: {
     inFlight.current = true;
     setSending(true);
     setSent(null);
-    const accepted = await store.background.message(hostId, session.id, text.trim());
-    inFlight.current = false;
-    setSending(false);
+    let accepted = false;
+    try {
+      accepted = await store.background.message(hostId, session.id, text.trim());
+    } finally {
+      inFlight.current = false;
+      setSending(false);
+    }
     setSent(accepted ? "ok" : "refused");
     if (accepted) setText("");
     // The button is off again once the box is empty: the focus stays where the person types.
