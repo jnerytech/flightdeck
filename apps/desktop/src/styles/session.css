@@ -1,19 +1,21 @@
 /* A session's views (#641): one row that scrolls sideways in a narrow pane, instead of a second
    row taken from the conversation. A mask fades the row at both ends over the tabs (#3821): the
    fade is as wide as the row's padding, so at the start and the end of the scroll it covers only
-   padding, and it shows only where tabs are hidden past an edge. */
+   padding, and it shows only where tabs are hidden past an edge. A second, solid mask layer keeps
+   the row's 1px border out of the fade. */
 @utility session-views {
   display: flex;
   flex-shrink: 0;
   gap: 0.5rem;
   overflow-x: auto;
-  mask-image: linear-gradient(
-    to right,
-    transparent,
-    #000 1rem,
-    #000 calc(100% - 1rem),
-    transparent
-  );
+  mask-image:
+    linear-gradient(to right, transparent, #000 1rem, #000 calc(100% - 1rem), transparent),
+    linear-gradient(#000, #000);
+  mask-size:
+    100% calc(100% - 1px),
+    100% 1px;
+  mask-position: top, bottom;
+  mask-repeat: no-repeat;
   border-bottom: 1px solid var(--border);
   padding: 0.5rem 1rem;
   & > * {

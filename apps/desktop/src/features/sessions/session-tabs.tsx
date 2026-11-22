@@ -127,12 +127,11 @@ export function SessionTabs(
   // The row of views scrolls sideways in a narrow pane: whichever way the view changed (a click, the
   // arrow keys, Alt+number, the palette), its tab comes into view (#3821). The row scrolls itself,
   // never `scrollIntoView`, which moves the first Tab's starting point (#1430).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `viewsKey` stands for the `views` list
   useEffect(() => {
-    const row = root.current?.querySelector<HTMLElement>('[data-slot="session-views"]');
     const active = tabs.current.get(tab);
-    if (row && active) revealTab(row, active);
-  }, [tab, viewsKey]);
+    // 16 px: the row's padding, where its edge fade ends.
+    if (active?.parentElement) revealTab(active.parentElement, active, 16);
+  }, [tab]);
   // Alt+1 to Alt+7 (Ctrl+1 to 9 are the app's tabs), and Ctrl+` between the Terminal and the Conversation.
   // `true` when the key was one of them and the view changed.
   const viewKeyHandler = useRef<((event: ViewKey & { preventDefault(): void }) => boolean) | null>(

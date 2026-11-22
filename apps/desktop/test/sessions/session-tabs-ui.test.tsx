@@ -182,6 +182,8 @@ describe("session-tabs-ui: the views of a session page (issue #107)", () => {
       row.getBoundingClientRect = () => ({ left: 0, right: 100 }) as DOMRect;
       const fifth = tabs()[4] as HTMLElement;
       fifth.getBoundingClientRect = () => ({ left: 250, right: 330 }) as DOMRect;
+      // happy-dom does not clamp: the reveal at mount, with no layout, left it at -16.
+      row.scrollLeft = 0;
       await clickTab(4);
       // The tab ends 16 px (the row's padding, where the edge fade ends) inside the row's right edge.
       expect(row.scrollLeft).toBe(246);
@@ -194,7 +196,7 @@ describe("session-tabs-ui: the views of a session page (issue #107)", () => {
   test("the row of views fades at an edge that hides tabs, over the opaque tabs (#3821)", () => {
     const css = readFileSync(join(import.meta.dir, "../../src/styles/session.css"), "utf8");
     const start = css.indexOf("@utility session-views {");
-    const rule = css.slice(start, css.indexOf("\n}\n", start));
+    const rule = css.slice(start, css.indexOf("\n}\n", start)).replace(/\s+/g, " ");
     expect(rule.includes("overflow-x: auto;")).toBe(true);
     expect(rule.includes("mask-image: linear-gradient(")).toBe(true);
     // The row's 1px bottom border stays out of the fade: a second, solid layer covers it.
