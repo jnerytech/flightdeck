@@ -243,7 +243,7 @@ describe("assistant-settings-ui: the keys", () => {
     expect(document.body.innerHTML).not.toContain("sk-ant-aaaabbbb");
   });
 
-  test("a Test that fails with no reason of ours says the key was refused", async () => {
+  test("a Test that fails with no reason of ours says the key could not be tested", async () => {
     const mem = memoryPlatform(false, "en");
     const fake = fakeAssistant({ test: async () => ({ ok: false, detail: "HTTP 401" }) as never });
     await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
@@ -255,7 +255,7 @@ describe("assistant-settings-ui: the keys", () => {
     await settle(() => button("Test") !== null);
     await click(button("Test"));
     await settle(() => (screen.queryByRole("status")?.textContent ?? "") !== "");
-    expect(screen.queryByRole("status")?.textContent).toBe("The key was refused.");
+    expect(screen.queryByRole("status")?.textContent).toBe("The key could not be tested.");
   });
 
   test("a Test the shell rejects is said in words too", async () => {

@@ -828,7 +828,9 @@ export function fakeAssistant(
     test?: (provider: "anthropic" | "openrouter") => ReturnType<AssistantPlatform["test"]>;
     models?: (provider: "anthropic" | "openrouter") => ModelOption[];
     vaultHits?: (text: string, ids: string[]) => string[];
-    setKey?: (provider: "anthropic" | "openrouter") => void;
+    setKey?: (provider: "anthropic" | "openrouter") => void | Promise<void>;
+    keyStatus?: (provider: "anthropic" | "openrouter") => void | Promise<void>;
+    deleteKey?: (provider: "anthropic" | "openrouter") => void | Promise<void>;
   } = {},
 ) {
   const calls: AssistantCall[] = [];
@@ -838,18 +840,20 @@ export function fakeAssistant(
     supported: script.supported ?? true,
     keyStatus: async (provider) => {
       calls.push(["keyStatus", provider]);
+      await script.keyStatus?.(provider);
       const last4 = keys.get(provider);
       return last4 ? { saved: true, last4 } : { saved: false };
     },
     setKey: async (provider, key) => {
       // The key itself is not logged: a test that prints the calls never prints it.
       calls.push(["setKey", provider]);
-      script.setKey?.(provider);
+      await script.setKey?.(provider);
       keys.set(provider, key.slice(-4));
       return { last4: key.slice(-4) };
     },
     deleteKey: async (provider) => {
       calls.push(["deleteKey", provider]);
+      await script.deleteKey?.(provider);
       keys.delete(provider);
     },
     test: async (provider) => {
