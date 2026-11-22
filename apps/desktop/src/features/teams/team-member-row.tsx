@@ -101,6 +101,7 @@ export function TeamMemberRow(
               {t(`teamsUi.sessionStates.${member.sessionState}`)}
             </span>
           ) : (
+            member.role === "worker" &&
             !sessionId && <span className="text-muted-foreground">{t("teamsUi.noSessionYet")}</span>
           )}
           {sessionId && (
