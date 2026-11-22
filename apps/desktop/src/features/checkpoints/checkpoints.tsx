@@ -1,6 +1,6 @@
 import type { SnapshotFiles, SnapshotInfo } from "@flightdeck/protocol";
 import { GitBranch, History, Undo2 } from "lucide-react";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,10 +12,47 @@ import {
 } from "@/components/ui/sheet";
 import { type Turn, turnsOf } from "@/features/sessions/index.ts";
 import { ActionButton, IconActionButton, InlineNotice } from "@/shared/feedback/index.ts";
-import { EmptyState, ErrorState, Inline, LoadingState } from "@/shared/layout/index.ts";
+import { EmptyState, ErrorState, Inline, LoadingState, Stack } from "@/shared/layout/index.ts";
 import { formatDateTime } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { ForkDialog, RewindDialog, type Target } from "./checkpoint-dialogs.tsx";
+
+/** More than this many lines or characters and the prompt is clamped, with a button to read it whole (#4038). */
+// Keep PROMPT_LINES equal to the `line-clamp-3` class below: a Tailwind class cannot be built from it.
+const PROMPT_LINES = 3;
+const PROMPT_CHARS = 240;
+
+/** The turn's prompt: clamped when long, with Show more and Show less; a turn without one says so. */
+function TurnPrompt(props: Readonly<{ store: AppStore; prompt: string | null }>) {
+  const { t } = props.store.i18n;
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  const text = props.prompt?.trim() ?? "";
+  if (text === "") return <p className="text-muted-foreground">{t("timeline.noPrompt")}</p>;
+  // Decided by the text, not by the layout: the same on every screen width.
+  const long = text.split("\n").length > PROMPT_LINES || text.length > PROMPT_CHARS;
+  return (
+    <Stack gap={1} className="items-start">
+      <p
+        id={id}
+        className={`whitespace-pre-wrap break-words ${long && !open ? "line-clamp-3" : ""}`.trim()}
+      >
+        {text}
+      </p>
+      {long && (
+        <Button
+          variant="link"
+          size="sm"
+          aria-expanded={open}
+          aria-controls={id}
+          onClick={() => setOpen(!open)}
+        >
+          {open ? t("timeline.showLess") : t("timeline.showMore")}
+        </Button>
+      )}
+    </Stack>
+  );
+}
 
 /** One turn: its prompt, time and files, and the two actions. */
 function TurnRow(
@@ -51,7 +88,7 @@ function TurnRow(
         </time>
         <Badge variant={turn.files === "changed" ? "secondary" : "outline"}>{summary}</Badge>
       </div>
-      <p className="line-clamp-3 whitespace-pre-wrap break-words">{turn.prompt ?? ""}</p>
+      <TurnPrompt store={store} prompt={turn.prompt} />
       {turn.files === "changed" && (
         <div className="flex flex-col gap-1">
           <ActionButton variant="ghost" size="sm" className="self-start" onClick={props.onToggle}>
@@ -135,6 +172,8 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
   const [forking, setForking] = useState<Turn | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [undoable, setUndoable] = useState(false);
+  const scroll = useRef<HTMLDivElement>(null);
+  const loaded = snapshots !== null;
 
   const load = useCallback(async () => {
     setFailed(false);
@@ -146,6 +185,11 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
   useEffect(() => {
     void load();
   }, [load]);
+
+  // The list opens at the newest turn, which is the one a person came to act on (#4037).
+  useEffect(() => {
+    if (loaded && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight;
+  }, [loaded]);
 
   const toggle = async (turn: Turn) => {
     if (files[turn.n]) {
@@ -183,7 +227,7 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
   if (snapshots === null && !failed) return <LoadingState label={t("timeline.loading")} />;
   const turns = turnsOf(snapshots ?? []);
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4">
       {notice && (
         <InlineNotice tone="info">
           <span>{notice}</span>{" "}
@@ -205,22 +249,24 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
       {snapshots !== null && turns.length === 0 && (
         <EmptyState icon={History} title={t("timeline.empty")} />
       )}
-      <ul aria-label={t("timeline.list")} className="flex flex-col gap-2">
-        {turns.map((turn) => (
-          <TurnRow
-            key={turn.n}
-            store={store}
-            turn={turn}
-            busy={props.busy}
-            busyId={busyId}
-            files={files[turn.n]}
-            filesFailed={filesFailed[turn.n] === true}
-            onToggle={() => toggle(turn)}
-            onRewind={() => setRewinding(turn)}
-            onFork={() => setForking(turn)}
-          />
-        ))}
-      </ul>
+      <div ref={scroll} data-slot="timeline-scroll" className="min-h-0 flex-1 overflow-y-auto">
+        <ul aria-label={t("timeline.list")} className="flex flex-col gap-2">
+          {turns.map((turn) => (
+            <TurnRow
+              key={turn.n}
+              store={store}
+              turn={turn}
+              busy={props.busy}
+              busyId={busyId}
+              files={files[turn.n]}
+              filesFailed={filesFailed[turn.n] === true}
+              onToggle={() => toggle(turn)}
+              onRewind={() => setRewinding(turn)}
+              onFork={() => setForking(turn)}
+            />
+          ))}
+        </ul>
+      </div>
       {rewinding && (
         <RewindDialog
           {...props}
