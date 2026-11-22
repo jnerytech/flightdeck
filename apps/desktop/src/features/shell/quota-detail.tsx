@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
+import { noPlanReason } from "@/features/quota/index.ts";
 import { QuotaGuard } from "@/features/quota/ui.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
@@ -8,7 +9,7 @@ import { hostsWith } from "@/lib/version";
 import { Inline, Stack } from "@/shared/layout/index.ts";
 import { QuotaBarList } from "./quota-bars";
 
-const QUOTA_DETAIL_KEYS = ["quota", "hosts"] as const;
+const QUOTA_DETAIL_KEYS = ["quota", "hosts", "account"] as const;
 
 /**
  * What the status bar's quota opens (issue #1218): both windows of every online host with their
@@ -29,10 +30,15 @@ export const QuotaDetail = memo(function QuotaDetail(
     <Stack gap={4}>
       {hosts.map((host) => {
         const quota = state.quota[host.id];
+        const noPlan = noPlanReason(quota, state.account[host.id], t);
         return (
           <Stack key={host.id} gap={2} label={t("quota.region", { host: host.name })}>
             <h3 className="font-semibold text-sm">{host.name}</h3>
-            <QuotaBarList store={store} host={host} quota={quota} />
+            {noPlan ? (
+              <p className="text-muted-foreground text-sm">{noPlan}</p>
+            ) : (
+              <QuotaBarList store={store} host={host} quota={quota} />
+            )}
             <QuotaGuard store={store} host={host} pauseAt={quota?.pauseAt ?? null} />
             <Inline gap={2}>
               <Button

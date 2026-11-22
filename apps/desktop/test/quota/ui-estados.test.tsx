@@ -7,6 +7,7 @@ registerDom();
 const { cleanup, render, screen } = await import("@testing-library/react");
 const { QuotaPanel } = await import("../../src/features/quota/quota-panel.tsx");
 const { QuotaCharts } = await import("../../src/features/costs/QuotaCharts.tsx");
+const { noPlanReason } = await import("../../src/features/quota/domain/quota.ts");
 const { QuotaDetail } = await import("../../src/features/shell/quota-detail.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
@@ -142,6 +143,24 @@ describe.each(["en", "pt-BR"] as const)("the quota screens, states (%s)", (lang)
       expect(text.includes(t("quota.noReading"))).toBe(false);
     },
   );
+
+  test("the reason follows the account: unread and signed in give none, a failed or unknown read says so", () => {
+    const of = (status: string, over: Record<string, unknown> = {}) =>
+      noPlanReason(
+        undefined,
+        { status, provider: null, readAt: "2026-11-22T10:00:00Z", error: null, ...over } as never,
+        t,
+      );
+    expect(of("signed_in")).toBeNull();
+    expect(of("unknown", { readAt: null })).toBeNull();
+    expect(of("unknown", { error: "account_unavailable" })).toBe(t("account.unavailable"));
+    expect(of("unknown")).toBe(t("account.unknownSignIn"));
+    expect(noPlanReason(undefined, undefined, t)).toBeNull();
+    const withWindow = { windows: [{ window: "five_hour" }] } as never;
+    expect(
+      noPlanReason(withWindow, { status: "api_key", provider: null, readAt: null, error: null }, t),
+    ).toBeNull();
+  });
 
   test.each([
     ["signed in", { a: signedIn }],

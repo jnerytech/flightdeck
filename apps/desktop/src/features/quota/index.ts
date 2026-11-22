@@ -6,6 +6,7 @@
 
 export {
   HISTORY_HOURS,
+  noPlanReason,
   onSubscription,
   projectionText,
   quotaBars,

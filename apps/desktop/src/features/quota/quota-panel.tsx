@@ -6,7 +6,14 @@ import { cn } from "@/lib/utils";
 import { Grid } from "@/shared/layout/index.ts";
 import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
 import { hasFeature, hostsWith } from "../../lib/version.ts";
-import { HISTORY_HOURS, projectionText, quotaBars, quotaGroups, SHOWN } from "./domain/quota.ts";
+import {
+  HISTORY_HOURS,
+  noPlanReason,
+  projectionText,
+  quotaBars,
+  quotaGroups,
+  SHOWN,
+} from "./domain/quota.ts";
 import { QuotaGuard } from "./quota-guard.tsx";
 
 // The native meter, drawn with the state tokens (WebKit/Blink and Gecko pseudo-elements).
@@ -22,6 +29,7 @@ function HostQuota(
   props: Readonly<{
     store: AppStore;
     quota: AppState["quota"];
+    account: AppState["account"];
     /** The hosts that share the account: the card shows the reading of the first one that has it. */
     hosts: HostView[];
   }>,
@@ -60,13 +68,16 @@ function HostQuota(
     });
   }, [store, host.id, costs, readings, t]);
   const anyReading = bars.some((bar) => bar.hasReading);
+  const noPlan = noPlanReason(quota, props.account[host.id], t);
   return (
     <section
       aria-label={t("quota.region", { host: names })}
       className="flex flex-col gap-3 rounded-lg border bg-card p-4 text-card-foreground"
     >
       <h3 className="font-semibold">{names}</h3>
-      {!anyReading && <p className="text-muted-foreground text-sm">{t("quota.noReading")}</p>}
+      {!anyReading && (
+        <p className="text-muted-foreground text-sm">{noPlan ?? t("quota.noReading")}</p>
+      )}
       {anyReading &&
         bars.map((bar) => (
           <div
@@ -147,7 +158,13 @@ export const QuotaPanel = memo(function QuotaPanel(props: { store: AppStore }) {
   return (
     <Grid cols={{ base: 1, md: 2, xl: 3 }} gap={4}>
       {quotaGroups(hosts, state.account).map((group) => (
-        <HostQuota key={group.key} store={store} quota={state.quota} hosts={group.hosts} />
+        <HostQuota
+          key={group.key}
+          store={store}
+          quota={state.quota}
+          account={state.account}
+          hosts={group.hosts}
+        />
       ))}
     </Grid>
   );
