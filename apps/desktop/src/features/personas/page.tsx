@@ -45,7 +45,9 @@ export const PersonasPage = memo(function PersonasPage(props: {
   /** `null` until the host answers: an empty list is an answer, not the absence of one. */
   const [personas, setPersonas] = useState<AppPersona[] | null>(null);
   const [failed, setFailed] = useState(false);
-  const loading = useMinLoading(personas === null && !failed);
+  /** What the page shows: nothing while it waits or after a refusal, and no host means no personas to wait for. */
+  const cards = failed ? null : (personas ?? (hostId ? null : []));
+  const loading = useMinLoading(!failed && cards === null);
   const [removing, setRemoving] = useState<AppPersona | null>(null);
   const [resetting, setResetting] = useState<AppPersona | null>(null);
   const [publishing, setPublishing] = useState<AppPersona | null>(null);
@@ -79,6 +81,12 @@ export const PersonasPage = memo(function PersonasPage(props: {
     if (hostId) void store.projectList.load(hostId);
   }, [store, hostId]);
 
+  // Another project or host is another list: the last one's cards go, so none is acted on under the wrong project.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the reset is for a new project or host, nothing else
+  useEffect(() => {
+    setPersonas(null);
+    setFailed(false);
+  }, [project, hostId]);
   // Reads can overlap (a retry, a project picked while one is out): only the latest to start is heard.
   const latest = useRef(0);
   const reload = useCallback(async () => {
@@ -88,7 +96,6 @@ export const PersonasPage = memo(function PersonasPage(props: {
       return setPersonas(store.personas.global.list());
     }
     if (!hostId) return;
-    // A retry shows the loading shape again, so the person sees it was taken.
     setFailed(false);
     const listed = await store.hostCommand(hostId, "personas.list", {
       ...(project ? { scope: "all", projectPath: project } : { scope: "host" }),
@@ -193,13 +200,17 @@ export const PersonasPage = memo(function PersonasPage(props: {
         <ErrorState
           message={t("personas.loadFailed")}
           retryLabel={t("personas.retry")}
-          onRetry={() => void reload()}
+          onRetry={() => {
+            // A retry shows the loading shape again, so the person sees it was taken.
+            setPersonas(null);
+            void reload();
+          }}
         />
       )}
-      {personas?.length === 0 && !failed && <EmptyState icon={Drama} title={t("personas.empty")} />}
-      {personas && personas.length > 0 && !failed && (
+      {cards?.length === 0 && <EmptyState icon={Drama} title={t("personas.empty")} />}
+      {cards && cards.length > 0 && (
         <ul ref={list} aria-label={t("personas.list")} className="flex flex-col gap-2">
-          {personas.map((p) => {
+          {cards.map((p) => {
             const inEditor =
               hostId && editing !== null && editing !== "new" && keyOf(editing) === keyOf(p);
             return (
