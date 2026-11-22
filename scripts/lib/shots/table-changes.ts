@@ -230,7 +230,10 @@ export function changesShots(ids: DemoIds): Shot[] {
         await page
           .getByRole("button", { name: new RegExp(`^(Edit file|Editar arquivo) ${FAKE_FILE}$`) })
           .click();
-        await page.getByText("The host could not read this file.", { exact: false }).waitFor();
+        await page
+          .getByText("The host could not read this file.", { exact: false })
+          .first()
+          .waitFor();
       },
     },
     {
@@ -271,7 +274,8 @@ export function changesShots(ids: DemoIds): Shot[] {
         await openChanges(page, CART.path);
         await page.getByRole("button", { name: MERGE }).click();
         await page.getByRole("alertdialog").getByRole("button", { name: MERGE }).click();
-        await page.getByRole("alert").waitFor();
+        // The page keeps an empty alert region for focus; the refusal is the one with text.
+        await page.getByRole("alert").filter({ hasText: /\S/ }).waitFor();
       },
     },
     {
@@ -281,7 +285,10 @@ export function changesShots(ids: DemoIds): Shot[] {
       wire: prList(PR_COMMENTS),
       prepare: async (page) => {
         await page.getByRole("button", { name: CHANGES_TAB }).click();
-        await page.getByText("Could this return a number type?").waitFor({ timeout: 15_000 });
+        await page
+          .getByText("Could this return a number type?")
+          .first()
+          .waitFor({ timeout: 15_000 });
       },
     },
     {
@@ -290,9 +297,12 @@ export function changesShots(ids: DemoIds): Shot[] {
       wire: prList([]),
       prepare: async (page) => {
         await page.getByRole("button", { name: CHANGES_TAB }).click();
-        await page.getByText(/^(No comments on the PR\.|Nenhum comentário no PR\.)$/).waitFor({
-          timeout: 15_000,
-        });
+        await page
+          .getByText(/^(No comments on the PR\.|Nenhum comentário no PR\.)$/)
+          .first()
+          .waitFor({
+            timeout: 15_000,
+          });
       },
     },
     {
@@ -363,7 +373,10 @@ export function changesShots(ids: DemoIds): Shot[] {
       wire: [read([], 0)],
       prepare: async (page) => {
         await page.getByRole("button", { name: CHANGES_TAB }).click();
-        await page.getByText(/^(Nothing changed\.|Nada mudou\.)$/).waitFor({ timeout: 15_000 });
+        await page
+          .getByText(/^(Nothing changed\.|Nada mudou\.)$/)
+          .first()
+          .waitFor({ timeout: 15_000 });
       },
     },
   ];
