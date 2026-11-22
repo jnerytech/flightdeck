@@ -319,17 +319,24 @@ const cardMenuButton = (c: Context) =>
     exact: true,
   });
 
+/** How many times a card menu step opens the menu before it gives up (#4288). */
+const MENU_OPENINGS = 4;
+
 /**
- * Finish… sits under the card page's menu (#1197). The menu is not modal (#4173): a click on its button while a
- * closing dialog is still handing the focus back opens the menu and the late focus closes it again, in the
- * milliseconds before the click on its item (#4247). The step waits for the dialog to be gone from the page (not
- * only from the accessibility tree, where it leaves as its exit animation starts) and for the focus to be back on
- * the button (#4262), then opens the menu and checks that it stayed: a menu that closed is opened again.
+ * Finish… sits under the card page's menu (#1197). The menu is not modal (#4173): a person who clicks its button
+ * right after a dialog closes sees it open and close again within 20 ms, because the dialog's late focus return
+ * dismisses it (the app bug of #4288, first seen as the flaky #4247). Until #4288 fixes the app and removes this
+ * retry, the step waits for the dialog to be gone from the page (not only from the accessibility tree, where it
+ * leaves as its exit animation starts) and for the focus to be back on the button (#4262), then opens the menu
+ * and clicks the item of the open menu, opening it again, up to MENU_OPENINGS times, when it closed on the way.
  * `afterDialog` is for a step that follows a dialog; the first one on a card page has none to wait for.
  */
 const fromCardMenu = async (c: Context, item: string, afterDialog: boolean) => {
   const button = cardMenuButton(c);
-  const entry = c.page.getByRole("menuitem", { name: item, exact: true });
+  // Only the open menu's item: one in the menu's closing animation takes a click that selects nothing.
+  const entry = c.page
+    .locator('[role="menu"][data-state="open"]')
+    .getByRole("menuitem", { name: item, exact: true });
   if (afterDialog) {
     await c.page.waitForFunction(() => !document.querySelector('[role="dialog"]'), undefined, {
       timeout: WAIT,
@@ -339,18 +346,22 @@ const fromCardMenu = async (c: Context, item: string, afterDialog: boolean) => {
       "the focus back on the card's Actions button",
     );
   }
-  await waitFor(async () => {
-    if (await entry.isVisible()) {
-      // The menu can close between the check and the click: the next round opens it again.
-      return entry.click({ timeout: 1000 }).then(
-        () => true,
-        () => false,
-      );
-    }
+  let lastError = "";
+  for (let opening = 1; opening <= MENU_OPENINGS; opening++) {
     // A click on a button whose menu is open would close it.
-    if ((await button.getAttribute("aria-expanded")) !== "true") await button.click();
-    return false;
-  }, `the ${item} item under the card's Actions menu`);
+    if ((await button.getAttribute("aria-expanded", { timeout: 2000 })) !== "true") {
+      await button.click({ timeout: 2000 });
+    }
+    try {
+      await entry.click({ timeout: 2000 });
+      return;
+    } catch (error) {
+      lastError = error instanceof Error ? (error.message.split("\n")[0] ?? "") : String(error);
+    }
+  }
+  throw new Error(
+    `the ${item} item was not clickable after ${MENU_OPENINGS} openings of the card's Actions menu (#4288): ${lastError}`,
+  );
 };
 
 step(When, "I open the card and read the three ways to finish it", async (c) => {
