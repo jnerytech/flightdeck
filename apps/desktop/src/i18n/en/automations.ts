@@ -66,7 +66,6 @@ export const automations = {
     row: "Automation {name}",
     on: "On",
     off: "Off",
-    turnOn: "Turn on {name}",
     confirmOnLabel: "Turn on",
     confirmOn: "Turn on the automation {name}? {trigger} → {action}. {limit}.",
     confirmOnExternal:

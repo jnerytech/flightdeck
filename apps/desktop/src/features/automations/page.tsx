@@ -180,7 +180,7 @@ export function AutomationsPage(
                     {t(automation.enabled ? "automationsUi.on" : "automationsUi.off")}
                   </span>
                   <Switch
-                    aria-label={t("automationsUi.turnOn", { name: automation.name })}
+                    aria-label={t("automationsUi.row", { name: automation.name })}
                     checked={automation.enabled}
                     onCheckedChange={(on) =>
                       on ? setTurningOn(automation) : void turnOff(automation)

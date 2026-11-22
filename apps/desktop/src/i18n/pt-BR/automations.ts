@@ -65,7 +65,6 @@ export const automations = {
     row: "Automação {name}",
     on: "Ligada",
     off: "Desligada",
-    turnOn: "Ligar {name}",
     confirmOnLabel: "Ligar",
     confirmOn: "Ligar a automação {name}? {trigger} → {action}. {limit}.",
     confirmOnExternal:

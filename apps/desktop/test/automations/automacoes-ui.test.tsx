@@ -256,7 +256,7 @@ describe("automacoes-ui: turning on and off", () => {
     const d = await online();
     await createLabelAutomation();
     await settle(() => row("Revisar issues auto") !== null);
-    await toggle("Ligar Revisar issues auto");
+    await toggle("Automação Revisar issues auto");
     const confirm = screen.queryByRole("alertdialog");
     expect(confirm).not.toBeNull();
     expect((confirm as HTMLElement).textContent).toContain("Issue nova com o rótulo auto");
@@ -264,7 +264,7 @@ describe("automacoes-ui: turning on and off", () => {
     expect(automationsOf(d)[0]?.enabled).toBe(false);
     await click("Cancelar");
     expect(automationsOf(d)[0]?.enabled).toBe(false);
-    await toggle("Ligar Revisar issues auto");
+    await toggle("Automação Revisar issues auto");
     await click("Ligar", screen.queryByRole("alertdialog"));
     await settle(() => automationsOf(d)[0]?.enabled === true);
     expect(automationsOf(d)[0]?.enabled).toBe(true);
@@ -298,11 +298,11 @@ describe("automacoes-ui: turning on and off", () => {
     const d = await online();
     await createLabelAutomation();
     await settle(() => row("Revisar issues auto") !== null);
-    await toggle("Ligar Revisar issues auto");
+    await toggle("Automação Revisar issues auto");
     await click("Ligar", screen.queryByRole("alertdialog"));
     await settle(() => automationsOf(d)[0]?.enabled === true);
     await settle(() => (row("Revisar issues auto")?.textContent ?? "").includes("Ligada"));
-    await toggle("Ligar Revisar issues auto");
+    await toggle("Automação Revisar issues auto");
     await settle(() => automationsOf(d)[0]?.enabled === false);
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(automationsOf(d)[0]?.enabled).toBe(false);
@@ -320,7 +320,7 @@ describe("automacoes-ui: turning on and off", () => {
     await click("Automações de repo");
     await settle(() => row("Comentários") !== null);
     expect(row("Comentários")?.textContent).toContain("Aceita autores externos");
-    await toggle("Ligar Comentários");
+    await toggle("Automação Comentários");
     expect(screen.queryByRole("alertdialog")?.textContent).toContain("não confiável");
   });
 });
@@ -380,7 +380,7 @@ describe("automacoes-ui: history, edit and remove", () => {
     const d = await online();
     await createLabelAutomation();
     await settle(() => row("Revisar issues auto") !== null);
-    await toggle("Ligar Revisar issues auto");
+    await toggle("Automação Revisar issues auto");
     await click("Ligar", screen.queryByRole("alertdialog"));
     await settle(() => automationsOf(d)[0]?.enabled === true);
     await settle(() => (row("Revisar issues auto")?.textContent ?? "").includes("Ligada"));
