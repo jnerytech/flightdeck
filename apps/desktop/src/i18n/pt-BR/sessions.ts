@@ -27,6 +27,8 @@ export const sessions = {
     connecting: "Conectando aos seus hosts…",
     noCosts: "Sem dados de custo de {hosts}",
     avgBasis: "Só sessões gerenciadas",
+    spendBasis: "Todas as sessões, estimado",
+    underCent: "< {amount}",
     ready: "O Início está pronto.",
     updated: "Atualizado {ago}",
     stale: "Mostrando os últimos números de {hosts}: não foi possível atualizar. Atualizado {ago}.",

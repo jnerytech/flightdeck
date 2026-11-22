@@ -121,7 +121,7 @@ export function NativeSelect({
     <select
       data-slot="native-select"
       className={cn(
-        "rounded-md border border-input bg-background px-2 outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "rounded-md border border-input bg-background px-2 outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
         compact ? "h-8 text-xs" : "h-9 text-sm",
         // Inline sizes to its options, up to its box: a long option is cut, never the row widened.
         inline ? "w-auto max-w-full" : "w-full",

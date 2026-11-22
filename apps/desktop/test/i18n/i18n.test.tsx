@@ -109,6 +109,29 @@ describe("i18n", () => {
     }
   });
 
+  test("the hour cycle is pinned per language, so midnight reads 12:00 AM and 00:00 and never 00:00 AM (#3845)", () => {
+    const Real = Intl.DateTimeFormat;
+    const cycles: Array<string | undefined> = [];
+    Intl.DateTimeFormat = new Proxy(Real, {
+      construct(target, args) {
+        cycles.push((args[1] as Intl.DateTimeFormatOptions | undefined)?.hourCycle);
+        return Reflect.construct(target, args);
+      },
+    });
+    try {
+      // Time zones no other test uses, so each format is built here and not read from the cache.
+      formatTime("2026-11-20T00:00:00Z", "en", "Asia/Tokyo");
+      formatTime("2026-11-20T00:00:00Z", "pt-BR", "Asia/Tokyo");
+      formatDateTime("2026-11-20T00:00:00Z", "en", "Asia/Seoul");
+      formatDateTime("2026-11-20T00:00:00Z", "pt-BR", "Asia/Seoul");
+    } finally {
+      Intl.DateTimeFormat = Real;
+    }
+    expect(cycles).toEqual(["h12", "h23", "h12", "h23"]);
+    expect(formatTime("2026-11-20T00:00:00Z", "en", "UTC")).toBe("12:00 AM");
+    expect(formatTime("2026-11-20T00:00:00Z", "pt-BR", "UTC")).toBe("00:00");
+  });
+
   test("datas e horas locais, números, dólares e durações legíveis", () => {
     const iso = "2026-10-29T15:04:00.000Z";
     expect(formatTime(iso, "pt-BR", "America/Sao_Paulo")).toBe("12:04");

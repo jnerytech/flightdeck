@@ -78,7 +78,11 @@ export function ScopeMenu(
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          <DropdownMenuRadioGroup value={checked} onValueChange={choose}>
+          <DropdownMenuRadioGroup
+            value={checked}
+            onValueChange={choose}
+            aria-label={t("scope.hosts")}
+          >
             <DropdownMenuRadioItem value={scopeValue(ALL_SCOPE)}>
               {t("scope.all")}
             </DropdownMenuRadioItem>

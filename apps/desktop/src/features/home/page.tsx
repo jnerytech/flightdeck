@@ -129,6 +129,11 @@ export function HomePage(
   const ago = formatAgo(Math.max(0, store.now() - oldest), t);
 
   const usdOf = (value: number) => formatUsd(value, lang);
+  // A cost under a cent is not nothing: it reads as under a cent, never as $0.00 (#3846).
+  const averageText = (value: number | null) => {
+    if (value === null) return unknown;
+    return value > 0 && value < 0.005 ? t("home.underCent", { amount: usdOf(0.01) }) : usdOf(value);
+  };
   const unknown = t("home.unknown");
   const series = (card: string, values: number[], format: (v: number) => string) =>
     t("home.chart", { card, values: values.map(format).join(", ") });
@@ -208,6 +213,7 @@ export function HomePage(
               value={kpis.spend.totalUsd === null ? unknown : usdOf(kpis.spend.totalUsd)}
               details={
                 <>
+                  <span>{t("home.spendBasis")}</span>
                   <span>
                     {kpis.spend.budget
                       ? t("home.ofBudget", {
@@ -261,9 +267,7 @@ export function HomePage(
             <KpiCard
               title={t("home.average")}
               openLabel={t("home.openCard", { card: t("home.average") })}
-              value={
-                kpis.average.costPerTurnUsd === null ? unknown : usdOf(kpis.average.costPerTurnUsd)
-              }
+              value={averageText(kpis.average.costPerTurnUsd)}
               details={
                 <>
                   <span>{t("home.avgBasis")}</span>
