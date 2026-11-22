@@ -64,14 +64,14 @@ describe("the Personas prints (#4215)", () => {
     }).toEqual({ untrusted: 1, modified: 1, projectScope: true });
   });
 
-  test("a refusal and a failed read are the host's own words, the empty list and the missing host change the answer", () => {
+  test("the refusal print leaves Trust to the host, which has no such file; a failed read, the empty list and the missing host change the answer", () => {
     expect([
       rule("personas-refused", "personas.trust"),
       rule("personas-failed", "personas.list"),
       listed("personas-empty")?.personas,
       rule("personas-no-host", "host.info"),
     ]).toEqual([
-      { command: "personas.trust", refuse: "The project's persona file changed on disk." },
+      undefined,
       { command: "personas.list", refuse: "The host's personas could not be read." },
       [],
       { command: "host.info", without: { features: ["personas"] } },
