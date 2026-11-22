@@ -1,6 +1,6 @@
 @ssh
 Feature: SSH connections
-  Connections keeps the SSH destinations of a host: add one by hand, remove it after a question, or import names from the host's SSH config.
+  Connections keeps the SSH destinations of a host: add one by hand, remove it after a question, import names from the host's SSH config, or connect to one that asks for a password.
 
   Scenario: A destination added by hand is listed, and removing it asks first
     Given I am on Connections
@@ -19,3 +19,15 @@ Feature: SSH connections
     Then the page says one destination was created and the list shows "lab" with the user and host the config gave it
     When I remove "lab" and confirm
     Then "lab" is no longer listed
+
+  Scenario: A destination that asks for a password connects once the host's prompt is answered
+    Given I am on Connections
+    When I add the destination "pw" that asks for a password
+    And I connect to "pw" and confirm its server key
+    Then the host asks for the password of "pw"
+    When I send the password
+    Then the terminal shows that the password was accepted
+    When I end the terminal
+    Given I am on Connections
+    When I remove "pw" and confirm
+    Then "pw" is no longer listed

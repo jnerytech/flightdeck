@@ -2,7 +2,13 @@
 export type Exec = (cmd: string[]) => Promise<{ code: number; stdout: string }>;
 
 export const spawnExec: Exec = async (cmd) => {
-  const proc = Bun.spawn(cmd, { stdout: "pipe", stderr: "ignore", stdin: "ignore" });
+  // `env` is passed so a bare name is looked up on the PATH as it is now, not as it was when the process started.
+  const proc = Bun.spawn(cmd, {
+    stdout: "pipe",
+    stderr: "ignore",
+    stdin: "ignore",
+    env: process.env,
+  });
   const [stdout, code] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
   return { code, stdout };
 };
