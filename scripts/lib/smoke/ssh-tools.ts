@@ -10,12 +10,14 @@ const shQuote = (word: string) => `'${word.replaceAll("'", String.raw`'\''`)}'`;
 
 /** The text of a Windows wrapper: `set` lines for `entries`, then `call` with the arguments passed on. */
 export function cmdWrapper(call: string, entries: Array<[string, string]>): string {
-  return "";
+  const sets = entries.map(([key, value]) => `set "${key}=${value}"\r\n`).join("");
+  return `@echo off\r\n${sets}${call} %*\r\n`;
 }
 
 /** The text of a POSIX wrapper: `export` lines for `entries`, then `call` with the arguments passed on. */
 export function shWrapper(call: string, entries: Array<[string, string]>): string {
-  return "";
+  const exports = entries.map(([key, value]) => `export ${key}=${shQuote(value)}\n`).join("");
+  return `#!/bin/sh\n${exports}exec ${call} "$@"\n`;
 }
 
 /**
