@@ -57,7 +57,7 @@ describe("the MCP tab prints (#4269)", () => {
     }).toEqual({ command: "node", tools: true, resources: true });
   });
 
-  test("the long row's list holds one server whose command and badges are long", () => {
+  test("the long row's list holds one editable server whose command is long, so Test, Edit and Remove all carry the long name", () => {
     const list = wire("agente-mcp-linha-longa")?.find((r) => r.command === "mcp.list") as
       | { data: { servers: Array<{ command?: string; readOnly: boolean }> } }
       | undefined;
@@ -65,7 +65,7 @@ describe("the MCP tab prints (#4269)", () => {
       count: list?.data.servers.length,
       longCommand: (list?.data.servers[0]?.command?.length ?? 0) > 120,
       readOnly: list?.data.servers[0]?.readOnly,
-    }).toEqual({ count: 1, longCommand: true, readOnly: true });
+    }).toEqual({ count: 1, longCommand: true, readOnly: false });
   });
 
   test("the prints that open a form or a dialog refuse its write in the page, so a click can never reach the host", () => {
