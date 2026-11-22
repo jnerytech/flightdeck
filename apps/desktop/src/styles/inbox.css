@@ -88,6 +88,14 @@
   &:focus-within {
     opacity: 1;
   }
+  /* A pointer that cannot hover never shows the control by a hover: it is always there, on a line of
+     its own under the row, so it does not draw over the time (#4202). */
+  @media (hover: none) {
+    position: static;
+    align-self: flex-end;
+    margin: 0 0.25rem 0.25rem;
+    opacity: 1;
+  }
 }
 /* A request in the bell (#1131): its risk chip and Approve and Deny under the words, wrapping on a
    narrow panel. */
