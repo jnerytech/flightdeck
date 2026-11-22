@@ -1,8 +1,8 @@
 import type { Project } from "@flightdeck/protocol";
 import { Volume2 } from "lucide-react";
-import { useState, useSyncExternalStore } from "react";
+import { useId, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
-import { NativeSelect, Panel } from "@/shared/layout/index.ts";
+import { Inline, NativeSelect, Panel } from "@/shared/layout/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { SOUND_FILE_MAX_BYTES, SWITCHABLE, type SwitchableEvent } from "./domain/notify-policy.ts";
@@ -27,6 +27,9 @@ export function NotificationPrefs(
   const prefs = useSyncExternalStore(store.notifyPrefs.subscribe, () => store.notifyPrefs.value);
   const controller = store.notifyPrefs;
   const [problem, setProblem] = useState<string | null>(null);
+  const hintId = useId();
+  const usesVolume = prefs.sound.mode !== "off";
+  const usesFile = prefs.sound.mode === "file";
   const [test, setTest] = useState<"delivered" | "blocked" | null>(null);
 
   const chooseFile = (file: File | undefined) => {
@@ -138,34 +141,56 @@ export function NotificationPrefs(
             id="notify-sound"
             className="w-44"
             value={prefs.sound.mode}
-            onChange={(e) =>
-              controller.setSound({ mode: e.target.value as "off" | "system" | "file" })
-            }
+            onChange={(e) => {
+              setProblem(null);
+              controller.setSound({ mode: e.target.value as "off" | "system" | "file" });
+            }}
           >
             <option value="off">{t("notifyPrefs.soundOff")}</option>
             <option value="system">{t("notifyPrefs.soundSystem")}</option>
             <option value="file">{t("notifyPrefs.soundFile")}</option>
           </NativeSelect>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          {t("notifyPrefs.volume")}
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={Math.round(prefs.sound.volume * 100)}
-            onChange={(e) => controller.setSound({ volume: Number(e.target.value) / 100 })}
-          />
-        </label>
+        <Inline gap={2} className="text-sm">
+          <label className={check}>
+            {t("notifyPrefs.volume")}
+            <input
+              type="range"
+              min={0}
+              max={100}
+              disabled={!usesVolume}
+              aria-valuetext={`${Math.round(prefs.sound.volume * 100)}%`}
+              aria-describedby={usesVolume ? undefined : `${hintId}-volume`}
+              value={Math.round(prefs.sound.volume * 100)}
+              onChange={(e) => controller.setSound({ volume: Number(e.target.value) / 100 })}
+            />
+          </label>
+          {/* The slider already announces its value: the text is for the eyes only. */}
+          <span aria-hidden="true" className="text-muted-foreground">
+            {Math.round(prefs.sound.volume * 100)}%
+          </span>
+        </Inline>
+        {!usesVolume && (
+          <small id={`${hintId}-volume`} className="text-muted-foreground text-xs">
+            {t("notifyPrefs.volumeHint")}
+          </small>
+        )}
         <label className="flex flex-wrap items-center gap-2 text-sm">
           {t("notifyPrefs.chooseFile")}
           <input
             type="file"
             accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac"
+            disabled={!usesFile}
+            aria-describedby={usesFile ? undefined : `${hintId}-file`}
             onChange={(e) => chooseFile(e.target.files?.[0])}
           />
           {prefs.sound.fileName && <span>{prefs.sound.fileName}</span>}
         </label>
+        {!usesFile && (
+          <small id={`${hintId}-file`} className="text-muted-foreground text-xs">
+            {t("notifyPrefs.fileHint", { file: t("notifyPrefs.soundFile") })}
+          </small>
+        )}
         {problem && (
           <p role="alert" className="text-destructive text-sm">
             {problem}

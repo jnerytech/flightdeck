@@ -78,6 +78,31 @@ describe("assistant-settings-ui: the provider, in words", () => {
     );
   });
 
+  test("each provider radio is described by its privacy line (#3866)", () => {
+    setup();
+    const described = (name: string) =>
+      document.getElementById(radio(name).getAttribute("aria-describedby") ?? "")?.textContent;
+    expect([
+      described("Claude Code on a host"),
+      described("Anthropic (API key)"),
+      described("OpenRouter (API key)"),
+    ]).toEqual([
+      "Your text goes to Anthropic through the Claude Code signed in on alfa. That host sees it and its plan pays for it.",
+      "Your text goes to api.anthropic.com with your key.",
+      "Your text goes to openrouter.ai, which sends it to the provider of the model you pick.",
+    ]);
+  });
+
+  test("the host radio with no usable host is described by the no-host line (#3866)", () => {
+    setup({ hosts: [] });
+    const line = document.getElementById(
+      radio("Claude Code on a host").getAttribute("aria-describedby") ?? "",
+    )?.textContent;
+    expect(line).toBe(
+      "Your text goes to Anthropic through the Claude Code signed in on the host you pick.",
+    );
+  });
+
   test("the choice is kept in the preferences, and the wand can be switched off", async () => {
     const { store } = setup();
     await click(radio("OpenRouter (API key)"));

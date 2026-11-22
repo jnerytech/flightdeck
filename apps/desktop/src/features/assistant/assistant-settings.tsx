@@ -71,6 +71,7 @@ export function AssistantSettings(props: Readonly<{ store: AppStore; t: T }>) {
   const [confirming, setConfirming] = useState<{ hostId: string; provider: boolean } | null>(null);
   const [advanced, setAdvanced] = useState(false);
   const pickerId = useId();
+  const privacyId = useId();
   // A wand that found no provider sent the person here: say why, once.
   const [setupNotice] = useState(() => store.assistant.wantsSetup());
   useEffect(() => {
@@ -119,12 +120,15 @@ export function AssistantSettings(props: Readonly<{ store: AppStore; t: T }>) {
         <input
           type="radio"
           name="assistant-provider"
+          aria-describedby={`${privacyId}-${provider}`}
           checked={prefs.provider === provider}
           onChange={() => choose(provider)}
         />
         {label}
       </label>
-      <p className="ml-6 text-muted-foreground text-xs">{line}</p>
+      <p id={`${privacyId}-${provider}`} className="ml-6 text-muted-foreground text-xs">
+        {line}
+      </p>
     </div>
   );
 
