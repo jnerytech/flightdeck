@@ -407,7 +407,7 @@ describe("linha-do-tempo-falhas", () => {
     });
     await click("Undo rewind");
     expect(alerts()).toContain(
-      "Could not work out what the undo changes: the host said noTry again",
+      "Could not work out what the undo changes: The host reported an error the app does not know. Try again; if it repeats, check the daemon's log. the host said noTry again",
     );
     expect(screen.queryByText("Working out what changes…")).toBeNull();
     expect(isDisabled("Restore files")).toBe(true);
@@ -460,7 +460,9 @@ describe("linha-do-tempo-falhas", () => {
     await click("Undo rewind");
     await click("Restore files");
     expect(screen.queryByRole("dialog", { name: "Undo the rewind" })).not.toBeNull();
-    expect(alerts()).toContain("Could not undo the rewind: the host said no");
+    expect(alerts()).toContain(
+      "Could not undo the rewind: The host reported an error the app does not know. Try again; if it repeats, check the daemon's log. the host said no",
+    );
   });
 
   test("the undo dialog reads the same in Portuguese", async () => {
@@ -485,7 +487,9 @@ describe("linha-do-tempo-falhas", () => {
     await click(names.rewind);
     await click("Rewind files");
     expect(screen.queryByRole("dialog", { name: "Rewind files to turn 1" })).not.toBeNull();
-    expect(alerts()).toContain("Could not rewind the files: the host said no");
+    expect(alerts()).toContain(
+      "Could not rewind the files: The host reported an error the app does not know. Try again; if it repeats, check the daemon's log. the host said no",
+    );
     expect(isBusy("Rewind files")).toBe(false);
     expect(isDisabled("Rewind files")).toBe(false);
     await click("Rewind files");

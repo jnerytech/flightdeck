@@ -658,7 +658,7 @@ export const sessions = {
     undoNothing: "Nothing to undo: the files are already as they were before the rewind.",
     undoConfirm: "Restore files",
     undoFailed: "Could not undo the rewind: {reason}",
-    undoPreviewFailed: "Could not work out what the undo changes.",
+    undoPreviewFailed: "Could not work out what the undo changes: {reason}",
     forkTitle: "Fork from turn {n}",
     forkDescription: "Creates a new conversation from this turn. The original stays as it is.",
     forkWhere: "Where to open",

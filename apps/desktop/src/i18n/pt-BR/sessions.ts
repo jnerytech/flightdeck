@@ -662,7 +662,7 @@ export const sessions = {
     undoNothing: "Nada para desfazer: os arquivos já estão como antes da volta.",
     undoConfirm: "Restaurar arquivos",
     undoFailed: "Não deu para desfazer a volta: {reason}",
-    undoPreviewFailed: "Não deu para saber o que o desfazer muda.",
+    undoPreviewFailed: "Não deu para saber o que o desfazer muda: {reason}",
     forkTitle: "Bifurcar a partir do turno {n}",
     forkDescription: "Cria uma conversa nova a partir deste turno. A original continua como está.",
     forkWhere: "Onde abrir",
