@@ -265,6 +265,10 @@ export const board = {
     filter: "Filter issues",
     filterPlaceholder: "Title, label or author",
     none: "No issues found",
+    noMatch: 'No issue matches "{filter}"',
+    clearFilter: "Clear filter",
+    count: { one: "{n} issue", other: "{n} issues" },
+    countOf: { one: "{shown} of {n} issue", other: "{shown} of {n} issues" },
     loading: "Loading issues",
     reload: "Refresh",
     retry: "Try again",
@@ -283,7 +287,10 @@ export const board = {
     github: "GitHub",
     azure: "Azure Boards",
     query: "Issues search",
-    queryHint: "Blank: the open ones assigned to you",
+    queryHintGithub:
+      "GitHub search syntax, for example label:bug is:open. Blank: the open issues assigned to you.",
+    queryHintAzure:
+      "An Azure Boards WIQL query, for example SELECT [System.Id] FROM WorkItems WHERE [System.State] = 'Active'. Blank: your open work items.",
     commentOnPr: "Comment on the issue when the PR opens",
     commentOnPrHint: "Writes to the provider. Off by default.",
     connectButton: "Connect issues",

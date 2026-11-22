@@ -170,7 +170,7 @@ describe("issues-ui: o painel no board", () => {
     expect(issueRow(1)).not.toBeNull();
     await type("Filtrar issues", "zzz");
     expect(rows()).toBe(0);
-    expect(within(panel()).getByText("Nenhuma issue encontrada")).toBeTruthy();
+    expect(within(panel()).getByText('Nenhuma issue corresponde a "zzz"')).toBeTruthy();
   });
 
   test("Criar card faz o card no Backlog com o link da issue, e a linha passa a oferecer Abrir card", async () => {
