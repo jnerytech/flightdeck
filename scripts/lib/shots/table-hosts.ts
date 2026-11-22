@@ -1,5 +1,6 @@
 /** Part of the print table (scripts/demo-shots.ts), in print order. */
 import { formatPairingLink } from "@flightdeck/protocol";
+import type { Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
 import { DEMO_CARD_TEMPLATE } from "../demo/card-templates.ts";
 import { DEMO_PR_CARD, DEMO_PR_URL, DEMO_TEAM_REPORT } from "../e2e/journeys.ts";
@@ -11,6 +12,11 @@ function vaultTab(name: string | RegExp): NonNullable<Shot["prepare"]> {
     await page.getByRole("tab", { name }).click();
     await page.getByRole("tabpanel").waitFor();
   };
+}
+
+/** Connections, once its destinos are in the list. */
+async function listed(page: Page): Promise<void> {
+  await page.getByRole("list", { name: /^(Destinations|Destinos)$/ }).waitFor();
 }
 
 const SUBMIT = /^(Test and add|Testar e adicionar)$/;
@@ -42,6 +48,47 @@ export function hostShots(ids: DemoIds): Shot[] {
         await showSection(/^(Maintenance|Manutenção)$/)(page);
       },
     },
+    // #3943: SSH Connections. The hosts' answers are replaced in the page (`sshScript`): the demo's real
+    // daemons would show the machine's own ssh config and never ask for a password.
+    {
+      name: "ssh-destinos",
+      route: { name: "connections" },
+      ssh: true,
+      prepare: listed,
+    },
+    {
+      name: "ssh-novo",
+      route: { name: "connections" },
+      ssh: true,
+      prepare: async (page) => {
+        await listed(page);
+        await page.getByRole("button", { name: /^(New destination|Novo destino)$/ }).click();
+        await page.getByRole("button", { name: /^(Save destination|Salvar destino)$/ }).waitFor();
+      },
+    },
+    {
+      name: "ssh-importar",
+      route: { name: "connections" },
+      ssh: true,
+      prepare: async (page) => {
+        await listed(page);
+        await page
+          .getByRole("button", { name: /^(Import from SSH config|Importar do SSH config)$/ })
+          .click();
+        await page.getByRole("checkbox", { name: "lab-box" }).waitFor();
+      },
+    },
+    {
+      name: "ssh-askpass",
+      route: { name: "connections" },
+      ssh: true,
+      askpass: true,
+      prepare: async (page) => {
+        // The open dialog hides the list from the accessibility tree: its rows are found by their text.
+        await page.getByText("docs-site", { exact: true }).waitFor();
+        await page.getByRole("alertdialog").waitFor();
+      },
+    },
     // #3602: the vault's views. The seeded list has no values (the web build keeps them in memory).
     { name: "cofre-segredos", route: { name: "vault" }, secrets: true },
     // No secret stored: the empty state with its action.
@@ -62,6 +109,59 @@ export function hostShots(ids: DemoIds): Shot[] {
       secrets: true,
       prepare: async (page) => {
         await page.getByRole("button", { name: /^(Reveal|Revelar) github-deploy$/ }).click();
+        await page.getByRole("alertdialog").waitFor();
+      },
+    },
+    {
+      // #3944: a value to copy. The seeded list has none (the web build keeps values in memory), so the
+      // print stores one, then copies it; the toast says "Copied". The clipboard is the page's to write.
+      name: "cofre-copiar",
+      route: { name: "vault" },
+      prepare: async (page) => {
+        const context = page.context();
+        await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+        try {
+          await page.getByRole("button", { name: /^(New secret|Novo segredo)$/ }).click();
+          await page.getByLabel(/^(Name|Nome)$/).fill("demo-token");
+          await page.getByLabel(/^(Value|Valor)$/).fill("demo-not-a-real-token");
+          await page.getByRole("button", { name: /^(Save|Guardar)$/ }).click();
+          await page.getByRole("button", { name: /^(Copy|Copiar) demo-token$/ }).click();
+          await page.getByText(/^(Copied|Copiado)$/).waitFor();
+          // timing: sonner's enter animation (400 ms) ends before the shot.
+          await page.waitForTimeout(500);
+        } finally {
+          // The permission was for the copy: the context's later prints do not keep it.
+          await context.clearPermissions();
+        }
+      },
+    },
+    {
+      // #3944: Edit opens the secret's name, description, tags and hosts.
+      name: "cofre-editar",
+      route: { name: "vault" },
+      secrets: true,
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Edit|Editar) github-deploy$/ }).click();
+        await page.getByLabel(/^(Name|Nome)$/).waitFor();
+      },
+    },
+    {
+      // #3944: the Rules editor of a secret, with its first rule empty.
+      name: "cofre-regras",
+      route: { name: "vault" },
+      secrets: true,
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Rules of|Regras de) github-deploy$/ }).click();
+        await page.getByRole("heading", { name: /^(Rules of|Regras de) github-deploy$/ }).waitFor();
+      },
+    },
+    {
+      // #3944: Remove asks for the secret's name, typed, and the button stays off until it matches.
+      name: "cofre-remover",
+      route: { name: "vault" },
+      secrets: true,
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Remove|Remover) github-deploy$/ }).click();
         await page.getByRole("alertdialog").waitFor();
       },
     },
