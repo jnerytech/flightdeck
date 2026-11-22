@@ -19,6 +19,19 @@ async function listed(page: Page): Promise<void> {
   await page.getByRole("list", { name: /^(Destinations|Destinos)$/ }).waitFor();
 }
 
+const SIMULATE = /^(Simulate|Simular)$/;
+const CLEAN = /^(Clean up old data|Limpar dados antigos)$/;
+const BACKUP = /^(Back up this host's database|Fazer backup do banco deste host)$/;
+
+/** The host's Maintenance panel, then the step that brings one of its states up. */
+function maintenancePanel(then?: NonNullable<Shot["prepare"]>): NonNullable<Shot["prepare"]> {
+  return async (page) => {
+    await openHostSettings(page);
+    await showSection(/^(Maintenance|Manutenção)$/)(page);
+    await then?.(page);
+  };
+}
+
 const SUBMIT = /^(Test and add|Testar e adicionar)$/;
 
 export function hostShots(ids: DemoIds): Shot[] {
@@ -47,6 +60,56 @@ export function hostShots(ids: DemoIds): Shot[] {
         await openHostSettings(page);
         await showSection(/^(Maintenance|Manutenção)$/)(page);
       },
+    },
+    // #4001: the Maintenance panel's other states. The hosts' answers are replaced in the page
+    // (`maintenanceScript`): the demo's real daemons read the machine's own database.
+    {
+      name: "host-manutencao-recusado",
+      route: { name: "host", host: ALFA },
+      maintenance: { refuseStatus: true },
+      prepare: maintenancePanel(),
+    },
+    {
+      name: "host-manutencao-simulado",
+      route: { name: "host", host: ALFA },
+      maintenance: {},
+      prepare: maintenancePanel(async (page) => {
+        await page.getByRole("button", { name: SIMULATE }).click();
+        await page.getByRole("status").getByText(/\S/).waitFor();
+      }),
+    },
+    {
+      // Clean asks first: the confirmation names the rows it deletes for good.
+      name: "host-manutencao-limpar",
+      route: { name: "host", host: ALFA },
+      maintenance: {},
+      prepare: maintenancePanel(async (page) => {
+        await page.getByRole("button", { name: CLEAN }).click();
+        await page.getByRole("alertdialog").waitFor();
+      }),
+    },
+    {
+      // The cleanup is never answered: Clean stays busy.
+      name: "host-manutencao-limpando",
+      route: { name: "host", host: ALFA },
+      maintenance: { holdClean: true },
+      prepare: maintenancePanel(async (page) => {
+        await page.getByRole("button", { name: CLEAN }).click();
+        await page.getByRole("alertdialog").getByRole("button", { name: CLEAN }).click();
+        await page
+          .getByRole("button", { name: CLEAN })
+          .and(page.locator("[aria-busy=true]"))
+          .waitFor();
+      }),
+    },
+    {
+      name: "host-manutencao-backup",
+      route: { name: "host", host: ALFA },
+      maintenance: {},
+      prepare: maintenancePanel(async (page) => {
+        await page.getByRole("button", { name: BACKUP }).click();
+        await page.getByRole("status").getByText(/\S/).waitFor();
+      }),
     },
     // #3943: SSH Connections. The hosts' answers are replaced in the page (`sshScript`): the demo's real
     // daemons would show the machine's own ssh config and never ask for a password.

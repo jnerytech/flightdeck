@@ -22,6 +22,7 @@ import { demoFinished, demoInbox, demoSecrets, demoVaultUsage } from "./lib/demo
 import { DEMO_AWAY_SINCE } from "./lib/e2e/journeys.ts";
 import { holdsScript } from "./lib/shots/holds.ts";
 import { PENDING_SELECTOR } from "./lib/shots/loaded.ts";
+import { maintenanceScript } from "./lib/shots/maintenance.ts";
 import { narrowSizes, unknownNarrowShots } from "./lib/shots/narrow.ts";
 import { ALFA, DEMO_CLIENTS, DEMO_ROI, type Shot } from "./lib/shots/shot.ts";
 import { sshScript } from "./lib/shots/ssh-frames.ts";
@@ -254,6 +255,8 @@ async function printShot(
     // Playwright's routeWebSocket never saw the app's sockets under Bun: the page's own WebSocket is
     // wrapped instead.
     if (shot.holds) await page.addInitScript({ content: holdsScript() });
+    if (shot.maintenance)
+      await page.addInitScript({ content: maintenanceScript(shot.maintenance) });
     if (shot.ssh) await page.addInitScript({ content: sshScript(shot.askpass === true) });
     await page.goto(`${url}?${query}`);
     // The hosts connect and the screen loads its data.

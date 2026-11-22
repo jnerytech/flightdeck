@@ -63,7 +63,7 @@ describe("the Maintenance prints (#4001)", () => {
     expect([first.ok, first.error?.code, second.ok]).toEqual([false, "failed", true]);
   });
 
-  test("the cleanup is never heard when held, and a dry run is held no more than a real one", () => {
+  test("the cleanup is never heard when held, and the backup still is", () => {
     const rewriter = maintenanceRewriter({ holdClean: true });
     expect(heard(rewriter, "maintenance.prune", { events: 1 })).toBeNull();
     expect(heard(rewriter, "maintenance.backup", { path: "x", at: "y", bytes: 1 })).not.toBeNull();
