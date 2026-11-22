@@ -73,6 +73,7 @@ describe("custos-ui: leitura recusada e valores antigos (#4191)", () => {
     expect(await settleMaybe(() => text().includes("Não foi possível ler os custos."))).toBe(true);
     expect(text()).toContain("Não foi possível ler os custos.");
     expect(retry()).not.toBeNull();
+    expect(text().includes("Nenhum custo neste período")).toBe(false);
     expect(screen.queryByRole("status", { name: "Carregando custos" })).toBeNull();
     gate.refuse = false;
     await act(async () => {
