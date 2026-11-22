@@ -39,7 +39,7 @@ export const BgPanel = memo(function BgPanel(props: {
   const [failed, setFailed] = useState<"stop" | "respawn" | null>(null);
   const [asking, setAsking] = useState(false);
   if (!session) return null;
-  const name = session.name ?? basename(session.cwd);
+  const name = session.name || basename(session.cwd);
   const act = async (kind: "stop" | "respawn") => {
     setFailed(null);
     setActing(kind);
