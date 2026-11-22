@@ -2019,6 +2019,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         hostsReached: hosts.getBoundingClientRect().bottom <= room.bottom + 1,
         footInWindow: foot.getBoundingClientRect().bottom <= window.innerHeight + 1,
         hostsHigh: hosts.getBoundingClientRect().height >= 96,
+        // A body that scrolls shows a fade where content continues (#3955).
+        fades:
+          getComputedStyle(body).backgroundAttachment.includes("local") &&
+          getComputedStyle(body).backgroundImage.includes("linear-gradient"),
       };
     });
     if (!side) throw new Error("the sidebar's body, nav, hosts or footer is missing");
@@ -2028,6 +2032,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       hostsReached: true,
       footInWindow: true,
       hostsHigh: true,
+      fades: true,
     });
 
     // 7. The theme's native controls (#567, #1850), in both themes: the dropdown of a select is

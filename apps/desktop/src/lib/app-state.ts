@@ -97,6 +97,8 @@ export interface AppState
   finishedLook: string | null;
   /** A terminal tab whose close waits for the user to say detach or end (phase 14). */
   closingTerminal: ClosingTerminal | null;
+  /** The folder of each terminal a host listed or opened, by `host/terminal`; names its tab and crumb. */
+  terminalCwds: Record<string, string>;
   /** The run environment of each card (phase 24), by `host/card`. */
   runEnvs: Record<string, RunState>;
   /** Sessions that replied while no tab showed them (phase 14), by session key. */
@@ -383,6 +385,7 @@ export function initialAppState(
     error: null,
     ...initialHistoryState,
     closingTerminal: null,
+    terminalCwds: {},
     runEnvs: {},
     unread: {},
     cards: {},

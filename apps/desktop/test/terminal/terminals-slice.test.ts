@@ -47,6 +47,8 @@ function terminals(
   const copied: string[] = [];
   const spawned: Array<{ program: string; args: string[] }> = [];
   const failures: unknown[] = [];
+  const cwds: Array<Record<string, string>> = [];
+  const known: Record<string, string> = {};
   let closing: ClosingTerminal | null = over.closing ?? null;
   let tabClosed = false;
   const hosts = (over.hosts ?? [{ id: "h", roots: ["/work"] }]).map((h) => ({
@@ -71,6 +73,11 @@ function terminals(
     },
     close: async (hostId, terminalId, kill) => void closed.push({ hostId, terminalId, kill }),
     showTab: (hostId, terminalId) => void shown.push(`${hostId}/${terminalId}`),
+    cwds: () => known,
+    setCwds: (next) => {
+      cwds.push(next);
+      Object.assign(known, next);
+    },
     closing: () => closing,
     setClosing: (next) => {
       closing = next;
@@ -104,6 +111,7 @@ function terminals(
     copied,
     spawned,
     failures,
+    cwds,
     closingNow: () => closing,
     tabClosed: () => tabClosed,
   };
@@ -154,6 +162,31 @@ describe("terminals (#1596)", () => {
       opened: [{ cwd: "/work", cols: 80, rows: 24 }],
       shown: ["h/t-1"],
     });
+  });
+
+  test("a terminal the app opens has its folder remembered under its host, for its tab's name", async () => {
+    const { slice, cwds } = terminals();
+    await slice.open("h", "/work/api");
+    expect(cwds).toEqual([{ "h/t-1": "/work" }]);
+  });
+
+  test("Claude here remembers the folder of its terminal too", async () => {
+    const { slice, cwds } = terminals();
+    await slice.openClaude("h", { cwd: "/work/api", claudeSessionId: null });
+    expect(cwds).toEqual([{ "h/t-1": "/work" }]);
+  });
+
+  test("the terminals a host lists have their folders remembered in one go", async () => {
+    const { slice, cwds } = terminals();
+    await slice.host("h").list();
+    expect(cwds).toEqual([{ "h/t-1": "/work" }]);
+  });
+
+  test("a list that tells nothing new does not touch the state, so the host page's refresh does not redraw the app", async () => {
+    const { slice, cwds } = terminals();
+    await slice.host("h").list();
+    await slice.host("h").list();
+    expect(cwds).toEqual([{ "h/t-1": "/work" }]);
   });
 
   test("a host with no folder, or a refused open, shows no tab", async () => {

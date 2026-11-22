@@ -7,6 +7,7 @@ interface TerminalsState {
   hosts: ReturnType<TerminalsCore["hosts"]>;
   terminalEnv: ReturnType<TerminalsCore["terminalEnv"]>;
   closingTerminal: ClosingTerminal | null;
+  terminalCwds: Record<string, string>;
 }
 
 /**
@@ -30,6 +31,8 @@ export function wireTerminals(
     close: (hostId, terminalId, kill) =>
       kernel.hostCommand(hostId, "terminal.close", { terminalId, kill }),
     showTab: deps.showTab,
+    cwds: () => kernel.state().terminalCwds,
+    setCwds: (cwds) => kernel.update({ terminalCwds: { ...kernel.state().terminalCwds, ...cwds } }),
     closing: () => kernel.state().closingTerminal,
     setClosing: (closingTerminal) => kernel.update({ closingTerminal }),
     closingTab: (closing) => {

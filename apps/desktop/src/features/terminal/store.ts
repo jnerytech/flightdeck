@@ -68,6 +68,10 @@ export interface TerminalsCore {
   close(hostId: string, terminalId: string, kill: boolean): Promise<unknown>;
   /** Shows the terminal as a tab. */
   showTab(hostId: string, terminalId: string): void;
+  /** The folders remembered so far, by `host/terminal`. */
+  cwds(): Record<string, string>;
+  /** Remembers the folder of terminals, by `host/terminal`. */
+  setCwds(cwds: Record<string, string>): void;
   /** The tab whose close waits for an answer, and the way to set or clear it. */
   closing(): ClosingTerminal | null;
   setClosing(closing: ClosingTerminal | null): void;
@@ -81,6 +85,10 @@ export interface TerminalsCore {
   /** A terminal program that did not start: the banner says why. */
   spawnFailed(error: unknown): void;
 }
+
+/** The folder of each terminal, under `host/terminal`: what names its tab and crumb. */
+const cwdsOf = (hostId: string, terminals: TerminalInfo[]): Record<string, string> =>
+  Object.fromEntries(terminals.map((one) => [`${hostId}/${one.terminalId}`, one.cwd]));
 
 /**
  * The terminals of every host (#1596: a slice of the store): the commands of a host's terminals,
@@ -105,7 +113,11 @@ export class TerminalsSlice {
       write: (terminalId, data) => request("terminal.write", { terminalId, data }),
       resize: (terminalId, cols, rows) => request("terminal.resize", { terminalId, cols, rows }),
       close: (terminalId, kill) => request("terminal.close", { terminalId, kill }),
-      list: async () => (await request("terminal.list", {})).terminals,
+      list: async () => {
+        const { terminals } = await request("terminal.list", {});
+        this.remember(hostId, terminals);
+        return terminals;
+      },
     };
   }
 
@@ -115,6 +127,7 @@ export class TerminalsSlice {
     if (!folder) return null;
     const opened = await this.core.open(hostId, { cwd: folder, cols: 80, rows: 24 });
     if (!opened) return null;
+    this.remember(hostId, [opened]);
     this.core.showTab(hostId, opened.terminalId);
     return opened.terminalId;
   }
@@ -135,8 +148,16 @@ export class TerminalsSlice {
       },
     });
     if (!opened) return null;
+    this.remember(hostId, [opened]);
     this.core.showTab(hostId, opened.terminalId);
     return opened.terminalId;
+  }
+
+  /** Remembers the folders of `terminals`; the state is touched only when one is new or changed. */
+  private remember(hostId: string, terminals: TerminalInfo[]): void {
+    const known = this.core.cwds();
+    const found = cwdsOf(hostId, terminals);
+    if (Object.entries(found).some(([key, cwd]) => known[key] !== cwd)) this.core.setCwds(found);
   }
 
   /** Whether the host opens terminals inside the app (phase 14) right now. */

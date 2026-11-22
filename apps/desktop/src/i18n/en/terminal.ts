@@ -23,6 +23,7 @@ export const terminal = {
     },
     reopen: "Reopen",
     close: "Close terminal",
+    closeFailed: "Could not close the terminal, so it is still open: {reason}",
     closeMessage: "Detach keeps the process running on the host. End process stops it.",
     pasteTitle: "Paste {n} lines?",
     pasteMessage:

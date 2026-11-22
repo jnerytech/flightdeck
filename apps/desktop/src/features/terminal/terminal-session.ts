@@ -119,9 +119,14 @@ export class TerminalSession {
     return this.start();
   }
 
-  /** Ends the process (`kill`) or only detaches from it. */
-  async close(kill: boolean): Promise<void> {
-    await this.opts.host.close(this.opts.terminalId, kill).catch(() => {});
+  /** Ends the process (`kill`) or only detaches from it; gives back what the host refused with, or null. */
+  async close(kill: boolean): Promise<unknown> {
+    try {
+      await this.opts.host.close(this.opts.terminalId, kill);
+      return null;
+    } catch (error) {
+      return error;
+    }
   }
 
   dispose(): void {

@@ -57,6 +57,11 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
       (cwd ? basename(cwd) : id.slice(0, 8))
     );
   };
+  /** A terminal: the name of its folder when the host said it, else Terminal. */
+  const terminalTitle = (hostId: string, terminalId: string) => {
+    const cwd = state.terminalCwds[sessionKey(hostId, terminalId)];
+    return cwd ? basename(cwd) : t("terminalUi.title");
+  };
   const projects = (hostId: string, focus?: "board" | "workflows"): Route => ({
     name: "projects",
     host: hostId,
@@ -121,7 +126,7 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
     case "preview":
       return path({ label: route.title });
     case "terminal":
-      return path(host(route.host), { label: t("terminalUi.title") });
+      return path(host(route.host), { label: terminalTitle(route.host, route.terminalId) });
     case "automations":
     case "actions":
       return path(
