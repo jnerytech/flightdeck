@@ -7,6 +7,7 @@ registerDom();
 const { cleanup, render, screen, within } = await import("@testing-library/react");
 const { quotaGroups } = await import("../../src/features/quota/domain/quota.ts");
 const { QuotaPanel } = await import("../../src/features/quota/quota-panel.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
 
 afterEach(cleanup);
@@ -112,7 +113,11 @@ describe("cota-por-conta: the panel", () => {
       { a: same, b: same },
       { quota, features: ["quota", "account", "quotaPause"] },
     );
-    render(<QuotaPanel store={store} />);
+    render(
+      <TContext.Provider value={translator("en")}>
+        <QuotaPanel store={store} />
+      </TContext.Provider>,
+    );
     return screen.getByRole("region", { name: "Quota of a · b" });
   };
   const guards = (card: HTMLElement) =>
