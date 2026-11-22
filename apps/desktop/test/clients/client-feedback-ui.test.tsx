@@ -156,6 +156,16 @@ describe("clients: deleting a client says so and moves the focus to a control th
     expect(focusedOn(button("Renomear Acme"))).toBe(true);
   });
 
+  test("deleting the client being renamed closes the rename form", async () => {
+    await open(stored("Acme", "Beta"));
+    await press("Renomear Acme");
+    await press("Excluir Acme");
+    await press("Excluir");
+    expect(screen.queryByRole("heading", { name: "Renomear Acme" })).toBeNull();
+    expect(button("Salvar nome")).toBeNull();
+    expect(button("Criar cliente")).not.toBeNull();
+  });
+
   test("the only client hands the focus to the name field", async () => {
     await open(stored("Acme"));
     await press("Excluir Acme");
