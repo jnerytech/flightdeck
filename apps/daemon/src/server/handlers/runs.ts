@@ -20,8 +20,10 @@ export const runsHandlers = {
       automations: server.need("automations").remove(payload.id, payload.confirm === true),
     };
   },
-  "automation.toggle": (payload, { server }) => {
+  "automation.toggle": (payload, { ws, server }) => {
     const { id, enabled, confirm } = payload;
+    // Turning one on lets its trigger start work on the host unattended; turning it off is not near only (#3815).
+    if (enabled) requireVaultTransport(ws.data.origin, "automation.toggle", server.opts.log);
     return server.need("automations").toggle(id, enabled, confirm === true);
   },
   "automation.runs": (payload, { server }) => {

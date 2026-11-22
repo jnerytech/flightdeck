@@ -336,11 +336,11 @@ fd persona trust local --project-path ~/work/api --hash abcdef012345
 - **`reset <id>`:** devolve uma persona do pacote ao que veio; a edição do host some.
 - **`publish-agent <id> --project-path <pasta>`:** grava a persona como o agente do projeto
   `.claude/agents/persona-<id>.md`. Altera um arquivo do projeto, então recusa com saída `1` e não envia
-  nada até você passar `--confirm`.
+  nada até você passar `--confirm`. Exige uma conexão próxima (este computador ou a Tailscale): por uma distante o daemon recusa com `transport_refused`.
 - **`trust <id> --project-path <pasta> --hash <hash>`:** confia numa persona de projeto versionada, e o
   texto dela passa a chegar a todas as sessões do projeto. `--hash` é o começo (12 ou mais caracteres
   hexadecimais) do hash que `persona list` mostrou: se o arquivo mudou desde então, o comando recusa com
-  saída `1` e diz o novo hash, para você ler de novo. Uma persona que já é confiável fica como está.
+  saída `1` e diz o novo hash, para você ler de novo. Uma persona que já é confiável fica como está. Exige uma conexão próxima (este computador ou a Tailscale): por uma distante o daemon recusa com `transport_refused`.
 
 Uma alteração que fica sem resposta sai com `2` e diz que pode ou não ter sido feita: rode
 `persona list` antes de tentar de novo.
