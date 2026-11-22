@@ -303,6 +303,9 @@ export const en: Dictionary = {
     start: "Start in the background",
     startHint:
       "The session runs with no terminal, with Flightdeck's channel, and shows up in Sessions.",
+    startItem: "Start in the background, no terminal",
+    started: 'Session "{name}" started in the background. It shows up in Sessions.',
+    startFailed: "Could not start in the background.",
     note: "Claude Code background sessions (claude --bg).",
   },
   ...clients,
