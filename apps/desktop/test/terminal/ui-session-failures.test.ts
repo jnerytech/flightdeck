@@ -44,10 +44,8 @@ function setup() {
   return { session, failures, writes, host };
 }
 
-const afterWrite = async () => {
-  await Promise.resolve();
-  await Promise.resolve();
-};
+/** Lets the write's promise callbacks run, however many hops they take. */
+const afterWrite = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 // Issue #3950: an attach or a write the host refuses is told to the screen with its reason, and it is
 // told again, as `null`, once the next one is accepted, so the screen can show and clear it.

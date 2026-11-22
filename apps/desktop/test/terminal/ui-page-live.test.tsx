@@ -69,6 +69,8 @@ describe("terminal-ui: a terminal that does not take keys says so", () => {
     await click("Reabrir");
     await settle(() => says("alert", "No room left"));
     expect(says("alert", "Não foi possível abrir o terminal")).toBe(true);
+    // The alert already says what happened: the generic line would only say it twice.
+    expect(says("status", "não é enviado")).toBe(false);
     expect(state("Desanexado")).not.toBeNull();
   });
 
@@ -85,6 +87,23 @@ describe("terminal-ui: a terminal that does not take keys says so", () => {
     expect(says("alert", "O host não recebeu o que você digitou")).toBe(true);
     allow();
     act(() => d.x.type("b"));
+    await settle(() => !says("alert", "No room left"));
+    expect(says("alert", "No room left")).toBe(false);
+  });
+
+  test("a refused write is not kept once the terminal attaches again", async () => {
+    const d = await setup();
+    await settle(() => state("Ao vivo"));
+    interceptWire(d.store, d.hostId, (type, _payload, next) =>
+      type === "terminal.write"
+        ? Promise.reject(new RequestError("bad_thing", "No room left"))
+        : next(),
+    );
+    act(() => d.x.type("a"));
+    await settle(() => says("alert", "No room left"));
+    d.ptys.spawned[0]?.exit(2);
+    await settle(() => state("Encerrado (código 2)"));
+    await click("Reabrir");
     await settle(() => !says("alert", "No room left"));
     expect(says("alert", "No room left")).toBe(false);
   });
