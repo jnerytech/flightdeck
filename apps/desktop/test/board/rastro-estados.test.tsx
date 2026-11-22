@@ -147,6 +147,23 @@ describe("rastro-estados (#3706)", () => {
     expect(screen.queryByRole("status")?.getAttribute("aria-live")).toBe("polite");
   });
 
+  // #3935: the counter alone said "Step 2 of 4"; what the step is has to be said with it.
+  for (const language of ["en", "pt-BR"] as const) {
+    test(`${language}: stepping says the step aloud, and a playing replay says nothing`, async () => {
+      await panel(language, [TRACE]);
+      await click("Replay");
+      const said = () =>
+        Array.from(document.querySelectorAll("[aria-live=polite]"))
+          .map((el) => el.textContent ?? "")
+          .join(" | ");
+      expect(said().includes("Fix the build")).toBe(true);
+      await click(language === "en" ? "Next" : "Próximo");
+      expect(said().includes("a.ts")).toBe(true);
+      await click(language === "en" ? "Play" : "Tocar");
+      expect(said()).toBe("");
+    });
+  }
+
   test("a playback that reaches the last step stops by itself", async () => {
     await panel("en", [TRACE]);
     await click("Replay");
