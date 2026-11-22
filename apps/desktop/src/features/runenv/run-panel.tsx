@@ -1,4 +1,4 @@
-import type { Card, RunConfigInfo, RunProcessState } from "@flightdeck/protocol";
+import type { Card, RunConfigInfo } from "@flightdeck/protocol";
 import { type MouseEvent, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
@@ -6,15 +6,9 @@ import { reasonText } from "@/i18n/errors";
 import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
+import { processChanges, processState } from "./domain/process-changes.ts";
 
 const LIVE = new Set(["setup", "running"]);
-
-/** How a process is doing, in words: a process that ended with no exit code (a signal) says so. */
-function processState(process: RunProcessState, t: ReturnType<typeof useT>): string {
-  if (process.status === "running") return t("runEnv.procRunning");
-  if (process.exitCode === null) return t("runEnv.procEndedNoCode");
-  return t("runEnv.procExited", { code: String(process.exitCode) });
-}
 
 /** A card's run environment: trust the run.yaml, Run and Stop, its processes and their preview. */
 export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card: Card }>) {
@@ -82,6 +76,18 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
     if (active && active !== document.body) return;
     section.current?.querySelector<HTMLElement>('[data-action="run"]')?.focus();
   }, [trusted]);
+
+  // What changed in the processes since the last report, said for a screen reader (not at mount).
+  const processes = state?.processes;
+  const seen = useRef(processes);
+  const [said, setSaid] = useState("");
+  useEffect(() => {
+    const before = seen.current;
+    seen.current = processes;
+    if (!before || !processes || before === processes) return;
+    const line = processChanges(before, processes, t);
+    if (line) setSaid(line);
+  }, [processes, t]);
 
   if (!info?.exists) return null;
   const trust = async () => {
@@ -182,6 +188,7 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
                 </ActionButton>
               )}
               <output className="text-sm">{t(`runEnv.status.${status}`)}</output>
+              <output className="sr-only">{said}</output>
             </Inline>
             {state?.error && (
               <p role="alert" className="text-status-error text-sm">
