@@ -66,6 +66,7 @@ export const terminal = {
     quota: "Quota used: {windows}",
     quotaLine: "{window} {pct}%",
     unreached: "{host} did not answer",
+    scrollMore: "Scroll for more",
   },
   teleportUi: {
     menu: "Move to another host…",
