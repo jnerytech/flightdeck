@@ -10,7 +10,13 @@ import { EmptyState, ErrorState, LoadingState, Page } from "@/shared/layout/inde
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { AutomationForm } from "./automation-form.tsx";
-import { actionText, confirmOnText, triggerText } from "./domain/automations.ts";
+import {
+  actionText,
+  causeText,
+  confirmOnText,
+  detailText,
+  triggerText,
+} from "./domain/automations.ts";
 
 const RUN_TONE: Record<AutomationRun["status"], string> = {
   ok: "text-status-idle",
@@ -40,11 +46,11 @@ function Runs(props: Readonly<{ store: AppStore; automation: Automation; runs: A
           <time dateTime={run.firedAt} className="text-muted-foreground tabular-nums">
             {store.formatDateTime(run.firedAt)}
           </time>
-          <span>{run.cause}</span>
+          <span>{causeText(t, (iso) => store.formatDateTime(iso), run)}</span>
           <strong className={RUN_TONE[run.status]}>
             {t(`automationsUi.runStatus.${run.status}` as Key)}
           </strong>
-          {run.detail && <span className="text-muted-foreground">{run.detail}</span>}
+          {run.detail && <span className="text-muted-foreground">{detailText(t, run)}</span>}
         </li>
       ))}
     </ul>
