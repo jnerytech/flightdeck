@@ -200,6 +200,7 @@ export const board = {
     merged: "Card done: the work went into {base}.",
     prComments: "PR comments",
     prEmpty: "No comments on the PR.",
+    prLoading: "Reading the PR comments…",
     prFailed: "Could not read the PR comments.",
     prRetry: "Try again",
     prNote: "Flightdeck only reads the comments: nothing is posted to the PR.",
