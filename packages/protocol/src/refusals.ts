@@ -507,6 +507,10 @@ export const DAEMON_REASONS = [
   "run_config_untrusted",
   "run_exclusive",
   "run_ports_exhausted",
+  // The run panel's own failures (`RunState.errorKey`): a start the host refused, a setup that exited.
+  "run_setup_start_failed",
+  "run_process_start_failed",
+  "run_setup_failed",
   "plugin_too_big",
   // Phase 39: OpenCode sessions and the host's OpenCode.
   "runtime_unavailable",

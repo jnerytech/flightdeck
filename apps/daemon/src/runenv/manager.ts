@@ -75,6 +75,8 @@ interface Entry {
   ports: PortMap;
   processes: ProcessEntry[];
   error: string | null;
+  errorKey?: string;
+  errorParams?: Record<string, string | number>;
   /** Stop was asked: whatever is still being started must not go on. */
   stopped: boolean;
 }
@@ -82,7 +84,8 @@ interface Entry {
 /** The system refused to open a process (the terminal is off, the limit is reached). */
 class StartError extends Error {
   constructor(
-    readonly what: string,
+    /** The process that was refused, or `null` for the setup. */
+    readonly process: string | null,
     reason: string,
   ) {
     super(reason);
@@ -222,7 +225,11 @@ export class RunManager {
     launched: () => void,
   ): Promise<void> {
     const env = portEnv(entry.ports);
-    const spawn = async (what: string, argv: string[], extra: Record<string, string> = {}) => {
+    const spawn = async (
+      what: string | null,
+      argv: string[],
+      extra: Record<string, string> = {},
+    ) => {
       try {
         return await this.opts.host.spawn({
           argv: argv.map((part) => interpolatePorts(part, entry.ports)),
@@ -235,7 +242,7 @@ export class RunManager {
     };
     try {
       if (config.setup && entry.setup !== "done") {
-        await this.runSetup(entry, await spawn("the setup", config.setup), launched);
+        await this.runSetup(entry, await spawn(null, config.setup), launched);
         if (entry.status !== "setup") return;
       }
       entry.status = "running";
@@ -276,7 +283,9 @@ export class RunManager {
     if (code !== 0) {
       entry.setup = "failed";
       entry.status = "failed";
-      entry.error = `o setup falhou (código ${code})`;
+      entry.error = `the setup failed (code ${code})`;
+      entry.errorKey = "run_setup_failed";
+      entry.errorParams = { code };
       this.emit(entry);
       return;
     }
@@ -328,7 +337,12 @@ export class RunManager {
     );
     if (entry.setup === "running" || entry.status === "setup") entry.setup = "failed";
     entry.status = "failed";
-    entry.error = `could not start ${error.what}: ${error.message}`;
+    entry.error = `could not start ${error.process ?? "the setup"}: ${error.message}`;
+    entry.errorKey = error.process === null ? "run_setup_start_failed" : "run_process_start_failed";
+    entry.errorParams =
+      error.process === null
+        ? { cause: error.message }
+        : { name: error.process, cause: error.message };
     this.emit(entry);
   }
 
@@ -366,6 +380,8 @@ export class RunManager {
         ready,
       })),
       error: entry.error,
+      // Only a failure carries a reason: a run with none keeps the state it always had.
+      ...(entry.errorKey ? { errorKey: entry.errorKey, errorParams: entry.errorParams } : {}),
     };
   }
 
