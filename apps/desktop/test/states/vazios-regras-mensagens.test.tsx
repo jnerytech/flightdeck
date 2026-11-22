@@ -24,11 +24,17 @@ const EMPTY_MESSAGES = {
   "pt-BR": "Nenhuma mensagem ainda. Use “Mandar para outra sessão…” para escrever a primeira.",
 };
 
+/** The same state object on every read: a new one would make the slice read as changed. */
+const APP_STATE = { loopAlerts: [] };
+
 /** A store that answers `hostCommand` from `answers`, by command name. */
 function fakeStore(language: "en" | "pt-BR", answers: Record<string, unknown>) {
   return {
     hostCommand: async (_host: string, command: string) => answers[command] ?? null,
     messaging: { onUpdated: () => () => {} },
+    // The rules link reads the loop alerts the app store keeps.
+    subscribe: () => () => {},
+    getState: () => APP_STATE,
     formatDateTime: (iso: string) => iso,
     i18n: { t: translator(language) },
   } as unknown as AppStore;
@@ -117,6 +123,9 @@ function writingStore(
       return null;
     },
     messaging: { onUpdated: () => () => {} },
+    // The rules link reads the loop alerts the app store keeps.
+    subscribe: () => () => {},
+    getState: () => APP_STATE,
     formatDateTime: (iso: string) => iso,
     i18n: { t: translator(language) },
   } as unknown as AppStore;

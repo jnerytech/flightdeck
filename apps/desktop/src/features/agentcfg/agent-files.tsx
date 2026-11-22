@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
+import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { EmptyState, ErrorState, Field, LoadingState } from "@/shared/layout/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -125,6 +125,8 @@ export function AgentFiles(
   const [justSaved, setJustSaved] = useState(false);
   const [creating, setCreating] = useState(false);
   const [typed, setTyped] = useState("");
+  /** What waits for the person to say the edits of the open file may go (#4078). */
+  const [discarding, setDiscarding] = useState<(() => void) | null>(null);
 
   const load = useCallback(async () => {
     setFailed(false);
@@ -137,6 +139,14 @@ export function AgentFiles(
     void load();
   }, [load]);
 
+  const dirty = opened ? opened.hash === null || text !== opened.saved : false;
+
+  /** Something that replaces the open file asks first when it holds edits that were not saved. */
+  const replacing = (action: () => void) => {
+    if (dirty) setDiscarding(() => action);
+    else action();
+  };
+
   const show = (file: Opened, content: string) => {
     setOpened(file);
     setText(content);
@@ -145,7 +155,7 @@ export function AgentFiles(
     setJustSaved(false);
   };
 
-  const open = async (item: AgentCfgItem) => {
+  const read = async (item: AgentCfgItem) => {
     const result = await store.hostCommand(hostId, "agentcfg.read", {
       projectId,
       kind,
@@ -166,15 +176,19 @@ export function AgentFiles(
     }
   };
 
+  const open = (item: AgentCfgItem) => replacing(() => void read(item));
+
   const create = () => {
     const path = newPath(kind, typed);
     if (!path) return;
-    show(
-      { path, origin: "project", readOnly: false, hash: null, saved: "" },
-      template(kind, typed),
-    );
-    setCreating(false);
-    setTyped("");
+    replacing(() => {
+      show(
+        { path, origin: "project", readOnly: false, hash: null, saved: "" },
+        template(kind, typed),
+      );
+      setCreating(false);
+      setTyped("");
+    });
   };
 
   const save = async () => {
@@ -199,7 +213,7 @@ export function AgentFiles(
 
   const reload = () => {
     if (!opened || !stale) return;
-    show({ ...opened, hash: stale.hash, saved: stale.content }, stale.content);
+    replacing(() => show({ ...opened, hash: stale.hash, saved: stale.content }, stale.content));
   };
 
   const originLabel = (origin: Origin) =>
@@ -242,7 +256,6 @@ export function AgentFiles(
   });
   const present = (key: string) => complex(key) || (getField(doc, key) ?? "").trim() !== "";
   const valid = !form || (present("name") && present("description"));
-  const dirty = opened ? opened.hash === null || text !== opened.saved : false;
   const versioned =
     opened?.origin === "project" &&
     (opened.path === "CLAUDE.local.md" ? t("agent.localFile") : t("agent.versioned"));
@@ -277,7 +290,7 @@ export function AgentFiles(
               current={opened?.path === item.path && opened.origin === item.origin}
               originLabel={originLabel(item.origin)}
               t={t}
-              onOpen={() => void open(item)}
+              onOpen={() => open(item)}
             />
           ))}
         </ul>
@@ -362,6 +375,19 @@ export function AgentFiles(
           </>
         )}
       </div>
+      {discarding && opened && (
+        <ConfirmDialog
+          message={t("agent.files.discardMessage", { name: shownPath(opened) })}
+          confirmLabel={t("agent.files.discardConfirm")}
+          destructive
+          onConfirm={() => {
+            const action = discarding;
+            setDiscarding(null);
+            action();
+          }}
+          onCancel={() => setDiscarding(null)}
+        />
+      )}
     </div>
   );
 }

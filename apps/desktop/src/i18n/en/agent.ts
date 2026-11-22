@@ -164,6 +164,8 @@ export const agent = {
       stale:
         "The file changed on disk after you opened it. What you wrote is still here; reload to see the current version.",
       reload: "Reload",
+      discardMessage: "Discard your edits to {name}? What you wrote will be lost.",
+      discardConfirm: "Discard",
     },
   },
 };

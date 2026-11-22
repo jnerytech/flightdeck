@@ -412,6 +412,7 @@ describe("agente-ui", () => {
       "# Minha versão\n",
     );
     await click("Recarregar");
+    await click("Descartar");
     expect((screen.queryByLabelText("Conteúdo de CLAUDE.md") as HTMLTextAreaElement).value).toBe(
       "# Mudou fora\n",
     );
@@ -452,6 +453,7 @@ describe("agente-ui", () => {
     expect(screen.queryByRole("button", { name: "Salvar" })?.hasAttribute("disabled")).toBe(true);
 
     await click("pessoal (Do usuário (~/.claude))");
+    await click("Descartar");
     await settle(
       () => (screen.queryByLabelText("Nome") as HTMLInputElement | null)?.value === "pessoal",
     );

@@ -8,10 +8,20 @@ import { Input } from "@/components/ui/input";
 import { sessionProjectKeys } from "@/features/clients/index.ts";
 import { hubRows } from "@/features/sessions/index.ts";
 import { useStoreSlice } from "@/lib/use-store";
-import { EmptyState, LoadingState, NativeSelect, Page, Toolbar } from "@/shared/layout/index.ts";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
+import {
+  EmptyState,
+  LoadingState,
+  NativeSelect,
+  Page,
+  Stack,
+  Toolbar,
+} from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hostsWith } from "../../lib/version.ts";
+import { RulesLink } from "./rules-link.tsx";
+import { inPausedPair, loopPairKey } from "./store.ts";
 
 const STATUSES: MessageStatus[] = ["delivered", "queued", "refused", "expired", "pending"];
 const TONE: Record<MessageStatus, string> = {
@@ -41,6 +51,7 @@ const CONVERSATIONSPAGE_KEYS = [
   "clientList",
   "clientOverrides",
   "clientSelection",
+  "loopAlerts",
 ] as const;
 
 /**
@@ -87,7 +98,8 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   const needle = text.trim().toLowerCase();
   // A message belongs to the selected client when either of its sessions does.
   const scope = store.clientScope.get();
-  const projectOf = sessionProjectKeys(hubRows(store.getState()));
+  const hubs = hubRows(store.getState(), t);
+  const projectOf = sessionProjectKeys(hubs);
   const shown = (rows ?? []).filter(({ message: m, hostName }) => {
     const ends = [projectOf.get(m.fromSession) ?? null, projectOf.get(m.toSession) ?? null];
     if (!scope.includesAny(state.clientSelection, ends)) return false;
@@ -99,9 +111,24 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
       .includes(needle);
   });
 
+  /** The host a message's recipient lives on, when the app has it. */
+  const hostOf = (message: MessageInfo) =>
+    state.hosts.find((h) => h.hostInfo?.hostName === message.toHost) ?? null;
+  /** The recipient's name where the hub knows the session, else its address. */
+  const recipientName = (message: MessageInfo) => {
+    const host = hostOf(message);
+    const known = hubs.find(
+      (r) =>
+        r.hostId === host?.id &&
+        (r.sessionId === message.toSession || r.claudeSessionId === message.toSession),
+    );
+    return known?.title ?? `${message.toHost}/${message.toSession}`;
+  };
+  // The pairs a host paused for a loop, on the hosts this page lists (#4086).
+  const paused = state.loopAlerts.filter((a) => hosts.some((h) => h.id === a.hostId));
   const openSession = (row: Row) => {
     const { message } = row;
-    const host = state.hosts.find((h) => h.hostInfo?.hostName === message.toHost) ?? null;
+    const host = hostOf(message);
     if (!host) return;
     const managed = host.sessions.some((s) => s.id === message.toSession);
     props.go(
@@ -141,6 +168,11 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
         </Toolbar>
       }
     >
+      {paused.map((alert) => (
+        <InlineNotice key={`${alert.hostId}/${loopPairKey(alert)}`}>
+          {t("conversationsUi.paused", { a: alert.from, b: alert.to })} <RulesLink store={store} />
+        </InlineNotice>
+      ))}
       {rows === null && <LoadingState label={t("conversationsUi.loading")} />}
       {rows?.length === 0 && (
         <EmptyState
@@ -160,7 +192,7 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
         <EmptyState icon={MessagesSquare} title={t("conversationsUi.noMatch")} />
       )}
       {shown.length > 0 && (
-        <ul aria-label={t("conversationsUi.list")} className="flex max-w-3xl flex-col gap-2">
+        <Stack as="ul" label={t("conversationsUi.list")} gap={2} className="max-w-3xl">
           {shown.map((row) => {
             const m = row.message;
             return (
@@ -180,18 +212,22 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
                 </div>
                 <p className="whitespace-pre-wrap">{m.text}</p>
                 {m.reason && <p className="text-status-error text-xs">{m.reason}</p>}
-                <Button
+                {inPausedPair(state.loopAlerts, m) && <RulesLink store={store} />}
+                <ActionButton
                   variant="ghost"
                   size="sm"
                   className="self-start"
+                  aria-label={t("conversationsUi.openNamed", { name: recipientName(m) })}
+                  disabled={hostOf(m) === null}
+                  disabledReason={t("conversationsUi.hostGone")}
                   onClick={() => openSession(row)}
                 >
                   {t("conversationsUi.open")}
-                </Button>
+                </ActionButton>
               </li>
             );
           })}
-        </ul>
+        </Stack>
       )}
     </Page>
   );

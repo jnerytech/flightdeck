@@ -179,6 +179,7 @@ export const watch = {
       'No rules yet. Choose "Always in this project" when Claude asks for permission and the rule shows up here.',
   },
   messagingRulesUi: {
+    open: "Open the messages rules",
     title: "Messages between sessions on {host}",
     intro: "By default only sessions of the same project or team talk. Exceptions add pairs.",
     exceptions: "Exceptions",

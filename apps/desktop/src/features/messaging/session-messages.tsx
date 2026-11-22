@@ -3,9 +3,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useStoreSlice } from "@/lib/use-store";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { Field, NativeSelect } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
+import { RulesLink } from "./rules-link.tsx";
+import { inPausedPair } from "./store.ts";
 
 /**
  * Phase 21: a session's messages, sent and received, and a message from it to another session
@@ -16,6 +19,7 @@ export function SessionMessages(
 ) {
   const { store, hostId, sessionId } = props;
   const { t } = store.i18n;
+  const { loopAlerts } = useStoreSlice(store, ["loopAlerts"] as const);
   const [messages, setMessages] = useState<MessageInfo[]>([]);
   const [writing, setWriting] = useState(false);
   // Null until the host has answered; the sessions this one may message, which also name the rows.
@@ -168,6 +172,7 @@ export function SessionMessages(
               </div>
               <p className="whitespace-pre-wrap">{m.text}</p>
               {m.reason && <p className="text-status-error text-xs">{m.reason}</p>}
+              {inPausedPair(loopAlerts, m) && <RulesLink store={store} />}
             </li>
           ))}
         </ul>
