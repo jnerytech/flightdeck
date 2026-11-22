@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { settleMaybe } from "../wait.ts";
 import {
   act,
   click,
@@ -94,6 +95,66 @@ describe("mudancas-edit-ui", () => {
     expect(screen.queryByRole("dialog", { name: "Editar novo.txt" })).toBeNull();
   });
 
+  test("fechar com edição não salva pergunta antes, por Fechar e por Esc, e o campo tem nome", async () => {
+    const ctx = await setup();
+    writeFileSync(join(ctx.repo, "novo.txt"), "um\ndois\n");
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("novo.txt"));
+    const content = () => document.querySelector(".cm-content");
+    const editor = () => (content() ? EditorView.findFromDOM(content() as HTMLElement) : null);
+    const dialogAsked = () => screen.queryByRole("alertdialog")?.textContent ?? "";
+    const pressEscape = async () => {
+      await act(async () => {
+        fireEvent.keyDown(screen.getByRole("dialog", { name: "Editar novo.txt" }), {
+          key: "Escape",
+        });
+      });
+    };
+
+    await click("Editar arquivo novo.txt");
+    await settle(() => editor()?.state.doc.toString() === "um\ndois\n");
+    expect(screen.queryByRole("textbox", { name: "Texto de novo.txt" })).not.toBeNull();
+    // Nothing typed: it closes at once.
+    await click("Fechar");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Editar novo.txt" })).toBeNull();
+
+    await click("Editar arquivo novo.txt");
+    await settle(() => editor()?.state.doc.toString() === "um\ndois\n");
+    await act(async () => {
+      const view = editor();
+      view?.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "mudei\n" } });
+    });
+    await click("Fechar");
+    expect(dialogAsked()).toContain("Descartar as edições de novo.txt?");
+    // Keep editing: the text is still there and the focus is back in it.
+    await click("Cancelar");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(editor()?.state.doc.toString()).toBe("mudei\n");
+    expect(await settleMaybe(() => document.activeElement === content())).toBe(true);
+
+    // Esc asks the same.
+    await pressEscape();
+    expect(dialogAsked()).toContain("Descartar as edições de novo.txt?");
+    await click("Descartar");
+    expect(screen.queryByRole("dialog", { name: "Editar novo.txt" })).toBeNull();
+    expect(readFileSync(join(ctx.repo, "novo.txt"), "utf8")).toBe("um\ndois\n");
+  });
+
+  test("um arquivo com fim de linha do Windows fecha sem perguntar quando nada foi digitado", async () => {
+    const ctx = await setup();
+    writeFileSync(join(ctx.repo, "win.txt"), "um\r\ndois\r\n");
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("win.txt"));
+    await click("Editar arquivo win.txt");
+    await settle(() => document.querySelector(".cm-content") !== null);
+    await click("Fechar");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Editar win.txt" })).toBeNull();
+  });
+
   test("um arquivo grande demais para editar mostra o motivo no lugar do editor", async () => {
     const ctx = await setup();
     writeFileSync(join(ctx.repo, "grande.txt"), "x".repeat(1_100_000));
@@ -103,6 +164,8 @@ describe("mudancas-edit-ui", () => {
     await click("Editar arquivo grande.txt");
     await settle(() => screen.queryByText(/passa de 1 MB/) !== null);
     expect(screen.queryByText(/passa de 1 MB/)).not.toBeNull();
+    // A refusal is an alert, not a polite status.
+    expect(screen.queryByRole("alert")?.textContent ?? "").toMatch(/passa de 1 MB/);
     expect(document.querySelector(".cm-content")).toBeNull();
   });
 
