@@ -8,7 +8,7 @@ import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 import { ActionButton } from "@/shared/feedback/action-button.tsx";
 import { InlineNotice } from "@/shared/feedback/index.ts";
-import { LoadingState, NativeSelect, Panel } from "@/shared/layout/index.ts";
+import { Inline, LoadingState, NativeSelect, Panel } from "@/shared/layout/index.ts";
 import { KnowledgeCreate } from "./knowledge-create.tsx";
 import { KnowledgeFeedSwitch } from "./knowledge-feed-switch.tsx";
 
@@ -399,18 +399,18 @@ export function KnowledgePanel(
                   })}
                 </span>
                 {entry.warnings.map((warning) => (
-                  <span key={warning} className="flex items-center gap-1 font-medium text-sm">
+                  <Inline key={warning} gap={1} className="font-medium text-sm">
                     <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0" />
                     {t("projectPage.knowledge.referencesObsolete", {
                       path: warning.slice(warning.indexOf(":") + 1),
                     })}
-                  </span>
+                  </Inline>
                 ))}
                 {entry.problems.map((problem) => (
-                  <span key={problem} className="flex items-center gap-1 font-medium text-sm">
+                  <Inline key={problem} gap={1} className="font-medium text-sm">
                     <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0" />
                     {t(`projectPage.knowledge.problem.${problem}` as Key)}
-                  </span>
+                  </Inline>
                 ))}
               </li>
             ))}

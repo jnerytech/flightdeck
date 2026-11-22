@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { AppStore } from "@/lib/app-store";
 import { ActionButton } from "@/shared/feedback/action-button.tsx";
+import { Inline } from "@/shared/layout/index.ts";
 
 /**
  * Whether the sessions Flightdeck starts in a project are given the index of its valid documents
@@ -44,12 +45,12 @@ export function KnowledgeFeedSwitch(
   if (state === null) {
     if (!failed) return null;
     return (
-      <div className="flex flex-wrap items-center gap-2">
+      <Inline gap={2}>
         {problem}
         <Button type="button" size="sm" variant="outline" onClick={() => setReads((n) => n + 1)}>
           {t("projectPage.knowledge.retry")}
         </Button>
-      </div>
+      </Inline>
     );
   }
   const own = state.own;
