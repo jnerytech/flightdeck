@@ -12,9 +12,16 @@ export interface UnlistedMutes {
  * able to see and clear them.
  */
 export function unlistedMutes(
-  _saved: Readonly<{ mutedHosts: readonly string[]; mutedProjects: readonly string[] }>,
-  _hosts: readonly { id: string }[],
-  _projects: Readonly<Record<string, readonly { id: string }[]>>,
+  saved: Readonly<{ mutedHosts: readonly string[]; mutedProjects: readonly string[] }>,
+  hosts: readonly { id: string }[],
+  projects: Readonly<Record<string, readonly { id: string }[]>>,
 ): UnlistedMutes {
-  return { hosts: [], projects: [] };
+  const listedHosts = new Set(hosts.map((host) => host.id));
+  const listedProjects = new Set(
+    hosts.flatMap((host) => (projects[host.id] ?? []).map((project) => `${host.id}/${project.id}`)),
+  );
+  return {
+    hosts: saved.mutedHosts.filter((id) => !listedHosts.has(id)),
+    projects: saved.mutedProjects.filter((key) => !listedProjects.has(key)),
+  };
 }

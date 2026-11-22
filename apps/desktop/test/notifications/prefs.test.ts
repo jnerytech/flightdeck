@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { type InboxEntry, markUnread, unreadCount } from "../../src/features/inbox/domain/inbox.ts";
+import { unlistedMutes } from "../../src/features/notifications/domain/unlisted-mutes.ts";
 import {
   browserSound,
   DEFAULT_NOTIFY_PREFS,
@@ -9,7 +10,6 @@ import {
   type NotifySource,
   playNotifySound,
 } from "../../src/features/notifications/index.ts";
-import { unlistedMutes } from "../../src/features/notifications/domain/unlisted-mutes.ts";
 import type { Platform } from "../../src/platform/types.ts";
 
 const NOW = Date.parse("2026-11-04T10:00:00.000Z");

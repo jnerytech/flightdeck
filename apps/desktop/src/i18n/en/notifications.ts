@@ -124,6 +124,12 @@ export const notifications = {
     test: "Send test notification",
     delivered: "Delivered.",
     notShown: "Not displayed.",
+    offNote:
+      "Show notifications is off, so there is no system notification and no sound. What you choose under Tell me about, Fold and Mute still decides what the bell keeps.",
+    testOff: "Turn on Show notifications to send a test.",
+    muteNone: "Nothing to mute yet: add a host first.",
+    mutedHostGone: "Host {name} is muted but is not in the list",
+    mutedProjectGone: "Project {name} is muted but is not in the list",
     blockedHint:
       "Notifications are blocked for Flightdeck. In Windows, open Settings → System → Notifications and turn on Flightdeck.",
     mutedLabel: "Mute notifications",
