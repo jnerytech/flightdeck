@@ -8,6 +8,7 @@ import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
 import { EmptyState, ErrorState, LoadingState, Page } from "@/shared/layout/index.ts";
 import { actionIssueText } from "../../i18n/errors.ts";
+import { formatDecimal } from "../../i18n/format.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { ActionSeed } from "../snippets/index.ts";
@@ -57,7 +58,7 @@ function Runs(
               {t("actionsUi.exit", { code: run.exitCode })}
             </strong>
             <span className="text-muted-foreground tabular-nums">
-              {(run.durationMs / 1000).toFixed(1)} s
+              {formatDecimal(run.durationMs / 1000, t.lang)} s
             </span>
             {run.timedOut && <span>{t("actionsUi.timedOut")}</span>}
             {run.truncated && <span>{t("actionsUi.truncated")}</span>}

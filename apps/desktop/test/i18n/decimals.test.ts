@@ -42,7 +42,7 @@ describe("the decimals of the app follow the language (#3853)", () => {
   test("the return on cost in the derivation uses the language's decimal", () => {
     const period = { ...EMPTY_PERIOD, costUsd: 12, cards: 3, hours: 6 };
     const money = { rate: 60, billed: 0 } as never;
-    const roi = (lang: string) =>
+    const roi = (lang: "en" | "pt-BR") =>
       figures(period, money, lang).derivation.find((line) => line.key === "roiUi.derive.roi")?.vars
         ?.roi;
     expect([roi("en"), roi("pt-BR")]).toEqual(["29.0", "29,0"]);

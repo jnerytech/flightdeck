@@ -119,7 +119,7 @@ describe("tempo-ui: the Tempo tab of a session", () => {
     expect(text).toContain("US$ 0,03");
     expect(text).toContain("esperou 7 s por você");
     expect(text).toContain("Read · 150 ms");
-    expect(text).toContain("Bash · 2.9 s");
+    expect(text).toContain("Bash · 2,9 s");
     expect(text).toContain("falhou (ShellError)");
     expect(text).toContain("Permissão para Bash: permitida por você");
     expect(text).toContain("Erro de API 529");
@@ -239,7 +239,7 @@ describe("tempo-ui: Custos", () => {
     expect(text).toContain("kA");
     expect(text).toContain("esperou 7 s por você");
     expect(text).toContain("Bash");
-    expect(text).toContain("3.0 s");
+    expect(text).toContain("3,0 s");
   });
 
   test("the Custos page gives each of its children a key of its own (React warns about two with the host's id)", async () => {

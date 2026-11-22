@@ -199,7 +199,9 @@ for (const [lang, t] of [
       });
       await settle(() => screen.queryByText(t.roiUi.hours.replace("{hours}", "6")) !== null);
       expect(screen.queryByText(t.roiUi.value.replace("{value}", usd(360, lang)))).not.toBeNull();
-      expect(screen.queryByText(t.roiUi.roi.replace("{roi}", "29.0"))).not.toBeNull();
+      expect(
+        screen.queryByText(t.roiUi.roi.replace("{roi}", lang === "pt-BR" ? "29,0" : "29.0")),
+      ).not.toBeNull();
       expect(screen.queryAllByText(t.roiUi.estimate).length).toBeGreaterThan(0);
       expect(screen.queryByText(t.roiUi.noRate)).toBeNull();
     });
