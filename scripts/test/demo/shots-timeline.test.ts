@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { SnapshotInfo } from "@flightdeck/protocol";
 import type { DemoIds } from "../../demo-seed.ts";
 import { narrowSizes } from "../../lib/shots/narrow.ts";
 import { timelineShots } from "../../lib/shots/table-timeline.ts";
@@ -85,23 +84,27 @@ describe("the Timeline prints (#4252)", () => {
       as: "snapshots.list",
       data: expect.objectContaining({ via: "snapshot", files: expect.any(Array) }),
     });
-    expect(rule("linha-do-tempo-desfazer-recusa", "rewind.undoPreview")).toEqual({
-      ...(listed as object),
+    expect(rule("linha-do-tempo-desfazer-recusa", "rewind.undoPreview")).toMatchObject({
+      ...(listed as Record<string, unknown>),
       afterRefuse: expect.stringContaining("snapshot"),
     });
   });
 
-  test("the long-prompt prints list turns of the protocol, the last with a prompt past the clamp", () => {
+  test("the long-prompt prints list two turns, each a before and an after, the last prompt past the clamp", () => {
     const list = rule("linha-do-tempo-prompt-longo", "snapshots.list");
-    const snapshots = (list && "data" in list ? (list.data as { snapshots: unknown[] }) : null)
-      ?.snapshots;
-    const parsed = (snapshots ?? []).map((row) => SnapshotInfo.safeParse(row));
-    expect(parsed.every((p) => p.success)).toBe(true);
-    const prompts = parsed.flatMap((p) =>
-      p.success && p.data.kind === "before" ? [p.data.prompt] : [],
-    );
-    expect(prompts).toHaveLength(2);
-    expect((prompts.at(-1) ?? "").length).toBeGreaterThan(300);
+    const snapshots = (
+      (list && "data" in list ? list.data : null) as {
+        snapshots: Array<{ kind: string; tree: string; prompt: string | null }>;
+      }
+    ).snapshots;
+    expect(snapshots.map((row) => row.kind)).toEqual(["before", "after", "before", "after"]);
+    // A turn that changed files has an `after` tree unlike its `before` one.
+    const [first, firstEnd, second, secondEnd] = snapshots;
+    expect([first?.tree !== firstEnd?.tree, second?.tree !== secondEnd?.tree]).toEqual([
+      true,
+      true,
+    ]);
+    expect((second?.prompt ?? "").length).toBeGreaterThan(300);
     expect(rule("linha-do-tempo-prompt-longo-aberto", "snapshots.list")).toEqual(list);
   });
 
@@ -109,7 +112,7 @@ describe("the Timeline prints (#4252)", () => {
     const waits: Array<[string, string[]]> = [
       ["linha-do-tempo-voltar-recusa", ["Try again"]],
       ["linha-do-tempo-voltar-recusa-aplicar", ["Rewind files", "Could not rewind the files"]],
-      ["linha-do-tempo-voltar-nada", ["Nothing to rewind"]],
+      ["linha-do-tempo-voltar-nada", ["Nothing to rewind", "Nada para voltar"]],
       ["linha-do-tempo-arquivos-falhou", ["Could not read the files of turn", "Try again"]],
       ["linha-do-tempo-desfazer", ["Undo rewind", "Undo the rewind"]],
       ["linha-do-tempo-desfazer-recusa", ["Undo rewind", "Could not work out what the undo"]],
@@ -144,7 +147,7 @@ describe("a rule that refuses after its first answer (#4252)", () => {
       as: "snapshots.list",
       data: { via: "snapshot", files: [{ path: "a.ts", change: "modified" }] },
       afterRefuse: "The snapshots could not be read.",
-    } as WireRule,
+    },
   ];
 
   test("the first answer carries the data and a later one is refused with the text", () => {

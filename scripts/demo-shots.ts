@@ -43,6 +43,7 @@ import { personaShots } from "./lib/shots/table-personas.ts";
 import { shellShots } from "./lib/shots/table-shell.ts";
 import { snippetShots } from "./lib/shots/table-snippets.ts";
 import { teleportShots } from "./lib/shots/table-teleport.ts";
+import { timelineShots } from "./lib/shots/table-timeline.ts";
 import { teleportScript } from "./lib/shots/teleport-frames.ts";
 import { pickVariants } from "./lib/shots/variants.ts";
 import { wireScript } from "./lib/shots/wire.ts";
@@ -85,6 +86,7 @@ function shots(ids: DemoIds): Shot[] {
     ...shellShots(ids),
     ...boardShots(ids),
     ...agentShots(ids),
+    ...timelineShots(ids),
     ...hostShots(ids),
     ...harnessShots(ids),
     ...automationShots(ids),

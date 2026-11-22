@@ -46,6 +46,12 @@ export const NARROW_SHOTS: readonly string[] = [
   "sino-recusa",
   "sino-alto-risco",
   "board-contrato",
+  // #4252: the Timeline sheet and its refusals, the Undo dialog and an open long prompt, at every width.
+  "linha-do-tempo",
+  "linha-do-tempo-voltar-recusa-aplicar",
+  "linha-do-tempo-arquivos-falhou",
+  "linha-do-tempo-desfazer",
+  "linha-do-tempo-prompt-longo-aberto",
   // #1052: the onboarding journey, the first screens a new person sees.
   "primeira-execucao",
   "host-novo",
