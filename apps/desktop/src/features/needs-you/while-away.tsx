@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Inline, Stack } from "@/shared/layout/index.ts";
 import { basename } from "@/shared/lib/index.ts";
@@ -8,6 +8,7 @@ import { formatAgo } from "../../i18n/format.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
+import { useMoreBelow } from "./use-more-below.ts";
 
 /** Lines shown per group; the rest is counted ("and 3 more"), and the host's own screens hold it. */
 const SHOWN = 3;
@@ -162,11 +163,17 @@ export function WhileAway(
 ) {
   const { store, view, go } = props;
   const { t } = store.i18n;
+  const box = useRef<HTMLElement>(null);
+  // The panel is capped and scrolls inside: a fade and a line for screen readers say it holds more, and
+  // the box is a tab stop while it scrolls, so the keyboard can reach the rest (#3919).
+  const more = useMoreBelow(box, view);
   return (
     <section
+      ref={box}
       aria-label={t("away.title")}
       data-slot="while-away"
-      className="max-h-[45%] overflow-y-auto border-b p-4"
+      tabIndex={more ? 0 : undefined}
+      className="max-h-[45%] overflow-y-auto border-b p-4 focus-visible:outline-2 focus-visible:outline-ring"
     >
       <Stack gap={3}>
         <Inline gap={2}>
@@ -187,6 +194,13 @@ export function WhileAway(
           </p>
         ))}
       </Stack>
+      {more && (
+        // No height of its own: the fade hangs above the visible bottom edge, so no line is moved or hidden.
+        <div data-slot="away-more" className="pointer-events-none sticky bottom-0">
+          <div className="absolute inset-x-0 bottom-0 top-[-2rem] bg-gradient-to-t from-background to-transparent" />
+          <span className="sr-only">{t("away.scrollMore")}</span>
+        </div>
+      )}
     </section>
   );
 }
