@@ -39,11 +39,12 @@ const MISSING_TOOLS: DepsResult = {
 
 /**
  * The start screen shows its cards from what a host page read earlier (only that page asks the host),
- * so the print opens a host page and then the shared "Sessions" tab, whose area has no host tab: the
- * start screen. (Closing the host tab does not work: the window opens a host's overview again.)
+ * and the window shows it only with no tab at all, so the print opens a host page and then sends the
+ * demo's `flightdeck:demo-start` event, which opens the start screen in a shared tab (the host's tab stays).
  */
 async function startScreen(page: Page): Promise<void> {
-  await page.getByRole("tab", { name: /^(Sessions|Sessões)$/ }).click({ timeout: 15_000 });
+  await page.getByRole("tab").first().waitFor({ timeout: 15_000 });
+  await page.evaluate(() => window.dispatchEvent(new Event("flightdeck:demo-start")));
   const note = page
     .getByRole("note")
     .filter({ hasText: /GitHub CLI|Git\b/ })
@@ -52,8 +53,14 @@ async function startScreen(page: Page): Promise<void> {
     await note.waitFor({ timeout: 15_000 });
   } catch (error) {
     // A print that cannot show its card says what the page held instead.
-    const held = (await page.locator("body").textContent()) ?? "";
-    throw new Error(`no tool note on the page; it holds: ${held.slice(0, 600)}`, {
+    const tabs = await page.getByRole("tab").allTextContents();
+    const held =
+      (await page
+        .locator("main")
+        .first()
+        .textContent({ timeout: 1000 })
+        .catch(() => "")) ?? "";
+    throw new Error(`no tool note; tabs: ${tabs.join(" | ")}; main holds: ${held.slice(0, 600)}`, {
       cause: error,
     });
   }
