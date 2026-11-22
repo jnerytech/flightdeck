@@ -84,7 +84,11 @@ function open(over: Record<string, unknown> = {}, route?: object, recents: strin
 }
 
 const input = () => screen.getByLabelText("Search the history") as HTMLInputElement;
-const options = () => within(screen.getByRole("dialog")).queryAllByRole("option");
+/** The palette's rows: the options of every list but the history hits. */
+const options = () =>
+  within(screen.getByRole("dialog"))
+    .queryAllByRole("option")
+    .filter((o) => o.closest("[role=listbox]")?.getAttribute("aria-label") !== "Search results");
 const chosen = () => options().find((o) => o.getAttribute("aria-selected") === "true");
 const type = (text: string) =>
   act(async () => {

@@ -34,14 +34,25 @@ const inPalette = (role: "listbox" | "option") => {
   const palette = dialog();
   return palette ? within(palette).queryAllByRole(role) : [];
 };
-const sections = () => inPalette("listbox").map((list) => list.getAttribute("aria-label") ?? "");
+/** The palette's sections: its listboxes but the history hits, which are the search's answer. */
+const sections = () =>
+  inPalette("listbox")
+    .map((list) => list.getAttribute("aria-label") ?? "")
+    .filter((name) => name !== "Resultados da busca");
 /**
  * Every section of the default list is there. The palette fills in as the host's data arrives
  * (sessions and hosts, then projects, then cards), so a count short of this one is a state it
  * passes through: a wait for it can be missed by a poll when the machine is busy (issue #492).
  */
 const listed = () => sections().length === 6;
-const options = () => inPalette("option").map((option) => option.getAttribute("aria-label") ?? "");
+/** The palette's rows: the options of every list but the history hits. */
+const options = () =>
+  inPalette("option")
+    .filter(
+      (option) =>
+        option.closest("[role=listbox]")?.getAttribute("aria-label") !== "Resultados da busca",
+    )
+    .map((option) => option.getAttribute("aria-label") ?? "");
 const selected = () =>
   inPalette("option")
     .find((option) => option.getAttribute("aria-selected") === "true")
@@ -74,7 +85,9 @@ async function press(key: string) {
 
 const resultTexts = () =>
   [
-    ...(screen.queryByRole("listbox", { name: "Resultados da busca" })?.querySelectorAll("[role=option]") ?? []),
+    ...(screen
+      .queryByRole("listbox", { name: "Resultados da busca" })
+      ?.querySelectorAll("[role=option]") ?? []),
   ].map((option) => option.textContent ?? "");
 
 /** One host with a live session, a project ("flamingo") and a card, and one history transcript. */
