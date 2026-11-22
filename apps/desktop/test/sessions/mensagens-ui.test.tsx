@@ -147,6 +147,12 @@ describe("sessao-mensagens-ui: the Mensagens tab of a session", () => {
       "Na fila",
     );
     daemon.messaging.send = { id: "m2", status: "refused", reason: "outro projeto" };
+    // A sent text is gone from the box, so the next one is typed again.
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Texto da mensagem"), {
+        target: { value: "e agora?" },
+      });
+    });
     await click("Enviar");
     await settle(() =>
       (screen.queryByRole("status", { name: "Resultado do envio" })?.textContent ?? "").includes(

@@ -37,6 +37,15 @@ export function draftOf(initial: Automation | null, zone: string): Draft {
   };
 }
 
+/** What the form refuses to send: an empty name, or a limit the daemon would refuse (not a whole number from 1 up). */
+export function draftProblems(draft: Draft): { name: boolean; max: boolean } {
+  const max = Number(draft.max.trim());
+  return {
+    name: draft.name.trim() === "",
+    max: draft.max.trim() === "" || !Number.isSafeInteger(max) || max < 1,
+  };
+}
+
 export function triggerOf(draft: Draft): AutomationTrigger {
   switch (draft.trigger) {
     case "cron":

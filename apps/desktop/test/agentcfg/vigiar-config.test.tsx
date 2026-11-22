@@ -109,6 +109,53 @@ describe("vigiar-config: the PR watch of each project, in Configurações", () =
     expect(screen.queryByText("Configuração do PR salva")).not.toBeNull();
   });
 
+  test("Salvar is live only while the draft differs from what the host has, and says why when it is not (#3864)", async () => {
+    await openSettings();
+    await settle(() => section() !== null && screen.queryByLabelText("Rodadas por PR") !== null);
+    const save = () =>
+      within(section() as HTMLElement).queryByRole("button", {
+        name: "Salvar",
+      }) as HTMLButtonElement | null;
+    const why = () =>
+      document.getElementById(save()?.getAttribute("aria-describedby") ?? "")?.textContent;
+    const rounds = (value: string) =>
+      act(async () => {
+        fireEvent.change(field("Rodadas por PR"), { target: { value } });
+      });
+    const seen: Array<[boolean | undefined, string | undefined]> = [[save()?.disabled, why()]];
+    await rounds("2");
+    seen.push([save()?.disabled, why()]);
+    await rounds("3");
+    seen.push([save()?.disabled, why()]);
+    expect(seen).toEqual([
+      [true, "Altere uma configuração para salvar."],
+      [false, undefined],
+      [true, "Altere uma configuração para salvar."],
+    ]);
+    // Blanks the save would drop are no change either.
+    await act(async () => {
+      fireEvent.change(field("Checks locais (um comando por linha)"), {
+        target: {
+          value: `${(field("Checks locais (um comando por linha)") as HTMLTextAreaElement).value}\n  \n`,
+        },
+      });
+    });
+    expect([save()?.disabled, why()]).toEqual([true, "Altere uma configuração para salvar."]);
+  });
+
+  test("each project's controls sit in a group named by the project (#3864)", async () => {
+    await openSettings();
+    await settle(() => section() !== null && screen.queryByLabelText("Rodadas por PR") !== null);
+    const group = within(section() as HTMLElement).queryByRole("group", { name: "repo" });
+    expect(group).not.toBeNull();
+    const inside = [
+      "Vigiar PRs por padrão",
+      "Rodadas por PR",
+      "Checks locais (um comando por linha)",
+    ].map((label) => within(group as HTMLElement).queryByLabelText(label) !== null);
+    expect(inside).toEqual([true, true, true]);
+  });
+
   test("a value the host would refuse cannot be saved, and the reason is next to the button", async () => {
     const { daemon } = await openSettings();
     await settle(() => section() !== null && screen.queryByLabelText("Rodadas por PR") !== null);

@@ -323,7 +323,7 @@ describe("automacoes-ui: history, edit and remove", () => {
     seed("r3", "2026-10-30T12:00:00.000Z", "cron 09:00", "limited", "10 of 10 today");
     await click("Automações de repo");
     await settle(() => row("Diária") !== null);
-    await click("Histórico", row("Diária"));
+    await click("Histórico de Diária", row("Diária"));
     await settle(() => screen.queryByRole("list", { name: "Disparos de Diária" }) !== null);
     const runs = [
       ...(screen.queryByRole("list", { name: "Disparos de Diária" })?.querySelectorAll("li") ?? []),
@@ -335,7 +335,7 @@ describe("automacoes-ui: history, edit and remove", () => {
     expect(runs[1]).toContain("workflow not found");
     expect(runs[2]).toContain("Executou");
     expect(runs[0]).toContain("cron 09:00");
-    await click("Esconder histórico", row("Diária"));
+    await click("Esconder histórico de Diária", row("Diária"));
     expect(screen.queryByRole("list", { name: "Disparos de Diária" })).toBeNull();
   });
 
@@ -349,7 +349,7 @@ describe("automacoes-ui: history, edit and remove", () => {
     });
     await click("Automações de repo");
     await settle(() => row("Nova") !== null);
-    await click("Histórico", row("Nova"));
+    await click("Histórico de Nova", row("Nova"));
     await settle(() => screen.queryByText("Nenhum disparo ainda") !== null);
     expect(screen.queryByText("Nenhum disparo ainda")).not.toBeNull();
   });
@@ -362,7 +362,7 @@ describe("automacoes-ui: history, edit and remove", () => {
     await click("Ligar", screen.queryByRole("alertdialog"));
     await settle(() => automationsOf(d)[0]?.enabled === true);
     await settle(() => (row("Revisar issues auto")?.textContent ?? "").includes("Ligada"));
-    await click("Editar", row("Revisar issues auto"));
+    await click("Editar Revisar issues auto", row("Revisar issues auto"));
     expect((screen.queryByLabelText("Rótulo") as HTMLInputElement).value).toBe("auto");
     await change("Rótulo", "urgente");
     await click("Próximo");
@@ -385,11 +385,11 @@ describe("automacoes-ui: history, edit and remove", () => {
     const d = await online();
     await createLabelAutomation();
     await settle(() => row("Revisar issues auto") !== null);
-    await click("Excluir", row("Revisar issues auto"));
+    await click("Excluir Revisar issues auto", row("Revisar issues auto"));
     expect(screen.queryByRole("alertdialog")).not.toBeNull();
     await click("Cancelar");
     expect(automationsOf(d)).toHaveLength(1);
-    await click("Excluir", row("Revisar issues auto"));
+    await click("Excluir Revisar issues auto", row("Revisar issues auto"));
     await click("Excluir", screen.queryByRole("alertdialog"));
     await settle(() => automationsOf(d).length === 0);
     expect(automationsOf(d)).toHaveLength(0);

@@ -422,6 +422,9 @@ export const sessions = {
     result: "Send result",
     sent: "Sent",
     received: "Received",
+    toName: "To {name}",
+    fromName: "From {name}",
+    noTargets: "No other session can receive a message from this one.",
     empty: "No messages yet. Use “Send to another session…” to write the first one.",
   },
   // Issue #101: a team session is named by its persona; with none, by its role.

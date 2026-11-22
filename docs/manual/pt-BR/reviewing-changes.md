@@ -39,7 +39,8 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
   o diff dele contra o HEAD, ao vivo. Enquanto você está no fim, a mudança mais nova entra na tela
   conforme a sessão edita; role para cima e isso para, e **Ir para a mais recente** (com quantas
   mudanças chegaram) ou uma rolagem de volta ao fim retoma. Num host deste computador o visualizador
-  também tem **Abrir no app padrão** e **Mostrar na pasta**.
+  também tem **Abrir no app padrão** e **Mostrar na pasta**. Um arquivo aberto entra na tela e
+  recebe o foco do teclado; **Fechar** devolve o foco ao botão que o abriu.
 - **Comentários inline:**
   - clique no número de uma linha para comentá-la, e com shift em outra para estender o intervalo.
     Uma linha apagada é comentada pelo lado antigo. O número mostra a marca de Comentar quando
