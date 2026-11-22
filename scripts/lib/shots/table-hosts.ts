@@ -378,6 +378,44 @@ export function hostShots(ids: DemoIds): Shot[] {
       },
     },
     {
+      // #4025: the running team's footer (Pause, Add worker, Close and the message field), which the
+      // print above scrolls past.
+      name: "times-rodape",
+      route: { name: "teams", host: ALFA },
+      async prepare(page) {
+        const team = page.getByRole("listitem", { name: /^(Team|Time) checkout-crew$/ });
+        await team.locator("[data-slot='team-footer']").scrollIntoViewIfNeeded();
+      },
+    },
+    {
+      // #4025: the same footer with Add worker open, so its form shows.
+      name: "times-adicionar",
+      route: { name: "teams", host: ALFA },
+      async prepare(page) {
+        const team = page.getByRole("listitem", { name: /^(Team|Time) checkout-crew$/ });
+        await team.getByRole("button", { name: /^(Add worker|Adicionar executora)$/ }).click();
+        await team.locator("[data-slot='team-footer']").scrollIntoViewIfNeeded();
+      },
+    },
+    {
+      // #4025: a team the person paused: the Paused badge and Resume in the footer.
+      name: "times-pausado",
+      route: { name: "teams", host: ALFA },
+      async prepare(page) {
+        const team = page.getByRole("listitem", { name: /^(Team|Time) paused-crew$/ });
+        await team.locator("[data-slot='team-footer']").scrollIntoViewIfNeeded();
+      },
+    },
+    {
+      // #4025: a team the plan quota paused: the badge and the "paused by the quota" line.
+      name: "times-cota",
+      route: { name: "teams", host: ALFA },
+      async prepare(page) {
+        const team = page.getByRole("listitem", { name: /^(Team|Time) quota-crew$/ });
+        await team.locator("[data-slot='team-footer']").scrollIntoViewIfNeeded();
+      },
+    },
+    {
       // #1271: New action, the longest Form dialog; narrow, its buttons rest on the sheet's bottom.
       name: "acoes-nova",
       route: {
