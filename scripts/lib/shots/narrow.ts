@@ -56,6 +56,8 @@ export const NARROW_SHOTS: readonly string[] = [
   "acoes-nova",
   // #1325, #1326: a card at a gate, with the empty spec file and hours rows and their reasons.
   "card-gate",
+  // #3999: the Maintenance panel's three buttons must wrap, not overflow, in the narrow window.
+  "host-manutencao",
   // #1328: Settings > Backup schedule, waiting for the passphrase.
   "configuracoes-backup-agenda",
   // #1354: the selection bar and Start N's confirm, compact at 390.

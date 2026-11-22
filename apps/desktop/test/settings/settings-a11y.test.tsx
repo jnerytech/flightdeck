@@ -23,6 +23,7 @@ function setup(autostartSupported = true) {
       onCloseToTray={() => {}}
       onAutostart={() => {}}
       onGlobalShortcut={() => {}}
+      onShortcuts={() => {}}
       appUpdate={{ upToDate: false } as never}
       onCheckUpdate={() => {}}
       onNotifyUpdates={() => {}}

@@ -83,12 +83,12 @@ describe("harness-templates-ui: the host lists its Claude Code setup templates a
     const en = setup();
     render(en.view);
     await settle(() => shown("Shop setup"), 5000, "the English listing");
-    const english = [shown("Solo"), shown("2 files · 2.0 KB"), shown("1 file · 100 B")];
+    const english = [shown("Solo"), shown("2 files · 2 KB"), shown("1 file · 100 B")];
     cleanup();
     const pt = setup({ language: "pt-BR" });
     render(pt.view);
     await settle(() => shown("Shop setup"), 5000, "the Portuguese listing");
-    expect([...english, shown("2 arquivos · 2.0 KB"), shown("1 arquivo · 100 B")]).toEqual([
+    expect([...english, shown("2 arquivos · 2 KB"), shown("1 arquivo · 100 B")]).toEqual([
       true,
       true,
       true,

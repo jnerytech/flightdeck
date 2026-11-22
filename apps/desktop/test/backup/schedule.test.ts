@@ -12,6 +12,8 @@ import {
   backupFileName,
   DEFAULT_KEEP,
   isDue,
+  type NextBackup,
+  nextBackup,
 } from "../../src/features/backup/domain/backup-schedule.ts";
 import type { BackupTarget } from "../../src/features/backup/domain/backup-target.ts";
 import { DriveError } from "../../src/features/backup/drive-target.ts";
@@ -102,6 +104,39 @@ describe("backup-schedule: when it is due and what the file is called (#1264)", 
       isDue(schedule({ cadence: "weekly", lastRunAt: NOON - 7 * 24 * HOUR }), NOON),
       isDue(schedule({ folder: "" }), NOON),
     ]).toEqual([false, true, false, true, false, true, false]);
+  });
+
+  test("the next backup: off has none, a run waits for what it lacks, else the period after the last run (#4000)", () => {
+    const ready = { hasFolder: true, hasPassphrase: true, driveSignedIn: true };
+    const next = (over: Partial<BackupSchedule>, lacks: Partial<typeof ready> = {}): NextBackup =>
+      nextBackup(schedule(over), { ...ready, ...lacks }, NOON);
+    expect([
+      next({ cadence: "off" }),
+      next({ lastRunAt: NOON - 3 * HOUR }),
+      next({ cadence: "weekly", lastRunAt: NOON - 2 * 24 * HOUR }),
+      next({ lastRunAt: null }),
+      next({ lastRunAt: NOON - 30 * HOUR }),
+      next({ lastRunAt: NOON + HOUR }),
+      next({}, { hasPassphrase: false }),
+      next({}, { hasFolder: false }),
+      next({ target: "drive" }, { hasFolder: false }),
+      next({ target: "drive" }, { driveSignedIn: false }),
+      next({ target: "drive" }, { hasPassphrase: false, driveSignedIn: false }),
+      next({ folder: "" }),
+    ]).toEqual([
+      null,
+      { at: NOON + 21 * HOUR },
+      { at: NOON + 5 * 24 * HOUR },
+      { at: NOON },
+      { at: NOON },
+      { at: NOON },
+      { waitingFor: "no-passphrase" },
+      { waitingFor: "no-folder" },
+      { at: NOON },
+      { waitingFor: "drive-auth" },
+      { waitingFor: "no-passphrase" },
+      { waitingFor: "no-folder" },
+    ]);
   });
 
   test("a last run in the future (the clock moved back) is due again, not never", () => {

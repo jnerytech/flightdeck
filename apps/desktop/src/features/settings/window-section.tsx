@@ -5,7 +5,7 @@ import { Panel } from "@/shared/layout/index.ts";
 import { check } from "./appearance-section.tsx";
 import type { Settings as SettingsState } from "./index.ts";
 
-/** The Window block: close to the tray, start with Windows, the setup checklist and the teleport preview. */
+/** The Window block: close to the tray, start with Windows, the setup checklist and, in a group of its own at the end, the preview features (Teleport). */
 export function WindowSection(
   props: Readonly<{
     store: AppStore;
@@ -51,14 +51,17 @@ export function WindowSection(
         />
         {t("setup.restore")}
       </label>
-      <label className={check}>
-        <input
-          type="checkbox"
-          checked={settings.teleportPreview}
-          onChange={(e) => store.settings.setTeleportPreview(e.target.checked)}
-        />
-        {t("teleportUi.preview")}
-      </label>
+      <fieldset className="setting-group">
+        <legend className="font-medium text-sm">{t("prefs.previewGroup")}</legend>
+        <label className={check}>
+          <input
+            type="checkbox"
+            checked={settings.teleportPreview}
+            onChange={(e) => store.settings.setTeleportPreview(e.target.checked)}
+          />
+          {t("teleportUi.preview")}
+        </label>
+      </fieldset>
     </Panel>
   );
 }

@@ -177,12 +177,14 @@ export const chrome = {
     backup: "Backup",
     words: {
       appearance:
-        "tema escuro claro sistema densidade lista fonte tamanho terminal idioma inglês português",
+        "tema escuro claro sistema densidade lista fonte tamanho terminal idioma inglês português contador cache ordem abas ctrl+tab leitor de tela",
       clients: "clientes gerenciar",
-      window: "janela bandeja fechar iniciar com o windows",
-      notifications: "notificações avisos alertas som silenciar adiar sino time teste",
+      window:
+        "janela bandeja fechar iniciar com o windows configuração inicial teleport recursos em prévia",
+      notifications:
+        "notificações avisos alertas som arquivo volume silenciar adiar sino time teste",
       updates: "atualizações versão verificar avisar",
-      shortcut: "atalho global teclado busca",
+      shortcut: "atalho global atalhos teclado combinação de teclas busca",
       budgets: "orçamento limite custo gasto cota",
       watch: "vigiar pull request pr ci corrigir checks",
       messaging: "mensagens conversas regras agentes",

@@ -83,11 +83,18 @@ export const backup = {
     passphrase: "Passphrase for this session",
     passphraseHelp:
       "At least 12 characters. Kept in memory until you close Flightdeck, never saved.",
-    usePassphrase: "Use it",
+    setPassphrase: "Set passphrase",
     passphraseNeeds: "Type a passphrase of at least 12 characters.",
     passphraseSet: "Passphrase set until you close Flightdeck.",
     lastRun: "Last backup: {when}",
     neverRun: "No scheduled backup yet.",
+    nextDue: "Next backup: {when}",
+    nextDueNow: "Next backup: due now.",
+    nextWaiting: {
+      "no-folder": "Next backup: waiting for a folder.",
+      "no-passphrase": "Next backup: waiting for the passphrase.",
+      "drive-auth": "Next backup: waiting for you to sign in to Google Drive.",
+    },
     pruneFailed: "The backup was saved, but the old files could not be removed.",
     attention: {
       passphrase: {

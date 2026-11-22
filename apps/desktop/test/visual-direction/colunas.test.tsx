@@ -124,6 +124,10 @@ describe("direcao-visual: três colunas", () => {
     expect(section?.querySelector("[data-slot='group-meta']")?.className ?? "").toContain(
       "text-muted-foreground",
     );
+    // Drawn at full strength: at 80% over a dialog's backdrop it falls under 4.5:1 (#4015).
+    expect(section?.querySelector("[data-slot='group-meta']")?.className ?? "").not.toContain(
+      "text-muted-foreground/",
+    );
     expect(within(alpha).queryByText(/^alfa/)).toBeNull();
     const time = alpha.querySelector("time");
     expect(time?.className ?? "").toContain("tabular-nums");

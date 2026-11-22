@@ -424,6 +424,7 @@ describe("assistant-settings-ui: the section in Settings, in both languages", ()
         onCloseToTray={() => {}}
         onAutostart={() => {}}
         onGlobalShortcut={() => {}}
+        onShortcuts={() => {}}
         appUpdate={{ upToDate: false } as never}
         onCheckUpdate={() => {}}
         onNotifyUpdates={() => {}}
