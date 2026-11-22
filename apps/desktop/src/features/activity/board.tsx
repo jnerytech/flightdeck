@@ -105,12 +105,12 @@ export function ActivityBoard(
     );
     if (!result.ok) {
       // The request stays, so nothing was answered: the later removal of it is not this answer.
-      answered.current = null;
+      if (answered.current?.requestId === request.requestId) answered.current = null;
       setFailed({ key: card.row.key, requestId: request.requestId, reason: result.reason });
     }
     return result;
   };
-  const stage = activityStage(state, data.total);
+  const stage = activityStage(state, data.total + data.hiddenIdle);
   const searchRef = useRef<HTMLInputElement>(null);
   const set = (patch: Partial<ActivityFilter>) => setFilter({ ...filter, ...patch });
   return (

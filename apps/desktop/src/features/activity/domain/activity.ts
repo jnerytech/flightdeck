@@ -71,18 +71,20 @@ export interface ActivityBoardData {
 export type ActivityStage = "no_host" | "loading" | "board";
 
 /**
- * With no host there is nothing to read; until the saved hosts are read, or while a host is still
- * being reached and nothing is known yet, the board is not a quiet day either (#4241).
+ * With no host there is nothing to read; until the saved hosts are read, or while no host has
+ * answered yet and one is being reached, with no session known, the board is not a quiet day
+ * either (#4241). `known` counts every session the hosts told, the ones Idle hides too.
  */
 export function activityStage(
   state: { hosts: readonly { status: string }[]; hostsLoaded: boolean },
-  total: number,
+  known: number,
 ): ActivityStage {
   if (!state.hostsLoaded) return "loading";
   if (state.hosts.length === 0) return "no_host";
-  return total === 0 && state.hosts.some((host) => host.status === "connecting")
-    ? "loading"
-    : "board";
+  const reaching =
+    state.hosts.some((host) => host.status === "connecting") &&
+    !state.hosts.some((host) => host.status === "online");
+  return known === 0 && reaching ? "loading" : "board";
 }
 
 /** The rows the board is about: live sessions, not the history and not what was archived. */

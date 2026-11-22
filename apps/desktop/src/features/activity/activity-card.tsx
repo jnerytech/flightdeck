@@ -53,10 +53,11 @@ export function ActivityCardView(
   };
   useEffect(() => {
     const button = sent.current;
-    if (!props.failure || !button?.isConnected || document.activeElement !== document.body) return;
+    if (!props.failure || !button?.isConnected) return;
+    // Once only: the focus is still on the button, or the person has moved it, or it goes back now.
     if (button instanceof HTMLButtonElement && button.disabled) return;
     sent.current = null;
-    button.focus();
+    if (document.activeElement === document.body) button.focus();
   });
   return (
     <li
