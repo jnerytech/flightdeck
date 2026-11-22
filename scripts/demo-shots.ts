@@ -21,7 +21,7 @@ import { type VisualMode, VOLATILE_RULES } from "./lib/browser/visual.ts";
 import { demoFinished, demoInbox, demoSecrets, demoVaultUsage } from "./lib/demo/seeds.ts";
 import { DEMO_AWAY_SINCE } from "./lib/e2e/journeys.ts";
 import { holdsScript } from "./lib/shots/holds.ts";
-import { PENDING_SELECTOR } from "./lib/shots/loaded.ts";
+import { pendingSelectorFor } from "./lib/shots/loaded.ts";
 import { maintenanceScript } from "./lib/shots/maintenance.ts";
 import { narrowSizes, unknownNarrowShots } from "./lib/shots/narrow.ts";
 import { ALFA, DEMO_CLIENTS, DEMO_ROI, type Shot } from "./lib/shots/shot.ts";
@@ -271,15 +271,12 @@ async function printShot(
       await page.screenshot({ path: join(dir, `${shot.name}-FALHOU.png`) });
       throw error;
     });
-    // A skeleton or a busy region is a screen still loading: the print waits for the real one,
-    // unless the print is of a task held in progress (#4001).
-    if (!shot.busy) {
-      await page.waitForFunction(
-        (selector) => document.querySelector(selector) === null,
-        PENDING_SELECTOR,
-        { timeout: 15_000 },
-      );
-    }
+    // A skeleton or a busy region is a screen still loading: the print waits for the real one.
+    await page.waitForFunction(
+      (selector) => document.querySelector(selector) === null,
+      pendingSelectorFor(shot),
+      { timeout: 15_000 },
+    );
     if (visual !== "off") await stabilize(page);
     await page.screenshot({
       path: join(dir, `${shot.name}.png`),

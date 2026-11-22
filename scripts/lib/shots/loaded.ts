@@ -5,6 +5,6 @@
 export const PENDING_SELECTOR = '[aria-busy="true"], [data-slot="skeleton"]';
 
 /** What the print of `shot` waits out: a task held in progress is busy on purpose, so its busy region stays (#4001). */
-export function pendingSelectorFor(_shot: { busy?: boolean }): string {
-  return PENDING_SELECTOR;
+export function pendingSelectorFor(shot: { busy?: boolean }): string {
+  return shot.busy === true ? '[data-slot="skeleton"]' : PENDING_SELECTOR;
 }
