@@ -1,12 +1,12 @@
 import type { AgentCfgItem } from "@flightdeck/protocol";
 import { Plus } from "lucide-react";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { InlineNotice } from "@/shared/feedback/index.ts";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { EmptyState, ErrorState, Field, LoadingState } from "@/shared/layout/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -66,7 +66,7 @@ function FileRow(
         )}
       >
         <span className="font-medium">{name}</span>
-        {item.name && item.name !== item.path && (
+        {item.name && item.name !== shownPath(item) && (
           <span className="break-all text-muted-foreground text-xs">{shownPath(item)}</span>
         )}
         <span className="flex flex-wrap gap-1">
@@ -125,7 +125,6 @@ export function AgentFiles(
   const [justSaved, setJustSaved] = useState(false);
   const [creating, setCreating] = useState(false);
   const [typed, setTyped] = useState("");
-  const whyOffId = useId();
 
   const load = useCallback(async () => {
     setFailed(false);
@@ -346,22 +345,17 @@ export function AgentFiles(
             {!valid && <InlineNotice tone="error">{t("agent.files.needFields")}</InlineNotice>}
             {!opened.readOnly && (
               <div className="flex items-center gap-3">
-                <Button
+                <ActionButton
                   disabled={!valid || !dirty}
-                  aria-describedby={valid && !dirty ? whyOffId : undefined}
-                  onClick={() => void save()}
+                  disabledReason={valid && !justSaved ? t("agent.files.nothingChanged") : undefined}
+                  onClick={save}
                 >
                   {t("agent.files.save")}
-                </Button>
+                </ActionButton>
                 {justSaved && !dirty && (
                   <output className="text-muted-foreground text-sm">
                     {t("agent.files.saved")}
                   </output>
-                )}
-                {valid && !dirty && !justSaved && (
-                  <span id={whyOffId} className="text-muted-foreground text-sm">
-                    {t("agent.files.nothingChanged")}
-                  </span>
                 )}
               </div>
             )}

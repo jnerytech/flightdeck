@@ -5,7 +5,7 @@ import { InlineNotice } from "@/shared/feedback/index.ts";
 import { ListRow, LoadingState, Stack } from "@/shared/layout/index.ts";
 import { formatNumber } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { shortPath } from "./domain/file-list.ts";
+import { contextPath } from "./domain/file-list.ts";
 
 /**
  * Phase 26: what enters Claude Code's context when a session starts, source by source, with an
@@ -39,7 +39,7 @@ export function AgentContext(
                 leading={<Badge variant="secondary">{t(`contextUi.kind.${source.kind}`)}</Badge>}
                 title={
                   <span className="break-all">
-                    {shortPath(source.path, budget.root, budget.home)}
+                    {contextPath(source.path, budget.root, budget.home)}
                   </span>
                 }
                 trailing={

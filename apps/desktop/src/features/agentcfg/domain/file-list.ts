@@ -11,7 +11,7 @@ export function shownPath(item: Pick<AgentCfgItem, "origin" | "path">): string {
 /** What a list row calls a file: its name, or its path when it has none. */
 export const titleOf = (item: AgentCfgItem): string => item.name ?? shownPath(item);
 
-/** The project's own root file first, the project's other files next, the user's last; the daemon's order inside each group. */
+/** The project's root CLAUDE.md first, then the project's other files, then the user's; the daemon's order inside each group. */
 export function inReadingOrder(items: AgentCfgItem[]): AgentCfgItem[] {
   const rank = (item: AgentCfgItem) => {
     if (item.origin === "user") return 2;
@@ -21,7 +21,7 @@ export function inReadingOrder(items: AgentCfgItem[]): AgentCfgItem[] {
 }
 
 /** A path of the context screen: relative to the project, else under `~`, else as the daemon sent it. */
-export function shortPath(path: string, root?: string, home?: string): string {
+export function contextPath(path: string, root?: string, home?: string): string {
   if (root && path.startsWith(`${root}/`)) return path.slice(root.length + 1);
   if (home && path.startsWith(`${home}/`)) return `~${path.slice(home.length)}`;
   return path;
