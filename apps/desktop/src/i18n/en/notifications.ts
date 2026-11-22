@@ -116,6 +116,8 @@ export const notifications = {
     soundSystem: "System default",
     soundFile: "A file",
     volume: "Volume",
+    volumeHint: "Pick a sound to set the volume.",
+    fileHint: 'Choose "{file}" to pick one.',
     chooseFile: "Choose a sound file",
     notAudio: "That is not a sound file (MP3, WAV, OGG, M4A, AAC or FLAC).",
     tooLarge: "That file is too large to keep (about 400 KB at most).",

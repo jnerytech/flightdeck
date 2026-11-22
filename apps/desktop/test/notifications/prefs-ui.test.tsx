@@ -196,12 +196,12 @@ describe("notify-prefs-ui: the sound (issue #149)", () => {
     const { store } = settings();
     await pickSound("system");
     const volume = within(panel()).getByLabelText("Volume") as HTMLInputElement;
-    const shown = () => within(panel()).queryByTestId("notify-volume-value")?.textContent ?? null;
+    const shown = () => ["50%", "60%"].filter((v) => within(panel()).queryByText(v) !== null);
     const first = shown();
     await act(async () => {
       fireEvent.change(volume, { target: { value: "60" } });
     });
-    expect([first, shown(), store.notifyPrefs.value.sound.volume]).toEqual(["50%", "60%", 0.6]);
+    expect([first, shown(), store.notifyPrefs.value.sound.volume]).toEqual([["50%"], ["60%"], 0.6]);
   });
 
   test("a file over the cap is refused before it is read", async () => {
