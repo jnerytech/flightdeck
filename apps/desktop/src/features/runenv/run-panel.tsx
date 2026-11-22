@@ -113,9 +113,7 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
                   {t("runEnv.run")}
                 </ActionButton>
               )}
-              <span role="status" className="text-sm">
-                {t(`runEnv.status.${status}`)}
-              </span>
+              <output className="text-sm">{t(`runEnv.status.${status}`)}</output>
             </Inline>
             {state?.error && (
               <p role="alert" className="text-status-error text-sm">

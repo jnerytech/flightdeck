@@ -62,11 +62,11 @@ async function openPanel(lang: Lang, entries: unknown[]) {
   render(<App store={store} />);
   await waitFor(() => expect(store.getState().inbox).toHaveLength(entries.length));
   const bell = () => screen.queryByRole("button", { name: WORDS[lang].bell });
-  await waitFor(() => expect(bell() !== null).toBe(true));
+  await waitFor(() => expect(bell()).not.toBeNull());
   await act(async () => {
     fireEvent.click(bell() as HTMLElement);
   });
-  await waitFor(() => expect(screen.queryByRole("dialog") !== null).toBe(true));
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeNull());
   return screen.getByRole("dialog");
 }
 
@@ -104,7 +104,7 @@ describe.each(["en", "pt-BR"] as const)("the notification center, names and time
     const button = within(rowOf(panel, "Session G")).queryByRole("button", {
       name: w.dismiss("Session G"),
     });
-    expect(button !== null).toBe(true);
+    expect(button).not.toBeNull();
   });
 
   test("a row of an earlier day shows its day, a row of today only its time", async () => {
@@ -112,8 +112,8 @@ describe.each(["en", "pt-BR"] as const)("the notification center, names and time
     const panel = await openPanel(lang, [ENTRY("N", today(30)), ENTRY("O", old)]);
     const time = (title: string) => rowOf(panel, title).querySelector(".inbox-time")?.textContent;
     expect(time("Session O")).toBe(formatWhen(old, Date.now(), lang));
-    expect(time("Session O") === formatWhen(old, Date.parse(old), lang)).toBe(false);
+    expect(time("Session O")).not.toBe(formatWhen(old, Date.parse(old), lang));
     expect(time("Session N")).toBe(formatWhen(today(30), Date.now(), lang));
-    expect(time("Session N") === time("Session O")).toBe(false);
+    expect(time("Session N")).not.toBe(time("Session O"));
   });
 });

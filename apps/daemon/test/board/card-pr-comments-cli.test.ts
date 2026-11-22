@@ -77,7 +77,7 @@ describe("flightdeckd card pr-comments (issue #3702)", () => {
   test("a comment with an identity and no association (Azure DevOps) is not marked external", async () => {
     const daemon = fakeDaemon(base());
     const run = await flightdeckd(["card", "pr-comments", "k1"], daemon.port);
-    expect(run.out.filter((line) => line.includes("EXTERNAL")).length).toBe(1);
+    expect(run.out.filter((line) => line.includes("EXTERNAL"))).toHaveLength(1);
     expect(run.out.find((line) => line.startsWith("c3"))?.includes("EXTERNAL")).toBe(false);
   });
 
