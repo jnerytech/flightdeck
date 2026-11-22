@@ -111,6 +111,22 @@ describe("the time of a running step moves (#4286)", () => {
       spy.mockRestore();
     }
   });
+
+  test("a run that has ended keeps no timer for a step it left open", async () => {
+    const spy = jest.spyOn(globalThis, "setInterval");
+    try {
+      const ended = { ...run([step({})]), status: "failed", endedAt: at(30).toISOString() };
+      const store = new AppStore(memoryPlatform(false, "en").platform);
+      render(
+        <TContext.Provider value={store.i18n.t}>
+          <RunTimeline run={ended as WorkflowRun} onOpenStep={() => {}} formatTime={String} />
+        </TContext.Provider>,
+      );
+      expect(spy.mock.calls.filter((call) => call[1] === 1000).length).toBe(0);
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });
 
 describe("the units of a step's time come from the dictionary (#4286)", () => {

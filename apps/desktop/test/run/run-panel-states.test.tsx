@@ -236,6 +236,19 @@ describe("the run panel says what changed in a process (#4285)", () => {
     expect(said()).toBe("api is ready. web ended (code 2)");
   });
 
+  test("a late ready or timeout report on a process that has ended says nothing more than the end", async () => {
+    const { store } = await panel("en", live(web({})));
+    await act(async () => store.runEnv.updated("h", live(web({ status: "exited", exitCode: 1 }))));
+    await act(async () =>
+      store.runEnv.updated("h", live(web({ status: "exited", exitCode: 1, ready: "ready" }))),
+    );
+    expect(said()).toBe("api ended (code 1)");
+    await act(async () =>
+      store.runEnv.updated("h", live(web({ status: "exited", exitCode: 1, ready: "timeout" }))),
+    );
+    expect(said()).toBe("api ended (code 1)");
+  });
+
   test("it reads in pt-BR", async () => {
     const { store } = await panel("pt-BR", live(web({})));
     await act(async () => store.runEnv.updated("h", live(web({ ready: "ready" }))));
