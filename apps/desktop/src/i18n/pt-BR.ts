@@ -339,6 +339,8 @@ export const ptBR = {
     to: "para",
     open: "Abrir a sessão",
     openNamed: "Abrir a sessão de {name}",
+    silent: "Sem resposta de {hosts}. As mensagens de lá não aparecem na lista.",
+    retry: "Tentar de novo",
     hostGone: "Esse host não está conectado.",
     paused: "Estas sessões estão pausadas por um laço de mensagens: {a} e {b}.",
     statuses: {
