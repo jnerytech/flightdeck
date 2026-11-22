@@ -2,7 +2,7 @@
  * #4001: the web build saves a file through the browser's save dialog, which a print cannot answer.
  * `keepSaves` replaces it, inside the page, with one that keeps what is written in `__saved`.
  */
-export interface KeptSave {
+interface KeptSave {
   name: string;
   text: string;
 }
@@ -14,9 +14,11 @@ export interface SaveWindow {
 
 /** Self-contained: Playwright sends its source to the page, so it names nothing outside itself. */
 export function keepSaves(win: SaveWindow): void {
-  win.showSaveFilePicker = async () => ({
+  win.showSaveFilePicker = async (options: { suggestedName: string }) => ({
     createWritable: async () => ({
-      write: async () => {},
+      write: async (text: string) => {
+        win.__saved = { name: options.suggestedName, text };
+      },
       close: async () => {},
     }),
   });
