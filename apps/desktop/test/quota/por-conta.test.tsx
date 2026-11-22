@@ -60,7 +60,12 @@ describe("cota-por-conta: one quota card per Claude account (issue #111)", () =>
 /** The state the panel reads, with the readings of `a` only. */
 function fakeStore(
   accounts: Record<string, AccountState>,
-  over: { quota?: Record<string, QuotaState>; features?: string[] } = {},
+  over: {
+    quota?: Record<string, QuotaState>;
+    features?: string[];
+    /** The features of one host, when they differ from `features`. */
+    hostFeatures?: Record<string, string[]>;
+  } = {},
 ) {
   const window = { window: "five_hour", utilization: 0.14, resetsAt: null, status: "allowed" };
   const quota: Record<string, QuotaState> = over.quota ?? {
@@ -68,7 +73,7 @@ function fakeStore(
   };
   const hosts = ["a", "b", "c"].map((id) => ({
     ...host(id),
-    hostInfo: { features: over.features ?? ["quota", "account"] },
+    hostInfo: { features: over.hostFeatures?.[id] ?? over.features ?? ["quota", "account"] },
   }));
   const state = { hosts, quota, account: accounts };
   const watched: string[] = [];
@@ -139,6 +144,30 @@ describe("cota-por-conta: the panel", () => {
       "New cards wait from, on a",
       "New cards wait from, on b",
     ]);
+  });
+
+  test("a host that cannot change its guard from the app is named too, in the card", async () => {
+    const same = account();
+    const { store } = fakeStore(
+      { a: same, b: same },
+      {
+        quota: { a: reading(0.6, 0.5), b: reading(0.6, 0.9) },
+        features: ["quota", "account", "quotaPause"],
+        hostFeatures: { b: ["quota", "account"] },
+      },
+    );
+    render(
+      <TContext.Provider value={translator("en")}>
+        <QuotaPanel store={store} />
+      </TContext.Provider>,
+    );
+    const card = screen.getByRole("region", { name: "Quota of a · b" });
+    expect(card.textContent?.includes("b: New cards wait from 90%")).toBe(true);
+  });
+
+  test("a card where only one host has a reading shows its guard without the other's name", async () => {
+    const card = sharedCard({ a: reading(0.6, 0.5) });
+    expect(guards(card).map(([, , label]) => label)).toEqual(["New cards wait from"]);
   });
 
   test("the hot notice names each hot host with its own guard, not one percent for both", async () => {
