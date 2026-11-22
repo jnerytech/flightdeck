@@ -159,7 +159,8 @@ export function demoBackupFolder(platform: Platform): NonNullable<Platform["back
 /**
  * The e2e asks for `?update=<version>`: the demo's updater then offers that version and "downloads"
  * it, so the update card (#490) can be driven in a page, which has no Tauri updater. Without it, or
- * with something that is not a version, the platform is the browser's as it is.
+ * with something that is not a version, the platform is the browser's as it is. `?update=fail` makes
+ * every check fail instead, so the update banner's error can be driven (#4059).
  */
 export function demoPlatform(platform: Platform, search = ""): Platform {
   const params = new URLSearchParams(search);
@@ -168,8 +169,22 @@ export function demoPlatform(platform: Platform, search = ""): Platform {
       ? { ...platform, backupFolder: demoBackupFolder(platform) }
       : platform;
   const version = params.get("update");
-  if (!version || !/^\d+\.\d+\.\d+$/.test(version)) return withFolder;
   const nothing = () => Promise.resolve();
+  if (version === "fail") {
+    // #4059: every check fails, so the update banner shows its error.
+    const failing = () => Promise.reject(new Error("The update server did not answer"));
+    return {
+      ...withFolder,
+      updater: {
+        supported: true,
+        check: failing,
+        download: failing,
+        installDownloaded: failing,
+        install: failing,
+      },
+    };
+  }
+  if (!version || !/^\d+\.\d+\.\d+$/.test(version)) return withFolder;
   return {
     ...withFolder,
     updater: {
