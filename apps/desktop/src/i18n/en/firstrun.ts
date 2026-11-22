@@ -93,6 +93,10 @@ export const firstrun = {
       text: "Some features need it.",
       fix: "How to install it",
       dismiss: "Dismiss",
+      dismissNamed: "Dismiss the note about {tool} on {host}",
+      dismissed: "Dismissed the note about {tool} on {host}.",
+      undo: "Undo",
+      undoNamed: "Undo: show the note about {tool} on {host} again",
     },
   },
 };

@@ -258,6 +258,19 @@ describe("setup-steps: what the person chose (issue #164)", () => {
     expect(told).toBe(3);
   });
 
+  test("a restored tool leaves the dismissed list, for good, and the listeners are told", () => {
+    const kept = memory();
+    const s = new SetupSettings(kept.storage);
+    s.dismissTool("gh@h1");
+    s.dismissTool("claude@h1");
+    let told = 0;
+    s.subscribe(() => told++);
+    s.restoreTool("gh@h1");
+    expect(s.dismissedTools()).toEqual(["claude@h1"]);
+    expect(new SetupSettings(kept.storage).dismissedTools()).toEqual(["claude@h1"]);
+    expect(told).toBe(1);
+  });
+
   test("dismissed tools are kept by id, once, and unreadable storage means none", () => {
     const kept = memory();
     const s = new SetupSettings(kept.storage);

@@ -321,7 +321,7 @@ describe("setup-ui: a missing tool gets a quiet card on Start (issue #164)", () 
     w.store.openLink = ((url: string) => void opened.push(url)) as never;
     await click(within(card).getByRole("link", { name: "Como instalar" }));
     expect(opened).toEqual(["https://cli.github.com"]);
-    await click(within(card).getByRole("button", { name: "Dispensar" }));
+    await click(within(card).getByRole("button", { name: "Dispensar o aviso sobre gh em h1" }));
     expect(screen.queryByRole("note")).toBeNull();
     expect(w.store.setup.dismissedTools()).toEqual(["gh@h1"]);
     cleanup();
