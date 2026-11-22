@@ -36,6 +36,10 @@ function setup(
     listFailsOnce?: boolean;
     /** The first listing never answers. */
     listHangs?: boolean;
+    /** The delete waits until `release()` is called. */
+    holdDelete?: boolean;
+    /** The delete is refused, but another session had already removed the template. */
+    refusedAlreadyGone?: boolean;
     /** Every listing after a delete fails (the host went away meanwhile). */
     listFailsAfterDelete?: boolean;
   } = {},
@@ -48,6 +52,10 @@ function setup(
   const sent: Array<[string, unknown, unknown]> = [];
   let listFailed = false;
   let deleted = false;
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
   store.hostCommand = (async (_host: string, type: string, payload: unknown, asked?: unknown) => {
     sent.push([type, payload, asked]);
     if (type === "harness.templates.list") {
@@ -60,6 +68,11 @@ function setup(
       return { templates };
     }
     if (type === "harness.templates.delete") {
+      if (options.holdDelete) await gate;
+      if (options.refusedAlreadyGone) {
+        templates = templates.filter((template) => template.id !== (payload as { id: string }).id);
+        return null;
+      }
       if (options.delete === "refused") return null;
       const { id } = payload as { id: string };
       deleted = true;
@@ -75,7 +88,7 @@ function setup(
     </TContext.Provider>
   );
   const deletes = () => sent.filter(([type]) => type === "harness.templates.delete");
-  return { view, sent, deletes };
+  return { view, sent, deletes, release: () => release() };
 }
 
 const shown = (text: string) => screen.queryByText(text) !== null;
@@ -173,7 +186,12 @@ describe("harness-templates-ui: the host lists its Claude Code setup templates a
     await click(button("Delete template Shop setup"));
     await settle(() => dialog() !== null, 5000, "the confirmation");
     await click(within(dialog() as HTMLElement).queryByRole("button", { name: "Delete template" }));
-    await settleMaybe(() => document.activeElement?.getAttribute("aria-label") !== null);
+    await settleMaybe(
+      () =>
+        !shown("Shop setup") &&
+        document.activeElement?.getAttribute("aria-label") === "Delete template Solo",
+    );
+    expect(shown("Shop setup")).toBe(false);
     expect(document.activeElement?.getAttribute("aria-label")).toBe("Delete template Solo");
   });
 
@@ -197,8 +215,46 @@ describe("harness-templates-ui: the host lists its Claude Code setup templates a
     await settle(() => dialog() !== null, 5000, "the confirmation");
     await click(within(dialog() as HTMLElement).queryByRole("button", { name: "Delete template" }));
     await settle(() => deletes().length === 1, 5000, "the delete sent");
-    await settleMaybe(() => document.activeElement?.getAttribute("aria-label") !== null);
+    await uiIdle();
+    await settleMaybe(
+      () => document.activeElement?.getAttribute("aria-label") === "Delete template Solo",
+    );
     expect(document.activeElement?.getAttribute("aria-label")).toBe("Delete template Solo");
+  });
+
+  test("a refused delete of a row another session already removed still keeps the focus in the list", async () => {
+    const { view, deletes } = setup({ refusedAlreadyGone: true });
+    render(view);
+    await settle(() => button("Delete template Shop setup") !== null, 5000, "the Delete button");
+    await click(button("Delete template Shop setup"));
+    await settle(() => dialog() !== null, 5000, "the confirmation");
+    await click(within(dialog() as HTMLElement).queryByRole("button", { name: "Delete template" }));
+    await settle(() => deletes().length === 1, 5000, "the delete sent");
+    await uiIdle();
+    await settleMaybe(
+      () => document.activeElement?.getAttribute("aria-label") === "Delete template Solo",
+    );
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Delete template Solo");
+  });
+
+  test("a focus the person moved while the delete was under way is left where it is", async () => {
+    const { view, release } = setup({ holdDelete: true });
+    render(
+      <>
+        {view}
+        <button type="button">Elsewhere</button>
+      </>,
+    );
+    await settle(() => button("Delete template Shop setup") !== null, 5000, "the Delete button");
+    await click(button("Delete template Shop setup"));
+    await settle(() => dialog() !== null, 5000, "the confirmation");
+    await click(within(dialog() as HTMLElement).queryByRole("button", { name: "Delete template" }));
+    await uiIdle();
+    await act(async () => (button("Elsewhere") as HTMLElement).focus());
+    await act(async () => release());
+    await settle(() => !shown("Shop setup"), 5000, "the template gone from the list");
+    await uiIdle();
+    expect(document.activeElement?.textContent).toBe("Elsewhere");
   });
 
   test("the wait for the host is a status and a failed listing is an alert", async () => {
