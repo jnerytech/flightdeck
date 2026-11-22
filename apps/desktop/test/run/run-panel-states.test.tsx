@@ -357,7 +357,7 @@ describe("Trust keeps the panel when the host refuses and hands the focus to Run
     );
     await click(store.i18n.t("runEnv.trustConfirm"));
   };
-  const trustedInfo = { exists: true, hash: "h", trusted: true, errors: [], ...untrusted };
+  const trustedInfo = { exists: true, hash: "h", errors: [], ...untrusted, trusted: true };
   const flush = () => act(async () => new Promise<void>((resolve) => setTimeout(resolve, 20)));
   const onRun = () => (document.activeElement as HTMLElement | null)?.dataset.action === "run";
 

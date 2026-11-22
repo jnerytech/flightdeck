@@ -218,6 +218,7 @@ export const board = {
     trustMessage:
       "Confiar neste run.yaml? Os comandos dele vão rodar na worktree deste card, sem shell, sempre que você apertar Executar. Se o arquivo mudar, você revisa de novo.",
     trustConfirm: "Confiar",
+    trustRefused: "O host não aceitou a confiança. Revise o run.yaml e tente de novo.",
     run: "Executar",
     stop: "Parar",
     errors: "O run.yaml tem erros:",
