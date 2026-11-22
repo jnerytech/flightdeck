@@ -121,7 +121,7 @@ describe.each(["en", "pt-BR"] as const)("the Automations page, its states (%s)",
     await flip();
     const during = count("automation.toggle");
     await act(async () => {
-      gate.release({ ...AUTOMATION, enabled: false });
+      gate.release(AUTOMATION);
     });
     await flip();
     expect({ during, after: count("automation.toggle") }).toEqual({ during: 1, after: 2 });

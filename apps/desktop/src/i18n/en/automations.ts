@@ -60,6 +60,7 @@ export const automations = {
     emptyAction: "Create the first automation",
     loading: "Loading automations",
     failed: "Could not read the automations. Check that the host is connected.",
+    failedWorkflows: "Could not read the workflows. Check that the host is connected.",
     retry: "Try again",
     new: "New automation",
     editTitle: "Edit automation",
