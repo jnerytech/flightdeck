@@ -16,6 +16,8 @@ interface TerminalScreen {
   reset(): void;
 }
 
+export type TerminalFailure = "attach" | "write";
+
 export type TerminalState = "attaching" | "live" | "detached" | "ended";
 
 type Schedule = (run: () => void, ms: number) => () => void;
@@ -25,6 +27,8 @@ export interface TerminalSessionOptions {
   host: TerminalHost;
   screen: TerminalScreen;
   onState(state: TerminalState, exitCode: number | null): void;
+  /** What the host refused an attach or a write with, or `null` once the next one is accepted (#3950). */
+  onFailure?(kind: TerminalFailure, error: unknown): void;
   schedule?: Schedule;
 }
 
