@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Automations } from "../../src/automations/automations.ts";
 import { personaHash } from "../../src/personas/domain/model.ts";
@@ -125,8 +125,12 @@ describe("a project's automatic approval: turning it on needs a near connection 
     const farOn = await reasonOf(
       far.request("project.update", { projectId: project.id, autoApprove: { enabled: true } }),
     );
-    const farLoose = await reasonOf(
-      far.request("project.update", { projectId: project.id, autoApprove: { lowWithoutAi: true } }),
+    // What the CLI sends with a change: the stored values back, so nothing is loosened.
+    const farSame = await reasonOf(
+      far.request("project.update", {
+        projectId: project.id,
+        autoApprove: { ...auto(), enabled: false },
+      }),
     );
     const afterFar = auto().enabled;
     const farAdd = await reasonOf(
@@ -145,15 +149,41 @@ describe("a project's automatic approval: turning it on needs a near connection 
     const farRename = await reasonOf(
       far.request("project.update", { projectId: project.id, name: "renamed" }),
     );
-    expect([farOn, farLoose, afterFar, farAdd, nearOn, afterNear, farOff, farRename]).toEqual([
+    // Low risk without the AI, once a person turned it off: turning it back on is a loosening.
+    const nearStrict = await reasonOf(
+      near.request("project.update", {
+        projectId: project.id,
+        autoApprove: { lowWithoutAi: false },
+      }),
+    );
+    const farLoose = await reasonOf(
+      far.request("project.update", { projectId: project.id, autoApprove: { lowWithoutAi: true } }),
+    );
+    const afterLoose = auto().lowWithoutAi;
+    expect([
+      farOn,
+      farSame,
+      afterFar,
+      farAdd,
+      nearOn,
+      afterNear,
+      farOff,
+      farRename,
+      nearStrict,
+      farLoose,
+      afterLoose,
+    ]).toEqual([
       "transport_refused",
-      "transport_refused",
+      null,
       false,
       "transport_refused",
       null,
       true,
       null,
       null,
+      null,
+      "transport_refused",
+      false,
     ]);
     expect(auto()).toMatchObject({ enabled: false, lowWithoutAi: false });
   });
@@ -178,7 +208,26 @@ describe("saving an ssh target with ForwardAgent needs a near connection (#3815)
         confirm: true,
       }),
     );
-    expect([farOn, farPlain, farOff, nearOn]).toEqual(["transport_refused", null, null, null]);
+    const forwarding = (
+      (await far.data("ssh.list", {})) as { targets: Array<SavedTarget & { id: string }> }
+    ).targets.find((t) => t.name === "vps2");
+    // An edit that leaves ForwardAgent on, as the app and the CLI send it, is no turning it on.
+    const farKeep = await reasonOf(
+      far.request("ssh.save", {
+        ...target,
+        name: "vps2",
+        id: forwarding?.id,
+        port: 2222,
+        options: { forwardAgent: true },
+      }),
+    );
+    expect([farOn, farPlain, farOff, nearOn, farKeep]).toEqual([
+      "transport_refused",
+      null,
+      null,
+      null,
+      null,
+    ]);
     const saved = ((await far.data("ssh.list", {})) as { targets: SavedTarget[] }).targets;
     expect(saved.filter((t) => t.options?.forwardAgent === true).map((t) => t.name)).toEqual([
       "vps2",
@@ -228,11 +277,25 @@ describe("writing Claude Code's settings through file.write needs a near connect
       await write(far, "link.json", sha("{}\n")),
     ];
     const afterFar = settings();
+    // A settings file that is not there yet, reached through a link to its folder.
+    symlinkSync(join(repo, ".claude"), join(repo, "via"));
+    const missing = join(repo, ".claude", "settings.local.json");
+    const farMissing = await write(far, "via/settings.local.json", "0".repeat(64));
     const farOther = await write(far, "a.txt", sha("original\n"));
     const nearSettings = await write(near, ".claude/settings.json", sha("{}\n"));
-    expect([farReasons, afterFar, farOther, nearSettings, settings()]).toEqual([
+    expect([
+      farReasons,
+      afterFar,
+      farMissing,
+      existsSync(missing),
+      farOther,
+      nearSettings,
+      settings(),
+    ]).toEqual([
       Array(4).fill("transport_refused"),
       "{}\n",
+      "transport_refused",
+      false,
       null,
       null,
       hook,
