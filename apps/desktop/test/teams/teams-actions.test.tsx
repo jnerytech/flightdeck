@@ -90,7 +90,10 @@ async function openTeam(language: "en" | "pt-BR", refuse: string | null = null) 
       members: [member("coord", "coordinator"), member("w1", "worker"), member("w2", "worker")],
     },
   ];
+  /** Every command the host got, in order (#3933). */
+  const calls: string[] = [];
   const change = (type: string, edit: (team: TeamInfo) => void) => (): TeamInfo => {
+    calls.push(type);
     if (type === refuse) throw new RequestError("invalid", "the team has a worker at work");
     const team = teams[0] as TeamInfo;
     edit(team);
@@ -131,7 +134,7 @@ async function openTeam(language: "en" | "pt-BR", refuse: string | null = null) 
   );
   const words = WORDS[language];
   await settleMaybe(() => screen.queryByRole("button", { name: words.pause }) !== null, 3000);
-  return { words };
+  return { words, calls };
 }
 
 const button = (name: string) => screen.queryByRole("button", { name });
@@ -226,6 +229,23 @@ describe.each(["en", "pt-BR"] as const)("teams-actions (%s)", (language) => {
     await settleMaybe(() => focused() === words.newTeam, 3000);
     expect(said(words.deleted)).toBe(true);
     expect(focused()).toBe(words.newTeam);
+  });
+
+  test("a double press on Pause or Resume sends one command and keeps the success note (#3933)", async () => {
+    const { words, calls } = await openTeam(language);
+    const pressTwice = (name: string) =>
+      act(async () => {
+        const target = screen.getByRole("button", { name });
+        fireEvent.click(target);
+        fireEvent.click(target);
+      });
+    await pressTwice(words.pause);
+    await settleMaybe(() => button(words.resume) !== null, 3000);
+    expect(calls).toEqual(["teams.pause"]);
+    expect(said(words.paused)).toBe(true);
+    await pressTwice(words.resume);
+    await settleMaybe(() => button(words.pause) !== null, 3000);
+    expect(calls).toEqual(["teams.pause", "teams.resume"]);
   });
 
   test("a refused command says it was refused with the host's reason, and the team is unchanged", async () => {
