@@ -40,6 +40,9 @@ interface MemoryIndexBudget {
 }
 
 export interface ContextBudget {
+  /** The project's folder and the user's home, written with "/": a screen shortens the source paths with them. */
+  root: string;
+  home: string;
   sources: BudgetSource[];
   /** Tokens of everything loaded at the start. */
   startTokens: number;
@@ -55,6 +58,8 @@ export interface BudgetInput {
   project: string;
   claudeDir: string;
   managedClaudeMd: string;
+  /** The user's home folder. */
+  home: string;
   /** The project's memory folder (it may not exist). */
   memoryDir: string;
 }
@@ -148,6 +153,8 @@ export async function contextBudget(input: BudgetInput): Promise<ContextBudget> 
 
   const memory = await memoryIndex(input.memoryDir, add);
   return {
+    root: displayPath(root, sep),
+    home: displayPath(input.home, sep),
     sources,
     startTokens: sources.filter((s) => s.load === "start").reduce((n, s) => n + s.tokens, 0),
     memory,

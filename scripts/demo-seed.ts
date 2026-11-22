@@ -43,9 +43,11 @@ import {
   PROMPT_ONE,
   PROMPT_TWO,
   seedAutomations,
+  seedSnippets,
   sendTelemetry,
   until,
 } from "./lib/demo/seed-host.ts";
+import { writeDemoSshConfig } from "./lib/demo/ssh-config.ts";
 import { teleportReady } from "./lib/demo/teleport.ts";
 import {
   CONTRACT_CARD,
@@ -138,6 +140,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   process.env.HOME = home;
   process.env.USERPROFILE = home;
   writeUserConfig(home);
+  writeDemoSshConfig(home);
   // The terminal of a host opens `$SHELL`: a fixed prompt, so no machine (the CI runner's user and
   // host name, the folder) leaks into the prints. POSIX only: Windows keeps its own default shell.
   if (process.platform !== "win32") {
@@ -311,6 +314,8 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     projectId: project.id,
     db: join(alfa.dataDir, "flightdeck.db"),
   });
+  // Issue #3973: the Snippets prints' list, a project's trusted file and the shell history.
+  await seedSnippets(client, { projectPath: web, home });
   const card = (title: string, description: string) =>
     client.call<{ id: string }>("card.create", { projectId: project.id, title, description });
   await card("Documentar a API pública", "Escreva o guia de uso.");

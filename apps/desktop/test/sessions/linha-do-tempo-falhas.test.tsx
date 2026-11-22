@@ -136,6 +136,91 @@ describe("linha-do-tempo-falhas", () => {
     expect(screen.queryByText("Carregando os turnos…")).toBeNull();
   });
 
+  test("Show files is busy until the host answers, so a second click sends nothing", async () => {
+    const files = pending();
+    const { sent } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "snapshots.files": () => files.promise,
+    });
+    await click("Show files of turn 1");
+    expect(isBusy("Show files of turn 1")).toBe(true);
+    await click("Show files of turn 1");
+    expect(sent.filter((type) => type === "snapshots.files")).toHaveLength(1);
+    await act(async () => files.settle(PREVIEW));
+    expect(screen.queryByText("README.md")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Hide files of turn 1" })).not.toBeNull();
+  });
+
+  test("a refused read of a turn's files says so in its row, and Try again reads them again", async () => {
+    let tries = 0;
+    const { sent } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "snapshots.files": async () => (++tries === 1 ? null : PREVIEW),
+    });
+    await click("Show files of turn 1");
+    expect(alerts().some((text) => text.includes("Could not read the files of turn 1"))).toBe(true);
+    expect(screen.queryByRole("button", { name: "Hide files of turn 1" })).toBeNull();
+    await click("Try again");
+    expect(sent.filter((type) => type === "snapshots.files")).toHaveLength(2);
+    expect(screen.queryByText("README.md")).not.toBeNull();
+    expect(alerts()).toEqual([]);
+  });
+
+  test("Try again stays in sight and busy while the new read goes on", async () => {
+    const again = pending();
+    let tries = 0;
+    await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "snapshots.files": () => (++tries === 1 ? Promise.resolve(null) : again.promise),
+    });
+    await click("Show files of turn 1");
+    await click("Try again");
+    expect(isBusy("Try again")).toBe(true);
+    await act(async () => again.settle(PREVIEW));
+    expect(screen.queryByText("README.md")).not.toBeNull();
+    expect(alerts()).toEqual([]);
+  });
+
+  test("a refused read of a turn's files reads the same in Portuguese", async () => {
+    await timeline("pt-BR", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "snapshots.files": async () => null,
+    });
+    await click("Ver arquivos do turno 1");
+    expect(alerts().some((text) => text.includes("Não deu para ler os arquivos do turno 1"))).toBe(
+      true,
+    );
+    expect(screen.queryByRole("button", { name: "Tentar de novo" })).not.toBeNull();
+  });
+
+  test("the sheet's Close sits in the title row, above the description, and the title is heading-sized", async () => {
+    await timeline("en", { "snapshots.list": async () => SNAPSHOTS });
+    const title = screen.queryByText("Timeline", { selector: "[data-slot='sheet-title']" });
+    const close = screen.queryByRole("button", { name: "Close" });
+    expect(title).not.toBeNull();
+    expect(close).not.toBeNull();
+    const row = (title as HTMLElement).parentElement as HTMLElement;
+    expect(row.contains(close)).toBe(true);
+    const description = row.parentElement?.querySelector("[data-slot='sheet-description']");
+    expect(description?.parentElement === row.parentElement && !row.contains(description)).toBe(
+      true,
+    );
+    expect((title as HTMLElement).classList.contains("text-lg")).toBe(true);
+  });
+
+  test("the sheet's Close is in the title row in Portuguese too, and it still closes the sheet", async () => {
+    await timeline("pt-BR", { "snapshots.list": async () => SNAPSHOTS });
+    const title = screen.queryByText("Linha do tempo", { selector: "[data-slot='sheet-title']" });
+    const close = screen.queryByRole("button", { name: "Fechar" });
+    expect(title).not.toBeNull();
+    expect(close).not.toBeNull();
+    const row = (title as HTMLElement).parentElement as HTMLElement;
+    expect(row.contains(close)).toBe(true);
+    expect(row.querySelector("[data-slot='sheet-description']")).toBeNull();
+    await click("Fechar");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   test("the Fork dialog says when the file preview failed and Try again runs it again", async () => {
     let tries = 0;
     const { sent, names } = await timeline("en", {

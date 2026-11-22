@@ -4,6 +4,8 @@ export interface FrameRewriter {
   fromApp(frame: string): string;
   /** A frame the host sends: the answer to a noted request comes back rewritten. */
   fromHost(frame: string): string;
+  /** Frames the host seems to send right after `frame`, which the app hears once it heard `frame` (#3943). */
+  followUp?(frame: string): string[];
 }
 
 type Data = Record<string, unknown> & { memory?: { totalBytes?: number }; budgets?: unknown[] };
@@ -117,10 +119,15 @@ export function installHolds(
       const rewritten = (event: Event) => {
         const data = (event as MessageEvent).data;
         if (typeof data !== "string") return listener.call(this, event);
-        return listener.call(
+        const answer = listener.call(
           this,
           new MessageEvent("message", { data: this.rewriter.fromHost(data) }),
         );
+        // The frames that follow it (#3943), heard in order after it.
+        for (const next of this.rewriter.followUp?.(data) ?? []) {
+          listener.call(this, new MessageEvent("message", { data: next }));
+        }
+        return answer;
       };
       listen.call(this, type, rewritten, options);
     }

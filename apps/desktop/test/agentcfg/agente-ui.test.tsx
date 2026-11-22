@@ -348,7 +348,7 @@ describe("agente-ui", () => {
     await openTab("CLAUDE.md");
     await settle(() => screen.queryByRole("button", { name: "CLAUDE.md (Do projeto)" }) !== null);
     expect(screen.queryByRole("button", { name: "CLAUDE.local.md (Do projeto)" })).not.toBeNull();
-    await click("CLAUDE.md (Do usuário (~/.claude))");
+    await click("~/.claude/CLAUDE.md (Do usuário (~/.claude))");
     await settle(() => screen.queryByLabelText("Conteúdo de CLAUDE.md") !== null);
     const editor = screen.queryByLabelText("Conteúdo de CLAUDE.md") as HTMLTextAreaElement;
     expect(editor.value).toBe("# Meu usuário\n");

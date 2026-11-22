@@ -5,6 +5,7 @@ import { InlineNotice } from "@/shared/feedback/index.ts";
 import { ListRow, LoadingState, Stack } from "@/shared/layout/index.ts";
 import { formatNumber } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
+import { contextPath } from "./domain/file-list.ts";
 
 /**
  * Phase 26: what enters Claude Code's context when a session starts, source by source, with an
@@ -36,7 +37,11 @@ export function AgentContext(
             <li key={`${source.kind}/${source.path}`}>
               <ListRow
                 leading={<Badge variant="secondary">{t(`contextUi.kind.${source.kind}`)}</Badge>}
-                title={<span className="break-all">{source.path}</span>}
+                title={
+                  <span className="break-all">
+                    {contextPath(source.path, budget.root, budget.home)}
+                  </span>
+                }
                 trailing={
                   <span className="text-sm tabular-nums">
                     {source.load === "start" ? t("contextUi.atStart") : t("contextUi.onDemand")} ·{" "}
@@ -49,10 +54,13 @@ export function AgentContext(
         </Stack>
         {memory.indexLines > 0 && (
           <p className="text-sm">
-            {t("contextUi.index", {
+            {t(cut ? "contextUi.index" : "contextUi.indexAll", {
               loaded: memory.loadedLines,
               total: memory.indexLines,
-              bytes: Math.round(memory.loadedBytes / 1024),
+              used:
+                memory.loadedBytes < 1024
+                  ? t("contextUi.underOne")
+                  : t("contextUi.size", { kb: Math.round(memory.loadedBytes / 1024) }),
               limit: Math.round(memory.limitBytes / 1024),
             })}
           </p>

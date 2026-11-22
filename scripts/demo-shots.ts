@@ -24,11 +24,13 @@ import { holdsScript } from "./lib/shots/holds.ts";
 import { PENDING_SELECTOR } from "./lib/shots/loaded.ts";
 import { narrowSizes, unknownNarrowShots } from "./lib/shots/narrow.ts";
 import { ALFA, DEMO_CLIENTS, DEMO_ROI, type Shot } from "./lib/shots/shot.ts";
+import { sshScript } from "./lib/shots/ssh-frames.ts";
 import { agentShots } from "./lib/shots/table-agent.ts";
 import { automationShots } from "./lib/shots/table-automations.ts";
 import { boardShots } from "./lib/shots/table-board.ts";
 import { hostShots } from "./lib/shots/table-hosts.ts";
 import { shellShots } from "./lib/shots/table-shell.ts";
+import { snippetShots } from "./lib/shots/table-snippets.ts";
 import { pickVariants } from "./lib/shots/variants.ts";
 import { wireScript } from "./lib/shots/wire.ts";
 import {
@@ -72,6 +74,7 @@ function shots(ids: DemoIds): Shot[] {
     ...agentShots(ids),
     ...hostShots(ids),
     ...automationShots(ids),
+    ...snippetShots(ids),
   ];
 }
 
@@ -253,6 +256,7 @@ async function printShot(
     // wrapped instead.
     if (shot.holds) await page.addInitScript({ content: holdsScript() });
     if (shot.wire) await page.addInitScript({ content: wireScript(shot.wire) });
+    if (shot.ssh) await page.addInitScript({ content: sshScript(shot.askpass === true) });
     await page.goto(`${url}?${query}`);
     // The hosts connect and the screen loads its data.
     await page.waitForTimeout(1500);

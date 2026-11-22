@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { InlineNotice } from "@/shared/feedback/index.ts";
-import { EmptyState, ErrorState, LoadingState } from "@/shared/layout/index.ts";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
+import { EmptyState, ErrorState, Field, LoadingState } from "@/shared/layout/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
+import { inReadingOrder, shownPath, titleOf } from "./domain/file-list.ts";
 import { getField, parseDocument, serialize, setField } from "./domain/frontmatter.ts";
 
 type Kind = AgentCfgItem["kind"];
@@ -51,7 +52,7 @@ function FileRow(
   }>,
 ) {
   const { item, current, t } = props;
-  const name = item.name ?? item.path;
+  const name = titleOf(item);
   return (
     <li>
       <button
@@ -65,8 +66,8 @@ function FileRow(
         )}
       >
         <span className="font-medium">{name}</span>
-        {item.path !== name && (
-          <span className="break-all text-muted-foreground text-xs">{item.path}</span>
+        {item.name && item.name !== shownPath(item) && (
+          <span className="break-all text-muted-foreground text-xs">{shownPath(item)}</span>
         )}
         <span className="flex flex-wrap gap-1">
           <Badge variant="secondary">{props.originLabel}</Badge>
@@ -90,7 +91,7 @@ function FileHeader(
   const { opened, preview, t } = props;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <code className="break-all text-sm">{opened.path}</code>
+      <code className="break-all text-sm">{shownPath(opened)}</code>
       <Badge variant="secondary">{props.originLabel}</Badge>
       {opened.readOnly && <Badge variant="outline">{t("agent.readOnly")}</Badge>}
       <span className="flex-1" />
@@ -257,11 +258,11 @@ export function AgentFiles(
         </div>
         {creating && (
           <div className="flex flex-col gap-2 rounded-lg border p-3">
-            <Input
-              aria-label={labels.field}
-              value={typed}
-              onChange={(e) => setTyped(e.target.value)}
-            />
+            <Field label={labels.field}>
+              {(control) => (
+                <Input {...control} value={typed} onChange={(e) => setTyped(e.target.value)} />
+              )}
+            </Field>
             <Button size="sm" disabled={newPath(kind, typed) === null} onClick={create}>
               {t("agent.files.create")}
             </Button>
@@ -269,7 +270,7 @@ export function AgentFiles(
         )}
         {items.length === 0 && <EmptyState title={labels.empty} />}
         <ul aria-label={t("agent.files.list")} className="flex flex-col gap-1">
-          {items.map((item) => (
+          {inReadingOrder(items).map((item) => (
             <FileRow
               key={`${item.origin}/${item.path}`}
               item={item}
@@ -304,12 +305,20 @@ export function AgentFiles(
             )}
             {form && (
               <div className="grid gap-2 @2xl:grid-cols-2">
-                <Input aria-label={t("agent.files.name")} {...edit("name")} />
-                <Input aria-label={t("agent.files.description")} {...edit("description")} />
+                <Field label={t("agent.files.name")}>
+                  {(control) => <Input {...control} {...edit("name")} />}
+                </Field>
+                <Field label={t("agent.files.description")}>
+                  {(control) => <Input {...control} {...edit("description")} />}
+                </Field>
                 {kind === "agent" && (
                   <>
-                    <Input aria-label={t("agent.files.tools")} {...edit("tools")} />
-                    <Input aria-label={t("agent.files.model")} {...edit("model")} />
+                    <Field label={t("agent.files.tools")}>
+                      {(control) => <Input {...control} {...edit("tools")} />}
+                    </Field>
+                    <Field label={t("agent.files.model")}>
+                      {(control) => <Input {...control} {...edit("model")} />}
+                    </Field>
                   </>
                 )}
               </div>
@@ -336,9 +345,13 @@ export function AgentFiles(
             {!valid && <InlineNotice tone="error">{t("agent.files.needFields")}</InlineNotice>}
             {!opened.readOnly && (
               <div className="flex items-center gap-3">
-                <Button disabled={!valid || !dirty} onClick={() => void save()}>
+                <ActionButton
+                  disabled={!valid || !dirty}
+                  disabledReason={valid && !justSaved ? t("agent.files.nothingChanged") : undefined}
+                  onClick={save}
+                >
                   {t("agent.files.save")}
-                </Button>
+                </ActionButton>
                 {justSaved && !dirty && (
                   <output className="text-muted-foreground text-sm">
                     {t("agent.files.saved")}

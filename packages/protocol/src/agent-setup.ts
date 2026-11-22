@@ -102,6 +102,9 @@ export const MemoryListing = z.object({
 export type MemoryListing = z.infer<typeof MemoryListing>;
 
 export const ContextBudget = z.object({
+  /** The project's folder and the user's home, with "/" (an older daemon sends neither). */
+  root: z.string().optional(),
+  home: z.string().optional(),
   sources: z.array(BudgetSource),
   startTokens: z.number().int().nonnegative(),
   memory: z.object({

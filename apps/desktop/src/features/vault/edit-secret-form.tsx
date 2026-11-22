@@ -62,7 +62,7 @@ export const EditSecretForm = memo(function EditSecretForm(props: {
         <label htmlFor={`${id}-tags`}>{t("vault.tags")}</label>
         <Input id={`${id}-tags`} value={tags} onChange={(event) => setTags(event.target.value)} />
       </div>
-      <fieldset className="flex flex-col gap-1 text-sm">
+      <fieldset className="flex flex-col gap-2 text-sm">
         <legend>{t("vault.hostsLegend")}</legend>
         {state.hosts.map((host) => (
           <label key={host.id} className="flex items-center gap-2">

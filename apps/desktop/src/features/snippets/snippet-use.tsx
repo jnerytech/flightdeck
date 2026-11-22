@@ -1,8 +1,8 @@
 import { type SnippetContext, SnippetModelError } from "@flightdeck/protocol";
 import { memo, useId, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { RequestError } from "@/features/hosts/index.ts";
 import type { AppSnippet } from "@/features/snippets";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
@@ -90,6 +90,19 @@ export const SnippetUse = memo(function SnippetUse(props: {
 
   const done = () => props.onClose();
   const fail = (message: string) => setError(message);
+  /**
+   * What a button runs: a refusal of the terminal or the host (a global snippet goes through the
+   * terminal client, which throws it) is said in the dialog, as the host snippet's own is (#3968).
+   */
+  const attempt = async (work: () => Promise<unknown>) => {
+    setError(null);
+    try {
+      await work();
+    } catch (error_) {
+      if (!(error_ instanceof RequestError)) throw error_;
+      fail(refusalText(error_.code, error_.message, t, error_));
+    }
+  };
 
   const paste = async (enter: boolean) => {
     if (!terminal) return;
@@ -270,12 +283,12 @@ export const SnippetUse = memo(function SnippetUse(props: {
         <DialogFooter className="flex-wrap">
           {isCommand && terminal && (
             <>
-              <Button variant="outline" onClick={() => void paste(false)}>
+              <ActionButton variant="outline" onClick={() => attempt(() => paste(false))}>
                 {t("snippets.use.paste")}
-              </Button>
-              <Button disabled={!snippet.runnable} onClick={() => void paste(true)}>
+              </ActionButton>
+              <ActionButton disabled={!snippet.runnable} onClick={() => attempt(() => paste(true))}>
                 {t("snippets.use.pasteRun")}
-              </Button>
+              </ActionButton>
             </>
           )}
           {isCommand && (
@@ -283,22 +296,22 @@ export const SnippetUse = memo(function SnippetUse(props: {
               variant="outline"
               disabled={!snippet.runnable || folder.trim() === ""}
               {...(snippet.runnable ? { disabledReason: t("snippets.use.folderNeeded") } : {})}
-              onClick={() => runInNewTab()}
+              onClick={() => attempt(runInNewTab)}
             >
               {t("snippets.use.run")}
             </ActionButton>
           )}
           {!isCommand && (session || external) && (
-            <Button onClick={() => void send()}>{t("snippets.use.send")}</Button>
+            <ActionButton onClick={() => attempt(send)}>{t("snippets.use.send")}</ActionButton>
           )}
           {!isCommand && (
-            <Button variant="outline" onClick={() => void newSession()}>
+            <ActionButton variant="outline" onClick={() => attempt(newSession)}>
               {t("snippets.use.newSession")}
-            </Button>
+            </ActionButton>
           )}
-          <Button variant="outline" onClick={() => void copy()}>
+          <ActionButton variant="outline" onClick={() => attempt(copy)}>
             {t("snippets.use.copy")}
-          </Button>
+          </ActionButton>
         </DialogFooter>
       </AppDialogContent>
     </Dialog>

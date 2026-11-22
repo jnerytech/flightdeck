@@ -614,6 +614,7 @@ export const sessions = {
     running: "In progress",
     unknown: "The end of the turn was not recorded",
     showFiles: "Show files of turn {n}",
+    filesFailed: "Could not read the files of turn {n}.",
     hideFiles: "Hide files of turn {n}",
     lines: "+{added} −{removed}",
     change: { modified: "changed", created: "created", deleted: "deleted" },

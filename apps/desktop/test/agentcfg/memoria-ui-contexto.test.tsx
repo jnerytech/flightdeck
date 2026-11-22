@@ -82,7 +82,7 @@ describe("memoria-ui: o orçamento de contexto", () => {
       put("b.md", "b\n");
     });
     await settle(() => (budget()?.textContent ?? "").includes("MEMORY.md"));
-    expect(budget()?.textContent ?? "").toContain("Entram 2 de 2 linhas do MEMORY.md");
+    expect(budget()?.textContent ?? "").toContain("Todas as 2 linhas do MEMORY.md são carregadas");
     expect(screen.queryByText(/Só as primeiras/)).toBeNull();
   });
 
