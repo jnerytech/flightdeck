@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { realTempDir } from "../../../../scripts/test/temp-dir.ts";
 import { cardWhen, git } from "../../../daemon/test/support/board-helpers.ts";
 import { must } from "../../../daemon/test/support/helpers.ts";
+import { settleMaybe } from "../wait.ts";
 import {
   act,
   cleanup,
@@ -246,6 +247,44 @@ describe("mudancas-ui", () => {
       expiry?.fn();
     });
     expect(screen.queryByRole("button", { name: "Desfazer" })).toBeNull();
+  });
+
+  test("reverter não perde o foco: vai ao Desfazer, que fala o prazo, e ao painel quando o prazo acaba", async () => {
+    const ctx = await setup();
+    writeFileSync(join(ctx.repo, "novo.txt"), "um\n");
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("novo.txt"));
+    const active = () => document.activeElement;
+    const revertButton = () => screen.queryByRole("button", { name: "Reverter novo.txt" });
+
+    // A cancelled dialog gives the focus back to the button that opened it.
+    await click("Reverter novo.txt");
+    await click("Cancelar");
+    expect(await settleMaybe(() => active() === revertButton())).toBe(true);
+
+    // The live region is in the page before the words arrive.
+    const listening = new Set(document.querySelectorAll("output"));
+    await click("Reverter novo.txt");
+    await click("Reverter arquivo");
+    await settle(() => screen.queryByRole("button", { name: "Desfazer" }) !== null);
+    const undo = () => screen.queryByRole("button", { name: "Desfazer" });
+    expect(await settleMaybe(() => active() === undo())).toBe(true);
+    const offer = screen
+      .queryAllByRole("status")
+      .find((el) => (el.textContent ?? "").includes("novo.txt revertido"));
+    expect(offer !== undefined && listening.has(offer)).toBe(true);
+    expect(offer?.textContent ?? "").toMatch(/Você pode desfazer por (29|30) segundos\./);
+
+    // The offer ends: the focus was in it, so it goes to the panel, not to the page.
+    ctx.clock.offset = 31_000;
+    const expiry = ctx.timers.filter((t) => t.ms > 20_000 && t.ms <= 31_000).at(-1);
+    expect(expiry).toBeDefined();
+    await act(async () => {
+      expiry?.fn();
+    });
+    expect(undo()).toBeNull();
+    expect(active() === screen.queryByRole("region", { name: "Mudanças" })).toBe(true);
   });
 
   test("Sessões que mexeram aqui lista as sessões que gravaram o arquivo", async () => {
