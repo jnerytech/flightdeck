@@ -582,6 +582,21 @@ describe("orcamentos-ui", () => {
       expect(status()).toBeNull();
     });
 
+    test("remover o orçamento que está em edição esvazia o formulário (#3913)", async () => {
+      await online();
+      await chooseFromAccountMenu("Configurações");
+      await settle(() => section() !== null);
+      await create("10");
+      await click("Editar orçamento do host (dia)");
+      expect((field("Limite (US$)") as HTMLInputElement).value).toBe("10");
+      await click("Remover orçamento do host (dia)");
+      await click("Remover orçamento");
+      await settle(() => rows().length === 0);
+      await uiIdle();
+      expect((field("Limite (US$)") as HTMLInputElement).value).toBe("");
+      expect(form().getAttribute("aria-label")).toBe("Novo orçamento em alfa");
+    });
+
     test("remover diz que o orçamento saiu e o foco vai ao botão Editar da linha seguinte", async () => {
       await online();
       await chooseFromAccountMenu("Configurações");
