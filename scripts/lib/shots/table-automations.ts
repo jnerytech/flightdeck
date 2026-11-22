@@ -27,7 +27,11 @@ async function formOpen(page: Page): Promise<void> {
 const next = (page: Page) => page.getByRole("button", { name: /^(Next|Próximo)$/ }).click();
 
 /** The seeded automation that takes outside authors: turning it on asks with a warning. */
-const EXTERNAL_AUTOMATION = DEMO_AUTOMATIONS.find((a) => a.allowExternalAuthors)?.name ?? "";
+const EXTERNAL_AUTOMATION = (() => {
+  const found = DEMO_AUTOMATIONS.find((a) => a.allowExternalAuthors);
+  if (!found) throw new Error("the demo seeds no automation that takes outside authors");
+  return found.name;
+})();
 
 /** The button of a row, by what the row's name is in each language. */
 const rowButton = (page: Page, en: string, pt: string, name: string) =>
