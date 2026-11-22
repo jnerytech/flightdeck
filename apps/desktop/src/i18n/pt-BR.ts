@@ -325,7 +325,7 @@ export const ptBR = {
   ...clients,
   conversationsUi: {
     title: "Conversas",
-    subtitle: "Mensagens entre sessões, em todos os hosts",
+    subtitle: "Mensagens entre sessões, em todos os hosts, dos últimos {days} dias",
     list: "Mensagens entre sessões",
     filter: "Filtrar mensagens",
     status: "Estado",
@@ -335,6 +335,9 @@ export const ptBR = {
       "As mensagens entre sessões aparecem aqui quando o envio entre elas está ligado, por exemplo num time.",
     emptyLink: "Abrir Times",
     noMatch: "Nenhuma mensagem corresponde ao filtro.",
+    clearFilter: "Limpar filtro",
+    countOf: { one: "{shown} de {n} mensagem", other: "{shown} de {n} mensagens" },
+    cut: "Mostrando {n} mensagens. Um host tem mais: cada host lista as {limit} mais recentes, dos últimos {days} dias.",
     loading: "Carregando mensagens",
     to: "para",
     open: "Abrir a sessão",
