@@ -202,7 +202,7 @@ export function SessionComposer(props: Readonly<SessionComposerProps>) {
           onRemove={(at) => setAttached((before) => before.filter((_, i) => i !== at))}
         />
         {working && <ActivityLine activity={activity} t={t} />}
-        {wand && <WandPanel wand={wand} t={t} />}
+        {wand && <WandPanel wand={wand} t={t} focusField={() => box.current?.focus()} />}
         <Composer busy={working}>
           {props.images && (
             <>

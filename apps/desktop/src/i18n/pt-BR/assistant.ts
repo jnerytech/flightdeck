@@ -18,6 +18,8 @@ export const assistant = {
     tryWith: "Tentar com {provider}",
     replaced: "Texto trocado pela IA.",
     undo: "Desfazer",
+    undoFor: "Você pode desfazer por {seconds} segundos.",
+    ready: "Sugestão da IA pronta.",
     dismiss: "Dispensar",
     stale: "O texto mudou enquanto isto era escrito.",
     notes: "Observações",

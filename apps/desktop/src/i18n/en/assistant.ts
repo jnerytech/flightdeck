@@ -18,6 +18,8 @@ export const assistant = {
     tryWith: "Try with {provider}",
     replaced: "Text replaced by AI.",
     undo: "Undo",
+    undoFor: "You can undo for {seconds} seconds.",
+    ready: "AI suggestion ready.",
     dismiss: "Dismiss",
     stale: "The text changed while this was written.",
     notes: "Notes",
