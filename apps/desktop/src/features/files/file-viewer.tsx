@@ -85,8 +85,17 @@ export function FileViewer(
   const [failed, setFailed] = useState<"openFailed" | "revealFailed" | null>(null);
   // The read that is current: a new one (a retry, another file) drops the answer of the old one.
   const cancel = useRef<() => void>(() => {});
+  // Counts the reads: a platform call that answers after another read began says nothing about it.
+  const reads = useRef(0);
+  const platformCall = (call: Promise<boolean>, failure: "openFailed" | "revealFailed") => {
+    const mine = reads.current;
+    void call.then((ok) => {
+      if (reads.current === mine) setFailed(ok ? null : failure);
+    });
+  };
   const read = useCallback(() => {
     cancel.current();
+    reads.current += 1;
     let alive = true;
     cancel.current = () => {
       alive = false;
@@ -177,11 +186,7 @@ export function FileViewer(
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  void store.system
-                    .openPath(hostId, full)
-                    .then((ok) => setFailed(ok ? null : "openFailed"))
-                }
+                onClick={() => platformCall(store.system.openPath(hostId, full), "openFailed")}
               >
                 {t("files.openOutside")}
               </Button>
@@ -189,11 +194,7 @@ export function FileViewer(
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  void store.system
-                    .revealPath(hostId, full)
-                    .then((ok) => setFailed(ok ? null : "revealFailed"))
-                }
+                onClick={() => platformCall(store.system.revealPath(hostId, full), "revealFailed")}
               >
                 {t("files.reveal")}
               </Button>

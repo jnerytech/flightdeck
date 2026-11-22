@@ -2364,11 +2364,15 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await panel.getByText("app.ts").first().waitFor({ timeout: WAIT });
     // Beside the panel the columns scroll sideways: when one is cut at the edge, a fade says so (#3972).
     const columns = c.page.locator("[data-slot='board-columns']");
+    const CSS_SCROLL_TIMELINE = await c.page.evaluate(() =>
+      CSS.supports("animation-timeline", "scroll()"),
+    );
     const cut = await columns.evaluate((box) => ({
       cut: box.scrollWidth > box.clientWidth,
       fade: Number.parseFloat(getComputedStyle(box).getPropertyValue("--board-fade")) > 0,
     }));
-    if (cut.cut && !cut.fade) {
+    // An engine without scroll-driven animations has no fade to show: the native scrollbar stays.
+    if (cut.cut && !cut.fade && CSS_SCROLL_TIMELINE) {
       throw new Error("a board column is cut at the Files panel edge with no cue that it scrolls");
     }
     const results = panel.getByRole("list", { name: c.t("files.results"), exact: true });
