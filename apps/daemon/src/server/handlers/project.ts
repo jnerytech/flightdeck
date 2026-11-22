@@ -22,8 +22,20 @@ async function markdownOf(
   return templates.files(template);
 }
 
-const loosensAutoApprove = (auto: { enabled?: boolean; lowWithoutAi?: boolean } | undefined) =>
-  auto?.enabled === true || auto?.lowWithoutAi === true;
+/**
+ * Whether a change makes the automatic approval approve more than it did: on where it was off, or
+ * low risk without the AI where it was not. The CLI sends the stored values back with a change, so
+ * what stays as it was is no loosening.
+ */
+const loosensAutoApprove = (
+  before: { enabled: boolean; lowWithoutAi: boolean },
+  patch: { enabled?: boolean; lowWithoutAi?: boolean } | undefined,
+) => {
+  const after = { ...before, ...patch };
+  // Low risk without the AI approves nothing while the approval is off; the protocol fills a bare
+  // `{ enabled: false }` with its defaults, so a turn off must not count for them.
+  return after.enabled && (!before.enabled || (after.lowWithoutAi && !before.lowWithoutAi));
+};
 
 export const projectHandlers = {
   "project.list": async (_payload, { server }) => {
@@ -34,7 +46,8 @@ export const projectHandlers = {
     };
   },
   "project.add": async (payload, { ws, server }) => {
-    if (loosensAutoApprove(payload.autoApprove))
+    // A new project starts with it off: only turning it on is a loosening (#3815).
+    if (payload.autoApprove?.enabled === true)
       requireVaultTransport(ws.data.origin, "project.add", server.opts.log);
     // A setup script runs with `sh -c` on the host when a card starts: setting one is near only, as
     // trusting a run config is. Anything else about a project answers anywhere (#3807).
@@ -47,8 +60,11 @@ export const projectHandlers = {
     const { projectId, ...patch } = payload;
     // Turning the automatic approval on, or letting it approve low risk without the AI, is near only;
     // turning it off is not (#3815).
-    if (loosensAutoApprove(patch.autoApprove))
-      requireVaultTransport(ws.data.origin, "project.update", server.opts.log);
+    if (patch.autoApprove) {
+      const stored = server.need("board").getProject(projectId).autoApprove;
+      if (loosensAutoApprove(stored, patch.autoApprove))
+        requireVaultTransport(ws.data.origin, "project.update", server.opts.log);
+    }
     // Setting a setup script is near only; clearing it (null or blank) is not (#3807).
     if (patch.setupScript?.trim())
       requireVaultTransport(ws.data.origin, "project.update", server.opts.log);

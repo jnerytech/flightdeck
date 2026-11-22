@@ -29,7 +29,7 @@ import {
 } from "../kernel/index.ts";
 import { credential } from "../permissions/index.ts";
 import type { Changes } from "./changes.ts";
-import { isClaudeSettings } from "./domain/claude-settings.ts";
+import { isClaudeConfig } from "./domain/claude-config.ts";
 import { firstStep, isGitDir, type Located, located, refuseCredential } from "./paths.ts";
 import { type SearchOptions, searchRepository } from "./search.ts";
 
@@ -195,8 +195,8 @@ export class ReviewFiles {
 
   /**
    * Writes only when the file still has `expectedHash`; otherwise `file_conflict`. `guard` runs
-   * when the file is one of Claude Code's settings, by the path asked for or by where its links
-   * lead, before anything is read or changed: it throws to refuse.
+   * when the file shapes Claude Code's sessions (`isClaudeConfig`), by the path asked for or by where its links
+   * lead (or would lead, for a file not there yet), before anything is read or changed: it throws to refuse.
    */
   async write(
     target: string,
@@ -207,11 +207,8 @@ export class ReviewFiles {
   ): Promise<Omit<FileContent, "text">> {
     const where = await this.writable(target, path);
     refuseCredential(where, path);
-    if (
-      isClaudeSettings(path) ||
-      (where.real && isClaudeSettings(relative(where.realRoot, where.real)))
-    )
-      guard?.();
+    // A file not there yet counts by where its links would put it.
+    if (isClaudeConfig(path) || isClaudeConfig(relative(where.realRoot, where.landing))) guard?.();
     const { full } = where;
     const bytes = Buffer.from(text, "utf8");
     if (bytes.length > MAX_BYTES) {

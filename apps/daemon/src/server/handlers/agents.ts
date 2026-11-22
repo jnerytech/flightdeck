@@ -260,7 +260,9 @@ export const agentsHandlers = {
     const { projectPath, language } = payload;
     return await server.needIn("personas", "store").subagents({ projectPath, language });
   },
-  "personas.publishAgent": async (payload, { server }) => {
+  "personas.publishAgent": async (payload, { ws, server }) => {
+    // It writes a project agent, which can steer every session of the project: near only, as agentcfg.write is (#3815).
+    requireVaultTransport(ws.data.origin, "personas.publishAgent", server.opts.log);
     return await server.needIn("personas", "store").publishAgent(payload);
   },
   "personas.resolve": async (payload, { server }) => {

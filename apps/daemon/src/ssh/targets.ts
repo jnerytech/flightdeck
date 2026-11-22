@@ -101,7 +101,11 @@ export class SshTargets {
     return row.n;
   }
 
-  save(input: SshTargetInput): SshTarget {
+  /**
+   * `guard` runs when the save turns ForwardAgent on (it was off, or the target is new), once the
+   * request is valid and before anything changes: it throws to refuse.
+   */
+  save(input: SshTargetInput, guard?: () => void): SshTarget {
     const previous = input.id ? this.row(input.id) : null;
     if (input.id && !previous) throw notFound();
     const name = input.name.trim();
@@ -121,6 +125,7 @@ export class SshTargets {
     const wasOn = previous
       ? parseJsonOr(WasForwardAgent, previous.options, { forwardAgent: false }).forwardAgent
       : false;
+    if (options.forwardAgent === true && !wasOn) guard?.();
     if (options.forwardAgent === true && !wasOn && input.confirm !== true) {
       throw new FlightdeckError(
         "invalid_state",

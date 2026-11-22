@@ -37,8 +37,9 @@ export const filesHandlers = {
   },
   "file.write": async (payload, { ws, server }) => {
     const { target, path, text, expectedHash } = payload;
-    // Claude Code's settings can declare hooks that run a command in every session: writing them is
-    // near only, however the path is spelled or linked. Any other file is not (#3815).
+    // Claude Code's settings, agents, skills and CLAUDE.md steer every session, and settings and agents
+    // can declare hooks that run a command: writing them is near only (as agentcfg.write is), however
+    // the path is spelled or linked. Any other file is not (#3815).
     const guard = () => requireVaultTransport(ws.data.origin, "file.write", server.opts.log);
     return await server.needIn("review", "files").write(target, path, text, expectedHash, guard);
   },
