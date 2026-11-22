@@ -13,7 +13,8 @@ export interface ActivityCliArgs {
 
 /** A section's heading: the count, as `n of m` when the daemon cut the list to its newest. */
 const heading = (label: string, list: ActivityList<unknown>) => {
-  const count = list.items.length < list.total ? `${list.items.length} of ${list.total}` : list.total;
+  const count =
+    list.items.length < list.total ? `${list.items.length} of ${list.total}` : list.total;
   return `${label}: ${count}`;
 };
 
