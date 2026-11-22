@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import type { Card, RunProcessState, RunState } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
@@ -216,6 +216,24 @@ describe("the run panel keeps the focus where the person pressed, and its lists 
     );
     expect(focused("View log of web")).toBe(true);
     expect(focused("Run")).toBe(false);
+  });
+
+  test("a press the host never turned into a run does not take the focus when the run changes much later", async () => {
+    const { store, answers } = await panel("en", run({ status: "ended" }));
+    await press("Run");
+    await act(async () => answers[0]?.());
+    const later = spyOn(Date, "now").mockReturnValue(Date.now() + 11_000);
+    try {
+      await act(async () => store.runEnv.updated("h", run({ status: "running" })));
+    } finally {
+      later.mockRestore();
+    }
+    expect(focused("Stop")).toBe(false);
+  });
+
+  test("a trusted panel with no process yet has no empty list", async () => {
+    await panel("en", run({ status: "idle" }));
+    expect(screen.queryByRole("list", { name: "Processes" }) === null).toBe(true);
   });
 
   test("the process list is named, in both languages", async () => {
