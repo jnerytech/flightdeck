@@ -283,4 +283,10 @@ describe("the tray tooltip fits the 127 characters Windows shows (#4121)", () =>
     expect(tooltip.length).toBeLessThanOrEqual(TOOLTIP_MAX);
     expect(tooltip.startsWith("Flightdeck: 1 request waiting for you (")).toBe(true);
   });
+
+  test("a cut never leaves half of an emoji before the ellipsis", () => {
+    const { tooltip } = trayStatus([waiting("😀".repeat(200), 1)], translator("en"), 3);
+    expect(tooltip.length).toBeLessThanOrEqual(TOOLTIP_MAX);
+    expect(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(tooltip)).toBe(false);
+  });
 });
