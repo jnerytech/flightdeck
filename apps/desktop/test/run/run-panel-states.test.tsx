@@ -35,7 +35,12 @@ const run = (over: Partial<RunState>): RunState => ({
 });
 
 /** The panel of a trusted run.yaml, on a store whose run is `state` and whose Run and Stop the test answers. */
-async function panel(lang: "en" | "pt-BR", state: RunState, calls: string[] = []) {
+async function panel(
+  lang: "en" | "pt-BR",
+  state: RunState,
+  calls: string[] = [],
+  info: Record<string, unknown> = {},
+) {
   const store = new AppStore(memoryPlatform(false, lang).platform);
   await store.i18n.setLang(lang);
   store.runEnv.config = (async () => ({
@@ -44,6 +49,7 @@ async function panel(lang: "en" | "pt-BR", state: RunState, calls: string[] = []
     trusted: true,
     errors: [],
     config: { exclusive: false, setup: null, run: [], ports: [] },
+    ...info,
   })) as unknown as typeof store.runEnv.config;
   store.runEnv.updated("h", state);
   const answers: Array<() => Promise<void>> = [];
@@ -58,7 +64,11 @@ async function panel(lang: "en" | "pt-BR", state: RunState, calls: string[] = []
       <RunPanel store={store} hostId="h" card={{ id: "c1", projectId: "p" } as Card} />
     </TContext.Provider>,
   );
-  await settle(() => screen.queryByText(store.i18n.t(`runEnv.status.${state.status}`)) !== null);
+  await settle(
+    () =>
+      screen.queryByText(store.i18n.t(`runEnv.status.${state.status}`)) !== null ||
+      screen.queryByRole("button", { name: store.i18n.t("runEnv.trust") }) !== null,
+  );
   return { store, answers };
 }
 
@@ -172,5 +182,66 @@ describe("the run panel tells what happened to each process and what was pressed
       store.runEnv.updated("h", run({ status: "ended", processes: [proc({ exitCode: 137 })] })),
     );
     expect(cls().includes("text-status-error")).toBe(true);
+  });
+});
+
+describe("the run panel keeps the focus where the person pressed, and its lists read (#4063, #4064)", () => {
+  const focused = (name: string) =>
+    document.activeElement === screen.queryByRole("button", { name });
+  const press = async (name: string) => {
+    (screen.queryByRole("button", { name }) as HTMLElement).focus();
+    await click(name);
+  };
+
+  test("Run pressed with the focus on it hands the focus to Stop, and Stop hands it back to Run", async () => {
+    const { store, answers } = await panel("en", run({ status: "ended" }));
+    await press("Run");
+    await act(async () => answers[0]?.());
+    await act(async () => store.runEnv.updated("h", run({ status: "running" })));
+    expect(focused("Stop")).toBe(true);
+    await press("Stop");
+    await act(async () => answers[1]?.());
+    await act(async () => store.runEnv.updated("h", run({ status: "ended" })));
+    expect(focused("Run")).toBe(true);
+  });
+
+  test("a run that ends by itself leaves the focus on the control the person is on", async () => {
+    const { store } = await panel(
+      "en",
+      run({ status: "running", processes: [proc({ status: "running", exitCode: null })] }),
+    );
+    (screen.queryByRole("button", { name: "View log of web" }) as HTMLElement).focus();
+    await act(async () =>
+      store.runEnv.updated("h", run({ status: "ended", processes: [proc({ exitCode: 0 })] })),
+    );
+    expect(focused("View log of web")).toBe(true);
+    expect(focused("Run")).toBe(false);
+  });
+
+  test("the process list is named, in both languages", async () => {
+    const live = run({
+      status: "running",
+      processes: [proc({ status: "running", exitCode: null })],
+    });
+    await panel("en", live);
+    expect(screen.queryByRole("list", { name: "Processes" }) !== null).toBe(true);
+    cleanup();
+    await panel("pt-BR", live);
+    expect(screen.queryByRole("list", { name: "Processos" }) !== null).toBe(true);
+  });
+
+  test("a command with a long token wraps inside the trust list", async () => {
+    const token = `/${"deep/".repeat(40)}`;
+    await panel("en", run({}), [], {
+      trusted: false,
+      config: {
+        exclusive: false,
+        setup: null,
+        run: [{ name: "web", cmd: ["bun", "run", token], env: {}, ports: [] }],
+        ports: [],
+      },
+    });
+    const code = screen.queryByText(`bun run ${token}`);
+    expect(code?.className.includes("[overflow-wrap:anywhere]")).toBe(true);
   });
 });
