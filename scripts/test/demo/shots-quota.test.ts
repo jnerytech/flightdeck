@@ -30,7 +30,8 @@ describe("the Quota card prints (#4308)", () => {
     for (const name of NAMES) {
       expect(named(name)?.route).toEqual({ name: "hub" });
       // The streams that would overwrite the faked answer are answered in the page.
-      expect(named(name)?.wire?.map((r) => r.command)).toContain("quota.watch");
+      const answered = (named(name)?.wire ?? []).filter((r) => "reply" in r).map((r) => r.command);
+      expect(answered).toEqual(["quota.watch", "account.watch"]);
     }
   });
 
