@@ -323,3 +323,47 @@ describe("conversas-ui: a paused pair (#4086)", () => {
     expect(screen.queryAllByText(/estão pausadas/).length).toBe(0);
   });
 });
+
+describe("conversas-ui: a refusal reads in the app's language (#4083)", () => {
+  test("a refused message with a reason key shows its Portuguese text; one with none keeps the daemon's words", async () => {
+    const { daemon, list } = await open();
+    daemon.messaging.messages = [
+      message({
+        id: "m3",
+        status: "refused",
+        reason: "the sessions are not in the same project or the same team",
+        reasonKey: "messaging_no_route",
+        text: "com chave",
+        createdAt: "2026-10-30T12:10:00.000Z",
+      }),
+      message({
+        id: "m4",
+        status: "refused",
+        reason: "limit of 3 per hour per session",
+        reasonKey: "messaging_limit_session",
+        reasonParams: { limit: 3 },
+        text: "com valor",
+        createdAt: "2026-10-30T12:11:00.000Z",
+      }),
+      message({
+        id: "m5",
+        status: "refused",
+        reason: "reason without a key",
+        text: "sem chave",
+        createdAt: "2026-10-30T12:12:00.000Z",
+      }),
+    ];
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
+    });
+    await settle(() => (list()?.children.length ?? 0) === 3);
+    const shown = list()?.textContent ?? "";
+    expect(shown.includes("não são do mesmo projeto")).toBe(true);
+    expect(shown.includes("O limite de 3 mensagens por hora desta sessão foi atingido.")).toBe(
+      true,
+    );
+    expect(shown.includes("reason without a key")).toBe(true);
+    expect(shown.includes("the sessions are not in the same project")).toBe(false);
+    expect(shown.includes("limit of 3 per hour")).toBe(false);
+  });
+});
