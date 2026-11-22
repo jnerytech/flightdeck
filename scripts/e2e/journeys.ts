@@ -3209,12 +3209,12 @@ async function historyFormProblems(c: Context): Promise<string[]> {
     const tops = labels.map((label) => Math.round(label.getBoundingClientRect().top));
     const sorted = [...tops].sort((a, b) => a - b);
     // The pane is narrow, so the form may wrap: labels on one row share a top, and a row is a whole
-    // line below the one before (a gap of a few pixels is a ragged row, not a new one).
+    // line below the one before (a gap of a few pixels is a ragged row, not a new one). Two rows at most.
     const ragged = sorted.some(
       (top, i) =>
         i > 0 && top - (sorted[i - 1] as number) > 1 && top - (sorted[i - 1] as number) < 16,
     );
-    if (labels.length !== 4 || ragged) {
+    if (labels.length !== 4 || ragged || new Set(tops).size > 2) {
       found.push(`the labels of the filter form sit at tops ${tops.join(", ")}`);
     }
     const button = form?.querySelector<HTMLElement>("button[type='submit']");
