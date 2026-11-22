@@ -204,6 +204,24 @@ describe("notify-prefs-ui: the sound (issue #149)", () => {
     expect([first, shown(), store.notifyPrefs.value.sound.volume]).toEqual([["50%"], ["60%"], 0.6]);
   });
 
+  test("leaving the file sound clears a file error, and the slider reads its percentage (#3865)", async () => {
+    settings();
+    await pickSound("file");
+    const input = within(panel()).getByLabelText("Choose a sound file") as HTMLInputElement;
+    const text = new File(["x"], "notes.txt", { type: "text/plain" });
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [text] } });
+    });
+    const shown = within(panel()).queryByRole("alert") !== null;
+    await pickSound("system");
+    const volume = within(panel()).getByLabelText("Volume") as HTMLInputElement;
+    expect([
+      shown,
+      within(panel()).queryByRole("alert") !== null,
+      volume.getAttribute("aria-valuetext"),
+    ]).toEqual([true, false, "50%"]);
+  });
+
   test("a file over the cap is refused before it is read", async () => {
     const { store } = settings();
     await pickSound("file");
