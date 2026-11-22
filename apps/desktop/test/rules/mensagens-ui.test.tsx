@@ -118,20 +118,27 @@ describe("regras-mensagens-ui: who may message whom, retention and paused pairs 
     const { lastSet } = await open();
     const save = () =>
       screen.queryByRole("button", { name: "Salvar retenção" }) as HTMLButtonElement | null;
-    const reason = screen.queryByText("Altere o número de dias para salvar.");
-    const states = [
-      save()?.disabled,
-      save()?.getAttribute("aria-describedby") === (reason?.id ?? "?"),
-    ];
+    const why = () =>
+      document.getElementById(save()?.getAttribute("aria-describedby") ?? "")?.textContent;
+    const seen: Array<[string, boolean | undefined, string | undefined]> = [];
+    seen.push(["30", save()?.disabled, why()]);
     for (const typed of ["7", "30", "", "0"]) {
       await change("Retenção (dias)", typed);
-      states.push(save()?.disabled);
+      seen.push([typed, save()?.disabled, save()?.disabled ? why() : undefined]);
     }
+    const same = "Altere o número de dias para salvar.";
+    const bad = "Informe um número inteiro de dias, de 1 em diante.";
+    expect(seen).toEqual([
+      ["30", true, same],
+      ["7", false, undefined],
+      ["30", true, same],
+      ["", true, bad],
+      ["0", true, bad],
+    ]);
     await change("Retenção (dias)", "7");
     await click("Salvar retenção");
     await settle(() => (lastSet()?.policy as typeof POLICY | undefined)?.retentionDays === 7);
     await settle(() => save()?.disabled === true);
-    expect(states).toEqual([true, true, false, true, true, true]);
     expect(save()?.disabled).toBe(true);
   });
 
