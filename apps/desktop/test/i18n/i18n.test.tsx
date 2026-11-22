@@ -295,7 +295,7 @@ describe("i18n", () => {
       open: "Open",
       more: "and 2 more…",
       empty: "Nothing waiting for you",
-      show: "Open",
+      show: "Open Flightdeck",
       quit: "Quit",
     });
     const prev = { status: "running" as const, pendingPermissions: [] };
