@@ -4,7 +4,8 @@ import { type FrameRewriter, installHolds } from "./holds.ts";
  * What a print does to one command on the page's sockets (#3982): the host's answer becomes a
  * refusal (`refuse`: its text), the answer's data is replaced (`data`), or the app's request goes to
  * the host as another command (`as`: its answer comes back as it is, or with the `data` the rule
- * also gives). #4154: `after` is the data of every answer after the first; `hold` leaves the answer
+ * also gives, and with `afterRefuse` every answer after the first is refused with that text, #4252).
+ * #4154: `after` is the data of every answer after the first; `hold` leaves the answer
  * unheard, so the panel stays loading; `reply` answers in the page and never sends the command (a
  * change the host would really make; a `"{in 30s}"` in it is the time 30 s from the answer, #4229); `reject` answers in the page with a refusal and `stall` leaves
  * the command unanswered, both without sending it (an answer to a request the host would really
@@ -13,7 +14,7 @@ import { type FrameRewriter, installHolds } from "./holds.ts";
 export type WireRule =
   | { command: string; refuse: string }
   | { command: string; data: unknown; after?: unknown }
-  | { command: string; as: string; data?: unknown }
+  | { command: string; as: string; data?: unknown; afterRefuse?: string }
   | { command: string; reply: unknown }
   | { command: string; hold: true }
   | { command: string; reject: string }
@@ -62,15 +63,16 @@ export function wireRewriter(rules: WireRule[]): FrameRewriter {
       if (message?.type !== "ack" || typeof id !== "string" || !rule) return frame;
       asked.delete(id);
       if (message.ok !== true) return frame;
-      if ("refuse" in rule) {
+      const refusal = (text: string): string => {
         const refused: Record<string, unknown> = {
           ...message,
           ok: false,
-          error: { code: "unavailable", message: rule.refuse },
+          error: { code: "unavailable", message: text },
         };
         delete refused.data;
         return JSON.stringify(refused);
-      }
+      };
+      if ("refuse" in rule) return refusal(rule.refuse);
       if ("without" in rule) {
         const data: Record<string, unknown> =
           typeof message.data === "object" && message.data !== null
@@ -82,6 +84,8 @@ export function wireRewriter(rules: WireRule[]): FrameRewriter {
         }
         return JSON.stringify({ ...message, data });
       }
+      if ("afterRefuse" in rule && typeof rule.afterRefuse === "string" && answered.has(rule))
+        return refusal(rule.afterRefuse);
       if (!("data" in rule)) return frame;
       const later = answered.has(rule) && "after" in rule;
       answered.add(rule);
