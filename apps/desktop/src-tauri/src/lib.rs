@@ -557,6 +557,12 @@ fn close_hides_to_tray(close_to_tray: bool, labelled: bool) -> bool {
     close_to_tray && labelled
 }
 
+/// Runs `join` the first time only, and counts it as done only when it worked: a failed join is tried
+/// again by the next call, and the flag then still says the tray has no Quit (#4120).
+fn join_once<E>(done: &AtomicBool, join: impl FnOnce() -> Result<(), E>) -> Result<(), E> {
+    join()
+}
+
 fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
     let open = MenuItem::with_id(app, "open", STARTUP_OPEN_TEXT, true, None::<&str>)?;
     // The submenu and Quit are built now but join the menu with the first `tray_set_menu`.
@@ -734,6 +740,18 @@ mod tray_startup_tests {
     #[test]
     fn the_tray_starts_with_the_product_name_and_no_translated_text() {
         assert_eq!(STARTUP_OPEN_TEXT, "Flightdeck");
+    }
+
+    #[test]
+    fn the_join_runs_once_and_a_failed_one_is_tried_again() {
+        let done = AtomicBool::new(false);
+        let mut runs = 0;
+        assert!(join_once(&done, || -> Result<(), ()> { runs += 1; Err(()) }).is_err());
+        assert!(!done.load(Ordering::SeqCst));
+        assert!(join_once(&done, || -> Result<(), ()> { runs += 1; Ok(()) }).is_ok());
+        assert!(done.load(Ordering::SeqCst));
+        assert!(join_once(&done, || -> Result<(), ()> { runs += 1; Ok(()) }).is_ok());
+        assert_eq!(runs, 2);
     }
 
     #[test]
