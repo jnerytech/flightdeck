@@ -1,4 +1,5 @@
 import type { QuotaState } from "@flightdeck/protocol";
+import { useNow } from "@/features/hosts/index.ts";
 import { quotaBars } from "@/features/quota/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
@@ -15,6 +16,8 @@ export function QuotaBarList(
 ) {
   const { store, host, quota } = props;
   const t = useT();
+  // The age of a reading moves every minute, with no new reading (#4303).
+  useNow(60_000);
   return (
     <>
       {quotaBars(quota, store.now(), (iso) => store.formatTime(iso), t).map((bar) => (
@@ -32,7 +35,10 @@ export function QuotaBarList(
                 hot={bar.hot}
                 className="w-full"
               />
-              {bar.reset && <span className="text-muted-foreground text-xs">{bar.reset}</span>}
+              <Inline gap={3} className="text-muted-foreground text-xs">
+                {bar.reset && <span>{bar.reset}</span>}
+                <span>{bar.age}</span>
+              </Inline>
             </>
           ) : (
             <span className="text-muted-foreground text-xs">{t("quota.noReading")}</span>

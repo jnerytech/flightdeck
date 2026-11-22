@@ -34,6 +34,9 @@ export const QuotaDetail = memo(function QuotaDetail(
         return (
           <Stack key={host.id} gap={2} label={t("quota.region", { host: host.name })}>
             <h3 className="font-semibold text-sm">{host.name}</h3>
+            {!noPlan && state.account[host.id]?.stale === true && (
+              <p className="text-sm text-status-needs-you">{t("account.stale")}</p>
+            )}
             {noPlan ? (
               <p className="text-muted-foreground text-sm">{noPlan}</p>
             ) : (

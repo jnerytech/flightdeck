@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Grid } from "@/shared/layout/index.ts";
 import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
 import { hasFeature, hostsWith } from "../../lib/version.ts";
+import { useNow } from "../hosts/index.ts";
 import {
   HISTORY_HOURS,
   noPlanReason,
@@ -24,6 +25,8 @@ const METER_OK =
 const METER_HOT =
   "[&::-webkit-meter-optimum-value]:rounded-full [&::-webkit-meter-optimum-value]:bg-status-error [&::-moz-meter-bar]:bg-status-error";
 
+const MINUTE_MS = 60_000;
+
 /** One host's card: its name and the two windows with a bar; with costs (phase 8) each window has its projection as a line of text. */
 function HostQuota(
   props: Readonly<{
@@ -36,6 +39,8 @@ function HostQuota(
 ) {
   const { store } = props;
   const { t } = store.i18n;
+  // The age of a reading moves every minute, with no new reading (#4303).
+  useNow(MINUTE_MS);
   const host = props.hosts.find((h) => props.quota[h.id]) ?? (props.hosts[0] as HostView);
   const names = props.hosts.map((h) => h.name).join(" · ");
   const quota = props.quota[host.id];
@@ -69,12 +74,14 @@ function HostQuota(
   }, [store, host.id, costs, readings, t]);
   const anyReading = bars.some((bar) => bar.hasReading);
   const noPlan = noPlanReason(quota, props.account[host.id], t);
+  const stale = props.account[host.id]?.stale === true;
   return (
     <section
       aria-label={t("quota.region", { host: names })}
       className="flex flex-col gap-3 rounded-lg border bg-card p-4 text-card-foreground"
     >
       <h3 className="font-semibold">{names}</h3>
+      {anyReading && stale && <p className="text-sm text-status-needs-you">{t("account.stale")}</p>}
       {!anyReading && (
         <p className="text-muted-foreground text-sm">{noPlan ?? t("quota.noReading")}</p>
       )}
