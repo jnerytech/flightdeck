@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
 import { LoadingState, WideTable } from "@/shared/layout/index.ts";
 import { periodRange, usd } from "../costs/index.ts";
-import { answeredHosts, type RoiAnswer } from "./domain/roi-answers.ts";
+import { answeredHosts, failedHosts, type RoiAnswer } from "./domain/roi-answers.ts";
 import { humanTokens, personRows } from "./domain/roi-people.ts";
+import { RoiReadFailed } from "./roi-read-failed.tsx";
 
 const DASH = "—";
 const REFRESH_MS = 30_000;
@@ -22,21 +23,18 @@ export function RoiPeople(props: Readonly<{ store: AppStore }>) {
   // The people are the app's own settings: a person added or removed shows at once.
   useStoreSlice(store, ["roiRevision"]);
   const [answers, setAnswers] = useState<RoiAnswer[] | null>(null);
-  useEffect(() => {
-    let live = true;
-    const load = () => {
-      const { from, to } = periodRange("month", store.roiFigures.today());
-      void store.roiFigures.summaries(from, to).then((all) => {
-        if (live) setAnswers(all);
-      });
-    };
-    load();
-    const timer = setInterval(load, REFRESH_MS);
-    return () => {
-      live = false;
-      clearInterval(timer);
-    };
+  const load = useCallback(async () => {
+    const { from, to } = periodRange("month", store.roiFigures.today());
+    setAnswers(await store.roiFigures.summaries(from, to));
   }, [store]);
+  useEffect(() => {
+    void load();
+    const timer = setInterval(() => void load(), REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [load]);
+  const failed = failedHosts(answers ?? []);
+  // When no asked host answered, a table of zeros would read as "nobody delivered".
+  const none = failed.length > 0 && answeredHosts(answers ?? []).length === 0;
 
   const rows = personRows(store.roi.data().people, answeredHosts(answers ?? []));
   const tokensText = (n: number) => {
@@ -74,7 +72,10 @@ export function RoiPeople(props: Readonly<{ store: AppStore }>) {
         <p className="text-muted-foreground text-sm">{t("roiUi.people.empty")}</p>
       )}
       {rows.length > 0 && answers === null && <LoadingState label={t("roiUi.loading")} />}
-      {rows.length > 0 && answers !== null && (
+      {rows.length > 0 && failed.length > 0 && (
+        <RoiReadFailed store={store} hostIds={failed} onRetry={() => void load()} />
+      )}
+      {rows.length > 0 && answers !== null && !none && (
         <>
           <WideTable name={t("roiUi.people.title")}>
             <table

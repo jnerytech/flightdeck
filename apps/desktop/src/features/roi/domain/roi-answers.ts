@@ -14,6 +14,6 @@ export function answeredHosts(
 }
 
 /** The hosts that were asked and did not answer. */
-export function failedHosts(_all: RoiAnswer[]): string[] {
-  return [];
+export function failedHosts(all: RoiAnswer[]): string[] {
+  return all.filter((a) => a.result === null).map((a) => a.hostId);
 }
