@@ -36,13 +36,12 @@ import {
   type XtermScreen,
 } from "./xterm-screen.ts";
 
+const plainReason = (error: unknown) => (error instanceof Error ? error.message : String(error));
 /** What a person reads of a failure: the host's refusal in their language, or the message of any other. */
 const reasonText = (error: unknown, t: T) =>
   error instanceof RequestError
     ? refusalText(error.code, error.message, t, error)
-    : error instanceof Error
-      ? error.message
-      : String(error);
+    : plainReason(error);
 
 /** A host's terminal in the app: xterm over a `TerminalSession`, with search and close. */
 export function TerminalPage(

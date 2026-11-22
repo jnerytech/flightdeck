@@ -111,6 +111,115 @@ function WindowMeter(
   );
 }
 
+type Refresh = (label: string, named?: boolean) => React.ReactNode;
+
+/** Signed out: the command to run on the host, with the buttons that copy it or open a terminal. */
+function SignedOutBody(
+  props: Readonly<{
+    state: AccountState;
+    copied: boolean;
+    onCopy: () => void;
+    onTerminal: () => void;
+  }>,
+) {
+  const t = useT();
+  const { state, copied, onCopy, onTerminal } = props;
+  return (
+    <>
+      <p className="font-medium text-sm">{t("account.signedOut.title")}</p>
+      <p className="text-muted-foreground text-sm">{t("account.signedOut.steps")}</p>
+      <code className="code-chip rounded bg-muted font-mono text-sm">{state.loginCommand}</code>
+      <output className="sr-only">{copied ? t("account.copied") : ""}</output>
+      <div className="row-gap2">
+        <Button type="button" variant="outline" size="sm" onClick={onCopy}>
+          {copied ? t("account.copied") : t("account.copy")}
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={onTerminal}>
+          {t("account.terminal")}
+        </Button>
+      </div>
+    </>
+  );
+}
+
+/** The host could not say who is signed in: why, with a retry, or that it is not known. */
+function UnknownBody(props: Readonly<{ state: AccountState; refresh: Refresh }>) {
+  const t = useT();
+  const { state, refresh } = props;
+  if (!state.error) return <p className="text-sm">{t("account.unknownSignIn")}</p>;
+  return (
+    <>
+      <div role="alert">
+        <Stack gap={2}>
+          <p className="font-medium text-sm">{t("account.unavailable")}</p>
+          <p className="text-muted-foreground text-sm">
+            {t(`daemonRefusal.${state.error}` as Key)}
+          </p>
+        </Stack>
+      </div>
+      {refresh(t("account.retry"), false)}
+    </>
+  );
+}
+
+/** Signed in: the name, the plan and the organization, then the windows and when they were read. */
+function SignedInBody(
+  props: Readonly<{
+    state: AccountState;
+    hostName: string;
+    now: number;
+    formatTime: (iso: string) => string;
+    refreshing: boolean;
+    refresh: Refresh;
+  }>,
+) {
+  const t = useT();
+  const { state, hostName, now, formatTime, refreshing, refresh } = props;
+  const shown = WINDOWS.flatMap((window) => {
+    const reading = state.windows.find((w) => w.window === window);
+    return reading ? [reading] : [];
+  });
+  const plan = state.plan;
+  return (
+    <>
+      <div className="row-wrap">
+        {state.name && <span className="font-medium text-sm">{state.name}</span>}
+        {plan && (
+          <span className="pill rounded-full border text-xs">
+            {PLANS.has(plan) ? t(`account.plans.${plan}` as Key) : plan}
+          </span>
+        )}
+      </div>
+      {plan && <span className="text-muted-foreground text-xs">{t("account.planHint")}</span>}
+      {state.organization && (
+        <span className="text-muted-foreground text-sm">{state.organization}</span>
+      )}
+      {shown.length === 0 && (
+        <p className="text-muted-foreground text-sm">{t("account.noWindows")}</p>
+      )}
+      {shown.map((reading) => (
+        <WindowMeter
+          key={reading.window}
+          reading={reading}
+          hostName={hostName}
+          now={now}
+          formatTime={formatTime}
+        />
+      ))}
+      {state.stale && <p className="text-sm text-status-needs-you">{t("account.stale")}</p>}
+      <div className="row-wrap-loose text-muted-foreground text-xs">
+        <output>
+          {refreshing
+            ? t("account.refreshing")
+            : state.readAt &&
+              t("account.lastRead", { ago: formatAgo(now - Date.parse(state.readAt), t) })}
+        </output>
+        {refresh(t("account.refresh"))}
+      </div>
+    </>
+  );
+}
+
 /** Nothing was read from the host yet, and nothing went wrong either. */
 const notReadYet = (state: NonNullable<AccountCardProps["state"]>) =>
   state.status === "unknown" && state.readAt === null && !state.error;
@@ -147,84 +256,29 @@ export function AccountCard(props: Readonly<AccountCardProps>) {
     body = <output className="text-muted-foreground text-sm">{t("account.loading")}</output>;
   } else if (state.status === "signed_out") {
     body = (
-      <>
-        <p className="font-medium text-sm">{t("account.signedOut.title")}</p>
-        <p className="text-muted-foreground text-sm">{t("account.signedOut.steps")}</p>
-        <code className="code-chip rounded bg-muted font-mono text-sm">{state.loginCommand}</code>
-        <output className="sr-only">{props.copied ? t("account.copied") : ""}</output>
-        <div className="row-gap2">
-          <Button type="button" variant="outline" size="sm" onClick={props.onCopy}>
-            {props.copied ? t("account.copied") : t("account.copy")}
-          </Button>
-          <Button type="button" variant="outline" size="sm" onClick={props.onTerminal}>
-            {t("account.terminal")}
-          </Button>
-        </div>
-      </>
+      <SignedOutBody
+        state={state}
+        copied={props.copied}
+        onCopy={props.onCopy}
+        onTerminal={props.onTerminal}
+      />
     );
   } else if (state.status === "api_key") {
     body = <p className="text-sm">{t("account.apiKey")}</p>;
   } else if (state.status === "third_party") {
     body = <p className="text-sm">{t("account.provider", { provider: state.provider ?? "" })}</p>;
   } else if (state.status === "unknown") {
-    body = state.error ? (
-      <>
-        <div role="alert">
-          <Stack gap={2}>
-            <p className="font-medium text-sm">{t("account.unavailable")}</p>
-            <p className="text-muted-foreground text-sm">
-              {t(`daemonRefusal.${state.error}` as Key)}
-            </p>
-          </Stack>
-        </div>
-        {refresh(t("account.retry"), false)}
-      </>
-    ) : (
-      <p className="text-sm">{t("account.unknownSignIn")}</p>
-    );
+    body = <UnknownBody state={state} refresh={refresh} />;
   } else {
-    const shown = WINDOWS.flatMap((window) => {
-      const reading = state.windows.find((w) => w.window === window);
-      return reading ? [reading] : [];
-    });
-    const plan = state.plan;
     body = (
-      <>
-        <div className="row-wrap">
-          {state.name && <span className="font-medium text-sm">{state.name}</span>}
-          {plan && (
-            <span className="pill rounded-full border text-xs">
-              {PLANS.has(plan) ? t(`account.plans.${plan}` as Key) : plan}
-            </span>
-          )}
-        </div>
-        {plan && <span className="text-muted-foreground text-xs">{t("account.planHint")}</span>}
-        {state.organization && (
-          <span className="text-muted-foreground text-sm">{state.organization}</span>
-        )}
-        {shown.length === 0 && (
-          <p className="text-muted-foreground text-sm">{t("account.noWindows")}</p>
-        )}
-        {shown.map((reading) => (
-          <WindowMeter
-            key={reading.window}
-            reading={reading}
-            hostName={hostName}
-            now={now}
-            formatTime={formatTime}
-          />
-        ))}
-        {state.stale && <p className="text-sm text-status-needs-you">{t("account.stale")}</p>}
-        <div className="row-wrap-loose text-muted-foreground text-xs">
-          <output>
-            {props.refreshing
-              ? t("account.refreshing")
-              : state.readAt &&
-                t("account.lastRead", { ago: formatAgo(now - Date.parse(state.readAt), t) })}
-          </output>
-          {refresh(t("account.refresh"))}
-        </div>
-      </>
+      <SignedInBody
+        state={state}
+        hostName={hostName}
+        now={now}
+        formatTime={formatTime}
+        refreshing={props.refreshing}
+        refresh={refresh}
+      />
     );
   }
   return (
