@@ -39,7 +39,8 @@ type Phase =
   /** `finishing`: every byte is on the target, which imports it; past the point of cancel. */
   | { at: "moving"; percent: number; finishing: boolean }
   | { at: "done"; sessionId: string }
-  | { at: "failed"; text: string };
+  /** `again`: the move did not land, so it can be tried once more; a move with no session id may have landed. */
+  | { at: "failed"; text: string; again: boolean };
 
 /** The refusals a move can meet: only these fill their text with what the host sent. */
 const KNOWN = /^(teleport_|feature_off$|cwd_outside_roots$|cwd_missing$|session_not_found$)/;
@@ -116,17 +117,22 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
           if (outcome.kind !== "moved") return close();
           // A move that names no session on the target did not land anywhere the app can open.
           if (typeof outcome.sessionId !== "string" || !outcome.sessionId) {
-            return setPhase({ at: "failed", text: failureText(null, t) });
+            return setPhase({ at: "failed", text: failureText(null, t), again: false });
           }
           setPhase({ at: "done", sessionId: outcome.sessionId });
         },
-        (error: unknown) => setPhase({ at: "failed", text: failureText(error, t) }),
+        (error: unknown) => setPhase({ at: "failed", text: failureText(error, t), again: true }),
       );
   };
 
   /** After a failure: back to the first step with the host and the repository kept, free for a new move. */
   const retry = () => {
     stop.current = null;
+    // The host may have gone offline while the move ran: a host the list no longer offers is dropped.
+    if (!props.targets.some((h) => h.id === target)) {
+      setTarget("");
+      setRepo("");
+    }
     setPhase({ at: "pick" });
   };
 
@@ -241,10 +247,10 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
               aria-label={t("teleportUi.progress")}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-valuenow={phase.finishing ? 100 : phase.percent}
+              aria-valuenow={phase.percent}
               className="w-full"
             >
-              <Bar ratio={(phase.finishing ? 100 : phase.percent) / 100} />
+              <Bar ratio={phase.percent / 100} />
             </div>
             <FormActions
               submit={t("teleportUi.move")}
@@ -272,13 +278,17 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
           </Form>
         )}
         {phase.at === "failed" && (
-          <Form variant="dialog" onSubmit={retry}>
+          <Form variant="dialog" onSubmit={phase.again ? retry : close}>
             <p role="alert">{phase.text}</p>
-            <FormActions
-              submit={t("teleportUi.retry")}
-              cancel={t("teleportUi.close")}
-              onCancel={close}
-            />
+            {phase.again ? (
+              <FormActions
+                submit={t("teleportUi.retry")}
+                cancel={t("teleportUi.close")}
+                onCancel={close}
+              />
+            ) : (
+              <FormActions submit={t("teleportUi.close")} />
+            )}
           </Form>
         )}
       </AppDialogContent>

@@ -105,7 +105,7 @@ export const terminal = {
     open: "Abrir lá",
     close: "Fechar",
     retry: "Tentar de novo",
-    progress: "Progresso da mudança",
+    progress: "Progresso da movimentação",
     plainWs: {
       one: "{hosts} se conecta sem TLS (ws:// puro). A conversa e o código da sessão passam por este app sem criptografia: mova só por uma rede em que você confia.",
       other:
