@@ -2,6 +2,7 @@ import type { Card, RunConfigInfo, RunProcessState } from "@flightdeck/protocol"
 import { type MouseEvent, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
+import { reasonText } from "@/i18n/errors";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
@@ -154,7 +155,7 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
             </Inline>
             {state?.error && (
               <p role="alert" className="text-status-error text-sm">
-                {state.error}
+                {reasonText(t, state.error, state.errorKey, state.errorParams)}
               </p>
             )}
             {state && Object.keys(state.ports).length > 0 && (

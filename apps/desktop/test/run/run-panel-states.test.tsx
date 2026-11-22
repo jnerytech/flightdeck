@@ -185,6 +185,71 @@ describe("the run panel tells what happened to each process and what was pressed
   });
 });
 
+const failed = (over: Partial<RunState>) =>
+  run({ status: "failed", setup: "failed", ...over, ports: {} });
+
+// #4062: a failed start or setup reads in the app's language, with the cause the host gave.
+describe("the run panel says why a run failed in the app's language (#4062)", () => {
+  test("a setup the host refused to open reads in each language, with the cause and no English sentence in pt-BR", async () => {
+    const state = failed({
+      error: "could not start the setup: the terminal is off on this host",
+      errorKey: "run_setup_start_failed",
+      errorParams: { cause: "the terminal is off on this host" },
+    });
+    await panel("pt-BR", state);
+    expect(screen.queryByText(/could not start/)).toBeNull();
+    expect(
+      screen.queryByText("Não foi possível iniciar o setup: the terminal is off on this host"),
+    ).not.toBeNull();
+    cleanup();
+    await panel("en", state);
+    expect(
+      screen.queryByText("Could not start the setup: the terminal is off on this host"),
+    ).not.toBeNull();
+  });
+
+  test("a process the host refused to open is named in both languages", async () => {
+    const state = failed({
+      error: "could not start api: limit of 10 terminals per host",
+      errorKey: "run_process_start_failed",
+      errorParams: { name: "api", cause: "limit of 10 terminals per host" },
+    });
+    await panel("pt-BR", state);
+    expect(
+      screen.queryByText("Não foi possível iniciar api: limit of 10 terminals per host"),
+    ).not.toBeNull();
+    cleanup();
+    await panel("en", state);
+    expect(
+      screen.queryByText("Could not start api: limit of 10 terminals per host"),
+    ).not.toBeNull();
+  });
+
+  test("a setup that exited with a code reads in each language, with the code", async () => {
+    const state = failed({
+      error: "the setup failed (code 3)",
+      errorKey: "run_setup_failed",
+      errorParams: { code: 3 },
+    });
+    await panel("en", state);
+    expect(screen.queryByText("The setup failed (code 3)")).not.toBeNull();
+    cleanup();
+    await panel("pt-BR", state);
+    expect(screen.queryByText("O setup falhou (código 3)")).not.toBeNull();
+  });
+
+  test("a daemon that sends only the text, or a key the app does not know, shows the text as it came", async () => {
+    await panel("pt-BR", failed({ error: "could not start api: sem terminal" }));
+    expect(screen.queryByText("could not start api: sem terminal")).not.toBeNull();
+    cleanup();
+    await panel(
+      "en",
+      failed({ error: "a newer sentence", errorKey: "run_a_newer_reason", errorParams: {} }),
+    );
+    expect(screen.queryByText("a newer sentence")).not.toBeNull();
+  });
+});
+
 describe("the run panel keeps the focus where the person pressed, and its lists read (#4063, #4064)", () => {
   const focused = (name: string) =>
     document.activeElement === screen.queryByRole("button", { name });

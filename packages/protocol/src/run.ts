@@ -71,6 +71,12 @@ export const RunState = z.object({
   ports: z.record(z.string(), z.number().int()),
   processes: z.array(RunProcessState),
   error: z.string().nullable(),
+  /** Why the run failed, as a reason the app says in its language; `error` stays the fallback (an older daemon sends neither). */
+  errorKey: z.string().nullable().optional(),
+  errorParams: z
+    .record(z.string(), z.union([z.string(), z.number()]))
+    .nullable()
+    .optional(),
 });
 export type RunState = z.infer<typeof RunState>;
 

@@ -372,7 +372,7 @@ describe("run-ui: Run e Stop no card", () => {
     runHost?.finish("term-1", 3);
     expect(
       await shows(
-        () => panel() !== null && inPanel().queryByText("o setup falhou (código 3)") !== null,
+        () => panel() !== null && inPanel().queryByText("O setup falhou (código 3)") !== null,
       ),
     ).toBe(true);
     expect(inPanel().queryByText("Falhou")).not.toBeNull();
