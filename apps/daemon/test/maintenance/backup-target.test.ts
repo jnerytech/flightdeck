@@ -159,6 +159,34 @@ describe("backupNow with a target that already exists (#3809)", () => {
     });
   });
 
+  test.skipIf(skipLinks)(
+    "force never replaces a link that is the open database's own name",
+    async () => {
+      const dir = tempDir();
+      const real = join(dir, "real.db");
+      const live = join(dir, "flightdeck.db");
+      new Database(real).close();
+      symlinkSync(real, live);
+      const db = new Database(live);
+      const got = await backupNow(db, tempDir(), NOW, live, true).catch((e) => e);
+      db.close();
+      expect({
+        code: (got as { code?: string }).code,
+        link: lstatSync(live).isSymbolicLink(),
+      }).toEqual({
+        code: "target_exists",
+        link: true,
+      });
+    },
+  );
+
+  test("the refusal for a folder does not suggest --force, which would be refused again", async () => {
+    const out = join(tempDir(), "folder");
+    mkdirSync(out);
+    const got = await refusal(out);
+    expect(got?.message.includes("--force")).toBe(false);
+  });
+
   test.skipIf(skipLinks)("force replaces a regular file or a link only, never a pipe", async () => {
     const out = join(tempDir(), "pipe.db");
     Bun.spawnSync(["mkfifo", out]);
