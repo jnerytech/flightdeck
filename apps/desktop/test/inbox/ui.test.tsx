@@ -147,6 +147,26 @@ describe("inbox-ui", () => {
     expect(liveText()).toBe("Notificações restauradas");
   });
 
+  test("a second Clear keeps the first batch in the undo", async () => {
+    const { store } = await setup(ENTRIES);
+    await open();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Limpar" }));
+    });
+    await act(async () => {
+      store.inbox.notify({ title: "Nova", body: "" });
+    });
+    await waitFor(() => expect(store.getState().inbox).toHaveLength(1));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Limpar" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Desfazer" }));
+    });
+    expect(store.getState().inbox).toHaveLength(ENTRIES.length + 1);
+    expect(store.getState().inbox.some((e) => e.id === "3")).toBe(true);
+  });
+
   test("the offer to undo ends when the panel closes", async () => {
     const { store } = await setup(ENTRIES);
     await open();
