@@ -100,6 +100,11 @@ export const NARROW_SHOTS: readonly string[] = [
   "conversas",
   "conversas-cortada",
   "configuracoes-mensagens-longos",
+  // #4269: the Files tab's bad name, discard and stale states and the cut Context carry long text; they wrap at 390.
+  "agente-skills-nome-invalido",
+  "agente-agentes-descartar",
+  "agente-agentes-obsoleto",
+  "agente-contexto-cortado",
   // #4163: the permission screens; a long rule or reason must wrap at 390.
   "sessao-aprovacao-risco-alto",
   "projeto-regras",

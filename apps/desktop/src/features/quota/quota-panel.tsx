@@ -6,7 +6,15 @@ import { cn } from "@/lib/utils";
 import { Grid } from "@/shared/layout/index.ts";
 import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
 import { hasFeature, hostsWith } from "../../lib/version.ts";
-import { HISTORY_HOURS, projectionText, quotaBars, quotaGroups, SHOWN } from "./domain/quota.ts";
+import { useNow } from "../hosts/index.ts";
+import {
+  HISTORY_HOURS,
+  noPlanReason,
+  projectionText,
+  quotaBars,
+  quotaGroups,
+  SHOWN,
+} from "./domain/quota.ts";
 import { QuotaGuard } from "./quota-guard.tsx";
 
 // The native meter, drawn with the state tokens (WebKit/Blink and Gecko pseudo-elements).
@@ -17,17 +25,22 @@ const METER_OK =
 const METER_HOT =
   "[&::-webkit-meter-optimum-value]:rounded-full [&::-webkit-meter-optimum-value]:bg-status-error [&::-moz-meter-bar]:bg-status-error";
 
+const MINUTE_MS = 60_000;
+
 /** One host's card: its name and the two windows with a bar; with costs (phase 8) each window has its projection as a line of text. */
 function HostQuota(
   props: Readonly<{
     store: AppStore;
     quota: AppState["quota"];
+    account: AppState["account"];
     /** The hosts that share the account: the card shows the reading of the first one that has it. */
     hosts: HostView[];
   }>,
 ) {
   const { store } = props;
   const { t } = store.i18n;
+  // The age of a reading moves every minute, with no new reading (#4303).
+  useNow(MINUTE_MS);
   const host = props.hosts.find((h) => props.quota[h.id]) ?? (props.hosts[0] as HostView);
   const names = props.hosts.map((h) => h.name).join(" · ");
   const quota = props.quota[host.id];
@@ -66,13 +79,18 @@ function HostQuota(
     });
   }, [store, host.id, costs, readings, t]);
   const anyReading = bars.some((bar) => bar.hasReading);
+  const noPlan = noPlanReason(quota, props.account[host.id], t);
+  const stale = props.account[host.id]?.stale === true;
   return (
     <section
       aria-label={t("quota.region", { host: names })}
       className="flex flex-col gap-3 rounded-lg border bg-card p-4 text-card-foreground"
     >
       <h3 className="font-semibold">{names}</h3>
-      {!anyReading && <p className="text-muted-foreground text-sm">{t("quota.noReading")}</p>}
+      {anyReading && stale && <p className="text-sm text-status-needs-you">{t("account.stale")}</p>}
+      {!anyReading && (
+        <p className="text-muted-foreground text-sm">{noPlan ?? t("quota.noReading")}</p>
+      )}
       {anyReading &&
         bars.map((bar) => (
           <div
@@ -166,7 +184,13 @@ export const QuotaPanel = memo(function QuotaPanel(props: { store: AppStore }) {
   return (
     <Grid cols={{ base: 1, md: 2, xl: 3 }} gap={4}>
       {quotaGroups(hosts, state.account).map((group) => (
-        <HostQuota key={group.key} store={store} quota={state.quota} hosts={group.hosts} />
+        <HostQuota
+          key={group.key}
+          store={store}
+          quota={state.quota}
+          account={state.account}
+          hosts={group.hosts}
+        />
       ))}
     </Grid>
   );

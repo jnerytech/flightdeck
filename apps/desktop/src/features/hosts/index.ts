@@ -41,5 +41,6 @@ export {
   HostUpdateSlice,
   type HostUpdateView,
 } from "./update-store.ts";
+export { useNow } from "./use-now.ts";
 export { useSwitcherHostId, useSwitcherHosts } from "./use-switcher-hosts.ts";
 export { wireHealth, wireHostUpdate } from "./wire.ts";
