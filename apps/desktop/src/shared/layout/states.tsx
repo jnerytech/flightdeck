@@ -70,7 +70,7 @@ export function ErrorState(
       className="flex flex-col items-start gap-3 rounded-lg border border-destructive/40 p-4 text-destructive"
     >
       <p>{props.message}</p>
-      <Button variant="outline" onClick={props.onRetry}>
+      <Button variant="outline" className="text-foreground" onClick={props.onRetry}>
         {props.retryLabel}
       </Button>
     </div>
