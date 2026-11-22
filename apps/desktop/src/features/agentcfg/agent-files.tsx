@@ -72,7 +72,7 @@ function FileRow(
           current && "bg-accent",
         )}
       >
-        <span className="min-w-0 font-medium [overflow-wrap:anywhere]">{name}</span>
+        <span className="font-medium [overflow-wrap:anywhere]">{name}</span>
         {item.name && item.name !== shownPath(item) && (
           <span className="break-all text-muted-foreground text-xs">{shownPath(item)}</span>
         )}
@@ -134,9 +134,9 @@ export function AgentFiles(
   const [typed, setTyped] = useState("");
   /** The editor's first field, and a count of the files created: each one moves the focus there (#4080). */
   const firstField = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
-  const takeFirst = (el: HTMLInputElement | HTMLTextAreaElement | null) => {
+  const takeFirst = useCallback((el: HTMLInputElement | HTMLTextAreaElement | null) => {
     firstField.current = el;
-  };
+  }, []);
   const [made, setMade] = useState(0);
   useEffect(() => {
     if (made > 0) firstField.current?.focus();
@@ -293,7 +293,7 @@ export function AgentFiles(
             <Form variant="inline" onSubmit={create}>
               <Field
                 label={labels.field}
-                help={refused ? undefined : t(`agent.files.rule.${kind}`)}
+                help={t(`agent.files.rule.${kind}`)}
                 error={refused ? t(`agent.files.refused.${kind}`) : undefined}
               >
                 {(control) => (
