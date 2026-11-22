@@ -14,5 +14,7 @@ export { runAlertCli } from "./alert-cli.ts";
 export type { AlertCliArgs } from "./domain/alert-cli-view.ts";
 export type { AlertList } from "./domain/alerts.ts";
 export type { GhResult, GhRunner } from "./domain/gh-runner.ts";
+export type { GithubCliArgs } from "./domain/github-cli-view.ts";
 export { githubStatus } from "./domain/status.ts";
 export { isExternalComment, TRUSTED_ASSOCIATIONS } from "./domain/trust.ts";
+export { runGithubCli } from "./github-cli.ts";

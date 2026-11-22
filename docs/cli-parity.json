@@ -1,8 +1,8 @@
 {
-  "account.get": {},
-  "account.refresh": {},
-  "account.unwatch": {},
-  "account.watch": {},
+  "account.get": { "cli": "account" },
+  "account.refresh": { "cli": "account" },
+  "account.unwatch": { "cli": "account" },
+  "account.watch": { "cli": "account" },
   "actions.list": {
     "cli": "action"
   },
@@ -194,13 +194,13 @@
   "gate.respond": {
     "appOnly": "a workflow gate is answered by a person, never by a script or a session"
   },
-  "github.issues": {},
+  "github.issues": { "cli": "github" },
   "github.login.cancel": {},
   "github.login.start": {},
   "github.logout": {},
-  "github.repos": {},
+  "github.repos": { "cli": "github" },
   "github.start": {},
-  "github.status": {},
+  "github.status": { "cli": "github" },
   "harness.templates.delete": {},
   "harness.templates.list": {},
   "hello": {},
