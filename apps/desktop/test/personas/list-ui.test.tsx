@@ -81,6 +81,7 @@ describe.each([
       edit: "Edit QA",
       cancel: "Cancel",
       locked: "Finish or cancel the open editor to change the project.",
+      untrusted: "Not trusted",
     },
   ],
   [
@@ -97,6 +98,7 @@ describe.each([
       edit: "Editar QA",
       cancel: "Cancelar",
       locked: "Termine ou cancele o editor aberto para mudar o projeto.",
+      untrusted: "Não confiável",
     },
   ],
 ] as const)("personas list (%s)", (language, words) => {
@@ -133,6 +135,17 @@ describe.each([
     await settle(() => hasText(words.noHost) || hasText(words.empty));
     await press(words.addHost);
     expect(routes).toEqual([{ name: "add-host" }]);
+  });
+
+  // #4215: axe failed the badge's contrast in the light theme: text-destructive on its own tint is under 4.5:1.
+  test("the not-trusted badge uses the error text colour that meets contrast, not the destructive one", async () => {
+    mount(() => ({ personas: [{ ...qa, trusted: false }] }), language);
+    await settle(() => hasText(words.untrusted));
+    const classes = screen.getByText(words.untrusted).className.split(" ");
+    expect([classes.includes("text-status-error"), classes.includes("text-destructive")]).toEqual([
+      true,
+      false,
+    ]);
   });
 
   test("another project's read in flight does not show the last project's cards", async () => {

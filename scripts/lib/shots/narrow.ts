@@ -102,6 +102,11 @@ export const NARROW_SHOTS: readonly string[] = [
   "agente-memoria-nome-erro",
   "projeto-conhecimento-avisos",
   "projeto-conhecimento-criar-erro",
+  // #4215: the Personas list, the editor of one, its field errors and the row with the most buttons; they wrap at 390.
+  "personas",
+  "personas-editor-existing",
+  "personas-editor-errors",
+  "personas-untrusted",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */

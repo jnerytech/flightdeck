@@ -40,6 +40,7 @@ import { hostShots } from "./lib/shots/table-hosts.ts";
 import { issuesShots } from "./lib/shots/table-issues.ts";
 import { knowledgeShots, memoryShots } from "./lib/shots/table-knowledge.ts";
 import { permissionShots } from "./lib/shots/table-permissions.ts";
+import { personaShots } from "./lib/shots/table-personas.ts";
 import { shellShots } from "./lib/shots/table-shell.ts";
 import { snippetShots } from "./lib/shots/table-snippets.ts";
 import { teleportShots } from "./lib/shots/table-teleport.ts";
@@ -93,6 +94,7 @@ function shots(ids: DemoIds): Shot[] {
     ...issuesShots(ids),
     ...devicesShots(ids),
     ...permissionShots(ids),
+    ...personaShots(ids),
     ...snippetShots(ids),
     ...teleportShots(ids),
     ...assistantShots(ids),
