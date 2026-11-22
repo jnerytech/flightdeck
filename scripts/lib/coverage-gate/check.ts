@@ -24,9 +24,10 @@ export const ENTRY_POINTS: ReadonlySet<string> = new Set([
   // the journeys run them against real fake-runtime daemons, not the unit tests.
   "scripts/lib/demo/seed-files.ts",
   "scripts/lib/demo/seed-host.ts",
-  // The print table of scripts/demo-shots.ts, cut into sixteen files (#1589, #3858, #3973, #3987, #4099, #4110, #4163, #4154, #4168, #4194, #4215, #4236): the prints run them in
+  // The print table of scripts/demo-shots.ts, cut into seventeen files (#1589, #3858, #3973, #3987, #4099, #4110, #4163, #4154, #4168, #4194, #4215, #4236, #4244): the prints run them in
   // a real browser against fake-runtime daemons, not the unit tests.
   "scripts/lib/shots/shot.ts",
+  "scripts/lib/shots/table-activity.ts",
   "scripts/lib/shots/table-agent.ts",
   "scripts/lib/shots/table-agent-files.ts",
   "scripts/lib/shots/table-assistant.ts",

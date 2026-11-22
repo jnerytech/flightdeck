@@ -28,6 +28,7 @@ import { narrowSizes, unknownNarrowShots } from "./lib/shots/narrow.ts";
 import { releasesScript } from "./lib/shots/releases.ts";
 import { ALFA, DEMO_CLIENTS, DEMO_ROI, type Shot } from "./lib/shots/shot.ts";
 import { sshScript } from "./lib/shots/ssh-frames.ts";
+import { activityShots } from "./lib/shots/table-activity.ts";
 import { agentShots } from "./lib/shots/table-agent.ts";
 import { contextShots, filesShots } from "./lib/shots/table-agent-files.ts";
 import { assistantShots, demoAssistantPrefs } from "./lib/shots/table-assistant.ts";
@@ -90,6 +91,7 @@ function shots(ids: DemoIds): Shot[] {
     ...boardShots(ids),
     ...changesShots(ids),
     ...agentShots(ids),
+    ...activityShots(ids),
     ...filesShots(ids),
     ...contextShots(ids),
     ...timelineShots(ids),
@@ -221,6 +223,8 @@ function seedStorage(seed: StorageSeed): void {
       "flightdeck.setupToolsDismissed",
       // The wand prints set the assistant up (#4168): not for the next print, which must start with no provider.
       "flightdeck.assistant",
+      // The Activity print with idle sessions turns Show idle on (#4244): the app keeps it, not for the next print.
+      "flightdeck.activityIdle",
     ]) {
       localStorage.removeItem(key);
     }
