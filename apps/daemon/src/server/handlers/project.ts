@@ -3,6 +3,8 @@
  * setup (harness) and its templates, and finding or cloning repositories. The board itself
  * (`board.*`) and the allowed roots (`roots.add`) are separate.
  */
+import { AutoApproveSettings } from "@flightdeck/protocol";
+import { DEFAULT_PROMPT_TEMPLATE } from "../../board/index.ts";
 import type { TemplateMarkdown } from "../../harness/index.ts";
 import { FlightdeckError, featureOff, resolveAllowedCwd, rootNames } from "../../kernel/index.ts";
 import { detectProvider } from "../../pr-hosts/index.ts";
@@ -21,6 +23,9 @@ async function markdownOf(
   const templates = server.needIn("harness", "templates");
   return templates.files(template);
 }
+
+/** The model the automatic approval starts with: choosing another one is near only (#3825). */
+const DEFAULT_MODEL = AutoApproveSettings.parse({}).model;
 
 /**
  * Whether a change makes the automatic approval approve more than it did: on where it was off, or
@@ -51,7 +56,14 @@ export const projectHandlers = {
       requireVaultTransport(ws.data.origin, "project.add", server.opts.log);
     // A setup script runs with `sh -c` on the host when a card starts: setting one is near only, as
     // trusting a run config is. Anything else about a project answers anywhere (#3807).
-    if (payload.setupScript?.trim())
+    // The prompt template goes into every card's first prompt, and the model decides what the
+    // automatic approval lets through: a custom one is near only (#3825).
+    if (
+      payload.setupScript?.trim() ||
+      (payload.promptTemplate !== undefined &&
+        payload.promptTemplate !== DEFAULT_PROMPT_TEMPLATE) ||
+      (payload.autoApprove?.model !== undefined && payload.autoApprove.model !== DEFAULT_MODEL)
+    )
       requireVaultTransport(ws.data.origin, "project.add", server.opts.log);
     const board = server.need("board");
     return await board.forWire(await board.addProject(payload));
@@ -60,15 +72,20 @@ export const projectHandlers = {
     const { projectId, ...patch } = payload;
     // Turning the automatic approval on, or letting it approve low risk without the AI, is near only;
     // turning it off is not (#3815).
-    if (patch.autoApprove) {
-      const stored = server.need("board").getProject(projectId).autoApprove;
-      if (loosensAutoApprove(stored, patch.autoApprove))
-        requireVaultTransport(ws.data.origin, "project.update", server.opts.log);
-    }
-    // Setting a setup script is near only; clearing it (null or blank) is not (#3807).
-    if (patch.setupScript?.trim())
-      requireVaultTransport(ws.data.origin, "project.update", server.opts.log);
     const board = server.need("board");
+    const stored = board.getProject(projectId);
+    const model = patch.autoApprove?.model;
+    // A setup script is near only to set (clearing it, null or blank, is not, #3807). A prompt template
+    // or an approving model that differs from the stored one is near only too: the app and the CLI send
+    // the stored values back with a change, and a patch that only turns the approval off carries the
+    // default model, which is no change worth refusing (#3825).
+    if (
+      (patch.autoApprove && loosensAutoApprove(stored.autoApprove, patch.autoApprove)) ||
+      patch.setupScript?.trim() ||
+      (patch.promptTemplate !== undefined && patch.promptTemplate !== stored.promptTemplate) ||
+      (model !== undefined && model !== stored.autoApprove.model && model !== DEFAULT_MODEL)
+    )
+      requireVaultTransport(ws.data.origin, "project.update", server.opts.log);
     return await board.forWire(board.updateProject(projectId, patch));
   },
   "project.detectProvider": async (payload, { server }) => {
