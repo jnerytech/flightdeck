@@ -169,6 +169,15 @@ describe("shots-wire: a held, a replied, a sequenced and a trimmed command (#415
     expect([reply.data.path, left >= 25_000 && left < 27_000]).toEqual(["a.ts", true]);
   });
 
+  test("a reply with nothing to say is an answer with no data, not a crash (#4229)", () => {
+    const wire = wireRewriter([{ command: "changes.revert", reply: undefined }]);
+    expect(JSON.parse(wire.answer?.(ask("r1", "changes.revert")) ?? "{}")).toEqual({
+      type: "ack",
+      id: "r1",
+      ok: true,
+    });
+  });
+
   test("a rejected command is answered in the page with a refusal that carries the rule's text, and a stalled one is held back (#4203)", () => {
     const wire = wireRewriter([
       { command: "permission.respond", reject: "not open here" },
