@@ -369,7 +369,7 @@ describe("linha-do-tempo-ui", () => {
     sheet().queryByRole("list", { name: "Turnos" })?.closest("[data-slot='timeline-scroll']") ??
     null;
 
-  test("o aviso de turno em andamento fica fora da rolagem, e a lista abre no turno mais novo (#4037)", async () => {
+  test("the busy notice stays out of the scroll area, and the list opens at the newest turn (#4037)", async () => {
     const heights = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollHeight");
     // Layout does not exist under happy-dom: the list says it is 480 px tall.
     Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
@@ -393,7 +393,7 @@ describe("linha-do-tempo-ui", () => {
     }
   });
 
-  test("o aviso da volta fica fora da rolagem, com o Desfazer junto (#4037)", async () => {
+  test("the rewind notice and its Undo button stay out of the scroll area (#4037)", async () => {
     await setup();
     await openTimeline();
     await click("Voltar arquivos até aqui (turno 2)");
@@ -414,7 +414,7 @@ describe("linha-do-tempo-ui", () => {
   // #4038: a long prompt can be read whole, and a turn without one says so.
   const LONG = "primeira linha\nsegunda linha\nterceira linha\nquarta linha\nquinta linha";
 
-  test("um prompt longo abre e fecha com Mostrar mais e Mostrar menos; um curto não tem o botão (#4038)", async () => {
+  test("a long prompt opens and closes with Show more and Show less, and a short one has no button (#4038)", async () => {
     const { snapshots, repo, claudeSessionId } = await setup();
     const take = (kind: "before" | "after", prompt?: string) =>
       snapshots?.take({ cwd: repo, claudeSessionId, kind, ...(prompt ? { prompt } : {}) });
@@ -441,12 +441,26 @@ describe("linha-do-tempo-ui", () => {
     expect(within(turn("arrume o README")).queryByRole("button", { name: /Mostrar/ })).toBeNull();
   });
 
-  test("um turno sem prompt registrado diz isso, em vez de uma linha vazia (#4038)", async () => {
+  test("a turn without a recorded prompt says so, instead of an empty line (#4038)", async () => {
     const { snapshots, repo, claudeSessionId } = await setup();
     await snapshots?.take({ cwd: repo, claudeSessionId, kind: "before" });
     await snapshots?.take({ cwd: repo, claudeSessionId, kind: "after" });
     await openTimeline();
     expect(sheet().queryByText("(sem prompt registrado)")).not.toBeNull();
+  });
+
+  test("a prompt's leading blank lines are not rendered, so they cannot fill the clamp (#4038)", async () => {
+    const { snapshots, repo, claudeSessionId } = await setup();
+    await snapshots?.take({
+      cwd: repo,
+      claudeSessionId,
+      kind: "before",
+      prompt: "\n\n\ncorrija o bug",
+    });
+    await snapshots?.take({ cwd: repo, claudeSessionId, kind: "after" });
+    await openTimeline();
+    const text = sheet().queryByText(/corrija o bug/);
+    expect(text?.textContent).toBe("corrija o bug");
   });
 
   test("os turnos: sem fim registrado, o último está em andamento e os outros sem registro; os de segurança não contam", () => {
