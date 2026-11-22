@@ -455,7 +455,7 @@ describe("activity-ui: the Activity board (issue #151)", () => {
       (clear as HTMLElement).focus();
       fireEvent.click(clear as HTMLElement);
     });
-    expect(document.activeElement === field("searchbox", "Search sessions")).toBe(true);
+    expect(document.activeElement === field("searchbox", "Search sessions")).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
   });
 
   test("Clear filters keeps the idle switch, which is a view choice", async () => {

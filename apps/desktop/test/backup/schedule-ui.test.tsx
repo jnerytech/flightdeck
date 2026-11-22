@@ -217,7 +217,7 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
     open({ language });
     await click(language === "en" ? "Choose folder" : "Escolher pasta");
     await click(language === "en" ? "Every day" : "Todo dia");
-    expect(screen.queryByRole("button", { name }) !== null).toBe(true);
+    expect(screen.queryByRole("button", { name })).not.toBeNull();
   });
 
   test("a schedule that is on says when the next backup is due, from the last run and the cadence", async () => {

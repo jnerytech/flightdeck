@@ -290,7 +290,7 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
       expect(alert()).toBeNull();
       await press(approve);
       expect(await settleMaybe(() => alert()?.textContent === words)).toBe(true);
-      expect(alert()?.closest("li") === panelButton(approve)?.closest("li")).toBe(true);
+      expect(alert()?.closest("li") === panelButton(approve)?.closest("li")).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
       expect(panelButton(approve)?.hasAttribute("disabled")).toBe(false);
       expect(await settleMaybe(() => document.activeElement === panelButton(approve))).toBe(true);
       await press(deny);
