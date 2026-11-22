@@ -65,6 +65,10 @@ export const account = {
         "Cartões novos esperam a partir de {pct}%. Este host não deixa mudar pelo app: atualize o flightdeckd.",
       readOnlyOff:
         "A trava está desligada. Este host não deixa mudar pelo app: atualize o flightdeckd.",
+      readOnlyFor:
+        "{host}: Cartões novos esperam a partir de {pct}%. Este host não deixa mudar pelo app: atualize o flightdeckd.",
+      readOnlyOffFor:
+        "{host}: A trava está desligada. Este host não deixa mudar pelo app: atualize o flightdeckd.",
     },
     popover: {
       label: "Cota do plano dos hosts",

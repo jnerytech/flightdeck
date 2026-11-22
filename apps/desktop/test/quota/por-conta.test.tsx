@@ -4,9 +4,10 @@ import { registerDom } from "../dom.ts";
 import { waiter } from "../wait.ts";
 
 registerDom();
-const { cleanup, render, screen } = await import("@testing-library/react");
+const { cleanup, render, screen, within } = await import("@testing-library/react");
 const { quotaGroups } = await import("../../src/features/quota/domain/quota.ts");
 const { QuotaPanel } = await import("../../src/features/quota/quota-panel.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
 
 afterEach(cleanup);
@@ -57,14 +58,22 @@ describe("cota-por-conta: one quota card per Claude account (issue #111)", () =>
 });
 
 /** The state the panel reads, with the readings of `a` only. */
-function fakeStore(accounts: Record<string, AccountState>) {
+function fakeStore(
+  accounts: Record<string, AccountState>,
+  over: {
+    quota?: Record<string, QuotaState>;
+    features?: string[];
+    /** The features of one host, when they differ from `features`. */
+    hostFeatures?: Record<string, string[]>;
+  } = {},
+) {
   const window = { window: "five_hour", utilization: 0.14, resetsAt: null, status: "allowed" };
-  const quota: Record<string, QuotaState> = {
+  const quota: Record<string, QuotaState> = over.quota ?? {
     a: { windows: [window], pauseAt: 0.9, readAt: new Date().toISOString() } as never,
   };
   const hosts = ["a", "b", "c"].map((id) => ({
     ...host(id),
-    hostInfo: { features: ["quota", "account"] },
+    hostInfo: { features: over.hostFeatures?.[id] ?? over.features ?? ["quota", "account"] },
   }));
   const state = { hosts, quota, account: accounts };
   const watched: string[] = [];
@@ -94,6 +103,86 @@ describe("cota-por-conta: the panel", () => {
     expect(screen.queryAllByRole("region")).toHaveLength(1);
     expect(screen.getByRole("region", { name: "Quota of a · b · c" })).toBeTruthy();
     expect(watched.sort()).toEqual(["a", "b", "c"]);
+  });
+
+  // #4301: the guard is each host's own, so a card of hosts on one account shows each one named.
+  const reading = (utilization: number, pauseAt: number): QuotaState =>
+    ({
+      windows: [{ window: "five_hour", utilization, resetsAt: null, status: "allowed" }],
+      pauseAt,
+      readAt: new Date().toISOString(),
+    }) as never;
+  const sharedCard = (quota: Record<string, QuotaState>) => {
+    const same = account();
+    const { store } = fakeStore(
+      { a: same, b: same },
+      { quota, features: ["quota", "account", "quotaPause"] },
+    );
+    render(
+      <TContext.Provider value={translator("en")}>
+        <QuotaPanel store={store} />
+      </TContext.Provider>,
+    );
+    return screen.getByRole("region", { name: "Quota of a · b" });
+  };
+  const guards = (card: HTMLElement) =>
+    within(card)
+      .queryAllByRole("combobox")
+      .map((select) => [
+        select.getAttribute("aria-label"),
+        (select as HTMLSelectElement).value,
+        card.querySelector(`label[for="${select.id}"]`)?.textContent ?? "",
+      ]);
+
+  test("a hot card of two hosts shows the guard of each, named, with its own value", async () => {
+    const card = sharedCard({ a: reading(0.6, 0.5), b: reading(0.6, 0.9) });
+    expect(guards(card).map(([name, value]) => [name, value])).toEqual([
+      ["New cards wait from, on a", "0.5"],
+      ["New cards wait from, on b", "0.9"],
+    ]);
+    expect(guards(card).map(([, , label]) => label)).toEqual([
+      "New cards wait from, on a",
+      "New cards wait from, on b",
+    ]);
+  });
+
+  test("a host that cannot change its guard from the app is named too, in the card", async () => {
+    const same = account();
+    const { store } = fakeStore(
+      { a: same, b: same },
+      {
+        quota: { a: reading(0.6, 0.5), b: reading(0.6, 0.9) },
+        features: ["quota", "account", "quotaPause"],
+        hostFeatures: { b: ["quota", "account"] },
+      },
+    );
+    render(
+      <TContext.Provider value={translator("en")}>
+        <QuotaPanel store={store} />
+      </TContext.Provider>,
+    );
+    const card = screen.getByRole("region", { name: "Quota of a · b" });
+    expect(card.textContent?.includes("b: New cards wait from 90%")).toBe(true);
+  });
+
+  test("a card where only one host has a reading shows its guard without the other's name", async () => {
+    const card = sharedCard({ a: reading(0.6, 0.5) });
+    expect(guards(card).map(([, , label]) => label)).toEqual(["New cards wait from"]);
+  });
+
+  test("the hot notice names each hot host with its own guard, not one percent for both", async () => {
+    const card = sharedCard({ a: reading(0.6, 0.5), b: reading(0.6, 0.9) });
+    const text = card.textContent ?? "";
+    expect(text.includes("a: over 50%")).toBe(true);
+    expect(text.includes("a · b: over")).toBe(false);
+    expect(text.includes("b: over")).toBe(false);
+  });
+
+  test("when both hosts are hot, each notice has its own percent", async () => {
+    const card = sharedCard({ a: reading(0.95, 0.5), b: reading(0.95, 0.9) });
+    const text = card.textContent ?? "";
+    expect(text.includes("a: over 50%")).toBe(true);
+    expect(text.includes("b: over 90%")).toBe(true);
   });
 
   test("hosts on different accounts keep a card each", async () => {

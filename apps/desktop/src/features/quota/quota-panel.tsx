@@ -32,7 +32,13 @@ function HostQuota(
   const names = props.hosts.map((h) => h.name).join(" · ");
   const quota = props.quota[host.id];
   const bars = quotaBars(quota, store.now(), (iso) => store.formatTime(iso), t);
-  const pauseAt = Math.round((quota?.pauseAt ?? 0) * 100);
+  // Each host decides on its own whether new cards wait, so the notice speaks for the hosts that are over their guard.
+  const guarded = props.hosts.filter((h) => props.quota[h.id]);
+  const hotHosts = props.hosts.filter((h) =>
+    quotaBars(props.quota[h.id], store.now(), (iso) => store.formatTime(iso), t).some(
+      (bar) => bar.hot,
+    ),
+  );
   const costs = hasFeature(host.hostInfo?.features, "costs", false);
   const [projections, setProjections] = useState<Record<string, string>>({});
   // A new reading may move the projection.
@@ -105,12 +111,25 @@ function HostQuota(
             )}
           </div>
         ))}
-      {bars.some((bar) => bar.hot) && (
+      {hotHosts.length > 0 && (
         <>
-          <p className="text-sm text-status-needs-you">
-            {t("quota.hotNotice", { host: names, pct: pauseAt })}
-          </p>
-          <QuotaGuard store={store} host={host} pauseAt={quota?.pauseAt ?? null} />
+          {hotHosts.map((h) => (
+            <p key={h.id} className="text-sm text-status-needs-you">
+              {t("quota.hotNotice", {
+                host: h.name,
+                pct: Math.round((props.quota[h.id]?.pauseAt ?? 0) * 100),
+              })}
+            </p>
+          ))}
+          {guarded.map((h) => (
+            <QuotaGuard
+              key={h.id}
+              store={store}
+              host={h}
+              pauseAt={props.quota[h.id]?.pauseAt ?? null}
+              named={guarded.length > 1}
+            />
+          ))}
           <Button
             variant="outline"
             size="sm"

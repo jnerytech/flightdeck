@@ -66,6 +66,10 @@ export const account = {
       readOnly:
         "New cards wait from {pct}%. This host cannot change it from the app: update flightdeckd.",
       readOnlyOff: "The guard is off. This host cannot change it from the app: update flightdeckd.",
+      readOnlyFor:
+        "{host}: New cards wait from {pct}%. This host cannot change it from the app: update flightdeckd.",
+      readOnlyOffFor:
+        "{host}: The guard is off. This host cannot change it from the app: update flightdeckd.",
     },
     popover: {
       label: "Plan quota of the hosts",
