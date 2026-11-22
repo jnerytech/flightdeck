@@ -164,3 +164,17 @@ describe("clients: a change to the month limit says what happened and keeps the 
     expect(line).toBe("Este mês: US$ 0,53 de US$ 500,00 (menos de 1%)");
   });
 });
+
+describe("clients: each client's month limit form has a name of its own (#3875)", () => {
+  test("two clients have two budget forms, told apart by the client's name", async () => {
+    await open({
+      ...acme([]),
+      clients: [
+        ...acme([]).clients,
+        { id: "beta", name: "Beta", color: "green", rules: [], defaults: { vaultScope: false } },
+      ],
+    });
+    expect(screen.queryByRole("form", { name: "Limite mensal de Acme" })).not.toBeNull();
+    expect(screen.queryByRole("form", { name: "Limite mensal de Beta" })).not.toBeNull();
+  });
+});

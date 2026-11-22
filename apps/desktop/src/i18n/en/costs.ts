@@ -21,6 +21,8 @@ export const costs = {
       label: "Hourly rate for this client (US$)",
       help: "Used for every project of the client that has no rate of its own. Empty means none.",
       save: "Save the rate",
+      saved: "Hourly rate saved.",
+      cleared: "Hourly rate removed.",
       invalid: "The rate must be a number from 0 to 1,000,000.",
     },
     settingsPanel: {

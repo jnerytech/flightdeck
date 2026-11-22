@@ -61,6 +61,36 @@ for (const [lang, t] of [
       expect(store.roi.data().clientRates[clientId]).toBeUndefined();
     });
 
+    test("Save is off with its reason until the rate differs, and a save says so (#3875)", async () => {
+      await clientsPage(lang, { roi: true });
+      await settle(() => screen.queryByLabelText(t.roiUi.clientRate.label) !== null);
+      const save = () =>
+        screen.getByRole("button", { name: t.roiUi.clientRate.save }) as HTMLButtonElement;
+      expect(save().disabled).toBe(true);
+      expect(screen.queryByText(t.clients.unchanged)).not.toBeNull();
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText(t.roiUi.clientRate.label), {
+          target: { value: "35" },
+        });
+      });
+      expect(save().disabled).toBe(false);
+      await act(async () => {
+        fireEvent.click(save());
+      });
+      expect(screen.queryByText(t.roiUi.clientRate.saved)).not.toBeNull();
+      expect(save().disabled).toBe(true);
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText(t.roiUi.clientRate.label), {
+          target: { value: "" },
+        });
+      });
+      expect(screen.queryByText(t.roiUi.clientRate.saved)).toBeNull();
+      await act(async () => {
+        fireEvent.click(save());
+      });
+      expect(screen.queryByText(t.roiUi.clientRate.cleared)).not.toBeNull();
+    });
+
     test("a text that is not a number is refused and nothing is saved", async () => {
       const { store, clientId } = await clientsPage(lang, { roi: true });
       await settle(() => screen.queryByLabelText(t.roiUi.clientRate.label) !== null);
