@@ -203,10 +203,12 @@ export function agentShots(ids: DemoIds): Shot[] {
       prepare: async (page) => {
         await openTimeline(page);
         await page
-          .getByRole("button", { name: /^(Ver arquivos do turno|Show files of turn) 1$/ })
+          .getByRole("button", { name: /^(Ver arquivos do turno|Show files of turn) \d+$/ })
+          .first()
           .click();
         await page
-          .getByRole("button", { name: /^(Esconder arquivos do turno|Hide files of turn) 1$/ })
+          .getByRole("button", { name: /^(Esconder arquivos do turno|Hide files of turn) \d+$/ })
+          .first()
           .waitFor({ timeout: 8000 });
         await page.mouse.move(1000, 700);
         await page.waitForTimeout(400);
