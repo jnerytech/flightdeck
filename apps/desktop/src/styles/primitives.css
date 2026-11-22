@@ -56,7 +56,7 @@
     margin-top: auto;
     border-top-width: 1px;
     background-color: var(--background);
-    /* Room under the stack for a button's reason, which hangs below it. */
+    /* The sheet's own bottom padding, which the footer's bleed to the edge keeps (#1249). */
     padding: 1rem 1.5rem 1.5rem;
   }
   /* #1271: a Form's own buttons (FormActions) are the sheet's footer too: they rest on its bottom
@@ -100,13 +100,29 @@
   outline-offset: -2px;
 }
 
-/* #1063: a dialog's footer puts its last button at the dialog's right edge. Hung from the button's
-   left, the reason grew past that edge and was cut; here it hangs from the button's right and grows
-   inward. Only the last one: a button first in the row (the snippet dialog's Run) is at the left
-   edge and keeps hanging from its left. On a phone the footer is a column of full-width buttons. */
-[data-slot="dialog-footer"] > .action-button-box:last-child .action-reason {
-  left: auto;
-  right: 0;
+/* #1063, #4111: a dialog's footer puts its last button at the dialog's right edge. A reason hung
+   out of the flow under it was cut by the dialog's bottom edge once it ran past a line (the Fork
+   dialog's two sentences). In a footer the reason is a line of the footer itself: the button's box
+   gives way (display: contents), the footer wraps, and the reason takes the row under the buttons,
+   right-aligned under the last one. Each reason follows the buttons, in their order. */
+[data-slot="dialog-footer"] {
+  flex-wrap: wrap;
+}
+[data-slot="dialog-footer"] > .action-button-box:has(> .action-reason) {
+  display: contents;
+}
+/* The box gave way, so the button is the footer's own item: it keeps its width in a row, and a
+   column's stretch still makes it full width. */
+[data-slot="dialog-footer"] > .action-button-box:has(> .action-reason) > button {
+  flex: none;
+}
+[data-slot="dialog-footer"] > .action-button-box:has(> .action-reason) > .action-reason {
+  position: static;
+  order: 1;
+  flex-basis: 100%;
+  width: auto;
+  max-width: none;
+  margin-top: 0;
   text-align: right;
 }
 
