@@ -41,6 +41,9 @@ export const reviewHandlers = {
       .needIn("checkpoints", "rewinder")
       .undo(claudeSessionId, confirm === true, guard);
   },
+  "rewind.undoPreview": async (payload, { server }) => {
+    return await server.needIn("checkpoints", "rewinder").undoPreview(payload.claudeSessionId);
+  },
   "history.get": async (payload, { server }) => {
     const { claudeSessionId, cursor, limit, tail } = payload;
     return await server.need("history").get(claudeSessionId, cursor, limit, tail);

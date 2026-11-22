@@ -376,6 +376,7 @@
   "rewind.apply": { "cli": "rewind" },
   "rewind.preview": { "cli": "rewind" },
   "rewind.undo": { "cli": "rewind" },
+  "rewind.undoPreview": { "cli": "rewind" },
   "roi.summary": { "cli": "roi" },
   "roots.add": {
     "appOnly": "with a device enrolled the host asks for a signed proof of the person, which a terminal cannot give (#3453); an allowed folder is also what every other path check trusts, so a typed flag must not add one"

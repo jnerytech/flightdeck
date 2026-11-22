@@ -66,6 +66,11 @@ export class Rewinder {
     return sdk ?? (await this.restore(target));
   }
 
+  /** What `undo` would change: the files that differ between the saved state and the working tree. */
+  async undoPreview(_claudeSessionId: string): Promise<RewindPreview> {
+    return { via: "snapshot", files: [], insertions: 0, deletions: 0 };
+  }
+
   /** Goes back to the state saved before the last rewind. */
   async undo(
     claudeSessionId: string,

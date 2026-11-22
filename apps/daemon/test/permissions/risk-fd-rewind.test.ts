@@ -39,6 +39,8 @@ describe("risk rules: a session rewinding its own checkout through flightdeckd f
     expect(
       notHigh([
         "fd rewind preview s1 2",
+        "fd rewind undo s1 --preview",
+        "fd --json rewind undo s1 --preview",
         "fd snapshots list s1",
         "fd snapshots files s1 2",
         "fd trace get s1",
