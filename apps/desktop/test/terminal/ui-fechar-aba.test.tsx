@@ -14,6 +14,7 @@ const {
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/app/App.tsx");
+const { basename } = await import("../../src/shared/lib/index.ts");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
@@ -43,7 +44,7 @@ async function setup() {
 /** The close button of the terminal's tab, named after the terminal's folder (issue #3951). */
 const closeButton = (store: InstanceType<typeof AppStore>, hostId: string, terminalId: string) => {
   const cwd = store.getState().terminalCwds[`${hostId}/${terminalId}`] ?? "";
-  return screen.queryByLabelText(`Fechar aba ${cwd.split("/").findLast(Boolean)}`);
+  return screen.queryByLabelText(`Fechar aba ${basename(cwd)}`);
 };
 
 const dialog = () => screen.queryByRole("alertdialog");

@@ -115,7 +115,7 @@ export class TerminalsSlice {
       close: (terminalId, kill) => request("terminal.close", { terminalId, kill }),
       list: async () => {
         const { terminals } = await request("terminal.list", {});
-        this.core.setCwds(cwdsOf(hostId, terminals));
+        this.remember(hostId, terminals);
         return terminals;
       },
     };
@@ -127,7 +127,7 @@ export class TerminalsSlice {
     if (!folder) return null;
     const opened = await this.core.open(hostId, { cwd: folder, cols: 80, rows: 24 });
     if (!opened) return null;
-    this.core.setCwds(cwdsOf(hostId, [opened]));
+    this.remember(hostId, [opened]);
     this.core.showTab(hostId, opened.terminalId);
     return opened.terminalId;
   }
@@ -148,9 +148,16 @@ export class TerminalsSlice {
       },
     });
     if (!opened) return null;
-    this.core.setCwds(cwdsOf(hostId, [opened]));
+    this.remember(hostId, [opened]);
     this.core.showTab(hostId, opened.terminalId);
     return opened.terminalId;
+  }
+
+  /** Remembers the folders of `terminals`; the state is touched only when one is new or changed. */
+  private remember(hostId: string, terminals: TerminalInfo[]): void {
+    const known = this.core.cwds();
+    const found = cwdsOf(hostId, terminals);
+    if (Object.entries(found).some(([key, cwd]) => known[key] !== cwd)) this.core.setCwds(found);
   }
 
   /** Whether the host opens terminals inside the app (phase 14) right now. */
