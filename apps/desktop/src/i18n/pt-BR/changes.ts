@@ -7,6 +7,7 @@ export const changes = {
     split: "Lado a lado",
     unifiedLabel: "Diff unificado",
     splitLabel: "Diff lado a lado",
+    fileTable: "Alterações em {path}",
   },
   files: {
     tab: "Arquivos",

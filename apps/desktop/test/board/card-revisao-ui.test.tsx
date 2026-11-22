@@ -326,7 +326,8 @@ describe("card-revisao-ui", () => {
     // The open ones come selected; the resolved one is picked by hand.
     const box = (author: string) =>
       screen.getByRole("checkbox", {
-        name: `Selecionar o comentário de ${author}`,
+        // The name now ends with the place of the comment (#3892): the author picks it.
+        name: new RegExp(`^Selecionar o comentário de ${author} em `),
       }) as HTMLInputElement;
     expect([
       box("alice").checked,
