@@ -78,7 +78,7 @@ describe("backup-schedule-focus-ui: the passphrase form moves the focus and anno
     await press("Choose folder");
     await choose("Every day");
     await type(PASS);
-    await press("Use it");
+    await press("Set passphrase");
     await waitFor(() => store.backupScheduler.hasPassphrase || undefined, "the passphrase");
     const line = screen.queryByText("Passphrase set until you close Flightdeck.");
     // An <output> is a status by itself: it carries no role attribute.
@@ -106,7 +106,7 @@ describe("backup-schedule-focus-ui: the passphrase form moves the focus and anno
     await press("Choose folder");
     await choose("Every day");
     await type(PASS);
-    await press("Use it");
+    await press("Set passphrase");
     await waitFor(() => store.backupScheduler.hasPassphrase || undefined, "the passphrase");
     await choose("Every week");
     expect([passphraseField() === null, document.activeElement === radio("Every week")]).toEqual([

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { loadSchedule } from "../../src/features/backup/backup-schedule.ts";
+import { loadSchedule, saveSchedule } from "../../src/features/backup/backup-schedule.ts";
+import { formatDateTime } from "../../src/i18n/format.ts";
 import { registerDom } from "../dom.ts";
 import { memoryPlatform, waitFor } from "../fixtures.ts";
 
@@ -19,8 +20,18 @@ afterEach(cleanup);
 
 const PASS = "correct horse battery";
 
-function open(options: { desktop?: boolean; language?: string; failWrite?: boolean } = {}) {
+function open(
+  options: {
+    desktop?: boolean;
+    language?: string;
+    failWrite?: boolean;
+    /** A schedule saved before the app starts, as an earlier run left it. */
+    saved?: Partial<ReturnType<typeof loadSchedule>>;
+  } = {},
+) {
   const { platform } = memoryPlatform(false, options.language ?? "en");
+  if (options.saved)
+    saveSchedule(platform.storage, { ...loadSchedule(platform.storage), ...options.saved });
   const files = new Map<string, string>();
   if (options.desktop !== false) {
     platform.backupFolder = {
@@ -137,7 +148,7 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
     await click("Choose folder");
     await click("Every day");
     await type("Passphrase for this session", "short");
-    await click("Use it");
+    await click("Set passphrase");
     const shortKept = store.backupScheduler.hasPassphrase;
     await type("Passphrase for this session", PASS);
     await click("Use it");
@@ -195,6 +206,47 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
     await type("Passphrase for this session", PASS);
     await click("Use it");
     expect(said("could not be saved")).toBe(true);
+  });
+
+  // #4000: the button said "Use it", a name that means nothing in a list of buttons; and a schedule
+  // that is on said when it last ran, never when it runs next or why it cannot.
+  test.each([
+    ["en", "Set passphrase"],
+    ["pt-BR", "Definir frase-senha"],
+  ])("the passphrase form's button is named by what it does (%s)", async (language, name) => {
+    open({ language });
+    await click(language === "en" ? "Choose folder" : "Escolher pasta");
+    await click(language === "en" ? "Every day" : "Todo dia");
+    expect(screen.queryByRole("button", { name }) !== null).toBe(true);
+  });
+
+  test("a schedule that is on says when the next backup is due, from the last run and the cadence", async () => {
+    const last = Date.now() - 3 * 3_600_000;
+    const { store } = open({ saved: { cadence: "daily", folder: "/backups", lastRunAt: last } });
+    await click("Choose folder");
+    await type("Passphrase for this session", PASS);
+    await click("Set passphrase");
+    await waitFor(() => store.backupScheduler.hasPassphrase || undefined, "the passphrase");
+    const due = formatDateTime(new Date(last + 24 * 3_600_000).toISOString(), "en");
+    expect(shown(`Next backup: ${due}`)).toBe(true);
+  });
+
+  test("a schedule that cannot run says what it waits for, not a time", async () => {
+    open({ saved: { cadence: "daily", lastRunAt: Date.now() - 3_600_000 } });
+    const noFolder = shown("Next backup: waiting for a folder.");
+    await click("Choose folder");
+    expect([noFolder, shown("Next backup: waiting for the passphrase.")]).toEqual([true, true]);
+  });
+
+  test("a schedule that is off shows no next-backup line", () => {
+    open();
+    expect(shown("Next backup")).toBe(false);
+  });
+
+  test("the next-backup line is in pt-BR too", async () => {
+    open({ language: "pt-BR", saved: { cadence: "weekly", lastRunAt: Date.now() - 3_600_000 } });
+    await click("Escolher pasta");
+    expect(shown("Próximo backup: aguardando a frase-senha.")).toBe(true);
   });
 
   test("the texts are in pt-BR too", () => {
