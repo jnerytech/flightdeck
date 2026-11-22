@@ -27,6 +27,11 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
+interface SavedTarget {
+  name: string;
+  options?: { forwardAgent?: boolean };
+}
+
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 
 /**
@@ -174,7 +179,11 @@ describe("saving an ssh target with ForwardAgent needs a near connection (#3815)
       }),
     );
     expect([farOn, farPlain, farOff, nearOn]).toEqual(["transport_refused", null, null, null]);
-    expect(((await far.data("ssh.list", {})) as { targets: unknown[] }).targets).toHaveLength(2);
+    const saved = ((await far.data("ssh.list", {})) as { targets: SavedTarget[] }).targets;
+    expect(saved.filter((t) => t.options?.forwardAgent === true).map((t) => t.name)).toEqual([
+      "vps2",
+    ]);
+    expect(saved).toHaveLength(3);
   });
 });
 
