@@ -40,7 +40,7 @@ export const shortcuts = {
     dismiss: "Fechar o pedido",
     paletteRecent: "Abrir uma das entradas recentes",
     paletteActions: "Mostrar as ações da entrada escolhida",
-    paletteHistory: "Buscar no histórico o que você digitou, quando nenhuma entrada está escolhida",
+    paletteHistory: "Buscar no histórico (nenhuma entrada escolhida)",
     boardMove: "Passar de um card a outro no board",
     boardStart: "Iniciar o card em foco",
     boardActions: "Mostrar as ações do card em foco",

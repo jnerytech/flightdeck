@@ -53,6 +53,35 @@ describe("atalhos-ui: the ? sheet and the go-to chords", () => {
     store.dispose();
   });
 
+  test("an Escape another handler already took (a working session's interrupt) does not close it", async () => {
+    const { store, press } = await mount();
+    await press("?");
+    const taken = (e: Event) => e.preventDefault();
+    document.body.addEventListener("keydown", taken);
+    await press("Escape");
+    document.body.removeEventListener("keydown", taken);
+    expect(sheet()).not.toBeNull();
+    store.dispose();
+  });
+
+  test("closing it does not take the focus from a field the person moved to meanwhile", async () => {
+    const { store, press } = await mount();
+    const card = document.createElement("button");
+    const field = document.createElement("input");
+    document.body.append(card, field);
+    card.focus();
+    await press("?", card);
+    field.focus();
+    await press("Escape", field);
+    expect({ closed: sheet() === null, onField: document.activeElement === field }).toEqual({
+      closed: true,
+      onField: true,
+    });
+    card.remove();
+    field.remove();
+    store.dispose();
+  });
+
   test("the close button closes it", async () => {
     const { store, press } = await mount();
     await press("?");
@@ -106,17 +135,17 @@ describe("atalhos-ui: the ? sheet and the go-to chords", () => {
     const { store, press } = await mount();
     await press("?");
     const open = within(sheet() as HTMLElement);
-    const row = (label: string) => open.getByText(label).closest("div")?.textContent;
+    const row = (label: string) => open.getByText(label).closest(".shortcut-row")?.textContent;
     expect({
       group: open.queryByRole("heading", { name: "Palette" }) !== null,
       recent: row("Open one of the recent entries"),
       actions: row("Show the chosen entry's actions"),
-      history: row("Search the history with what you typed, when no entry is chosen"),
+      history: row("Search the history (no entry chosen)"),
     }).toEqual({
       group: true,
       recent: "Open one of the recent entriesAlt+1…6",
       actions: "Show the chosen entry's actionsTab",
-      history: "Search the history with what you typed, when no entry is chosen" + "Enter",
+      history: "Search the history (no entry chosen)Enter",
     });
     store.dispose();
   });

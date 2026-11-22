@@ -29,14 +29,18 @@ export function ShortcutsSheet(
   close.current = props.onClose;
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
-    ref.current?.focus();
+    const dialog = ref.current;
+    dialog?.focus();
     const onEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close.current();
+      // An Escape a screen already used (a session's interrupt) is not meant for the sheet.
+      if (e.key === "Escape" && !e.defaultPrevented && !e.isComposing) close.current();
     };
     document.addEventListener("keydown", onEscape);
     return () => {
       document.removeEventListener("keydown", onEscape);
-      opener?.focus();
+      // The sheet is non-modal: the focus goes back only if it is still in the sheet or nowhere.
+      const now = document.activeElement;
+      if (now === document.body || now === null || dialog?.contains(now)) opener?.focus();
     };
   }, []);
   return (

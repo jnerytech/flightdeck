@@ -40,7 +40,7 @@ export const shortcuts = {
     dismiss: "Close the request",
     paletteRecent: "Open one of the recent entries",
     paletteActions: "Show the chosen entry's actions",
-    paletteHistory: "Search the history with what you typed, when no entry is chosen",
+    paletteHistory: "Search the history (no entry chosen)",
     boardMove: "Move between the board's cards",
     boardStart: "Start the focused card",
     boardActions: "Show the focused card's actions",
