@@ -27,6 +27,10 @@ const store = new AppStore(
 const route = initialRoute(window.location.search);
 if (route) store.router.push(route);
 demoToast(store, window);
+// The prints send `flightdeck:demo-start` to open the start screen from a host page (#4099): the
+// window shows it only with no tab at all, so this opens it in a shared tab, and its tool cards come
+// from what a host page read before.
+window.addEventListener("flightdeck:demo-start", () => store.router.push({ name: "start" }));
 
 createRoot(
   document.getElementById("root") as HTMLElement,

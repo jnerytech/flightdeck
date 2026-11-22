@@ -151,7 +151,7 @@ export const ptBR = {
     deny: "Negar",
     open: "Abrir",
     more: "e mais {n}…",
-    show: "Abrir",
+    show: "Abrir o Flightdeck",
     quit: "Sair",
     idle: "Flightdeck: nada esperando você",
     waiting: {
@@ -161,6 +161,10 @@ export const ptBR = {
     plainWaiting: {
       one: "Flightdeck: {n} tarefa esperando a sua resposta ({hosts})",
       other: "Flightdeck: {n} tarefas esperando a sua resposta ({hosts})",
+    },
+    moreHosts: {
+      one: "e mais {n} host",
+      other: "e mais {n} hosts",
     },
     autoApproved: {
       one: "{n} aprovação automática",
@@ -286,7 +290,7 @@ export const ptBR = {
   ...terminal,
   ...telemetry,
   bg: {
-    region: "Sessão em segundo plano",
+    region: "Sessão em segundo plano {name}",
     state: {
       working: "trabalhando",
       blocked: "esperando você",
@@ -294,10 +298,18 @@ export const ptBR = {
       failed: "falhou",
       stopped: "parada",
     },
+    stateUnknown: "estado: {state}",
     waitingFor: "esperando: {what}",
     cost: "custo {cost}",
     stop: "Parar",
     respawn: "Reiniciar",
+    stopTitle: "Parar a sessão",
+    stopConfirm: 'Parar "{name}"? A sessão em execução termina.',
+    stopOff: "A sessão não está rodando.",
+    respawnOff: "A sessão ainda está trabalhando.",
+    stopFailed: "Não foi possível parar a sessão.",
+    respawnFailed: "Não foi possível reiniciar a sessão.",
+    noScreen: 'Não dá para abrir "{name}": o host não informou a sessão do Claude.',
     attach: "Trazer para o terminal",
     message: "Mensagem",
     send: "Enviar",

@@ -110,7 +110,8 @@
 
 ## Bandeja
 
-O ícone da bandeja tem Abrir, o submenu **Precisa de você (N)** e Sair. O submenu lista até 10
+O ícone da bandeja tem **Abrir o Flightdeck**, o submenu **Precisa de você (N)** e Sair. Até o app carregar
+ele mostra só **Flightdeck**; o resto entra assim que o app define o idioma. O submenu lista até 10
 pedidos abertos, de sessões gerenciadas e do terminal, do mais antigo ao mais novo, no formato
 `host · sessão · ferramenta: resumo da entrada` (por exemplo `pc · api · Bash: npm test`).
 

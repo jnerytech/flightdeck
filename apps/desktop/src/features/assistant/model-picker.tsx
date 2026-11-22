@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { T } from "@/i18n/index";
 
-const optionClass = (active: boolean) =>
-  `cursor-pointer px-3 py-1.5 text-sm hover:bg-accent ${active ? "bg-accent" : ""}`;
+const optionClass = (active: boolean, chosen: boolean) =>
+  `cursor-pointer px-3 py-1.5 text-sm hover:bg-accent ${active ? "bg-accent" : ""} ${chosen ? "font-medium" : ""}`;
 
 export interface ModelPickerProps {
   t: T;
@@ -16,6 +16,7 @@ export interface ModelPickerProps {
   /** The chosen model id; null is the provider's own default. */
   value: string | null;
   onChange(id: string | null): void;
+  /** Why the list could not be read, in words; its presence says the read failed. */
   error?: string;
   onRetry?(): void;
   /** Shown only when the chosen model takes an effort. */
@@ -46,7 +47,9 @@ export function ModelPicker(props: Readonly<ModelPickerProps>) {
   if (props.error !== undefined) {
     return (
       <div role="alert" className="flex items-center gap-2 text-sm">
-        <span>{t("modelPicker.failed")}</span>
+        <span>
+          {t("modelPicker.failed")} {props.error}
+        </span>
         {props.onRetry && (
           <Button variant="outline" size="sm" onClick={props.onRetry}>
             {t("modelPicker.retry")}
@@ -106,7 +109,7 @@ export function ModelPicker(props: Readonly<ModelPickerProps>) {
         <div // NOSONAR: custom listbox with grouped options and search; a native select cannot render it (ARIA APG listbox)
           id={`${base}-list`}
           role="listbox"
-          aria-label={props.label}
+          aria-label={t("modelPicker.listFor", { label: props.label })}
           className="max-h-56 overflow-y-auto rounded-md border"
         >
           {groups.map((group) => {
@@ -117,13 +120,18 @@ export function ModelPicker(props: Readonly<ModelPickerProps>) {
                 role="option"
                 aria-selected={row.id === value}
                 tabIndex={-1}
-                className={optionClass(index === active)}
+                className={optionClass(index === active, row.id === value)}
                 onClick={() => props.onChange(row.id)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") props.onChange(row.id);
                 }}
               >
                 {row.text}
+                {row.id === value && (
+                  <span aria-hidden="true" data-chosen>
+                    {" ✓"}
+                  </span>
+                )}
                 {row.option?.promptPerMTok !== undefined &&
                   row.option.completionPerMTok !== undefined && (
                     <span className="block text-muted-foreground text-xs">

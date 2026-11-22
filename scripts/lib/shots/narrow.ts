@@ -81,6 +81,10 @@ export const NARROW_SHOTS: readonly string[] = [
   "plugins",
   // #4059: What's new takes the whole window below 640 px; its footer is a plain column.
   "novidades",
+  // #4163: the permission screens; a long rule or reason must wrap at 390.
+  "sessao-aprovacao-risco-alto",
+  "projeto-regras",
+  "aprovacoes-automaticas",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */

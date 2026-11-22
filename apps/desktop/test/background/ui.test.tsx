@@ -166,12 +166,12 @@ describe("bg-ui: the hub follows them", () => {
 });
 
 describe("bg-ui: the actions of a session", () => {
-  const panel = () => screen.queryByRole("region", { name: "Sessão em segundo plano" });
-  async function openPanel(features?: string[]) {
-    const ctx = await open(features);
+  const panel = () => screen.queryByRole("region", { name: /Sessão em segundo plano/ });
+  async function openPanel(features?: string[], sessions?: unknown[], claudeSessionId = "c1") {
+    const ctx = await open(features, sessions);
     await act(async () => {
       await ctx.store.background.load(ctx.hostId);
-      ctx.store.router.push({ name: "external", host: ctx.hostId, claudeSessionId: "c1" });
+      ctx.store.router.push({ name: "external", host: ctx.hostId, claudeSessionId });
     });
     await settle(() => panel() !== null);
     return ctx;
@@ -187,6 +187,7 @@ describe("bg-ui: the actions of a session", () => {
   test("Parar and Reiniciar ask the host, Trazer para o terminal opens claude attach in a tab", async () => {
     const { daemon, store } = await openPanel();
     await click("Parar");
+    await click("Parar a sessão");
     await click("Reiniciar");
     await click("Trazer para o terminal");
     const asked = daemon.commands.filter(
@@ -230,9 +231,154 @@ describe("bg-ui: the actions of a session", () => {
     expect(screen.queryByText(/Não dá para mandar mensagem/)).not.toBeNull();
   });
 
+  test("Parar asks first, naming the session, and sends nothing until it is confirmed (#4169)", async () => {
+    const { daemon } = await openPanel();
+    await click("Parar");
+    const asked = () => daemon.commands.filter((c) => c.type === "bg.stop");
+    expect(screen.queryByRole("alertdialog")?.textContent).toContain("faxina");
+    expect(asked()).toHaveLength(0);
+    await click("Cancelar");
+    expect(asked()).toHaveLength(0);
+    expect(screen.queryAllByRole("alertdialog")).toHaveLength(0);
+    await click("Parar");
+    await click("Parar a sessão");
+    await settle(() => asked().length === 1);
+    expect(asked().map((c) => c.payload)).toEqual([{ id: "7c5dcf5d" }]);
+  });
+
+  test("after a confirmed Parar the focus is on the panel, not lost with the disabled button (#4169)", async () => {
+    const { daemon } = await openPanel();
+    await click("Parar");
+    await click("Parar a sessão");
+    await settle(() => daemon.commands.some((c) => c.type === "bg.stop"));
+    await settle(() => document.activeElement === panel());
+    expect(document.activeElement === panel()).toBe(true);
+  });
+
+  test("two presses of Reiniciar in a row send one request (#4169)", async () => {
+    const { daemon } = await openPanel();
+    const button = screen.queryByRole("button", { name: "Reiniciar" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.click(button);
+      fireEvent.click(button);
+    });
+    await settle(() => daemon.commands.some((c) => c.type === "bg.respawn"));
+    expect(daemon.commands.filter((c) => c.type === "bg.respawn")).toHaveLength(1);
+  });
+
+  test("the state line is a status region: a new state reaches a screen reader (#4169)", async () => {
+    const { store, hostId, daemon } = await openPanel();
+    const said = () =>
+      within(panel() as HTMLElement)
+        .queryAllByRole("status")
+        .map((n) => n.textContent)
+        .join(" ");
+    expect(said()).toContain("esperando você");
+    daemon.bg.list = {
+      supported: true,
+      sessions: [{ ...BLOCKED, state: "working", waitingFor: null }],
+    };
+    await act(async () => {
+      await store.background.load(hostId);
+    });
+    await settle(() => said().includes("trabalhando"));
+    expect(said()).toContain("trabalhando");
+  });
+
+  test("a refused Reiniciar says so next to the buttons and the button is usable again (#4169)", async () => {
+    const { daemon } = await openPanel();
+    daemon.bg.refused.set("bg.respawn", { reason: "bg_cli_failed", params: { message: "boom" } });
+    await click("Reiniciar");
+    const said = () => within(panel() as HTMLElement).queryAllByText(/Não foi possível reiniciar/);
+    await settle(() => said().length > 0);
+    expect(said().length).toBeGreaterThan(0);
+    const button = screen.queryByRole("button", { name: "Reiniciar" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+  });
+
+  test("Parar is off with its reason on a session that is not running, Reiniciar on one that is working (#4169)", async () => {
+    const finished = { ...DONE, claudeSessionId: "c2" };
+    await openPanel(undefined, [finished], "c2");
+    const stop = () => screen.queryByRole("button", { name: "Parar" }) as HTMLButtonElement;
+    expect(stop().disabled).toBe(true);
+    expect(screen.queryAllByText("A sessão não está rodando.").length).toBeGreaterThan(0);
+    expect(
+      (screen.queryByRole("button", { name: "Reiniciar" }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
+
+  test("Reiniciar is off with its reason while the session works (#4169)", async () => {
+    await openPanel(undefined, [{ ...BLOCKED, state: "working" }]);
+    expect(
+      (screen.queryByRole("button", { name: "Reiniciar" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(screen.queryAllByText("A sessão ainda está trabalhando.").length).toBeGreaterThan(0);
+    expect((screen.queryByRole("button", { name: "Parar" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
+
+  test("in English the new texts are in English (#4169)", async () => {
+    const { store, daemon } = await openPanel(undefined, [{ ...BLOCKED, state: "working" }]);
+    await act(async () => {
+      store.i18n.setLang("en");
+    });
+    await settle(() => screen.queryByRole("button", { name: "Restart" }) !== null);
+    expect(screen.queryAllByText("The session is still working.").length).toBeGreaterThan(0);
+    await click("Stop");
+    expect(screen.queryByRole("alertdialog")?.textContent).toContain("Stop session");
+    expect(daemon.commands.some((c) => c.type === "bg.stop")).toBe(false);
+  });
+
+  test("a state the app does not know is labelled in the person's language (#4171)", async () => {
+    await openPanel(undefined, [{ ...BLOCKED, state: "something-new" }]);
+    expect(panel()?.textContent).toContain("estado: something-new");
+  });
+
+  test("each panel is named by its session, in both languages (#4171)", async () => {
+    const { store } = await openPanel();
+    expect(screen.queryByRole("region", { name: "Sessão em segundo plano faxina" })).not.toBeNull();
+    await act(async () => {
+      store.i18n.setLang("en");
+    });
+    await settle(
+      () => screen.queryByRole("region", { name: "Background session faxina" }) !== null,
+    );
+    expect(screen.queryByRole("region", { name: "Background session faxina" })).not.toBeNull();
+  });
+
+  test("a session with an empty name is named by its folder (#4171)", async () => {
+    await openPanel(undefined, [{ ...BLOCKED, name: "" }]);
+    expect(screen.queryByRole("region", { name: "Sessão em segundo plano app" })).not.toBeNull();
+  });
+
   test("a host without the terminal does not offer to bring it there", async () => {
     await openPanel(["bg"]);
     expect(screen.queryByRole("button", { name: "Trazer para o terminal" })).toBeNull();
+  });
+});
+
+describe("bg-ui: a row with no Claude session (#4171)", () => {
+  test("a click on it says why nothing opens, in both languages, and the hub stays", async () => {
+    const { store, hostId } = await open();
+    await act(async () => {
+      await store.background.load(hostId);
+      store.router.push({ name: "hub" });
+    });
+    await sidebar.openFilters();
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("Origem") as HTMLSelectElement, {
+        target: { value: "background" },
+      });
+    });
+    await settle(() => screen.queryByRole("listitem", { name: "relatorio" }) !== null);
+    const row = screen.queryByRole("listitem", { name: "relatorio" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.click(within(row).getByRole("button", { name: "relatorio" }));
+    });
+    await settle(() => screen.queryAllByText(/não informou a sessão do Claude/).length > 0);
+    expect(screen.queryAllByText(/não informou a sessão do Claude/).length).toBeGreaterThan(0);
+    expect(store.router.current.name).toBe("hub");
   });
 });
 
