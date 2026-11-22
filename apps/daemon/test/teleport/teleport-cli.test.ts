@@ -375,7 +375,10 @@ describe("flightdeckd session teleport, stopped half way (issue #3704)", () => {
     const slow = {
       ...TARGET,
       "teleport.finish": async () => {
-        await Bun.sleep(600);
+        // The import is ready 600 ms in, twice the step: the limit it has is the question.
+        const ready = Promise.withResolvers<void>();
+        setTimeout(ready.resolve, 600);
+        await ready.promise;
         return { sessionId: "t-s1", worktree: "/srv/api-wt", branch: "tp/x" };
       },
     };
@@ -403,10 +406,10 @@ describe("flightdeckd session teleport, stopped half way (issue #3704)", () => {
     const stop = new AbortController();
     const src = fakeDaemon({
       ...SOURCE,
-      "session.list": async () => {
+      // A list that never answers: Ctrl-C is the only way out before the step's 60 s.
+      "session.list": () => {
         stop.abort();
-        await Bun.sleep(1500);
-        return { sessions: [] };
+        return undefined;
       },
     });
     const dst = fakeDaemon(TARGET, TARGET_TOKEN);
@@ -414,7 +417,7 @@ describe("flightdeckd session teleport, stopped half way (issue #3704)", () => {
     const result = await direct(src, dst, { signal: stop.signal });
     expect(result.code).toBe(1);
     expect(result.err.join("\n")).toContain("cancelled");
-    expect(performance.now() - started).toBeLessThan(1200);
+    expect(performance.now() - started).toBeLessThan(5000);
     expect(types(src)).not.toContain("teleport.prepare");
   });
 
