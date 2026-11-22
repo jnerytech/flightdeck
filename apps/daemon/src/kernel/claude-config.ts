@@ -20,6 +20,8 @@ export function isClaudeConfig(path: string): boolean {
     name === "claude.local.md" ||
     // The project's MCP servers: each is a command the next session starts (`mcp.save` is near only too).
     name === ".mcp.json" ||
+    // Its 8.3 short name (the extension is cut to three letters).
+    /^mcp~\d+\.jso$/.test(name ?? "") ||
     // The 8.3 short name of `CLAUDE.local.md`, which Windows opens as the file itself. A short name
     // made of a hash (`CLAB3F2~1.MD`, once many names collide) is not told apart.
     /^claude~\d+\.md$/.test(name ?? "")

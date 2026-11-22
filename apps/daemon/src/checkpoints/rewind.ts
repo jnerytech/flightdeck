@@ -5,7 +5,7 @@
  * never ignored ones. A `safety` snapshot of the current state is taken first, so it can be undone.
  */
 import { lstat, mkdir, rm, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { gitBytes } from "../git/index.ts";
 import { FlightdeckError, isClaudeConfig, resolveAllowedCwd } from "../kernel/index.ts";
@@ -90,7 +90,9 @@ export class Rewinder {
     guard: () => void,
   ): Promise<void> {
     for (const { path } of files) {
-      if (isClaudeConfig(path) || (await hardLinked(resolve(repo, path)))) return guard();
+      // The SDK names a file by its absolute path: judged by where it sits in the repository, not above it.
+      const full = resolve(repo, path);
+      if (isClaudeConfig(relative(repo, full)) || (await hardLinked(full))) return guard();
     }
   }
 
