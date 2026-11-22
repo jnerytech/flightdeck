@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { Issue, IssuesConfig, Project } from "@flightdeck/protocol";
+import type { Card, Issue, IssuesConfig, Project } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "../dom.ts";
 import { settle } from "../wait.ts";
 
@@ -42,7 +42,11 @@ const refused: Answer = {
 };
 
 /** A host whose answers come from queues; a function answer is awaited, so a test can hold one back. */
-function host(queues: { list: Array<Answer | (() => Promise<Answer>)>; update?: Answer[] }) {
+function host(queues: {
+  list: Array<Answer | (() => Promise<Answer>)>;
+  update?: Answer[];
+  create?: Array<Answer | (() => Promise<Answer>)>;
+}) {
   const sent: Array<[string, unknown]> = [];
   const next = async (queue: Array<Answer | (() => Promise<Answer>)>): Promise<Answer> => {
     const item = queue.length > 1 ? queue.shift() : queue[0];
@@ -50,6 +54,7 @@ function host(queues: { list: Array<Answer | (() => Promise<Answer>)>; update?: 
   };
   const request = async (_host: string, type: string, payload: unknown) => {
     sent.push([type, payload]);
+    if (type === "issues.createCard") return next(queues.create ?? []);
     return next(type === "issues.list" ? queues.list : (queues.update ?? []));
   };
   const store = (lang: "en" | "pt-BR") =>
@@ -62,7 +67,13 @@ function host(queues: { list: Array<Answer | (() => Promise<Answer>)>; update?: 
       },
       openLink: () => undefined,
     }) as never;
-  return { store, sent, lists: () => sent.filter(([type]) => type === "issues.list").length };
+  const count = (kind: string) => sent.filter(([type]) => type === kind).length;
+  return {
+    store,
+    sent,
+    lists: () => count("issues.list"),
+    creates: () => count("issues.createCard"),
+  };
 }
 
 const project = (id: string, issues: Omit<IssuesConfig, "commentOnPr"> | null): Project =>
@@ -90,14 +101,14 @@ const show = (store: never, lang: "en" | "pt-BR", start: Project) =>
   render(<Harness store={store} lang={lang} start={start} />);
 
 /** The panel with the project from its props: a rerender with another id is a switch of project. */
-function Switch(props: Readonly<{ store: never; id: string }>) {
+function Switch(props: Readonly<{ store: never; id: string; cards?: Card[] }>) {
   return (
     <TContext.Provider value={translator("en")}>
       <IssuesPanel
         store={props.store}
         hostId="h1"
         project={project(props.id, { provider: "github" })}
-        cards={[]}
+        cards={props.cards ?? []}
         onClose={() => undefined}
         onProject={() => undefined}
         onOpenCard={() => undefined}
@@ -117,6 +128,9 @@ const LANGS = [
     loading: "Loading issues",
     failed: "Could not list the issues",
     retry: "Try again",
+    cardCreated: "Card created",
+    createFor: (n: number) => `Create card for Acme/App#${n}`,
+    openFor: (n: number) => `Open card of Acme/App#${n}`,
   },
   {
     lang: "pt-BR",
@@ -128,6 +142,9 @@ const LANGS = [
     loading: "Carregando issues",
     failed: "Não consegui listar as issues",
     retry: "Tentar de novo",
+    cardCreated: "Card criado",
+    createFor: (n: number) => `Criar card de Acme/App#${n}`,
+    openFor: (n: number) => `Abrir card de Acme/App#${n}`,
   },
 ] as const;
 
@@ -264,5 +281,103 @@ describe("issues panel: a late answer", () => {
     });
     expect(rows()).toBe(1);
     expect(within(panel()).queryByText("Issue number 7")).not.toBeNull();
+  });
+});
+
+const card = (n: number): Card => ({ id: `c${n}`, issueRef: `github:Acme/App#${n}` }) as never;
+const created: Answer = { ok: true, data: { id: "c1" } };
+
+describe.each(LANGS)("issues panel rows ($lang)", (words) => {
+  test("each row's create and open buttons name their issue", async () => {
+    const h = host({ list: [listed(1, 2)] });
+    render(<Switch store={h.store(words.lang)} id="p1" cards={[card(2)]} />);
+    await settle(() => rows() === 2);
+    expect(button(words.createFor(1))).not.toBeNull();
+    expect(button(words.openFor(2))).not.toBeNull();
+  });
+
+  test("Create card is busy until the host answers, and a second press sends nothing", async () => {
+    let release: (answer: Answer) => void = () => undefined;
+    const held = () => new Promise<Answer>((resolve) => (release = resolve));
+    const h = host({ list: [listed(1)], create: [held] });
+    render(<Switch store={h.store(words.lang)} id="p1" />);
+    await settle(() => rows() === 1);
+    await press(words.createFor(1));
+    expect(button(words.createFor(1))?.getAttribute("aria-busy")).toBe("true");
+    await press(words.createFor(1));
+    expect(h.creates()).toBe(1);
+    await act(async () => release(created));
+  });
+
+  test("a refused create says why in its row and the button works again", async () => {
+    const h = host({ list: [listed(1, 2)], create: [refused, created] });
+    render(<Switch store={h.store(words.lang)} id="p1" />);
+    await settle(() => rows() === 2);
+    await press(words.createFor(1));
+    await settle(() => alertText() !== "");
+    const row = within(panel()).getAllByRole("listitem")[0] as HTMLElement;
+    expect(within(row).queryByRole("alert")?.textContent ?? "").toContain("gh auth login");
+    expect(within(panel()).getAllByRole("alert").length).toBe(1);
+    expect(button(words.createFor(1))?.getAttribute("aria-busy")).toBeNull();
+    await press(words.createFor(1));
+    expect(h.creates()).toBe(2);
+    expect(alertText()).toBe("");
+  });
+
+  test("a card made but not arrived yet says so and leaves no Create card to press", async () => {
+    const h = host({ list: [listed(1)], create: [created] });
+    render(<Switch store={h.store(words.lang)} id="p1" />);
+    await settle(() => rows() === 1);
+    await press(words.createFor(1));
+    await settle(() => button(words.createFor(1)) === null);
+    expect(within(panel()).queryByText(words.cardCreated)).not.toBeNull();
+    expect(h.creates()).toBe(1);
+  });
+
+  test("a refusal does not outlive the card, which may arrive by another route", async () => {
+    const h = host({ list: [listed(1)], create: [refused] });
+    const store = h.store(words.lang);
+    const view = render(<Switch store={store} id="p1" />);
+    await settle(() => rows() === 1);
+    await press(words.createFor(1));
+    await settle(() => alertText() !== "");
+    await act(async () => {
+      view.rerender(<Switch store={store} id="p1" cards={[card(1)]} />);
+    });
+    expect(alertText()).toBe("");
+  });
+
+  test("the focus stays where the person moved while the card was being made", async () => {
+    let release: (answer: Answer) => void = () => undefined;
+    const held = () => new Promise<Answer>((resolve) => (release = resolve));
+    const h = host({ list: [listed(1)], create: [held] });
+    const store = h.store(words.lang);
+    const view = render(<Switch store={store} id="p1" />);
+    await settle(() => rows() === 1);
+    button(words.createFor(1))?.focus();
+    await press(words.createFor(1));
+    const filter = within(panel()).getByRole("textbox") as HTMLInputElement;
+    filter.focus();
+    await act(async () => release(created));
+    await act(async () => {
+      view.rerender(<Switch store={store} id="p1" cards={[card(1)]} />);
+    });
+    await settle(() => button(words.openFor(1)) !== null);
+    expect(document.activeElement).toBe(filter);
+  });
+
+  test("after a create, the focus goes to that row's Open card once the card arrives", async () => {
+    const h = host({ list: [listed(1)], create: [created] });
+    const store = h.store(words.lang);
+    const view = render(<Switch store={store} id="p1" />);
+    await settle(() => rows() === 1);
+    // A press with the mouse or the keyboard leaves the focus on the button.
+    button(words.createFor(1))?.focus();
+    await press(words.createFor(1));
+    await act(async () => {
+      view.rerender(<Switch store={store} id="p1" cards={[card(1)]} />);
+    });
+    await settle(() => button(words.openFor(1)) !== null);
+    expect(document.activeElement).toBe(button(words.openFor(1)));
   });
 });
