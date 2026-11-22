@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { DemoIds } from "../../demo-seed.ts";
+import { NARROW_SHOTS } from "../../lib/shots/narrow.ts";
 import { agentShots } from "../../lib/shots/table-agent.ts";
+import { messagingShots } from "../../lib/shots/table-messaging.ts";
 
 const IDS = { idleSession: "idle" } as DemoIds;
 const NAMES = ["conversas", "sessao-mensagens", "sessao-mensagens-recusa"];
@@ -69,5 +71,72 @@ describe("the messaging prints (#4088)", () => {
     expect(write).toBeGreaterThan(tab);
     expect(field).toBeGreaterThan(write);
     expect(send).toBeGreaterThan(field);
+  });
+});
+
+// #4297: the states of the five fixes of the Messaging audit, and the long rule values, had no print.
+describe("the Messaging state prints (#4297)", () => {
+  const states = messagingShots(IDS);
+  const find = (name: string) => states.find((shot) => shot.name === name);
+  const COMMANDS = (name: string) => (find(name)?.wire ?? []).map((rule) => rule.command);
+
+  test("the table prints each state once, in the order the audit lists them", () => {
+    expect(states.map((shot) => shot.name)).toEqual([
+      "conversas-cortada",
+      "conversas-host-mudo",
+      "conversas-filtro",
+      "conversas-filtro-vazio",
+      "sessao-mensagens-carregando",
+      "sessao-mensagens-falhou",
+      "sessao-mensagens-formulario",
+      "configuracoes-mensagens-longos",
+    ]);
+  });
+
+  test("the cut list gets a full page of the limit the page asks for, so the notice shows", () => {
+    const rule = find("conversas-cortada")?.wire?.[0];
+    const data = rule && "data" in rule ? (rule.data as { messages: unknown[] }) : null;
+    expect(data?.messages.length).toBe(200);
+    expect(find("conversas-cortada")?.route).toEqual({ name: "conversations" });
+  });
+
+  test("the silent host answers the first read and refuses every one after it", () => {
+    const rule = find("conversas-host-mudo")?.wire?.[0];
+    expect(rule && "afterRefuse" in rule ? rule.command : null).toBe("messages.list");
+  });
+
+  test("the Messages tab prints a stalled read, a refused read and the open form, on the session the demo gives messages to", () => {
+    expect(COMMANDS("sessao-mensagens-carregando")).toEqual(["messages.list"]);
+    const stalled = find("sessao-mensagens-carregando")?.wire?.[0];
+    expect(stalled && "stall" in stalled).toBe(true);
+    const refused = find("sessao-mensagens-falhou")?.wire?.[0];
+    expect(refused && "refuse" in refused).toBe(true);
+    for (const name of [
+      "sessao-mensagens-carregando",
+      "sessao-mensagens-falhou",
+      "sessao-mensagens-formulario",
+    ]) {
+      const route = find(name)?.route;
+      expect(route?.name === "session" ? route.id : null).toBe("idle");
+    }
+  });
+
+  test("the long-value print gives Settings a 120-character selector and a pair of long session ids", () => {
+    const rule = find("configuracoes-mensagens-longos")?.wire?.[0];
+    const data =
+      rule && "data" in rule
+        ? (rule.data as {
+            policy: { exceptions: Array<{ from: { project?: string } }> };
+            paused: string[];
+          })
+        : null;
+    expect(data?.policy.exceptions[0]?.from.project?.length).toBe(120);
+    expect(data?.paused[0]?.split("|").every((address) => address.length > 40)).toBe(true);
+  });
+
+  test("the Conversations page and the long-value rows are re-measured narrow", () => {
+    for (const name of ["conversas", "conversas-cortada", "configuracoes-mensagens-longos"]) {
+      expect(NARROW_SHOTS).toContain(name);
+    }
   });
 });
