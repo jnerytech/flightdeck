@@ -201,12 +201,15 @@ for (const [lang, t] of [
         "roi",
       ] as const;
       expect(lines[0]).toBe(
-        [...columns.map((c) => t.roiUi.table[c]), t.roiUi.table.derivation].join(","),
+        [
+          ...columns.map((c) => (c === "roi" ? t.roiUi.table.roiCsv : t.roiUi.table[c])),
+          t.roiUi.table.derivation,
+        ].join(","),
       );
       const shop = lines.find((l) => l.startsWith("shop,"));
-      expect(shop).toContain("shop,12.00,3,3,4.00,4.00,0,,,");
+      expect(shop).toContain("shop,12.00,3,3,4.00,4.00,,,,");
       expect(shop).toContain("12.00");
-      expect(lines.find((l) => l.startsWith("blog,"))).toContain("blog,3.00,0,0,,,0,,,");
+      expect(lines.find((l) => l.startsWith("blog,"))).toContain("blog,3.00,0,0,,,,,,");
       expect(lines.at(-1)).toBe("");
     });
 

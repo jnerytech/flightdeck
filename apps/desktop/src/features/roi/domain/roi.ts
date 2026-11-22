@@ -120,7 +120,7 @@ interface Derived {
 
 /** Return on cost as a multiple of the cost, one decimal and the unit: "29.0×", "29,0×" in pt-BR. */
 export function roiMultiple(roi: number, lang: Lang): string {
-  return formatDecimal(roi, lang);
+  return `${formatDecimal(roi, lang)}×`;
 }
 
 /** The lines that show how the figures were made, in the order a person reads them. */

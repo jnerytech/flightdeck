@@ -45,6 +45,6 @@ describe("the decimals of the app follow the language (#3853)", () => {
     const roi = (lang: "en" | "pt-BR") =>
       figures(period, money, lang).derivation.find((line) => line.key === "roiUi.derive.roi")?.vars
         ?.roi;
-    expect([roi("en"), roi("pt-BR")]).toEqual(["29.0", "29,0"]);
+    expect([roi("en"), roi("pt-BR")]).toEqual(["29.0×", "29,0×"]);
   });
 });
