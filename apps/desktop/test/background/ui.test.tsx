@@ -231,6 +231,75 @@ describe("bg-ui: the actions of a session", () => {
     expect(screen.queryByText(/Não dá para mandar mensagem/)).not.toBeNull();
   });
 
+  describe("the Message field (#4170)", () => {
+    const type = async (value: string) => {
+      const field = screen.queryByLabelText("Mensagem") as HTMLInputElement;
+      await act(async () => {
+        fireEvent.change(field, { target: { value } });
+      });
+      return field;
+    };
+    const sends = (daemon: { commands: Array<{ type: string }> }) =>
+      daemon.commands.filter((c) => c.type === "bg.message").length;
+
+    test("Enter sends once: the field is in a form, a second submit before the answer sends nothing", async () => {
+      const { daemon } = await openPanel();
+      const field = await type("continue");
+      const form = field.closest("form") as HTMLFormElement;
+      expect(form).not.toBeNull();
+      await act(async () => {
+        fireEvent.submit(form);
+        fireEvent.submit(form);
+      });
+      await settle(() => field.value === "");
+      expect(sends(daemon)).toBe(1);
+    });
+
+    test("Enviar is off while the box is blank or only spaces, and on with text", async () => {
+      await openPanel();
+      const off = () =>
+        (screen.queryByRole("button", { name: "Enviar" }) as HTMLButtonElement).disabled;
+      expect(off()).toBe(true);
+      await type("   ");
+      expect(off()).toBe(true);
+      await type("oi");
+      expect(off()).toBe(false);
+    });
+
+    test("a sent message is said in a status line and the focus stays in the field", async () => {
+      await openPanel();
+      const field = await type("continue");
+      await click("Enviar");
+      await settle(() => screen.queryByText("Mensagem enviada.") !== null);
+      expect(screen.queryByText("Mensagem enviada.")).not.toBeNull();
+      expect(field.value).toBe("");
+      expect(document.activeElement === field).toBe(true);
+    });
+
+    test("a refusal is said beside the field, the text stays and the field has the focus", async () => {
+      const { daemon } = await openPanel();
+      daemon.bg.refused.set("bg.message", { reason: "bg_no_message_path" });
+      const field = await type("de novo");
+      await click("Enviar");
+      await settle(() => screen.queryByText(/A mensagem não foi enviada/) !== null);
+      expect(screen.queryByText(/A mensagem não foi enviada/)).not.toBeNull();
+      expect(field.value).toBe("de novo");
+      expect(document.activeElement === field).toBe(true);
+    });
+
+    test("in English the status line is English", async () => {
+      const { store } = await openPanel();
+      await act(async () => store.i18n.setLang("en"));
+      const field = screen.queryByLabelText("Message") as HTMLInputElement;
+      await act(async () => {
+        fireEvent.change(field, { target: { value: "go" } });
+      });
+      await click("Send");
+      await settle(() => screen.queryByText("Message sent.") !== null);
+      expect(screen.queryByText("Message sent.")).not.toBeNull();
+    });
+  });
+
   test("Parar asks first, naming the session, and sends nothing until it is confirmed (#4169)", async () => {
     const { daemon } = await openPanel();
     await click("Parar");
