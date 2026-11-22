@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { useT } from "@/i18n/context";
 import { NativeSelect, Panel } from "@/shared/layout/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
@@ -12,6 +13,7 @@ const CHOICES = [0, 15, 30, 60, 240];
 export function SleepSetting(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
+  const id = useId();
   const current = host.hostInfo?.sleepAfterMinutes;
   if (current === undefined) return null;
   const choices = CHOICES.includes(current) ? CHOICES : [...CHOICES, current].sort((a, b) => a - b);
@@ -24,9 +26,10 @@ export function SleepSetting(props: Readonly<{ store: AppStore; host: HostView }
   return (
     <Panel title={t("sleep.title")}>
       <p className="text-muted-foreground text-xs">{t("sleep.hint")}</p>
-      <label className="flex items-center gap-2 text-sm">
+      <label htmlFor={id} className="flex items-center gap-2 text-sm">
         {t("sleep.label")}
         <NativeSelect
+          id={id}
           inline
           aria-label={t("sleep.label")}
           value={current}
@@ -36,8 +39,8 @@ export function SleepSetting(props: Readonly<{ store: AppStore; host: HostView }
               minutes: Number(e.target.value),
             });
             if (!answer) return;
-            await store.reloadHostInfo(host.id);
             store.success(t("sleep.saved", { host: host.name }));
+            await store.reloadHostInfo(host.id);
           }}
         >
           {choices.map((minutes) => (
