@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { periodRange, usd } from "../costs/index.ts";
 import { compare, EMPTY_PERIOD, figures, headline, mergePeriods } from "./domain/roi.ts";
+import { answeredHosts, failedHosts } from "./domain/roi-answers.ts";
+import { RoiReadFailed } from "./roi-read-failed.tsx";
 
 /** The signals of the same project on several hosts: counts add up, the first refusal is told. */
 function mergeSignals(list: Array<RoiSignalValues | undefined>): RoiSignalValues {
@@ -55,6 +57,7 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
   };
   const [periods, setPeriods] = useState<{ current: RoiPeriod; previous: RoiPeriod } | null>(null);
   const [answered, setAnswered] = useState(0);
+  const [failed, setFailed] = useState<string[]>([]);
   const [signals, setSignals] = useState<RoiSignalValues>({});
   const [on, setOn] = useState(project.roiSignals);
   const [how, setHow] = useState(false);
@@ -75,7 +78,9 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
 
   const load = useCallback(async () => {
     const { from, to } = periodRange(choice, store.roiFigures.today());
-    const answers = await store.roiFigures.summaries(from, to);
+    const all = await store.roiFigures.summaries(from, to);
+    const answers = answeredHosts(all);
+    setFailed(failedHosts(all));
     const found = answers.flatMap(({ result }) =>
       result.projects.filter((p) => p.projectKey === key),
     );
@@ -106,7 +111,11 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
   if (answered === 0) {
     return (
       <section aria-label={t("roiUi.title")} className="rounded-lg border bg-card p-4 text-sm">
-        {t("roiUi.noHost")}
+        {failed.length > 0 ? (
+          <RoiReadFailed store={store} hostIds={failed} onRetry={() => void load()} />
+        ) : (
+          t("roiUi.noHost")
+        )}
       </section>
     );
   }

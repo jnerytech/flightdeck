@@ -254,7 +254,7 @@ To try it: sign in with GitHub on the host's page, open a project's **Board**, p
   confirm below; while a session runs, **Stop** leads and **Merge PR** waits in the menu, and with
   failing checks it is not offered). The rest is under the **Actions** (⋯) menu next to it: **Start with a workflow or
   persona…** (the same dialog as the board's **Start card**), **Start**, **Start in the
-  background**, **Stop**, **Open PR**, **Merge PR**, **Finish…** and **Discard**. A card whose run
+  background, no terminal**, **Stop**, **Open PR**, **Merge PR**, **Finish…** and **Discard**. A card whose run
   is done opens on **Changes**. While a run waits at a gate, the gate's own **Approve** and
   **Deny** at the top of the page are the only primary buttons: the Run panel leads with nothing
   until the gate is answered.

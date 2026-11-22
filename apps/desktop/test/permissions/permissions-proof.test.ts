@@ -105,6 +105,19 @@ describe("permissions: an allow carries the proof of this device (#3439)", () =>
     ]);
   });
 
+  test("an answer from the queue whose proof cannot be made comes back not done, with the error's message (#4201)", async () => {
+    const { slice } = permissions({ fails: new Error("no key here") });
+    expect(await slice.respondTo("h1", "r1", "allow", { held: true })).toEqual({
+      ok: false,
+      reason: "no key here",
+    });
+  });
+
+  test("an answer from the queue whose system dialog is declined comes back done, so the row stays silent (#4201)", async () => {
+    const { slice } = permissions({ outcome: { kind: "declined" } });
+    expect(await slice.respondTo("h1", "r1", "allow", { held: true })).toEqual({ ok: true });
+  });
+
   test("a deny is sent as it was and asks for no proof", async () => {
     const { slice, log } = permissions();
     await slice.respondTo("h1", "r1", "deny", { message: "no" });

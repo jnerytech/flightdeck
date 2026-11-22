@@ -67,6 +67,8 @@ export function automationShots(ids: DemoIds): Shot[] {
       prepare: async (page) => {
         await formOpen(page);
         await next(page);
+        // The action step stays shut until the project's workflows have loaded.
+        await page.getByRole("combobox", { name: /^(Workflow)$/ }).waitFor();
         await next(page);
         await page.getByRole("spinbutton").waitFor();
       },

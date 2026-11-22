@@ -35,6 +35,18 @@ export function ruleProblem(
       };
     }
   }
+  if (trigger.type === "issue_label" && !trigger.label.trim()) {
+    return {
+      message: "the issue_label trigger needs a label",
+      reason: "automation_label_missing",
+    };
+  }
+  if (action.type === "start_workflow" && !action.workflow.trim()) {
+    return {
+      message: "start_workflow needs the name of a workflow",
+      reason: "automation_workflow_missing",
+    };
+  }
   if (
     action.type === "send_to_card" &&
     trigger.type !== "pr_comment" &&
