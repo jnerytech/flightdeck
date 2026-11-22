@@ -15,6 +15,7 @@ import {
 
 /** The parts of the state the board is made of: its rows, the requests and what was not opened. */
 export const ACTIVITY_KEYS = [
+  "hostsLoaded",
   "cards",
   "externalRequests",
   "externals",
@@ -70,12 +71,18 @@ export interface ActivityBoardData {
 export type ActivityStage = "no_host" | "loading" | "board";
 
 /**
- * With no host there is nothing to read; while every host is still being reached and nothing is
- * known yet the board is not a quiet day either (#4241).
+ * With no host there is nothing to read; until the saved hosts are read, or while a host is still
+ * being reached and nothing is known yet, the board is not a quiet day either (#4241).
  */
-export function activityStage(hosts: readonly { status: string }[], total: number): ActivityStage {
-  if (hosts.length === 0) return "no_host";
-  return total === 0 && hosts.every((host) => host.status === "connecting") ? "loading" : "board";
+export function activityStage(
+  state: { hosts: readonly { status: string }[]; hostsLoaded: boolean },
+  total: number,
+): ActivityStage {
+  if (!state.hostsLoaded) return "loading";
+  if (state.hosts.length === 0) return "no_host";
+  return total === 0 && state.hosts.some((host) => host.status === "connecting")
+    ? "loading"
+    : "board";
 }
 
 /** The rows the board is about: live sessions, not the history and not what was archived. */

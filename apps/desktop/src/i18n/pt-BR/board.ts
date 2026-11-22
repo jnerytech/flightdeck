@@ -628,7 +628,7 @@ export const board = {
     emptyFiltered: "Nenhuma sessão atende a estes filtros.",
     clearFilters: "Limpar filtros",
     answerFailed: "Não foi possível enviar a resposta: {reason}",
-    doneHint: "Um turno terminado que você não abriu, por 2 horas. Depois disso fica Ociosa.",
+    doneHint: "Um turno terminado que você não abriu, por 2 horas. Depois disso vai para Ociosas.",
     idleHiddenOne: "1 sessão ociosa oculta",
     idleHidden: "{n} sessões ociosas ocultas",
     noHost: "Nenhum host ainda. Adicione um para ver as sessões aqui.",

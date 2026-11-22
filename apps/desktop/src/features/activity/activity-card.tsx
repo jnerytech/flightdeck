@@ -1,3 +1,4 @@
+import { type MouseEvent, useEffect, useRef } from "react";
 import { pendingText } from "@/features/needs-you/index.ts";
 import { HIGH_RISK_HOLD_MS } from "@/features/permissions/index.ts";
 import { HoldButton } from "@/features/permissions/ui.ts";
@@ -44,6 +45,19 @@ export function ActivityCardView(
   const { card, t } = props;
   const { row, pending } = card;
   const line = sessionLineText(row.summary, props.nowMs, t);
+  // The button that sent the answer is disabled while it sends, and a browser drops the focus of a
+  // button that becomes disabled. A failed answer gives it back once the button is enabled again (#4240).
+  const sent = useRef<HTMLElement | null>(null);
+  const rememberSent = (event: MouseEvent) => {
+    sent.current = event.target instanceof HTMLElement ? event.target.closest("button") : null;
+  };
+  useEffect(() => {
+    const button = sent.current;
+    if (!props.failure || !button?.isConnected || document.activeElement !== document.body) return;
+    if (button instanceof HTMLButtonElement && button.disabled) return;
+    sent.current = null;
+    button.focus();
+  });
   return (
     <li
       data-slot="activity-card"
@@ -95,7 +109,7 @@ export function ActivityCardView(
             {pending.risk && <span>{t(`approval.risk.${pending.risk}` as Key)}</span>}
             {pending.cwd && <span>{pending.cwd}</span>}
           </p>
-          <div className="activity-card-actions">
+          <div className="activity-card-actions" onClickCapture={rememberSent}>
             {pending.risk === "high" ? (
               <HoldButton
                 label={t("approval.hold")}

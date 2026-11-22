@@ -669,7 +669,7 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     expect(
       has(
         within(column("Concluídas")).queryByText(
-          "Um turno terminado que você não abriu, por 2 horas. Depois disso fica Ociosa.",
+          "Um turno terminado que você não abriu, por 2 horas. Depois disso vai para Ociosas.",
         ),
       ),
     ).toBe(true);
