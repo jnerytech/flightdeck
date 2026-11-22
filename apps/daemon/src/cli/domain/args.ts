@@ -49,6 +49,7 @@ import { OFF_FLAG, readSnippet, SNIPPET_FLAGS, snippetProblem } from "./snippet-
 import { readSsh, SSH_FLAGS, sshProblem } from "./ssh-args.ts";
 import { teamProblem } from "./team-args.ts";
 import { readTelemetry, telemetryProblem } from "./telemetry-args.ts";
+import { TEMPLATE_COMMANDS, TEMPLATE_FLAGS, templatesProblem } from "./templates-args.ts";
 import {
   readTerminal,
   TERMINAL_FLAGS,
@@ -132,6 +133,7 @@ const HANDLERS: Record<string, Handler> = {
   knowledge: readKnowledge,
   resources: resourcesHandler,
   workflow: readWorkflow,
+  ...TEMPLATE_COMMANDS,
   statusline: setCommand("statusline"),
   service: withAction("service", SERVICE_ACTIONS, "invalid service action"),
   hook: (args, reader) => {
@@ -567,6 +569,7 @@ const HANDLERS: Record<string, Handler> = {
   ...PLUGINS_FLAGS,
   ...SNIPPET_FLAGS,
   ...SSH_FLAGS,
+  ...TEMPLATE_FLAGS,
   ...TERMINAL_FLAGS,
   ...WATCH_FLAGS,
   ...BOARDSYNC_FLAGS,
@@ -751,6 +754,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     mcpProblem(args) ??
     knowledgeProblem(args) ??
     workflowProblem(args) ??
+    templatesProblem(args) ??
     watchProblem(args) ??
     boardsyncProblem(args) ??
     reviewProblem(args) ??

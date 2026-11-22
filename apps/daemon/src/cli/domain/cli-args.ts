@@ -37,6 +37,9 @@ export interface CliArgs {
     | "knowledge"
     | "resources"
     | "workflow"
+    | "template"
+    | "task"
+    | "harness"
     | "daemon"
     | "statusline"
     | "action"
@@ -181,6 +184,9 @@ export interface CliArgs {
     | "rules"
     | "rules-set"
     | "preview"
+    | "results"
+    | "templates-list"
+    | "templates-delete"
     | "apply"
     | "check"
     | "undo"
@@ -286,6 +292,14 @@ export interface CliArgs {
   mcpWords?: string[];
   /** `workflow list|templates <project>`, `validate <project> <name>`, `run|resume <run>` (#3628): the operands; `watch` has none. */
   workflowWords?: string[];
+  /** `template start <template>` (#3738): the template's id. */
+  templateWords?: string[];
+  /** `template start --field <id>=<value>`, one per field the template asks for. */
+  templateFields?: string[];
+  /** `task results <session>` or `task preview <session> <path>` (#3738). */
+  taskWords?: string[];
+  /** `harness templates delete <template>` (#3738): the harness template's id. */
+  harnessWords?: string[];
   /** `knowledge <verb> <project>` (#3623): a project's name or id, or its folder. */
   knowledgeProject?: string;
   /** `knowledge set-status <project> <file> --status <status> --hash <hash>` and `create <project> <kind> <title>`. */

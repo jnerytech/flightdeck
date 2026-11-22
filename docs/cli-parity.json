@@ -213,8 +213,8 @@
   "github.repos": { "cli": "github" },
   "github.start": { "cli": "github" },
   "github.status": { "cli": "github" },
-  "harness.templates.delete": {},
-  "harness.templates.list": {},
+  "harness.templates.delete": { "cli": "harness" },
+  "harness.templates.list": { "cli": "harness" },
   "hello": {},
   "history.get": { "cli": "history" },
   "history.list": { "cli": "history" },
@@ -510,8 +510,8 @@
   "statusline.get": {
     "cli": "statusline"
   },
-  "task.preview": {},
-  "task.results": {},
+  "task.preview": { "cli": "task" },
+  "task.results": { "cli": "task" },
   "teams.add_member": {
     "appOnly": "the team's coordinator asks as itself (the request carries its identity, which a terminal has none of); a person adds a member with flightdeckd team add-member"
   },
@@ -563,8 +563,8 @@
   "teleport.read": {},
   "teleport.receive": {},
   "teleport.write": {},
-  "template.list": {},
-  "template.start": {},
+  "template.list": { "cli": "template" },
+  "template.start": { "cli": "template" },
   "terminal.ack": {
     "appOnly": "the flow control of an attached stream, which only the view that attached has (#3538)"
   },
