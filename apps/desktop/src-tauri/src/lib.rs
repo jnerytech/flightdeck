@@ -265,12 +265,16 @@ async fn oauth_loopback_cancel(app: tauri::AppHandle, id: u64) -> Result<(), Str
     .await
 }
 
-/// The tray's "Abrir" and "Sair" items, its "Precisa de você (N)" submenu, and whether closing
-/// hides to the tray. Their texts come translated from the frontend (phase 10).
+/// The tray's Open and Quit items, its "Needs you (N)" submenu, and whether closing hides to the
+/// tray. Their texts come translated from the frontend (phase 10); until its first `tray_set_menu`
+/// the menu holds only the first item, named by the product, so no language shows (#4120).
 struct TrayState {
+    menu: Menu<Wry>,
     show: MenuItem<Wry>,
     needs_you: Submenu<Wry>,
     quit: MenuItem<Wry>,
+    /// The page has sent its labels, so the submenu and Quit are in the menu.
+    labelled: AtomicBool,
     close_to_tray: AtomicBool,
 }
 
@@ -313,7 +317,7 @@ fn menu_text(text: &str) -> String {
     }
 }
 
-/// The submenu's only line while nothing waits; at start-up it has no translation yet.
+/// The submenu's only line while nothing waits.
 fn nothing_waiting(app: &tauri::AppHandle, text: &str) -> tauri::Result<MenuItem<Wry>> {
     MenuItem::new(app, menu_text(text), false, None::<&str>)
 }
@@ -358,6 +362,12 @@ fn tray_set_menu(
         let rest = MenuItem::with_id(&app, id, menu_text(&labels.more), true, None::<&str>)
             .map_err(err)?;
         needs_you.append(&rest).map_err(err)?;
+    }
+    // The first labels: the submenu and Quit join the menu now that they are translated and complete.
+    if !state.labelled.load(Ordering::SeqCst) {
+        state.menu.append(&state.needs_you).map_err(err)?;
+        state.menu.append(&state.quit).map_err(err)?;
+        state.labelled.store(true, Ordering::SeqCst);
     }
     Ok(())
 }
@@ -533,15 +543,16 @@ fn set_close_to_tray(state: State<TrayState>, enabled: bool) {
     state.close_to_tray.store(enabled, Ordering::Relaxed);
 }
 
-/// What the tray's first item says before the page has sent its translated labels (#4120).
-const STARTUP_OPEN_TEXT: &str = "Abrir";
+/// What the tray's first item says before the page has sent its translated labels (#4120): the
+/// product's name, which is the same in every language.
+const STARTUP_OPEN_TEXT: &str = "Flightdeck";
 
 fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
     let open = MenuItem::with_id(app, "open", STARTUP_OPEN_TEXT, true, None::<&str>)?;
-    let needs_you = Submenu::with_id(app, "needs-you", "Precisa de você (0)", true)?;
-    needs_you.append(&nothing_waiting(app.handle(), "Nada esperando você")?)?;
-    let quit = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open, &needs_you, &quit])?;
+    // The submenu and Quit are built now but join the menu with the first `tray_set_menu`.
+    let needs_you = Submenu::with_id(app, "needs-you", STARTUP_OPEN_TEXT, true)?;
+    let quit = MenuItem::with_id(app, "quit", STARTUP_OPEN_TEXT, true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&open])?;
     let mut tray = TrayIconBuilder::with_id("main")
         .tooltip("Flightdeck")
         .menu(&menu)
@@ -566,9 +577,11 @@ fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
     }
     tray.build(app)?;
     Ok(TrayState {
+        menu,
         show: open,
         needs_you,
         quit,
+        labelled: AtomicBool::new(false),
         close_to_tray: AtomicBool::new(true),
     })
 }
