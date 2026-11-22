@@ -44,6 +44,11 @@ describe("mudancas-narrow-ui (#4225, #4226)", () => {
 
     // The window grows: the choice comes back, and the reason goes.
     await act(async () => viewport(1024, 768));
+    await settle(() => window.matchMedia("(width < 640px)").matches === false);
+    await act(async () => {});
+    // happy-dom only fires a media query's change event when it starts matching, never when it stops
+    // (its listener starts from "no match"), so a refresh makes the panel read the width again.
+    await click("Atualizar");
     expect(await settleMaybe(() => splitButton()?.hasAttribute("disabled") === false)).toBe(true);
     expect(screen.queryByText("Lado a lado precisa de uma janela mais larga.")).toBeNull();
     await click("Lado a lado");

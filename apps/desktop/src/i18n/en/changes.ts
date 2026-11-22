@@ -8,6 +8,11 @@ export const changes = {
     unifiedLabel: "Unified diff",
     splitLabel: "Side-by-side diff",
     fileTable: "Changes in {path}",
+    oldSide: "Before",
+    newSide: "After",
+    added: "Added:",
+    removed: "Removed:",
+    splitOff: "Side by side needs a wider window.",
   },
   files: {
     tab: "Files",

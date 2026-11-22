@@ -19,6 +19,14 @@ const TONE = {
 /** How a line's number looks, as a button or as plain text. */
 const NUMBER = "w-10 shrink-0 select-none px-1 text-right text-muted-foreground tabular-nums";
 
+/** A changed cell of the split diff says so in words and in a sign, so colour is not the only signal. */
+const changeMark = (sign: "+" | "-", word: string) => (
+  <>
+    <span aria-hidden="true">{sign}</span>
+    <span className="sr-only">{word} </span>
+  </>
+);
+
 /** Arrows, Home and End move between the line numbers of one file's diff (#1177). */
 function moveBetweenLines(e: KeyboardEvent<HTMLButtonElement>) {
   // A modified key keeps its own meaning: Alt+Arrow goes back, Ctrl+Home scrolls to the top.
@@ -81,7 +89,7 @@ function LineNumber(
       onKeyDown={moveBetweenLines}
       className={cn(
         NUMBER,
-        "group hit-24 hover:text-foreground aria-pressed:text-foreground focus-visible:text-foreground",
+        "group hit-24 hover:text-foreground aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:underline focus-visible:text-foreground",
       )}
       onClick={(e) => pick(props.path, props.side, props.line, e.shiftKey)}
     >
@@ -202,7 +210,10 @@ function FileDiff(
           {row.op !== "+" && (
             <div className="flex">
               {row.op === "-" ? number(row, "old") : <span className="w-10 shrink-0" />}
-              <span className="min-w-0 flex-1 whitespace-pre-wrap break-all px-2">{row.text}</span>
+              <span className="min-w-0 flex-1 whitespace-pre-wrap break-all px-2">
+                {row.op === "-" && changeMark("-", t("diff.removed"))}
+                {row.text}
+              </span>
             </div>
           )}
         </td>
@@ -210,7 +221,10 @@ function FileDiff(
           {row.op !== "-" && (
             <div className="flex">
               {number(row, "new")}
-              <span className="min-w-0 flex-1 whitespace-pre-wrap break-all px-2">{row.text}</span>
+              <span className="min-w-0 flex-1 whitespace-pre-wrap break-all px-2">
+                {row.op === "+" && changeMark("+", t("diff.added"))}
+                {row.text}
+              </span>
             </div>
           )}
         </td>
@@ -222,6 +236,14 @@ function FileDiff(
       aria-label={t("diff.fileTable", { path })}
       className="w-full table-fixed overflow-hidden rounded-md border font-mono text-xs"
     >
+      {props.mode === "split" && (
+        <thead className="sr-only">
+          <tr>
+            <th scope="col">{t("diff.oldSide")}</th>
+            <th scope="col">{t("diff.newSide")}</th>
+          </tr>
+        </thead>
+      )}
       <tbody>{rows.map((row, i) => renderRow(row, i))}</tbody>
     </table>
   );

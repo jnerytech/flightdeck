@@ -104,13 +104,14 @@ export function ReviewList(
               )}
               {editing?.id === comment.id ? (
                 <Stack gap={1}>
-                  <div className="flex items-start gap-2">
+                  {/* The buttons wrap under the box when the window is too narrow for both beside it. */}
+                  <Inline className="items-start">
                     <Textarea
                       ref={box}
                       aria-label={t("changes.commentText")}
                       aria-describedby={blank ? blankId : undefined}
                       value={editing.body}
-                      className="min-h-16 flex-1"
+                      className="min-h-16 flex-1 basis-60"
                       onChange={(e) => setEditing({ id: comment.id, body: e.target.value })}
                     />
                     <Button
@@ -128,7 +129,7 @@ export function ReviewList(
                     <Button variant="outline" size="sm" onClick={() => endEdit(comment.id)}>
                       {t("common.cancel")}
                     </Button>
-                  </div>
+                  </Inline>
                   {blank && (
                     <p id={blankId} className="text-muted-foreground text-xs">
                       {t("changes.commentBlank")}
