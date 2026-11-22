@@ -192,23 +192,28 @@ function harnessExportProblem(verb: string, words: readonly string[]): string | 
   return undefined;
 }
 
+/** A verb that takes exactly one word: `missing` names what is absent, `one` what the verb takes. */
+function oneWordProblem(
+  verb: string,
+  words: readonly string[],
+  missing: string,
+  one: string,
+): string | undefined {
+  if (words.length === 0) return `${verb}: missing the ${missing}`;
+  if (words.length > 1) return `${verb}: give one ${one}, got ${words.length}`;
+  return undefined;
+}
+
 /** What is wrong with the operands of a `project` verb: a missing or extra folder, project, id or title. */
 function operandProblem(args: ProjectArgs): string | undefined {
   const verb = `project ${args.action}`;
   const words = args.projectWords ?? [];
-  if (BY_REFERENCE.has(args.action ?? "")) {
-    if (words.length === 0) return `${verb}: missing the project (a name or id)`;
-    if (words.length > 1) return `${verb}: give one project, got ${words.length}`;
-    return undefined;
-  }
+  if (BY_REFERENCE.has(args.action ?? ""))
+    return oneWordProblem(verb, words, "project (a name or id)", "project");
   if (args.action === "harness-export") return harnessExportProblem(verb, words);
   if (args.action === "scan")
     return words.length > 0 ? `${verb}: takes no folder, got ${words.length}` : undefined;
-  if (args.action === "clone") {
-    if (words.length === 0) return `${verb}: missing the url`;
-    if (words.length > 1) return `${verb}: give one url, got ${words.length}`;
-    return undefined;
-  }
+  if (args.action === "clone") return oneWordProblem(verb, words, "url", "url");
   const paths = args.projectPaths ?? [];
   if (paths.length === 0) return `${verb}: missing the folder`;
   if (paths.length > (FOLDERS[args.action ?? ""] ?? 1))
