@@ -224,9 +224,7 @@ export function HostHealth(
         />
         <span>{row.name}</span>
         <span className={toneClass(row.look.tone)}>{row.word}</span>
-        <span className="dep-compact-found" title={found}>
-          {found}
-        </span>
+        <span className="dep-compact-found">{found}</span>
       </li>
     );
   };

@@ -287,6 +287,7 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="wrap-button"
                     aria-disabled={testing === server.name || undefined}
                     aria-busy={testing === server.name || undefined}
                     onClick={() => testing !== server.name && void askToTest(server.name)}
@@ -300,11 +301,17 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="wrap-button"
                         onClick={() => openForm(draftFromServer(server))}
                       >
                         {t("agent.mcp.edit", { name: server.name })}
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setRemoving(server.name)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="wrap-button"
+                        onClick={() => setRemoving(server.name)}
+                      >
                         {t("agent.mcp.remove", { name: server.name })}
                       </Button>
                     </>
