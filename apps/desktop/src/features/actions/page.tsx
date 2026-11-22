@@ -64,9 +64,22 @@ function Runs(
             {run.truncated && <span>{t("actionsUi.truncated")}</span>}
           </span>
           {run.output && (
-            <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-2 font-mono">
-              {run.output}
-            </pre>
+            // A named region whose text a keyboard can scroll: a long unbroken line overflows the
+            // row, and a screen reader says which run the text belongs to (a bare pre takes no name).
+            <section
+              aria-label={t("actionsUi.runOutput", {
+                time: store.formatDateTime(run.startedAt),
+                requester: t(`actionsUi.requester.${run.requestedBy}`),
+              })}
+            >
+              <pre
+                // biome-ignore lint/a11y/noNoninteractiveTabindex: a long line scrolls sideways; focus lets the keyboard do it
+                tabIndex={0} // NOSONAR: a region that scrolls must take focus, or the keyboard cannot scroll it (axe scrollable-region-focusable)
+                className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-2 font-mono focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                {run.output}
+              </pre>
+            </section>
           )}
         </li>
       ))}
@@ -128,15 +141,15 @@ export function ActionsPage(
   const toggleRuns = async (action: ActionInfo) => {
     const key = `${action.source}:${action.name}`;
     if (history[key]) {
-      const { [key]: _closed, ...rest } = history;
-      setHistory(rest);
+      setHistory(({ [key]: _closed, ...rest }) => rest);
       return;
     }
     const result = await store.hostCommand(hostId, "actions.runs", {
       projectId,
       name: action.name,
     });
-    if (result) setHistory({ ...history, [key]: result.runs });
+    // Another action's answer may land while this one was out: write over the state as it is now.
+    if (result) setHistory((open) => ({ ...open, [key]: result.runs }));
   };
   const remove = async (action: ActionInfo) => {
     setRemoving(null);

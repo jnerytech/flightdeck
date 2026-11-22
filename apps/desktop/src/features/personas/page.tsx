@@ -4,7 +4,15 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
-import { EmptyState, Field, NativeSelect, Page } from "@/shared/layout/index.ts";
+import { useMinLoading } from "@/shared/hooks/index.ts";
+import {
+  EmptyState,
+  ErrorState,
+  Field,
+  LoadingState,
+  NativeSelect,
+  Page,
+} from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature } from "../../lib/version.ts";
@@ -34,7 +42,12 @@ export const PersonasPage = memo(function PersonasPage(props: {
   const hostId = host?.id;
   const language = store.i18n.lang;
   const [project, setProject] = useState("");
-  const [personas, setPersonas] = useState<AppPersona[]>([]);
+  /** `null` until the host answers: an empty list is an answer, not the absence of one. */
+  const [personas, setPersonas] = useState<AppPersona[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  /** What the page shows: nothing while it waits or after a refusal, and no host means no personas to wait for. */
+  const cards = failed ? null : (personas ?? (hostId ? null : []));
+  const loading = useMinLoading(!failed && cards === null);
   const [removing, setRemoving] = useState<AppPersona | null>(null);
   const [resetting, setResetting] = useState<AppPersona | null>(null);
   const [publishing, setPublishing] = useState<AppPersona | null>(null);
@@ -68,13 +81,28 @@ export const PersonasPage = memo(function PersonasPage(props: {
     if (hostId) void store.projectList.load(hostId);
   }, [store, hostId]);
 
+  // Another project or host is another list: the last one's cards go, so none is acted on under the wrong project.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the reset is for a new project or host, nothing else
+  useEffect(() => {
+    setPersonas(null);
+    setFailed(false);
+  }, [project, hostId]);
+  // Reads can overlap (a retry, a project picked while one is out): only the latest to start is heard.
+  const latest = useRef(0);
   const reload = useCallback(async () => {
-    if (project === APP) return setPersonas(store.personas.global.list());
+    const mine = ++latest.current;
+    if (project === APP) {
+      setFailed(false);
+      return setPersonas(store.personas.global.list());
+    }
     if (!hostId) return;
+    setFailed(false);
     const listed = await store.hostCommand(hostId, "personas.list", {
       ...(project ? { scope: "all", projectPath: project } : { scope: "host" }),
       language,
     });
+    if (mine !== latest.current) return;
+    setFailed(!listed);
     if (listed) setPersonas(listed.personas);
   }, [store, hostId, project, language]);
   useEffect(() => {
@@ -167,11 +195,22 @@ export const PersonasPage = memo(function PersonasPage(props: {
         </Field>
       </div>
       {message && <output className="block text-sm">{message}</output>}
-      {personas.length === 0 ? (
-        <EmptyState icon={Drama} title={t("personas.empty")} />
-      ) : (
+      {loading && <LoadingState label={t("personas.loading")} />}
+      {failed && (
+        <ErrorState
+          message={t("personas.loadFailed")}
+          retryLabel={t("personas.retry")}
+          onRetry={() => {
+            // A retry shows the loading shape again, so the person sees it was taken.
+            setPersonas(null);
+            void reload();
+          }}
+        />
+      )}
+      {cards?.length === 0 && <EmptyState icon={Drama} title={t("personas.empty")} />}
+      {cards && cards.length > 0 && (
         <ul ref={list} aria-label={t("personas.list")} className="flex flex-col gap-2">
-          {personas.map((p) => {
+          {cards.map((p) => {
             const inEditor =
               hostId && editing !== null && editing !== "new" && keyOf(editing) === keyOf(p);
             return (
