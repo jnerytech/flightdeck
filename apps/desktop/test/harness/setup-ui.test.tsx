@@ -337,9 +337,11 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
       await click(language === "en" ? "Set up Claude Code" : "Configurar o Claude Code");
       await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
       const named = [first, second].map((label) => screen.queryByLabelText(label));
-      expect(named.map((el) => [el?.tagName, el?.getAttribute("tabindex")])).toEqual([
-        ["PRE", "0"],
-        ["PRE", "0"],
+      expect(
+        named.map((el) => [el?.tagName, el?.getAttribute("role"), el?.getAttribute("tabindex")]),
+      ).toEqual([
+        ["PRE", "region", "0"],
+        ["PRE", "region", "0"],
       ]);
     },
   );

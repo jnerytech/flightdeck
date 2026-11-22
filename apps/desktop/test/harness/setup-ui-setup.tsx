@@ -113,11 +113,6 @@ export function setup(
       return { items: [{ path: "/work/api", trusted: options.trusted ?? false, via: null }] };
     }
     if (type === "project.trust.inspect") return LOAD;
-    // Until the screen asks through hostRequest, the old path still answers (removed with the fix).
-    if (type === "project.harness.preview") {
-      const named = (payload as { template?: string }).template !== undefined;
-      return options.previewRefusesTemplate && named ? null : (options.preview ?? PREVIEW);
-    }
     if (type === "harness.templates.list") {
       const asked = sent.filter(([sentType]) => sentType === "harness.templates.list").length;
       const later = options.laterTemplates;

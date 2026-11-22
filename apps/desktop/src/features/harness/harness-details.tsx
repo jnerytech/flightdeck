@@ -63,7 +63,10 @@ export function Details(
                   <summary className="hit-24 cursor-pointer font-mono text-xs leading-6">
                     {file.path}
                   </summary>
+                  {/* biome-ignore lint/a11y/useSemanticElements: the file keeps its <pre> (whitespace and wrapping); a region is what lets it carry the name */}
                   <pre
+                    role="region"
+                    aria-label={t("projectPage.harness.setup.fileContent", { path: file.path })}
                     className="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-2 font-mono text-xs"
                     // biome-ignore lint/a11y/noNoninteractiveTabindex: a long file scrolls, and focus lets the keyboard do it
                     tabIndex={0} // NOSONAR: a region that scrolls must take focus, or the keyboard cannot scroll it (axe scrollable-region-focusable)
