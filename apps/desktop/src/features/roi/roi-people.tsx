@@ -1,4 +1,3 @@
-import type { RoiSummaryResult } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
@@ -6,6 +5,7 @@ import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
 import { LoadingState, WideTable } from "@/shared/layout/index.ts";
 import { periodRange, usd } from "../costs/index.ts";
+import { answeredHosts, type RoiAnswer } from "./domain/roi-answers.ts";
 import { humanTokens, personRows } from "./domain/roi-people.ts";
 
 const DASH = "—";
@@ -21,10 +21,7 @@ export function RoiPeople(props: Readonly<{ store: AppStore }>) {
   const t = useT();
   // The people are the app's own settings: a person added or removed shows at once.
   useStoreSlice(store, ["roiRevision"]);
-  const [answers, setAnswers] = useState<Array<{
-    hostId: string;
-    result: RoiSummaryResult;
-  }> | null>(null);
+  const [answers, setAnswers] = useState<RoiAnswer[] | null>(null);
   useEffect(() => {
     let live = true;
     const load = () => {
@@ -41,7 +38,7 @@ export function RoiPeople(props: Readonly<{ store: AppStore }>) {
     };
   }, [store]);
 
-  const rows = personRows(store.roi.data().people, answers ?? []);
+  const rows = personRows(store.roi.data().people, answeredHosts(answers ?? []));
   const tokensText = (n: number) => {
     const human = humanTokens(n);
     return t(`roiUi.people.tokens.${human.unit}` as Key, { n: human.value });

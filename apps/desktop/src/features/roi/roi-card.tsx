@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { periodRange, usd } from "../costs/index.ts";
 import { compare, EMPTY_PERIOD, figures, headline, mergePeriods } from "./domain/roi.ts";
+import { answeredHosts } from "./domain/roi-answers.ts";
 
 /** The signals of the same project on several hosts: counts add up, the first refusal is told. */
 function mergeSignals(list: Array<RoiSignalValues | undefined>): RoiSignalValues {
@@ -75,7 +76,7 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
 
   const load = useCallback(async () => {
     const { from, to } = periodRange(choice, store.roiFigures.today());
-    const answers = await store.roiFigures.summaries(from, to);
+    const answers = answeredHosts(await store.roiFigures.summaries(from, to));
     const found = answers.flatMap(({ result }) =>
       result.projects.filter((p) => p.projectKey === key),
     );

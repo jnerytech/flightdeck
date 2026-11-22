@@ -2,6 +2,7 @@ import type { RoiSummaryResult } from "@flightdeck/protocol";
 import type { HostResult } from "../../lib/kernel.ts";
 import { hostsWith } from "../../lib/version.ts";
 import type { RoiMoney } from "./domain/roi.ts";
+import type { RoiAnswer } from "./domain/roi-answers.ts";
 import type { RoiSettings } from "./domain/roi-settings.ts";
 
 /** The part of a host the ROI reads: whether it is online and offers `roi.summary`. */
@@ -48,10 +49,7 @@ export class RoiSlice {
    * Phase 36: each online host's `roi.summary` for the days given. A host without the feature, or
    * that cannot be reached, is left out; the card says how many answered.
    */
-  async summaries(
-    from: string,
-    to: string,
-  ): Promise<Array<{ hostId: string; result: RoiSummaryResult }>> {
+  async summaries(from: string, to: string): Promise<RoiAnswer[]> {
     const hosts = hostsWith(this.core.hosts(), "roi");
     const answers = await Promise.all(
       hosts.map(async (host) => ({

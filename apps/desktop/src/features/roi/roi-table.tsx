@@ -1,4 +1,3 @@
-import type { RoiSummaryResult } from "@flightdeck/protocol";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { LoadingState, WideTable } from "@/shared/layout/index.ts";
 import { usd } from "../costs/index.ts";
 import { roiMultiple } from "./domain/roi.ts";
+import { answeredHosts, type RoiAnswer } from "./domain/roi-answers.ts";
 import { csvOf, type RoiColumn, rowsFrom, sortRows, totalsOf } from "./domain/roi-table.ts";
 
 const COLUMNS: RoiColumn[] = [
@@ -64,10 +64,7 @@ export function RoiTable(
   // The money is the app's own settings: a saved rate shows at once.
   useStoreSlice(store, ["roiRevision"]);
   // Null until a host answers, so a slow read is never shown as "no project".
-  const [answers, setAnswers] = useState<Array<{
-    hostId: string;
-    result: RoiSummaryResult;
-  }> | null>(null);
+  const [answers, setAnswers] = useState<RoiAnswer[] | null>(null);
   const [sort, setSort] = useState<{ column: RoiColumn; direction: "asc" | "desc" } | null>(null);
   const hostKey = props.hostIds.join("|");
 
@@ -89,7 +86,7 @@ export function RoiTable(
 
   const scope = store.clientScope.get();
   const rows = rowsFrom({
-    summaries: answers ?? [],
+    summaries: answeredHosts(answers ?? []),
     inScope: (key) => scope.includes(selection, key),
     moneyOf: (key) => store.roiFigures.moneyOf(key),
     nameOf: (key, name) => projectName(key) || name,
