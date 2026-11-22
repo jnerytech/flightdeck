@@ -104,8 +104,8 @@
    out of the flow under it was cut by the dialog's bottom edge once it ran past a line (the Fork
    dialog's two sentences). In a footer the reason is a line of the footer itself: the button's box
    gives way (display: contents), the footer wraps, and the reason takes the row under the buttons,
-   right-aligned under the last one. Each reason follows the buttons, in their order. */
-[data-slot="dialog-footer"] {
+   the last button's reason at the right, a first button's at the left. Each reason follows the buttons, in their order. */
+[data-slot="dialog-footer"]:has(> .action-button-box > .action-reason) {
   flex-wrap: wrap;
 }
 [data-slot="dialog-footer"] > .action-button-box:has(> .action-reason) {
@@ -123,6 +123,10 @@
   width: auto;
   max-width: none;
   margin-top: 0;
+  text-align: left;
+}
+/* The last button is at the dialog's right edge: its reason sits under it, at the right. */
+[data-slot="dialog-footer"] > .action-button-box:has(> .action-reason):last-child > .action-reason {
   text-align: right;
 }
 
