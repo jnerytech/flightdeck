@@ -56,18 +56,19 @@ function saveFlags(args: CliArgs): Array<[string, unknown]> {
   ];
 }
 
-/** What is wrong with the automation flags, or undefined: each flag belongs to its verbs, and what `save`, `enable` and `remove` cannot do without is named. */
-export function automationProblem(args: CliArgs): string | undefined {
-  if (args.command !== "automation") return undefined;
-  const verb = args.action;
+/** The flags a verb does not take: `--limit` is `runs`'s, the save flags are `save`'s. */
+function strayFlagProblem(args: CliArgs, verb: string | undefined): string | undefined {
   if (args.limit !== undefined) {
     if (verb !== "runs") return "--limit: this flag only applies to flightdeckd automation runs";
     if (args.limit > MOST_RUNS) return `--limit: at most ${MOST_RUNS}`;
   }
-  if (verb !== "save") {
-    const stray = saveFlags(args).find(([, value]) => value !== undefined);
-    if (stray) return `${stray[0]}: this flag only applies to flightdeckd automation save`;
-  }
+  if (verb === "save") return undefined;
+  const stray = saveFlags(args).find(([, value]) => value !== undefined);
+  return stray ? `${stray[0]}: this flag only applies to flightdeckd automation save` : undefined;
+}
+
+/** What `enable` and `remove` need in `--confirm`, and the verbs that may not carry it. */
+function confirmProblem(args: CliArgs, verb: string | undefined): string | undefined {
   const confirms = verb === "enable" || verb === "remove";
   if (args.confirm !== undefined && !confirms)
     return "--confirm: this flag only applies to flightdeckd automation enable or remove";
@@ -75,6 +76,15 @@ export function automationProblem(args: CliArgs): string | undefined {
     return "automation enable lets the automation fire on its own: pass --confirm";
   if (verb === "remove" && args.confirm === undefined)
     return "automation remove deletes the automation and its runs: pass --confirm";
+  return undefined;
+}
+
+/** What is wrong with the automation flags, or undefined: each flag belongs to its verbs, and what `save`, `enable` and `remove` cannot do without is named. */
+export function automationProblem(args: CliArgs): string | undefined {
+  if (args.command !== "automation") return undefined;
+  const verb = args.action;
+  const found = strayFlagProblem(args, verb) ?? confirmProblem(args, verb);
+  if (found !== undefined) return found;
   if (verb === "save" && args.personaName === undefined) return "missing --name";
   if (verb === "save" && args.definitionFile === undefined) return "missing --definition-file";
   return undefined;

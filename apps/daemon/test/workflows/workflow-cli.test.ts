@@ -145,6 +145,24 @@ describe("flightdeckd workflow list, templates and validate (issue #3628)", () =
     expect(callsOf(daemon, "workflow.templates")).toEqual([{ projectId: "p1" }]);
   });
 
+  test("templates says none for a template with no check and placeholder for one whose check is not filled in", async () => {
+    const daemon = fakeDaemon(
+      base({
+        "workflow.templates": () => ({
+          templates: [
+            { ...TEMPLATE, id: "plain", checkFilled: null },
+            { ...TEMPLATE, id: "todo", checkFilled: false },
+          ],
+        }),
+      }),
+    );
+    const run = await flightdeckd(["workflow", "templates", "api"], daemon.port);
+    expect(run.out.map((line) => line.split("  ").at(-1))).toEqual([
+      "check: none",
+      "check: placeholder",
+    ]);
+  });
+
   test("validate prints the workflow with its inputs, checks and errors, and exits 0 even when it is invalid", async () => {
     const daemon = fakeDaemon(
       base({
@@ -230,6 +248,14 @@ describe("flightdeckd workflow run, watch and resume (issue #3628)", () => {
     const asJson = await flightdeckd(["workflow", "resume", "r1", "--json"], daemon.port);
     expect(printed(asJson.out)).toEqual(check);
     expect(asJson.code).toBe(1);
+  });
+
+  test("resume with no reason and no parameters says so, in words", async () => {
+    const check: RunResumeCheck = { from: "", ok: false };
+    const daemon = fakeDaemon(base({ "run.resume": () => check }));
+    const run = await flightdeckd(["workflow", "resume", "r1"], daemon.port);
+    expect(run.out).toEqual(["r1 cannot resume: no reason given"]);
+    expect(run.code).toBe(1);
   });
 
   test("watch writes a line for each change of a run and Ctrl-C ends it with 0", async () => {

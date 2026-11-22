@@ -7,6 +7,7 @@ import { CHANGES_RULES } from "./changes-risk.ts";
 import { DAEMON_RULES } from "./daemon-risk.ts";
 import { EXTERNAL_RULES } from "./external-risk.ts";
 import { FILE_RULES } from "./file-risk.ts";
+import { GITHUB_RULES } from "./github-risk.ts";
 import { HOST_RULES } from "./host-risk.ts";
 import { KNOWLEDGE_RULES } from "./knowledge-risk.ts";
 import { LOGS_RULES } from "./logs-risk.ts";
@@ -21,6 +22,7 @@ import { RUNENV_RULES } from "./runenv-risk.ts";
 import { SEND_RULES } from "./send-risk.ts";
 import { SNIPPET_RULES } from "./snippet-risk.ts";
 import { TELEMETRY_RULES } from "./telemetry-risk.ts";
+import { TEMPLATES_RULES } from "./templates-risk.ts";
 import { UI_RULES } from "./ui-risk.ts";
 import { WORKFLOW_RULES } from "./workflow-risk.ts";
 import { WORKTREE_RULES } from "./worktree-risk.ts";
@@ -46,10 +48,12 @@ export const FLIGHTDECK_VERB_RULES = [
   ...REWIND_RULES,
   ...BG_RULES,
   ...FILE_RULES,
+  ...GITHUB_RULES,
   ...WORKTREE_RULES,
   ...SEND_RULES,
   ...KNOWLEDGE_RULES,
   ...TELEMETRY_RULES,
+  ...TEMPLATES_RULES,
   ...DAEMON_RULES,
   ...MAINTENANCE_RULES,
   ...UI_RULES,

@@ -55,7 +55,7 @@ export const indexJson = (index: KnowledgeIndexResult) => ({
 export const indexLines = (index: KnowledgeIndexResult): string[] =>
   index.text.trim() === ""
     ? ["no document is given to sessions"]
-    : index.text.replace(/\s+$/u, "").split(/\r?\n/u);
+    : index.text.trimEnd().split(/\r?\n/u);
 
 export const feedJson = (feed: KnowledgeFeedState) => ({
   on: feed.on,

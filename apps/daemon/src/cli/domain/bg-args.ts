@@ -78,15 +78,10 @@ function lengthProblem(flag: string, value: string | undefined, max: number): st
   return value.length > max ? `${flag}: more than ${max} characters` : undefined;
 }
 
-/** What is wrong with the flags of `bg`, or of another command that was given `--card`. */
-export function bgProblem(args: CliArgs): string | undefined {
-  const flags = args.bgFlags ?? {};
-  if (args.command !== "bg") {
-    return flags.card === undefined
-      ? undefined
-      : "--card: this flag only applies to flightdeckd bg start";
-  }
-  const verb = args.action as string;
+type BgFlags = NonNullable<CliArgs["bgFlags"]>;
+
+/** The first flag the verb does not take, said with the verbs that do. */
+function misplacedFlagProblem(verb: string, flags: BgFlags): string | undefined {
   const allowed = VERB_FLAGS[verb] ?? [];
   for (const flag of Object.keys(flags))
     if (!allowed.includes(flag))
@@ -94,11 +89,11 @@ export function bgProblem(args: CliArgs): string | undefined {
         .filter(([, flagsOf]) => flagsOf.includes(flag))
         .map(([name]) => name)
         .join(", ")}`;
-  if (verb === "message") {
-    if (flags.text === undefined) return "bg message needs --text";
-    return lengthProblem("--text", flags.text, MAX_TEXT);
-  }
-  if (verb !== "start") return undefined;
+  return undefined;
+}
+
+/** What is wrong with the flags of `bg start`: which of them it needs, and the shape of each value. */
+function startProblem(flags: BgFlags): string | undefined {
   const hasPair = flags.cwd !== undefined && flags.prompt !== undefined;
   if (flags.card === undefined && !hasPair) return "bg start needs --cwd and --prompt, or --card";
   if (flags.card !== undefined && (flags.cwd !== undefined || flags.prompt !== undefined))
@@ -113,6 +108,24 @@ export function bgProblem(args: CliArgs): string | undefined {
     lengthProblem("--cwd", flags.cwd, Number.MAX_SAFE_INTEGER) ??
     lengthProblem("--card", flags.card, Number.MAX_SAFE_INTEGER)
   );
+}
+
+/** What is wrong with the flags of `bg`, or of another command that was given `--card`. */
+export function bgProblem(args: CliArgs): string | undefined {
+  const flags = args.bgFlags ?? {};
+  if (args.command !== "bg") {
+    return flags.card === undefined
+      ? undefined
+      : "--card: this flag only applies to flightdeckd bg start";
+  }
+  const verb = args.action as string;
+  const misplaced = misplacedFlagProblem(verb, flags);
+  if (misplaced !== undefined) return misplaced;
+  if (verb === "message") {
+    if (flags.text === undefined) return "bg message needs --text";
+    return lengthProblem("--text", flags.text, MAX_TEXT);
+  }
+  return verb === "start" ? startProblem(flags) : undefined;
 }
 
 /** What the background sessions runner takes from the parsed arguments. */

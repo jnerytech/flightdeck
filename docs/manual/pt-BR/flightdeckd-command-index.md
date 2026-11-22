@@ -152,6 +152,14 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 - [fd resources pause-at](flightdeckd-resources-commands.md#fd-resources-pause-at)
 - [fd resources end-orphan](flightdeckd-resources-commands.md#fd-resources-end-orphan)
 
+## Comandos do flightdeckd: modelos de tarefa e o que uma tarefa fez
+
+[Ler o capítulo.](flightdeckd-template-commands.md) Suas seções:
+
+- [fd template](flightdeckd-template-commands.md#fd-template)
+- [fd task](flightdeckd-template-commands.md#fd-task)
+- [fd harness templates](flightdeckd-template-commands.md#fd-harness-templates)
+
 ## Comandos do flightdeckd: as chaves de um host
 
 [Ler o capítulo.](flightdeckd-host-commands.md) Suas seções:

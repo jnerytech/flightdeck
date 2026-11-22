@@ -37,6 +37,9 @@ export interface CliArgs {
     | "knowledge"
     | "resources"
     | "workflow"
+    | "template"
+    | "task"
+    | "harness"
     | "daemon"
     | "statusline"
     | "action"
@@ -142,7 +145,6 @@ export interface CliArgs {
     | "since"
     | "message"
     | "respawn"
-    | "templates"
     | "validation-template"
     | "pr-create"
     | "update-from-base"
@@ -181,6 +183,9 @@ export interface CliArgs {
     | "rules"
     | "rules-set"
     | "preview"
+    | "results"
+    | "templates-list"
+    | "templates-delete"
     | "apply"
     | "check"
     | "undo"
@@ -249,6 +254,8 @@ export interface CliArgs {
     | "harness-commit"
     | "repos"
     | "issues"
+    | "login"
+    | "logout"
     | "refresh";
   /** `external message <session> --text <text>`: the Claude session id of a terminal. */
   externalSession?: string;
@@ -284,6 +291,14 @@ export interface CliArgs {
   mcpWords?: string[];
   /** `workflow list|templates <project>`, `validate <project> <name>`, `run|resume <run>` (#3628): the operands; `watch` has none. */
   workflowWords?: string[];
+  /** `template start <template>` (#3738): the template's id. */
+  templateWords?: string[];
+  /** `template start --field <id>=<value>`, one per field the template asks for. */
+  templateFields?: string[];
+  /** `task results <session>` or `task preview <session> <path>` (#3738). */
+  taskWords?: string[];
+  /** `harness templates delete <template>` (#3738): the harness template's id. */
+  harnessWords?: string[];
   /** `knowledge <verb> <project>` (#3623): a project's name or id, or its folder. */
   knowledgeProject?: string;
   /** `knowledge set-status <project> <file> --status <status> --hash <hash>` and `create <project> <kind> <title>`. */
@@ -330,8 +345,14 @@ export interface CliArgs {
   worktreePaths?: string[];
   /** `issues list|get <project>`: the project, by name or id. */
   issuesProject?: string;
-  /** `github issues <owner/name>` (#3703): the repository. */
+  /** `github issues|start <owner/name>` (#3703): the repository. */
   githubWords?: string[];
+  /** `github start --mode` (#3703): a card or a Claude session on the clone. */
+  githubMode?: "card" | "session";
+  /** `github start --issue <n>` (#3703): the issue whose text is the prompt. */
+  githubIssue?: string;
+  /** `github login --cancel` (#3703): end the sign-in that is running. */
+  githubCancel?: boolean;
   /** `issues get <project> <id>` and `issues create-card <project> <ref>`: the issue's id or reference. */
   issuesId?: string;
   /** `logs tail --lines <n>`: how many lines of the daemon log, 1 to 500. */

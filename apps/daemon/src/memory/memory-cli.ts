@@ -7,6 +7,7 @@
 import { readFile } from "node:fs/promises";
 import {
   type CliResult,
+  type DaemonClient,
   DaemonRefusal,
   failure,
   json,
@@ -56,8 +57,8 @@ export async function runMemoryCli(
   config: { bind: string; port: number; token: string },
   options: {
     timeoutMs?: number;
-    remote?: RemoteTarget | undefined;
-    stdin?: ReadableStream<Uint8Array> | undefined;
+    remote?: RemoteTarget;
+    stdin?: ReadableStream<Uint8Array>;
   } = {},
 ): Promise<CliResult> {
   let content = "";
@@ -80,50 +81,61 @@ export async function runMemoryCli(
       if ("refusal" in found) return found.refusal;
       const projectId = found.id;
       try {
-        switch (args.action) {
-          case "list": {
-            const listing = await daemon.call("memory.list", { projectId });
-            return args.json ? json(listingJson(listing)) : said(...listLines(listing));
-          }
-          case "read": {
-            const file = await daemon.call("memory.read", { projectId, name: args.name });
-            return args.json
-              ? json({ ...fileJson(file), content: file.content })
-              : said(...readLines(file, file.content));
-          }
-          case "budget": {
-            const budget = await daemon.call("memory.budget", { projectId });
-            return args.json ? json(budget) : said(...budgetLines(budget));
-          }
-          case "write": {
-            const { name, expectedHash } = args;
-            note.wrote = true;
-            const { hash } = await daemon.call("memory.write", {
-              projectId,
-              name,
-              content,
-              expectedHash,
-              confirm: true,
-            });
-            return args.json ? json({ name, hash }) : said(wroteLine(name, hash));
-          }
-          case "delete": {
-            const { name, expectedHash } = args;
-            note.wrote = true;
-            await daemon.call("memory.delete", { projectId, name, expectedHash, confirm: true });
-            return args.json ? json({ name }) : said(deletedLine(name));
-          }
-          case "suggest": {
-            const { suggestions } = await daemon.call("memory.suggest", { projectId });
-            return args.json
-              ? json({ suggestions: suggestions.map(suggestionJson) })
-              : said(...suggestLines(suggestions));
-          }
-        }
+        return await memoryVerb(args, daemon, projectId, content, note);
       } catch (error) {
         if (error instanceof DaemonRefusal) return failure(1, error.message, error.reason);
         throw error;
       }
     },
   });
+}
+
+/** What one memory verb asks of the daemon, and how it prints the answer. */
+async function memoryVerb(
+  args: MemoryCliArgs,
+  daemon: DaemonClient,
+  projectId: string,
+  content: string,
+  note: { wrote: boolean },
+): Promise<CliResult> {
+  switch (args.action) {
+    case "list": {
+      const listing = await daemon.call("memory.list", { projectId });
+      return args.json ? json(listingJson(listing)) : said(...listLines(listing));
+    }
+    case "read": {
+      const file = await daemon.call("memory.read", { projectId, name: args.name });
+      return args.json
+        ? json({ ...fileJson(file), content: file.content })
+        : said(...readLines(file, file.content));
+    }
+    case "budget": {
+      const budget = await daemon.call("memory.budget", { projectId });
+      return args.json ? json(budget) : said(...budgetLines(budget));
+    }
+    case "write": {
+      const { name, expectedHash } = args;
+      note.wrote = true;
+      const { hash } = await daemon.call("memory.write", {
+        projectId,
+        name,
+        content,
+        expectedHash,
+        confirm: true,
+      });
+      return args.json ? json({ name, hash }) : said(wroteLine(name, hash));
+    }
+    case "delete": {
+      const { name, expectedHash } = args;
+      note.wrote = true;
+      await daemon.call("memory.delete", { projectId, name, expectedHash, confirm: true });
+      return args.json ? json({ name }) : said(deletedLine(name));
+    }
+    case "suggest": {
+      const { suggestions } = await daemon.call("memory.suggest", { projectId });
+      return args.json
+        ? json({ suggestions: suggestions.map(suggestionJson) })
+        : said(...suggestLines(suggestions));
+    }
+  }
 }

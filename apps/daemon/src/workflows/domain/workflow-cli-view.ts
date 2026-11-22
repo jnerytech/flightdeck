@@ -8,8 +8,10 @@ import type {
 } from "@flightdeck/protocol";
 
 /** `invalid` (it has errors, so it can be neither trusted nor run), `trusted` or `untrusted`. */
-const stateOf = (info: WorkflowInfo) =>
-  info.errors.length > 0 ? "invalid" : info.trusted ? "trusted" : "untrusted";
+const stateOf = (info: WorkflowInfo) => {
+  if (info.errors.length > 0) return "invalid";
+  return info.trusted ? "trusted" : "untrusted";
+};
 
 const errorLines = (info: WorkflowInfo) => info.errors.map((error) => `  error: ${error}`);
 
@@ -35,8 +37,10 @@ export const infoLines = (info: WorkflowInfo): string[] => [
   ...errorLines(info),
 ];
 
-const checkWord = (filled: boolean | null) =>
-  filled === null ? "none" : filled ? "filled" : "placeholder";
+const checkWord = (filled: boolean | null) => {
+  if (filled === null) return "none";
+  return filled ? "filled" : "placeholder";
+};
 
 export const templatesLines = (templates: WorkflowTemplate[]): string[] =>
   templates.map(
@@ -54,10 +58,10 @@ export function runLines(run: WorkflowRun): string[] {
     ...(run.statusReason ? [`  reason: ${run.statusReason}`] : []),
     `  spent: ${usage.turns} turns, ${minutes(usage.minutes)} min, $${usage.costUsd.toFixed(2)}`,
     ...(run.quotaUntil ? [`  waiting for the plan quota until ${run.quotaUntil}`] : []),
-    ...run.steps.map(
-      (s) =>
-        `  ${s.stepId} #${s.attempt}  ${s.type}  ${s.status}${s.exitCode === null ? "" : `  exit ${s.exitCode}`}`,
-    ),
+    ...run.steps.map((s) => {
+      const exit = s.exitCode === null ? "" : `  exit ${s.exitCode}`;
+      return `  ${s.stepId} #${s.attempt}  ${s.type}  ${s.status}${exit}`;
+    }),
   ];
 }
 
@@ -65,15 +69,15 @@ export function runLines(run: WorkflowRun): string[] {
 export function watchLine(run: WorkflowRun): string {
   const last = run.steps.at(-1);
   const at = last ? `${last.stepId} ${last.status}` : "no step yet";
-  return `${run.id}  ${run.workflowName}  ${run.status}  ${at}${run.statusReason ? `  ${run.statusReason}` : ""}`;
+  const reason = run.statusReason ? `  ${run.statusReason}` : "";
+  return `${run.id}  ${run.workflowName}  ${run.status}  ${at}${reason}`;
 }
 
 export function resumeLines(runId: string, check: RunResumeCheck): string[] {
   if (check.ok) return [`${runId} can resume from ${check.from}`];
   const params = Object.entries(check.params ?? {}).map(([key, value]) => `${key}: ${value}`);
-  return [
-    `${runId} cannot resume: ${check.reason ?? "no reason given"}${params.length > 0 ? ` (${params.join(", ")})` : ""}`,
-  ];
+  const shown = params.length > 0 ? ` (${params.join(", ")})` : "";
+  return [`${runId} cannot resume: ${check.reason ?? "no reason given"}${shown}`];
 }
 
 /** A resume that went ahead says from which step; one the daemon refused says why, as the check does. */

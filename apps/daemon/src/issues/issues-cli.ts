@@ -28,7 +28,7 @@ const UNSURE =
 export function runIssuesCli(
   args: IssuesCliArgs,
   config: { bind: string; port: number; token: string },
-  options: { timeoutMs?: number; remote?: RemoteTarget | undefined } = {},
+  options: { timeoutMs?: number; remote?: RemoteTarget } = {},
 ): Promise<CliResult> {
   return runOnLocalDaemon({
     config,
