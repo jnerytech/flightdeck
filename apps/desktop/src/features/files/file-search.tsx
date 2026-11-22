@@ -29,7 +29,7 @@ export function FileSearch(
     store: AppStore;
     hostId: string;
     target: string;
-    onOpen(path: string, line?: number): void;
+    onOpen(path: string, line: number | undefined, from: HTMLElement): void;
     children: ReactNode;
   }>,
 ) {
@@ -129,7 +129,7 @@ function Matches(
   props: Readonly<{
     store: AppStore;
     found: Exclude<Found, null>;
-    onOpen(path: string, line?: number): void;
+    onOpen(path: string, line: number | undefined, from: HTMLElement): void;
   }>,
 ) {
   const t = useT();
@@ -189,7 +189,7 @@ function Matches(
               <button
                 type="button"
                 className="file-hit-place file-hit-open"
-                onClick={() => props.onOpen(hit.path, hit.line)}
+                onClick={(event) => props.onOpen(hit.path, hit.line, event.currentTarget)}
               >
                 {hit.place}
               </button>
