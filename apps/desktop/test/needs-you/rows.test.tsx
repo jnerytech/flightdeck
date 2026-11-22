@@ -14,7 +14,7 @@ const { App } = await import("../../src/app/App.tsx");
 afterEach(() => cleanup());
 
 /** Needs you with one open gate of a workflow run, on the card "Ship the cart". */
-async function withGate(lang: "en" | "pt-BR") {
+async function withGate(lang: "en" | "pt-BR", risk: Record<string, string> = {}) {
   const store = new AppStore(memoryPlatform(false, lang).platform);
   render(<App store={store} />);
   await act(async () => {
@@ -37,6 +37,7 @@ async function withGate(lang: "en" | "pt-BR") {
                   toolName: "Bash",
                   input: { command: "npm test --silent" },
                   createdAt: "2026-11-04T13:00:00Z",
+                  ...risk,
                 },
               ],
             },
@@ -127,6 +128,64 @@ for (const [lang, t] of [
         (span) => span.textContent === "Bash: npm test --silent",
       );
       expect(detail?.getAttribute("title")).toBe("Bash: npm test --silent");
+    });
+
+    // Issue #3918: the risk showed only on the card, so a stack of requests looked alike.
+    test("a request with a risk shows the card's seal on its row, and the risk word is in its name", async () => {
+      await withGate(lang, { risk: "high", riskReason: "deletes files" });
+      const row = document.querySelector(`button[aria-label*="Backend tests"]`) as HTMLElement;
+      const seal = row.querySelector("[data-risk]");
+      expect({
+        risk: seal?.getAttribute("data-risk"),
+        word: seal?.textContent,
+        reason: seal?.getAttribute("title"),
+        name: row.getAttribute("aria-label"),
+      }).toEqual({
+        risk: "high",
+        word: t.approval.risk.high,
+        reason: "deletes files",
+        name: `alfa · Backend tests: Bash: npm test --silent · ${t.approval.risk.high}`,
+      });
+    });
+
+    test("a request with no risk has no seal and keeps its name", async () => {
+      await withGate(lang);
+      const row = document.querySelector(`button[aria-label*="Backend tests"]`) as HTMLElement;
+      expect({
+        seal: row.querySelector("[data-risk]") !== null,
+        name: row.getAttribute("aria-label"),
+      }).toEqual({ seal: false, name: "alfa · Backend tests: Bash: npm test --silent" });
+    });
+
+    test("a request whose risk changes redraws its row with the new seal", async () => {
+      const store = await withGate(lang, { risk: "low" });
+      const sealOf = () =>
+        document.querySelector(`button[aria-label*="Backend tests"] [data-risk]`)?.textContent;
+      const before = sealOf();
+      await act(async () => {
+        const host = store.getState().hosts[0] as {
+          sessions: Array<{ pendingPermissions: object[] }>;
+        };
+        (store as unknown as { update(patch: object): void }).update({
+          hosts: [
+            {
+              ...host,
+              sessions: [
+                {
+                  ...host.sessions[0],
+                  pendingPermissions: [
+                    {
+                      ...host.sessions[0]?.pendingPermissions[0],
+                      risk: "high",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+      });
+      expect([before, sealOf()]).toEqual([t.approval.risk.low, t.approval.risk.high]);
     });
 
     test("a row's detail starts under its title, past the status dot (#588)", async () => {
