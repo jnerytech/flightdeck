@@ -2,7 +2,7 @@ import type { ContextBudget } from "@flightdeck/protocol";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { InlineNotice } from "@/shared/feedback/index.ts";
-import { ErrorState, ListRow, LoadingState, Stack } from "@/shared/layout/index.ts";
+import { EmptyState, ErrorState, ListRow, LoadingState, Stack } from "@/shared/layout/index.ts";
 import { formatNumber } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { contextPath } from "./domain/file-list.ts";
@@ -48,26 +48,30 @@ export function AgentContext(
     <section aria-label={t("contextUi.title")}>
       <Stack>
         <p className="text-sm">{t("contextUi.start", { tokens: number(budget.startTokens) })}</p>
-        <Stack as="ul" gap={1}>
-          {budget.sources.map((source) => (
-            <li key={`${source.kind}/${source.path}`}>
-              <ListRow
-                leading={<Badge variant="secondary">{t(`contextUi.kind.${source.kind}`)}</Badge>}
-                title={
-                  <span className="break-all">
-                    {contextPath(source.path, budget.root, budget.home)}
-                  </span>
-                }
-                trailing={
-                  <span className="text-sm tabular-nums">
-                    {source.load === "start" ? t("contextUi.atStart") : t("contextUi.onDemand")} ·{" "}
-                    {t("contextUi.tokens", { tokens: number(source.tokens) })}
-                  </span>
-                }
-              />
-            </li>
-          ))}
-        </Stack>
+        {budget.sources.length === 0 ? (
+          <EmptyState title={t("contextUi.noSources")} />
+        ) : (
+          <Stack as="ul" gap={1} label={t("contextUi.sources")}>
+            {budget.sources.map((source) => (
+              <li key={`${source.kind}/${source.path}`}>
+                <ListRow
+                  leading={<Badge variant="secondary">{t(`contextUi.kind.${source.kind}`)}</Badge>}
+                  title={
+                    <span className="break-all">
+                      {contextPath(source.path, budget.root, budget.home)}
+                    </span>
+                  }
+                  trailing={
+                    <span className="text-sm tabular-nums">
+                      {source.load === "start" ? t("contextUi.atStart") : t("contextUi.onDemand")} ·{" "}
+                      {t("contextUi.tokens", { tokens: number(source.tokens) })}
+                    </span>
+                  }
+                />
+              </li>
+            ))}
+          </Stack>
+        )}
         {memory.indexLines > 0 && (
           <p className="text-sm">
             {t(cut ? "contextUi.index" : "contextUi.indexAll", {
@@ -82,7 +86,7 @@ export function AgentContext(
           </p>
         )}
         {cut && (
-          <InlineNotice tone="error">
+          <InlineNotice tone="warn">
             {memory.cutBy === "lines"
               ? t("contextUi.cutLines", { limit: memory.limitLines })
               : t("contextUi.cutBytes", { limit: Math.round(memory.limitBytes / 1024) })}
