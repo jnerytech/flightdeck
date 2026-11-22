@@ -17,7 +17,13 @@ export function Breakdown(
   return (
     <section aria-label={props.name}>
       <Panel title={props.name}>
-        <table className="w-full text-left text-sm tabular-nums">
+        <table aria-label={props.name} className="w-full text-left text-sm tabular-nums">
+          <thead>
+            <tr className="sr-only">
+              <th scope="col">{t("costsUi.colName")}</th>
+              <th scope="col">{t("costsUi.colCost")}</th>
+            </tr>
+          </thead>
           <tbody>
             {props.rows.map((row) => (
               <tr key={row.id ?? row.label} className="border-t first:border-t-0">
