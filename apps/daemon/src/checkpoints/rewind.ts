@@ -59,7 +59,8 @@ export class Rewinder {
   ): Promise<RewindPreview> {
     this.allowed(claudeSessionId, confirm);
     const target = await this.inRoots(this.turn(claudeSessionId, turn));
-    if (guard) await this.guardFiles(target.repo, (await this.preview(claudeSessionId, turn)).files, guard);
+    if (guard)
+      await this.guardFiles(target.repo, (await this.preview(claudeSessionId, turn)).files, guard);
     await this.safety(claudeSessionId, target.repo);
     const sdk = await this.sdk(claudeSessionId, target, false);
     return sdk ?? (await this.restore(target));

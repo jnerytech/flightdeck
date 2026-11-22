@@ -368,9 +368,11 @@ describe("rewind guard (#3825)", () => {
       },
     );
     const refused = await reason(rewinder.apply("s1", turn, true, refuse));
-    expect([refused, read(join(repo, ".claude", "settings.json")), read(join(repo, "a.txt"))]).toEqual(
-      ["guard ran", '{"hooks":{}}\n', "edited\n"],
-    );
+    expect([
+      refused,
+      read(join(repo, ".claude", "settings.json")),
+      read(join(repo, "a.txt")),
+    ]).toEqual(["guard ran", '{"hooks":{}}\n', "edited\n"]);
     expect(await reason(rewinder.apply("s1", turn, true))).toBe("ok");
     expect(await reason(rewinder.undo("s1", true, refuse))).toBe("guard ran");
     expect(read(join(repo, ".claude", "settings.json"))).toBe("{}\n");
