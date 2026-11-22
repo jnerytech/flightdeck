@@ -239,7 +239,18 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
       const repo = screen.queryByRole("textbox", { name: "repo-path" }) as HTMLInputElement | null;
       const kept = [host?.value ?? null, repo?.value ?? null];
       await click(TEXT[lang].next);
-      expect([kept, calls.args.length, calls.closed]).toEqual([["h2", "/work/app"], 2, 0]);
+      const second = calls.args.length;
+      await shows(TEXT[lang].secrets);
+      await click(TEXT[lang].move);
+      await act(async () => {
+        control.fail?.(new RequestError("invalid_state", "x", "teleport_no_project"));
+      });
+      // A second failure offers the way back again.
+      const again = await settle(() => screen.queryByRole("button", { name: retry }) !== null).then(
+        () => true,
+        () => false,
+      );
+      expect([kept, second, again, calls.closed]).toEqual([["h2", "/work/app"], 2, true, 0]);
     });
 
     test(`${lang}: Close on a failed move still closes the dialog once (#4123)`, async () => {
@@ -262,6 +273,40 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
       expect(calls.closed).toBe(1);
     });
   }
+
+  test("Try again with a host that is no longer offered asks for a host again instead of moving to it (#4123)", async () => {
+    const targets = [{ id: "h2", name: "pi" }];
+    const { calls, control } = open("en", SUMMARY, false, targets);
+    await start("en");
+    await shows(TEXT.en.secrets);
+    await click(TEXT.en.move);
+    await act(async () => {
+      control.fail?.(new RequestError("invalid_state", "x", "teleport_no_project"));
+    });
+    await shows(TEXT.en.refused);
+    // The host went offline while the move ran: the list no longer has it.
+    targets.length = 0;
+    await click("Try again");
+    const next = screen.queryByRole("button", { name: TEXT.en.next });
+    // The first step is back with no host picked: no repository field, nothing moves.
+    expect([
+      next === null,
+      screen.queryByRole("textbox", { name: "repo-path" }) === null,
+      calls.args.length,
+    ]).toEqual([false, true, 1]);
+  });
+
+  test("a move that landed but names no session offers Close only: Try again would move it twice (#4123)", async () => {
+    const { control } = open("en");
+    await start("en");
+    await shows(TEXT.en.secrets);
+    await click(TEXT.en.move);
+    await act(async () => {
+      control.finish?.({ kind: "moved", sessionId: "", worktree: "/w", branch: "fd/x" });
+    });
+    await settle(() => screen.queryByRole("alert") !== null);
+    expect(screen.queryByRole("button", { name: "Try again" }) === null).toBe(true);
+  });
 
   for (const lang of ["en", "pt-BR"] as const) {
     test(`${lang}: the moving step shows a progress bar with the percent beside the text, and a full one while the host finishes (#4127)`, async () => {
