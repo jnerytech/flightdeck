@@ -43,6 +43,25 @@ describe("atalhos-ui: the ? sheet and the go-to chords", () => {
     store.dispose();
   });
 
+  // #4118: the keys answer only with the request focused, and never approve a high-risk one.
+  test("the approve and deny rows are lower-case keys that name the focus and the high-risk hold, in both languages", async () => {
+    const { store, press } = await mount();
+    await press("?");
+    const en = within(sheet() as HTMLElement);
+    expect(en.queryAllByText(/with the request focused/i)).toHaveLength(2);
+    expect(en.queryByText(/high-risk request is approved by holding the button/i)).not.toBeNull();
+    expect([en.queryByText("a"), en.queryByText("n")].every((key) => key !== null)).toBe(true);
+    expect([en.queryByText("A"), en.queryByText("N")].every((key) => key === null)).toBe(true);
+    store.dispose();
+    cleanup();
+    const pt = await mount("pt-BR");
+    await pt.press("?");
+    const open = within(sheet() as HTMLElement);
+    expect(open.queryAllByText(/com o pedido em foco/i)).toHaveLength(2);
+    expect(open.queryByText(/risco alto se aprova segurando o botão/i)).not.toBeNull();
+    pt.store.dispose();
+  });
+
   test("Escape pressed on the page, not inside the sheet, closes it; with it closed Escape opens nothing", async () => {
     const { store, press } = await mount();
     await press("Escape");
