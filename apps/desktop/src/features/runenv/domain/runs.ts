@@ -6,10 +6,12 @@ import { usd } from "../../costs/index.ts";
 const PT = translator("pt-BR");
 
 /** How long a step took (or has taken so far), roughly. */
-export function stepDuration(step: StepRun, now: number): string {
+export function stepDuration(step: StepRun, now: number, t: T = PT): string {
   const end = step.endedAt ? Date.parse(step.endedAt) : now;
   const seconds = Math.max(0, Math.round((end - Date.parse(step.startedAt)) / 1000));
-  return seconds < 60 ? `${seconds} s` : `${Math.round(seconds / 60)} min`;
+  return seconds < 60
+    ? t("runUi.durationSeconds", { n: seconds })
+    : t("runUi.durationMinutes", { n: Math.round(seconds / 60) });
 }
 
 /** What an agent step's turns spent: `1 turno · US$ 0.50`. */

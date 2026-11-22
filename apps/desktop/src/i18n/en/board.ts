@@ -541,6 +541,8 @@ export const board = {
       one: "{n} turn",
       other: "{n} turns",
     },
+    durationSeconds: "{n} s",
+    durationMinutes: "{n} min",
     budgetTurns: "Turns",
     budgetMinutes: "Minutes",
     budgetCost: "Estimated cost",
