@@ -165,6 +165,47 @@ describe("automatic approvals page: what it says when the host refuses or is slo
     expect(sent.filter((s) => s.command === "autoapprove.resume").length).toBe(1);
   });
 
+  test("while the list is not read, 'No suspended sessions' is not said", async () => {
+    const first = pending();
+    const { store } = fakeStore([first.promise, refused("the host cannot read the log")]);
+    const { container } = view(store);
+    await uiIdle();
+    const whileLoading = text(container).includes("No suspended sessions");
+    await act(async () => first.settle(refused("the host cannot read the log")));
+    await uiIdle();
+    expect({
+      whileLoading,
+      afterRefusal: text(container).includes("No suspended sessions"),
+    }).toEqual({ whileLoading: false, afterRefusal: false });
+  });
+
+  test("after Try again the focus stays on the page's content, not on the body", async () => {
+    const { store } = fakeStore([
+      refused("the host cannot read the log"),
+      listed([decision("d1", "Bash")]),
+    ]);
+    const { container } = view(store);
+    await uiIdle();
+    await press(container, "Try again");
+    await uiIdle();
+    expect(
+      document.activeElement !== document.body && container.contains(document.activeElement),
+    ).toBe(true);
+  });
+
+  test("while one Resume is out, the other suspended session's button is off too", async () => {
+    const resume = pending();
+    const other: AutoApproveSuspension = { ...SUSPENDED, sessionKey: "sess-2" };
+    const { store } = fakeStore([listed([], [SUSPENDED, other])], [resume.promise]);
+    const { container } = view(store);
+    await uiIdle();
+    await press(container, /^Resume sess-1/);
+    await confirmResume();
+    await uiIdle();
+    const second = within(container).queryByRole("button", { name: /^Resume sess-2/ });
+    expect((second as HTMLButtonElement | null)?.disabled).toBe(true);
+  });
+
   test("after a Resume that worked the focus is inside the suspended list, not on the page", async () => {
     const { store } = fakeStore([listed([], [SUSPENDED])], [listed([], [])]);
     const { container } = view(store);

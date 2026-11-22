@@ -96,6 +96,19 @@ describe("always-allow editor: the person's way through the rule field (#4158)",
     expect({ sent, disabled: button("Save rule")?.disabled }).toEqual({ sent: [], disabled: true });
   });
 
+  test("a held Enter does not send the rule: the focus move must not let the key repeat submit it", async () => {
+    editor();
+    await open();
+    const input = field() as HTMLInputElement;
+    // fireEvent returns false when the handler called preventDefault, which blocks the implicit submit.
+    const held = fireEvent.keyDown(input, { key: "Enter", repeat: true });
+    const first = fireEvent.keyDown(input, { key: "Enter", repeat: false });
+    expect({ heldBlocked: held === false, firstAllowed: first === true }).toEqual({
+      heldBlocked: true,
+      firstAllowed: true,
+    });
+  });
+
   test("Cancel closes the editor and the focus goes to Always in this project", async () => {
     editor();
     await open();

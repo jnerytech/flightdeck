@@ -154,6 +154,35 @@ describe("project rules section: what it says while it waits and when the host r
     }).toEqual({ removed: true, focused: true });
   });
 
+  test("cancelling the remove dialog puts the focus back on that rule's Remove button", async () => {
+    const { store } = fakeStore({
+      "rules.list": [ok("Bash(git status:*)")],
+      "rules.remove": [],
+    });
+    const { container } = view(store);
+    await uiIdle();
+    await press(container, "Remove Bash(git status:*)");
+    const dialog = within(document.body).queryByRole("alertdialog");
+    expect(dialog).not.toBeNull();
+    await press(dialog as HTMLElement, "Cancel");
+    await uiIdle();
+    const button = within(container).queryByRole("button", { name: "Remove Bash(git status:*)" });
+    expect(button !== null && document.activeElement === button).toBe(true);
+  });
+
+  test("after Try again the focus stays inside the section, not on the page", async () => {
+    const { store } = fakeStore({
+      "rules.list": [refused("the host cannot read the project"), ok("Bash(git status:*)")],
+      "rules.remove": [],
+    });
+    const { container } = view(store);
+    await uiIdle();
+    await press(container, "Try again");
+    await uiIdle();
+    const section = within(container).queryByRole("region", { name: "Rules" });
+    expect(section?.contains(document.activeElement) ?? false).toBe(true);
+  });
+
   test("a rule longer than its row is not cut: the whole text wraps", async () => {
     const long = `Bash(${"npm run very-long-script-name ".repeat(6).trim()}:*)`;
     const { store } = fakeStore({ "rules.list": [ok(long)], "rules.remove": [] });
