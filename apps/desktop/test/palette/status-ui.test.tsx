@@ -17,17 +17,23 @@ const WORDS = {
     none: "Nothing matches “zzzz”. Press Enter to search the history.",
     found: (n: number) => `Results: ${n}`,
     searching: "alfa: searching…",
+    hint: "Enter searches the history.",
+    placeholder: "Sessions, cards, projects, actions…",
+    historyNone: "Nothing in the history matches “x”.",
   },
   "pt-BR": {
     input: "Buscar no histórico",
     none: "Nada corresponde a “zzzz”. Pressione Enter para buscar no histórico.",
     found: (n: number) => `Resultados: ${n}`,
     searching: "alfa: buscando…",
+    hint: "Enter busca no histórico.",
+    placeholder: "Sessões, cards, projetos, ações…",
+    historyNone: "Nada no histórico corresponde a “x”.",
   },
 } as const;
 
 /** The palette with one online host that has one session; `waiting` puts a history search in flight. */
-function open(lang: "en" | "pt-BR", waiting = false) {
+function open(lang: "en" | "pt-BR", waiting: boolean | "done" = false) {
   const store = new AppStore(memoryPlatform(false, lang).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   store.palette.load = (async () => {}) as never;
@@ -59,7 +65,9 @@ function open(lang: "en" | "pt-BR", waiting = false) {
       },
     ],
     projects: {},
-    search: waiting ? { query: "x", hits: [], waiting: ["h1"], silent: [] } : base.search,
+    search: waiting
+      ? { query: "x", hits: [], waiting: waiting === "done" ? [] : ["h1"], silent: [] }
+      : base.search,
   } as never as ReturnType<typeof store.getState>;
   render(
     <GlobalSearch
@@ -111,6 +119,27 @@ describe.each(["en", "pt-BR"] as const)("palette status (%s)", (lang) => {
       there: true,
       text: "",
     });
+  });
+
+  test("the hint that Enter searches the history stays under the field, and the field names it", async () => {
+    open(lang);
+    const field = screen.queryByLabelText(WORDS[lang].input) as HTMLInputElement;
+    const hintOf = () => {
+      const id = field?.getAttribute("aria-describedby") ?? "";
+      return id ? (document.getElementById(id)?.textContent ?? "") : "";
+    };
+    const empty = hintOf();
+    await type(lang, "alfa");
+    expect({
+      empty: empty === WORDS[lang].hint,
+      typed: hintOf() === WORDS[lang].hint,
+      placeholder: field.placeholder === WORDS[lang].placeholder,
+    }).toEqual({ empty: true, typed: true, placeholder: true });
+  });
+
+  test("a finished history search with no hit says so in the status region", () => {
+    open(lang, "done");
+    expect(status()?.textContent === WORDS[lang].historyNone).toBe(true);
   });
 
   test("the host still searching the history is said in a status region of its own", () => {
