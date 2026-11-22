@@ -1,4 +1,4 @@
-import type { SnapshotFiles, SnapshotInfo } from "@flightdeck/protocol";
+import type { RewindPreview, SnapshotFiles, SnapshotInfo } from "@flightdeck/protocol";
 import { GitBranch, History, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,7 @@ import { ActionButton, IconActionButton, InlineNotice } from "@/shared/feedback/
 import { EmptyState, ErrorState, Inline, LoadingState, Stack } from "@/shared/layout/index.ts";
 import { formatDateTime } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { ForkDialog, RewindDialog, type Target } from "./checkpoint-dialogs.tsx";
+import { ForkDialog, RewindDialog, type Target, UndoDialog } from "./checkpoint-dialogs.tsx";
 
 /** More than this many lines or characters and the prompt is clamped, with a button to read it whole (#4038). */
 // Keep PROMPT_LINES equal to the `line-clamp-3` class below: a Tailwind class cannot be built from it.
@@ -171,15 +171,30 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
   const [rewinding, setRewinding] = useState<Turn | null>(null);
   const [forking, setForking] = useState<Turn | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [undoable, setUndoable] = useState(false);
+  // What the host would restore by an undo, from its own safety snapshot: the Undo is offered only
+  // while it lists files, so it also survives the sheet closing and a fork that rewound (#4036).
+  const [undoPreview, setUndoPreview] = useState<RewindPreview | null>(null);
+  const [undoing, setUndoing] = useState(false);
+  const undoable = (undoPreview?.files.length ?? 0) > 0;
   const scroll = useRef<HTMLDivElement>(null);
   const loaded = snapshots !== null;
 
   const load = useCallback(async () => {
     setFailed(false);
     const result = await store.hostCommand(hostId, "snapshots.list", { claudeSessionId });
-    if (result) setSnapshots(result.snapshots);
-    else setFailed(true);
+    if (!result) {
+      setFailed(true);
+      return;
+    }
+    setSnapshots(result.snapshots);
+    // Only a session with a safety snapshot has a rewind to undo. A refusal (an older host, no
+    // rewind) is no error: there is just no Undo.
+    if (!result.snapshots.some((s) => s.kind === "safety")) {
+      setUndoPreview(null);
+      return;
+    }
+    const preview = await store.hostRequest(hostId, "rewind.undoPreview", { claudeSessionId });
+    setUndoPreview(preview.ok ? preview.data : null);
   }, [store, hostId, claudeSessionId]);
 
   useEffect(() => {
@@ -208,33 +223,26 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
 
   const rewound = (turn: Turn) => {
     setNotice(t("timeline.rewound", { n: turn.ordinal }));
-    setUndoable(true);
     void load();
   };
 
-  const undo = async () => {
-    const result = await store.hostCommand(hostId, "rewind.undo", {
-      claudeSessionId,
-      confirm: true,
-    });
-    if (result) {
-      setNotice(t("timeline.undone"));
-      setUndoable(false);
-      void load();
-    }
+  const undone = () => {
+    setNotice(t("timeline.undone"));
+    setUndoPreview(null);
+    void load();
   };
 
   if (snapshots === null && !failed) return <LoadingState label={t("timeline.loading")} />;
   const turns = turnsOf(snapshots ?? []);
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4">
-      {notice && (
+      {(notice ?? (undoable ? t("timeline.rewoundEarlier") : null)) && (
         <InlineNotice tone="info">
-          <span>{notice}</span>{" "}
+          <span>{notice ?? t("timeline.rewoundEarlier")}</span>{" "}
           {undoable && (
-            <ActionButton variant="outline" size="sm" onClick={() => undo()}>
+            <Button variant="outline" size="sm" onClick={() => setUndoing(true)}>
               {t("timeline.undo")}
-            </ActionButton>
+            </Button>
           )}
         </InlineNotice>
       )}
@@ -275,6 +283,7 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
           onDone={() => rewound(rewinding)}
         />
       )}
+      {undoing && <UndoDialog {...props} onClose={() => setUndoing(false)} onDone={undone} />}
       {forking && (
         <ForkDialog
           {...props}

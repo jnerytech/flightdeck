@@ -181,6 +181,8 @@ describe("linha-do-tempo-ui", () => {
       ),
     ).toBe(true);
 
+    // The Undo comes from the host's undo preview, so it shows once the host has answered it.
+    await settle(() => screen.queryByRole("button", { name: "Desfazer volta" }) !== null);
     await click("Desfazer volta");
     // Looking is not doing: the dialog lists the files and the undo waits for its confirmation.
     await settle(() => screen.queryByRole("dialog", { name: "Desfazer a volta" }) !== null);

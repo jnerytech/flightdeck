@@ -649,6 +649,13 @@ export const sessions = {
     rewound: "Arquivos voltados ao turno {n}.",
     undo: "Desfazer volta",
     undone: "Volta desfeita.",
+    rewoundEarlier: "Os arquivos desta sessão voltaram a um ponto anterior.",
+    undoTitle: "Desfazer a volta",
+    undoNote:
+      "As mudanças feitas depois da volta são sobrescritas: os arquivos abaixo voltam ao que eram antes dela.",
+    undoNothing: "Nada para desfazer: os arquivos já estão como antes da volta.",
+    undoConfirm: "Restaurar arquivos",
+    undoFailed: "Não deu para desfazer a volta: {reason}",
     forkTitle: "Bifurcar a partir do turno {n}",
     forkDescription: "Cria uma conversa nova a partir deste turno. A original continua como está.",
     forkWhere: "Onde abrir",
