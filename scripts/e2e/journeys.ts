@@ -2112,7 +2112,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     } catch (error) {
       throw new Error(`${(error as Error).message}: ${JSON.stringify(await measure())}`);
     }
-    // A head is one line: its items share a top, and none runs past the lane's right edge.
+    // A head is one row: its items share a middle line (a name on two lines is taller than the
+    // icon), and none runs past the lane's right edge.
     const heads = await grid.evaluate((el) =>
       [...el.querySelectorAll("section[data-column]")].flatMap((lane) => {
         const edge = lane.getBoundingClientRect().right;
@@ -2121,7 +2122,9 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
           item.getBoundingClientRect(),
         );
         const past = items.some((box) => box.right > edge + 1);
-        const wrapped = items.some((box) => Math.abs(box.top - (items[0]?.top ?? 0)) > 6);
+        const middle = (box: DOMRect) => box.top + box.height / 2;
+        const first = items[0];
+        const wrapped = items.some((box) => !first || Math.abs(middle(box) - middle(first)) > 6);
         return past || wrapped ? [name] : [];
       }),
     );

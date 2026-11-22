@@ -93,6 +93,8 @@
   /* A line under the head, across the lane, between the status and its cards (#114). */
   margin-inline: -0.5rem;
   padding: 0 0.75rem 0.5rem;
+  /* Room for a name on two lines (#3878), so every lane's cards start at the same height. */
+  min-height: 2.3rem;
   border-bottom: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
   & > button {
     margin-inline-start: auto;
@@ -102,11 +104,16 @@
 @utility column-title {
   font-size: 0.75rem;
   font-weight: 500;
-  /* Five columns share a 1280 px window (#1030): a long name gives way, the count and the + stay. */
+  /* Five columns share a 1280 px window (#1030): the name takes up to two lines (a longer one is cut,
+     and carries its full text as a title); the count and the + stay on the head's line (#3878). */
   min-width: 0;
+  line-height: 1.2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 /* The count of a column, a small pill. */
