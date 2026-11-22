@@ -73,6 +73,8 @@ export function setup(
     laterTemplates?: Array<Array<{ id: string; title: string; files: string[]; bytes: number }>>;
     /** A preview that names a template is refused (it is gone): the banner, and no preview. */
     previewRefusesTemplate?: boolean;
+    /** The first preview is refused (a path the host will not read); the next one answers. */
+    previewRefusedOnce?: { code: string; message: string };
     /** The host asks a device to sign the apply (#3507): the person signs, says no, or the signing fails. */
     proof?: "signed" | "declined" | "fails";
   } = {},
@@ -104,12 +106,14 @@ export function setup(
   const answers = [
     ...(options.answers ?? [{ ok: true, data: { written: [SETTINGS, "CLAUDE.md"] } }]),
   ];
+  let refusedOnce = options.previewRefusedOnce;
   store.hostCommand = (async (_host: string, type: string, payload: unknown) => {
     sent.push([type, payload]);
     if (type === "project.trust.state") {
       return { items: [{ path: "/work/api", trusted: options.trusted ?? false, via: null }] };
     }
     if (type === "project.trust.inspect") return LOAD;
+    // Until the screen asks through hostRequest, the old path still answers (removed with the fix).
     if (type === "project.harness.preview") {
       const named = (payload as { template?: string }).template !== undefined;
       return options.previewRefusesTemplate && named ? null : (options.preview ?? PREVIEW);
@@ -124,6 +128,15 @@ export function setup(
   }) as never;
   store.hostRequest = (async (_host: string, type: string, payload: unknown) => {
     sent.push([type, payload]);
+    if (type === "project.harness.preview") {
+      const named = (payload as { template?: string }).template !== undefined;
+      const refusal = refusedOnce;
+      refusedOnce = undefined;
+      if (refusal) return { ok: false, ...refusal };
+      return options.previewRefusesTemplate && named
+        ? { ok: false, code: "invalid_state", message: "there is no such template" }
+        : { ok: true, data: options.preview ?? PREVIEW };
+    }
     return answers.shift() ?? { ok: false, code: "invalid_state", message: "no answer" };
   }) as never;
   const appState = {

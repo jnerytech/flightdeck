@@ -288,4 +288,59 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
       toggles.every((el) => el.className.split(" ").includes("hit-24")),
     ]).toEqual([true, true]);
   });
+
+  test("a refused preview says why beside the button, takes the focus, and the next preview clears it", async () => {
+    const { view } = setup({
+      previewRefusedOnce: { code: "invalid_state", message: "the project folder is gone" },
+    });
+    render(view);
+    await listing();
+    await settleMaybe(() => button("Set up Claude Code") !== null);
+    await click("Set up Claude Code");
+    const said = await settleMaybe(() =>
+      screen.queryAllByRole("alert").some((alert) => alert.textContent?.includes("folder is gone")),
+    );
+    const alert = screen.queryAllByRole("alert").find((a) => a.textContent?.includes("folder is"));
+    const focused = alert !== undefined && document.activeElement === alert;
+    const noDialog = screen.queryByRole("alertdialog") === null;
+    await click("Set up Claude Code");
+    await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
+    expect([said, focused, noDialog, dialogText().includes("bun run format")]).toEqual([
+      true,
+      true,
+      true,
+      true,
+    ]);
+    expect(screen.queryAllByRole("alert").some((a) => a.textContent?.includes("folder is"))).toBe(
+      false,
+    );
+  });
+
+  test.each([
+    ["en", "Contents of CLAUDE.md", "Contents of docs/NOTES.md"],
+    ["pt-BR", "Conteúdo de CLAUDE.md", "Conteúdo de docs/NOTES.md"],
+  ] as const)(
+    "each file of the preview is a named, focusable region (%s)",
+    async (language, first, second) => {
+      const preview: HarnessPreview = {
+        ...PREVIEW,
+        files: [
+          ...PREVIEW.files,
+          { path: "docs/NOTES.md", content: "# Notes\n", digest: "d-notes" },
+        ],
+      };
+      const { view } = setup({ language, preview });
+      render(view);
+      await listing(
+        language === "en" ? "What this project would load" : "O que este projeto carregaria",
+      );
+      await click(language === "en" ? "Set up Claude Code" : "Configurar o Claude Code");
+      await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
+      const named = [first, second].map((label) => screen.queryByLabelText(label));
+      expect(named.map((el) => [el?.tagName, el?.getAttribute("tabindex")])).toEqual([
+        ["PRE", "0"],
+        ["PRE", "0"],
+      ]);
+    },
+  );
 });
