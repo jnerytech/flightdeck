@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { formatWhen } from "../../src/i18n/format.ts";
+import { formatDateTime, formatWhen } from "../../src/i18n/format.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 
@@ -23,12 +23,22 @@ const WORDS = {
     markRead: (title: string) => `Mark ${title} as read`,
     markUnread: (title: string) => `Mark ${title} as unread`,
     dismiss: (title: string) => `Dismiss ${title}`,
+    empty: "No notifications.",
+    lands: "Needs you, Turn finished, Session failed, PR watch, Budget and quota",
+    settings: "Notification settings",
+    master: "Show notifications",
+    count: (n: number) => `Happened ${n} times`,
   },
   "pt-BR": {
     bell: /^Notificações/,
     markRead: (title: string) => `Marcar ${title} como lida`,
     markUnread: (title: string) => `Marcar ${title} como não lida`,
     dismiss: (title: string) => `Descartar ${title}`,
+    empty: "Nenhuma notificação.",
+    lands: "Precisa de você, Turno concluído, Sessão com erro, Vigia de PR, Orçamento e cota",
+    settings: "Configurar notificações",
+    master: "Mostrar notificações",
+    count: (n: number) => `Aconteceu ${n} vezes`,
   },
 } as const;
 
@@ -115,5 +125,42 @@ describe.each(["en", "pt-BR"] as const)("the notification center, names and time
     expect(time("Session O")).not.toBe(formatWhen(old, Date.parse(old), lang));
     expect(time("Session N")).toBe(formatWhen(today(30), Date.now(), lang));
     expect(time("Session N")).not.toBe(time("Session O"));
+  });
+
+  test("an empty panel says what lands here and opens the notification settings (#4033)", async () => {
+    const panel = await openPanel(lang, []);
+    expect(panel.textContent?.includes(w.empty)).toBe(true);
+    expect(panel.textContent?.includes(w.lands)).toBe(true);
+    const button = within(panel).queryByRole("button", { name: w.settings });
+    expect(button).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(button as HTMLElement);
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("checkbox", { name: w.master })).not.toBeNull());
+  });
+
+  test("a panel with rows shows no settings button (#4033)", async () => {
+    const panel = await openPanel(lang, [ENTRY("A", today(30))]);
+    expect(within(panel).queryByRole("button", { name: w.settings })).toBeNull();
+  });
+
+  test("a repeated row names what repeated (#4034)", async () => {
+    const panel = await openPanel(lang, [
+      ENTRY("A", today(30), { group: "g" }),
+      ENTRY("B", today(20), { group: "g" }),
+      ENTRY("C", today(10), { group: "g" }),
+    ]);
+    expect(panel.textContent?.includes(w.count(3))).toBe(true);
+  });
+
+  test("a row's time is a time element with its exact date and time (#4034)", async () => {
+    const old = daysAgo(3);
+    const panel = await openPanel(lang, [ENTRY("O", old)]);
+    const row = rowOf(panel, "Session O");
+    const time = row.querySelector("time");
+    expect(time?.getAttribute("datetime")).toBe(old);
+    expect(time?.getAttribute("title")).toBe(formatDateTime(old, lang));
+    expect(row.textContent?.includes(formatDateTime(old, lang))).toBe(true);
   });
 });
