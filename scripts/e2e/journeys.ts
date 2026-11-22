@@ -361,6 +361,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByText(c.t("timeline.rewound", { n: 2 }), { exact: true })
       .waitFor({ timeout: WAIT });
     await c.page.getByRole("button", { name: c.t("timeline.undo"), exact: true }).click();
+    // The Undo asks first (#4036): the dialog lists the files and its Restore button does the undo.
+    const restore = c.page.getByRole("button", { name: c.t("timeline.undoConfirm"), exact: true });
+    await waitFor(() => restore.isEnabled(), "a prévia do que o desfazer muda");
+    await restore.click();
     await c.page.getByText(c.t("timeline.undone"), { exact: true }).waitFor({ timeout: WAIT });
   },
 

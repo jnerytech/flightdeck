@@ -293,7 +293,25 @@ export function agentShots(ids: DemoIds): Shot[] {
       // The rewind of turn 2 applied: the notice says so and offers Undo.
       name: "linha-do-tempo-desfeito",
       route: { name: "session", host: ALFA, id: ids.rewindSession },
-      wire: [{ command: "rewind.apply", as: "rewind.preview" }],
+      wire: [
+        { command: "rewind.apply", as: "rewind.preview" },
+        // The Undo comes from the host's undo preview, and the demo's host has no rewind to undo. The
+        // request goes out as a read (a rewind.preview needs a turn it does not carry) and comes back
+        // as the files an undo would change.
+        {
+          command: "rewind.undoPreview",
+          as: "snapshots.list",
+          data: {
+            via: "snapshot",
+            files: [
+              { path: "README.md", change: "modified" },
+              { path: "src/cart.ts", change: "deleted" },
+            ],
+            insertions: 3,
+            deletions: 1,
+          },
+        },
+      ],
       prepare: async (page) => {
         await openTimeline(page);
         await page
@@ -303,6 +321,10 @@ export function agentShots(ids: DemoIds): Shot[] {
         await page
           .getByRole("button", { name: /^(Voltar arquivos|Rewind files)$/ })
           .click({ timeout: 8000 });
+        // The Undo shows from the start (the undo preview is wired), so the notice is what says the rewind happened.
+        await page
+          .getByText(/^(Arquivos voltados ao turno|Files rewound to turn)/)
+          .waitFor({ timeout: 8000 });
         await page
           .getByRole("button", { name: /^(Desfazer volta|Undo rewind)$/ })
           .waitFor({ timeout: 8000 });
