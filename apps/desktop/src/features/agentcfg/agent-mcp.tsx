@@ -225,7 +225,7 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
       setDraft((d) => (d ? { ...d, [key]: e.target.value } : d)),
     onBlur: () => setLeft((all) => ({ ...all, [key]: true })),
   });
-  // What is missing is told once its field was left or a save was tried; until then Save's reason says it quietly.
+  // What is missing is told once its field was left (Save is disabled, so Enter cannot submit an invalid form); until then Save's reason says it quietly.
   const missing = (key: keyof Left, need: "needName" | "needCommand" | "needUrl") =>
     left[key] && problem === need ? t(`agent.mcp.${need}`) : undefined;
   const missingText =
