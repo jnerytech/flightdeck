@@ -180,6 +180,27 @@ describe("shots-wire: the states the table prints (#3982)", () => {
     ]);
   });
 
+  test("the applied-rewind print waits for the notice that says the rewind happened before it waits for the Undo, which the undo preview shows from the start (#4036)", async () => {
+    const calls: string[] = [];
+    // A page that records each call and answers with itself.
+    const recorder: unknown = new Proxy(() => recorder, {
+      get: (_target, prop) =>
+        prop === "then"
+          ? undefined
+          : (...args: unknown[]) => {
+              calls.push(`${String(prop)}(${args.map(String).join(",")})`);
+              return recorder;
+            },
+    });
+    await named("linha-do-tempo-desfeito")?.prepare?.(recorder as never);
+    const notice = calls.findIndex(
+      (call) => call.startsWith("getByText(") && call.includes("voltados"),
+    );
+    const undo = calls.findIndex((call) => call.includes("Undo rewind"));
+    expect(notice).toBeGreaterThan(-1);
+    expect(undo).toBeGreaterThan(notice);
+  });
+
   test("the bell prints with no notifications, and with the list cleared from a full one", () => {
     expect([named("sino-vazio")?.inbox, named("sino-limpo")?.inbox]).toEqual([undefined, true]);
   });
