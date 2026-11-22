@@ -257,7 +257,7 @@ for (const [lang, t] of [
 }
 
 describe("roi-ajustes-ui: where the settings sit and how they line up (#588)", () => {
-  test("the settings come after the reports, each field on a label column, the hosts under a visible legend", async () => {
+  test("the settings come after the reports, each field in its form, the hosts under a visible legend", async () => {
     await costsPage("en");
     const S = en.roiUi.settingsPanel;
     await settle(() => screen.queryByLabelText(S.defaultRate) !== null);
@@ -267,20 +267,21 @@ describe("roi-ajustes-ui: where the settings sit and how they line up (#588)", (
     const after = Boolean(
       panel && top && top.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING,
     );
-    const onRow = [S.defaultRate, S.reviewCap, S.personName, S.tokenLimit, S.costLimit].map(
-      (label) => Boolean(screen.queryByLabelText(label)?.closest("[data-slot='setting-row']")),
+    // #4193: each field is a `Field` of a form (its label above it), not a bare row of the grid.
+    const inForm = [S.defaultRate, S.reviewCap, S.personName, S.tokenLimit, S.costLimit].map(
+      (label) => Boolean(screen.queryByLabelText(label)?.closest("form")),
     );
-    const capRow = screen.queryByLabelText(S.reviewCap)?.closest("[data-slot='setting-row']");
+    const capRow = screen.queryByLabelText(S.reviewCap)?.closest("form");
     const checkbox = screen.queryByLabelText(S.countReview);
     const hosts = screen.queryByRole("group", { name: S.personHosts });
     expect({
       after,
-      onRow,
+      inForm,
       reviewAlone: Boolean(capRow && checkbox && !capRow.contains(checkbox)),
       legend: hosts?.textContent?.includes(S.personHosts) ?? false,
     }).toEqual({
       after: true,
-      onRow: [true, true, true, true, true],
+      inForm: [true, true, true, true, true],
       reviewAlone: true,
       legend: true,
     });

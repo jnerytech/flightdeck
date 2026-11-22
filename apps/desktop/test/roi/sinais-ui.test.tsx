@@ -101,6 +101,13 @@ for (const [lang, t] of [
       expect(screen.queryByText(S.error.gh_logged_out)).not.toBeNull();
     });
 
+    test("each signal is a switch with its label (#4193)", async () => {
+      await boardPage(lang, { count: 0 });
+      await settle(() => screen.queryByLabelText(S.commits) !== null);
+      expect(screen.queryByRole("switch", { name: S.commits })).not.toBeNull();
+      expect(screen.queryByRole("switch", { name: S.issues })).not.toBeNull();
+    });
+
     test("a host without roi shows no switches", async () => {
       await boardPage(lang, { count: 0 }, "no-roi");
       await act(async () => {});
