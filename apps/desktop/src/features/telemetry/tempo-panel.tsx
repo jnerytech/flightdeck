@@ -1,11 +1,20 @@
 import type { TelemetryItem, TelemetryPrompt } from "@flightdeck/protocol";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { formatMs } from "@/features/sessions/index.ts";
 import { useT } from "@/i18n/context";
-import { Bar, EmptyState, Inline, LoadingState, Panel, Stack } from "@/shared/layout/index.ts";
+import {
+  Bar,
+  EmptyState,
+  ErrorState,
+  Inline,
+  LoadingState,
+  Panel,
+  Stack,
+} from "@/shared/layout/index.ts";
 import { formatDuration } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { usd } from "../costs/index.ts";
+import { stepKeys } from "./domain/step-keys.ts";
 import { label } from "./domain/tempo-label.ts";
 
 type T = ReturnType<typeof useT>;
@@ -50,13 +59,8 @@ function PromptBlock(props: Readonly<{ prompt: TelemetryPrompt; n: number; t: T 
     >
       <p className="text-muted-foreground text-xs">{summary}</p>
       <Stack as="ul" gap={2}>
-        {prompt.items.map((item) => (
-          <Step
-            key={`${item.at}-${item.kind}-${item.toolName ?? ""}`}
-            item={item}
-            longest={longest}
-            t={t}
-          />
+        {stepKeys(prompt.items).map(({ key, item }) => (
+          <Step key={key} item={item} longest={longest} t={t} />
         ))}
       </Stack>
     </Panel>
@@ -73,15 +77,33 @@ export function TempoPanel(
 ) {
   const t = useT();
   const { store, hostId, claudeSessionId } = props;
-  const [prompts, setPrompts] = useState<TelemetryPrompt[] | null>(null);
+  // `null` while loading, `"failed"` when the host did not answer: that is not "no data".
+  const [prompts, setPrompts] = useState<TelemetryPrompt[] | "failed" | null>(null);
 
-  useEffect(() => {
-    void store
-      .hostCommand(hostId, "telemetry.session", { claudeSessionId })
-      .then((result) => setPrompts(result?.prompts ?? []));
+  // A retry keeps the error and its button until the host answers, so the focus is not dropped.
+  // The latest request wins: a slow answer for the session just left must not show on the new one.
+  const latest = useRef(0);
+  const load = useCallback(() => {
+    const mine = ++latest.current;
+    void store.hostCommand(hostId, "telemetry.session", { claudeSessionId }).then((result) => {
+      if (mine === latest.current) setPrompts(result ? result.prompts : "failed");
+    });
   }, [store, hostId, claudeSessionId]);
+  useEffect(() => {
+    setPrompts(null);
+    load();
+  }, [load]);
 
   if (prompts === null) return <LoadingState label={t("states.loading")} />;
+  if (prompts === "failed") {
+    return (
+      <ErrorState
+        message={t("telemetry.loadFailed")}
+        retryLabel={t("telemetry.retry")}
+        onRetry={load}
+      />
+    );
+  }
   return (
     <section aria-label={t("telemetry.region")}>
       <Stack gap={3}>

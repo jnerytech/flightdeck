@@ -93,27 +93,18 @@ describe("otlp-app: Telemetria on the host page", () => {
     expect(settings(d)).toEqual({ model: "opus" });
   });
 
-  test("a user's own exporter is named in the panel, and install is refused in the app's language with nothing written", async () => {
+  test("a user's own exporter is named in the panel as a conflict, and install is off, so nothing is asked or written (issue #4070)", async () => {
     const mine = { env: { OTEL_LOGS_EXPORTER: "console" } };
-    const { d, store } = await open({ settings: mine });
+    const { d } = await open({ settings: mine });
     await settle(() => (panel()?.textContent ?? "").includes("OTEL_LOGS_EXPORTER"));
     expect(panel()?.textContent).toContain("exportador seu");
     expect(panel()?.textContent).toContain("OTEL_LOGS_EXPORTER");
+    expect(panel()?.textContent).toContain("Conflito");
+    expect(
+      screen.queryByRole("button", { name: "Instalar telemetria" })?.getAttribute("aria-disabled"),
+    ).toBe("true");
     await click("Instalar telemetria");
-    await act(async () => {
-      fireEvent.click(
-        within(screen.queryByRole("alertdialog") as HTMLElement).getByRole("button", {
-          name: "Instalar telemetria",
-        }),
-      );
-    });
-    await settle(() => store.getState().notices.length > 0);
-    expect(store.getState().notices[0]).toMatchObject({
-      reason: "telemetry_owned_keys",
-      params: { keys: "OTEL_LOGS_EXPORTER" },
-    });
-    await settle(() => screen.queryByText(/já define OTEL_LOGS_EXPORTER/) !== null);
-    expect(screen.queryByText(/já define OTEL_LOGS_EXPORTER/)).not.toBeNull();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(settings(d)).toEqual(mine);
   });
 });

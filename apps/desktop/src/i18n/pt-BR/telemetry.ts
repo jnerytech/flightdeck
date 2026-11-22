@@ -29,6 +29,18 @@ export const telemetry = {
     optinInstalled: "Instalada",
     optinAbsent: "Não instalada",
     optinOutdated: "Desatualizada: instale de novo",
+    optinConflictTitle: "Conflito",
+    optinFailed: "Não foi possível ler o estado da telemetria deste host.",
+    retry: "Tentar de novo",
+    loadFailed: "Não foi possível ler o tempo desta sessão.",
+    optinInstallOff: {
+      installed: "Já instalada.",
+      conflict: "Não é possível com um exportador seu no settings.json.",
+    },
+    optinUninstallOff: {
+      absent: "Nada para remover.",
+      conflict: "O exportador do settings.json é seu: só as chaves do Flightdeck são removidas.",
+    },
     optinConflict: "Há um exportador seu no settings.json ({keys}): nada será mudado.",
     optinInstall: "Instalar telemetria",
     optinUninstall: "Remover telemetria",
