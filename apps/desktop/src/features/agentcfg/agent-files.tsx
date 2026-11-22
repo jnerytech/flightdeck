@@ -1,13 +1,20 @@
 import type { AgentCfgItem } from "@flightdeck/protocol";
 import { Plus } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
-import { EmptyState, ErrorState, Field, LoadingState } from "@/shared/layout/index.ts";
+import {
+  EmptyState,
+  ErrorState,
+  Field,
+  Form,
+  FormActions,
+  LoadingState,
+} from "@/shared/layout/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { inReadingOrder, shownPath, titleOf } from "./domain/file-list.ts";
@@ -65,7 +72,7 @@ function FileRow(
           current && "bg-accent",
         )}
       >
-        <span className="font-medium">{name}</span>
+        <span className="font-medium [overflow-wrap:anywhere]">{name}</span>
         {item.name && item.name !== shownPath(item) && (
           <span className="break-all text-muted-foreground text-xs">{shownPath(item)}</span>
         )}
@@ -125,6 +132,15 @@ export function AgentFiles(
   const [justSaved, setJustSaved] = useState(false);
   const [creating, setCreating] = useState(false);
   const [typed, setTyped] = useState("");
+  /** The editor's first field, and a count of the files created: each one moves the focus there (#4080). */
+  const firstField = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const takeFirst = useCallback((el: HTMLInputElement | HTMLTextAreaElement | null) => {
+    firstField.current = el;
+  }, []);
+  const [made, setMade] = useState(0);
+  useEffect(() => {
+    if (made > 0) firstField.current?.focus();
+  }, [made]);
   /** What waits for the person to say the edits of the open file may go (#4078). */
   const [discarding, setDiscarding] = useState<(() => void) | null>(null);
 
@@ -188,6 +204,7 @@ export function AgentFiles(
       );
       setCreating(false);
       setTyped("");
+      setMade((n) => n + 1);
     });
   };
 
@@ -244,6 +261,8 @@ export function AgentFiles(
     },
   }[kind];
 
+  /** What was typed is not empty and cannot be a path: the rule turns into an error. */
+  const refused = typed.trim() !== "" && newPath(kind, typed) === null;
   const doc = parseDocument(text);
   const form = kind !== "claudemd";
   const complex = (key: string) => doc.entries.some((e) => e.key === key && e.complex);
@@ -270,30 +289,45 @@ export function AgentFiles(
           </Button>
         </div>
         {creating && (
-          <div className="flex flex-col gap-2 rounded-lg border p-3">
-            <Field label={labels.field}>
-              {(control) => (
-                <Input {...control} value={typed} onChange={(e) => setTyped(e.target.value)} />
-              )}
-            </Field>
-            <Button size="sm" disabled={newPath(kind, typed) === null} onClick={create}>
-              {t("agent.files.create")}
-            </Button>
+          <div className="rounded-lg border p-3">
+            <Form variant="inline" onSubmit={create}>
+              <Field
+                label={labels.field}
+                help={t(`agent.files.rule.${kind}`)}
+                error={refused ? t(`agent.files.refused.${kind}`) : undefined}
+              >
+                {(control) => (
+                  <Input
+                    {...control}
+                    autoFocus
+                    value={typed}
+                    onChange={(e) => setTyped(e.target.value)}
+                  />
+                )}
+              </Field>
+              <FormActions
+                submit={t("agent.files.create")}
+                disabled={newPath(kind, typed) === null}
+              />
+            </Form>
           </div>
         )}
-        {items.length === 0 && <EmptyState title={labels.empty} />}
-        <ul aria-label={t("agent.files.list")} className="flex flex-col gap-1">
-          {inReadingOrder(items).map((item) => (
-            <FileRow
-              key={`${item.origin}/${item.path}`}
-              item={item}
-              current={opened?.path === item.path && opened.origin === item.origin}
-              originLabel={originLabel(item.origin)}
-              t={t}
-              onOpen={() => open(item)}
-            />
-          ))}
-        </ul>
+        {items.length === 0 ? (
+          <EmptyState title={labels.empty} />
+        ) : (
+          <ul aria-label={t("agent.files.list")} className="flex flex-col gap-1">
+            {inReadingOrder(items).map((item) => (
+              <FileRow
+                key={`${item.origin}/${item.path}`}
+                item={item}
+                current={opened?.path === item.path && opened.origin === item.origin}
+                originLabel={originLabel(item.origin)}
+                t={t}
+                onOpen={() => open(item)}
+              />
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="flex min-w-0 flex-col gap-3">
@@ -319,7 +353,7 @@ export function AgentFiles(
             {form && (
               <div className="grid gap-2 @2xl:grid-cols-2">
                 <Field label={t("agent.files.name")}>
-                  {(control) => <Input {...control} {...edit("name")} />}
+                  {(control) => <Input {...control} {...edit("name")} ref={takeFirst} />}
                 </Field>
                 <Field label={t("agent.files.description")}>
                   {(control) => <Input {...control} {...edit("description")} />}
@@ -343,6 +377,7 @@ export function AgentFiles(
               <Markdown text={form ? doc.body : text} />
             ) : (
               <Textarea
+                ref={form ? undefined : takeFirst}
                 aria-label={
                   form ? t("agent.files.body") : t("agent.files.content", { path: opened.path })
                 }

@@ -207,7 +207,9 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
                     disabled={server.readOnly}
                     onCheckedChange={(on) => void toggle(server.name, on)}
                   />
-                  <span className="font-medium">{server.name}</span>
+                  <span className="min-w-0 font-medium [overflow-wrap:anywhere]">
+                    {server.name}
+                  </span>
                   <Badge variant="outline">{server.transport}</Badge>
                   <Badge variant="secondary">{origin(server)}</Badge>
                   {server.readOnly && <Badge variant="outline">{t("agent.readOnly")}</Badge>}

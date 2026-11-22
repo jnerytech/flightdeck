@@ -146,6 +146,16 @@ export const agent = {
       agentName: "Agent name",
       skillName: "Skill name",
       create: "Create",
+      rule: {
+        agent: "Letters, digits, _, . and -, starting with a letter or digit.",
+        skill: "Letters, digits, _, . and -, starting with a letter or digit.",
+        claudemd: "A path ending in CLAUDE.md, or CLAUDE.local.md.",
+      },
+      refused: {
+        agent: "That name is not allowed.",
+        skill: "That name is not allowed.",
+        claudemd: "That path is not allowed.",
+      },
       pick: "Pick a file from the list.",
       content: "Content of {path}",
       name: "Name",
