@@ -37,4 +37,14 @@ describe("the Back up everything prints (#4001)", () => {
       text: "-----BEGIN AGE ENCRYPTED FILE-----",
     });
   });
+
+  // The print sends the function's source to the page: it must name nothing outside itself.
+  test("the source sent to the page keeps a save without help from this module", async () => {
+    const win: SaveWindow = {};
+    new Function("window", `(${keepSaves.toString()})(window)`)(win);
+    const picker = win.showSaveFilePicker as Picker;
+    const writable = await (await picker({ suggestedName: "a.fdbackup" })).createWritable();
+    await writable.write("text");
+    expect(win.__saved).toEqual({ name: "a.fdbackup", text: "text" });
+  });
 });
