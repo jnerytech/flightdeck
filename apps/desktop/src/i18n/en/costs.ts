@@ -43,6 +43,11 @@ export const costs = {
         "Remove {name}? Their host grouping and limits are lost; the hosts stay. This cannot be undone.",
       removeConfirm: "Remove person",
       saved: "Saved.",
+      personAdded: "Person added.",
+      personRemoved: "Person removed.",
+      reviewOn: "Review time now counts as cost.",
+      reviewOff: "Review time no longer counts as cost.",
+      hostTaken: "Belongs to {name}",
       error: {
         rate_invalid: "The rate must be a number from 0 to 1,000,000.",
         price_invalid: "The price must be a number from 0 to 1,000,000.",

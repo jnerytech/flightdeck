@@ -44,6 +44,11 @@ export const costs = {
         "Remover {name}? O agrupamento de hosts e os limites se perdem; os hosts continuam. Isso não pode ser desfeito.",
       removeConfirm: "Remover pessoa",
       saved: "Salvo.",
+      personAdded: "Pessoa adicionada.",
+      personRemoved: "Pessoa removida.",
+      reviewOn: "O tempo de revisão agora conta como custo.",
+      reviewOff: "O tempo de revisão não conta mais como custo.",
+      hostTaken: "É de {name}",
       error: {
         rate_invalid: "O valor deve ser um número de 0 a 1.000.000.",
         price_invalid: "O preço deve ser um número de 0 a 1.000.000.",

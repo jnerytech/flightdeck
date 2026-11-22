@@ -11,6 +11,7 @@ import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { SwitchField } from "@/shared/layout/index.ts";
 import { periodRange, usd } from "../costs/index.ts";
 import { compare, EMPTY_PERIOD, figures, headline, mergePeriods } from "./domain/roi.ts";
 
@@ -325,22 +326,18 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
                 aria-label={t("roiUi.signals.title")}
                 className="m-0 flex min-w-0 flex-col gap-1 border-0 p-0 text-xs"
               >
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={on.commits}
-                    onChange={(e) => void setSignal("commits", e.target.checked)}
-                  />
+                <SwitchField
+                  checked={on.commits}
+                  onChange={(next) => void setSignal("commits", next)}
+                >
                   {t("roiUi.signals.commits")}
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={on.issues}
-                    onChange={(e) => void setSignal("issues", e.target.checked)}
-                  />
+                </SwitchField>
+                <SwitchField
+                  checked={on.issues}
+                  onChange={(next) => void setSignal("issues", next)}
+                >
                   {t("roiUi.signals.issues")}
-                </label>
+                </SwitchField>
               </fieldset>
             </div>
           </details>
