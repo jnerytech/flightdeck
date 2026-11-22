@@ -204,11 +204,16 @@ export function TerminalPage(
     setClosing(false);
     setCloseFailed(null);
     const refused = await session.current?.close(kill);
-    if (!refused) return props.onClosed();
+    // A terminal the host no longer has is already closed: there is nothing left to keep the person for.
+    if (refused === null || (refused instanceof RequestError && refused.code === "not_found")) {
+      return props.onClosed();
+    }
     setCloseFailed(
       refused instanceof RequestError
         ? refusalText(refused.code, refused.message, t, refused)
-        : String(refused),
+        : refused instanceof Error
+          ? refused.message
+          : String(refused),
     );
   };
   const stopSearch = () => {
