@@ -166,6 +166,10 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    /* The fixed columns are wider than a narrow row: name and word share one line, the text is under. */
+    @media (max-width: 640px) {
+      grid-template-columns: 1rem minmax(0, 1fr) auto;
+    }
   }
 }
 
