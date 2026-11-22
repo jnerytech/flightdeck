@@ -12,7 +12,8 @@ import { FindingSeverity } from "./finding-severity.tsx";
 export function ReviewList(
   props: Readonly<{
     comments: ReviewComment[];
-    onUpdate(id: string, body: string): void;
+    /** `false` (or a promise of it) says the host refused the text: the edit box stays open. */
+    onUpdate(id: string, body: string): Promise<boolean> | boolean | undefined;
     onRemove(id: string): void;
     onSend(): void;
     /** Puts the review in the message box instead of sending it; absent where there is none. */
@@ -28,6 +29,7 @@ export function ReviewList(
   const back = useRef<string | null>(null);
   const blankId = useId();
   const editingId = editing?.id ?? null;
+  const blank = editing !== null && editing.body.trim() === "";
   // The edit box takes the focus when it opens; when it closes, the pencil that opened it does,
   // since the button that was pressed (Save, Cancel) is gone from the page.
   useEffect(() => {
@@ -53,7 +55,7 @@ export function ReviewList(
         aria-label={t("changes.list")}
         data-review-list
         tabIndex={-1}
-        className="flex flex-col gap-2 focus:outline-2 focus:outline-ring"
+        className="flex flex-col gap-2 focus-visible:outline-2 focus-visible:outline-ring"
       >
         {props.comments.map((comment) => {
           const where =
@@ -106,18 +108,19 @@ export function ReviewList(
                     <Textarea
                       ref={box}
                       aria-label={t("changes.commentText")}
-                      aria-describedby={editing.body.trim() === "" ? blankId : undefined}
+                      aria-describedby={blank ? blankId : undefined}
                       value={editing.body}
                       className="min-h-16 flex-1"
                       onChange={(e) => setEditing({ id: comment.id, body: e.target.value })}
                     />
                     <Button
                       size="sm"
-                      disabled={editing.body.trim() === ""}
-                      aria-describedby={editing.body.trim() === "" ? blankId : undefined}
-                      onClick={() => {
-                        props.onUpdate(comment.id, editing.body);
-                        endEdit(comment.id);
+                      disabled={blank}
+                      aria-describedby={blank ? blankId : undefined}
+                      onClick={async () => {
+                        // A host that refused the text leaves the box open, so nothing typed is lost.
+                        const saved = await props.onUpdate(comment.id, editing.body);
+                        if (saved !== false) endEdit(comment.id);
                       }}
                     >
                       {t("changes.saveComment")}
@@ -126,7 +129,7 @@ export function ReviewList(
                       {t("common.cancel")}
                     </Button>
                   </div>
-                  {editing.body.trim() === "" && (
+                  {blank && (
                     <p id={blankId} className="text-muted-foreground text-xs">
                       {t("changes.commentBlank")}
                     </p>

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
+import { cn } from "@/lib/utils";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { formatBytes } from "@/shared/lib/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -95,7 +96,9 @@ export function ChangesPanel(
     if (selection) commentBox.current?.focus();
   }, [selection]);
   // What the last add, save or remove did, said in a polite status line; it fades after a while.
-  const [notice, setNotice] = useState<string | null>(null);
+  // A new object for each, so the same words said twice are heard twice and the 6 s start over.
+  const [notice, setNotice] = useState<{ text: string } | null>(null);
+  const say = (text: string) => setNotice({ text });
   useEffect(() => {
     if (notice === null) return;
     return store.later(() => setNotice(null), NOTICE_MS);
@@ -109,6 +112,7 @@ export function ChangesPanel(
   const loadComments = useCallback(async () => {
     const result = await store.hostCommand(hostId, "review.list", { target });
     if (result) setComments(result.comments);
+    return result !== null;
   }, [store, hostId, target]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: `comments` is the trigger
   useEffect(() => {
@@ -165,23 +169,26 @@ export function ChangesPanel(
     });
     if (!added) return;
     closeComposer();
-    setNotice(t("changes.commentAdded"));
+    say(t("changes.commentAdded"));
     await loadComments();
   };
 
+  /** Whether the host took the new text: a refused save leaves the edit box open for the person. */
   const updateComment = async (id: string, text: string) => {
     const saved = await store.hostCommand(hostId, "review.update", { id, body: text });
-    if (saved) setNotice(t("changes.commentSaved"));
+    if (saved) say(t("changes.commentSaved"));
     await loadComments();
+    return saved !== null;
   };
 
   const removeComment = async (id: string) => {
     const removed = await store.hostCommand(hostId, "review.remove", { id });
     if (removed) {
-      setNotice(t("changes.commentRemoved"));
+      say(t("changes.commentRemoved"));
       refocus.current = true;
     }
-    await loadComments();
+    // No new list, no render to focus after: the flag must not wait for a later one.
+    if (!(await loadComments())) refocus.current = false;
   };
 
   const send = async () => {
@@ -337,7 +344,7 @@ export function ChangesPanel(
       ref={panel}
       aria-label={t("changes.region")}
       tabIndex={-1}
-      className="flex flex-col gap-4 focus:outline-2 focus:outline-ring"
+      className="flex flex-col gap-4 focus-visible:outline-2 focus-visible:outline-ring"
     >
       {props.extra?.(changes, refresh, goToDrafts)}
       <div className="flex flex-wrap items-center gap-2">
@@ -388,11 +395,14 @@ export function ChangesPanel(
           />
         </>
       )}
-      {notice && <output className="text-muted-foreground text-sm">{notice}</output>}
+      {/* Always in the page, so a screen reader is already listening when the words arrive. */}
+      <output className={cn("text-muted-foreground text-sm", notice === null && "sr-only")}>
+        {notice?.text}
+      </output>
       {comments.length > 0 && (
         <ReviewList
           comments={comments}
-          onUpdate={(id, text) => void updateComment(id, text)}
+          onUpdate={updateComment}
           onRemove={(id) => void removeComment(id)}
           onSend={() => void send()}
           {...(props.onCompose
