@@ -8,6 +8,7 @@ import {
   BackupError,
   type ConflictChoice,
   loadVaultBackup,
+  MIN_PASSPHRASE,
   Vault,
 } from "../vault/index.ts";
 import {
@@ -72,7 +73,7 @@ export async function createBackup(
   confirmation: string,
   options: BackupOptions = {},
 ): Promise<string> {
-  const { DEFAULT_WORK_FACTOR, MIN_PASSPHRASE, toFdvault } = await loadVaultBackup();
+  const { DEFAULT_WORK_FACTOR, toFdvault } = await loadVaultBackup();
   if (passphrase.length < MIN_PASSPHRASE) throw new BackupError("short-passphrase");
   if (passphrase !== confirmation) throw new BackupError("mismatch");
   const settings: Record<string, string> = {};

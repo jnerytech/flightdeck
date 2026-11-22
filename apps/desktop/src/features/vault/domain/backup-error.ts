@@ -1,3 +1,6 @@
+/** The shortest passphrase a backup file takes; its own constant here so the screens read it without loading `age`. */
+export const MIN_PASSPHRASE = 12;
+
 export type BackupErrorCode = "short-passphrase" | "mismatch" | "unreadable";
 
 /**
