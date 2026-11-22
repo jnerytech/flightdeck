@@ -59,6 +59,9 @@ interface TeleportCliOptions {
 
 const STEP_MS = 60_000;
 const CONNECT_MS = 10_000;
+/** The import is the one step that works on the target before it answers: it has this many steps. */
+const FINISH_STEPS = 5;
+const CANCELLED = "cancelled: nothing moved";
 
 type Side = "source" | "target";
 
@@ -80,6 +83,20 @@ class PackageRefused extends Error {
   }
 }
 
+/** Ctrl-C came while a step the relay does not run was waiting. */
+class Stopped extends Error {}
+
+/** `work`, or a `Stopped` when the signal aborts first: Ctrl-C never waits for a host that is slow to answer. */
+function unlessStopped<T>(signal: AbortSignal | undefined, work: Promise<T>): Promise<T> {
+  if (!signal) return work;
+  return new Promise<T>((resolve, reject) => {
+    if (signal.aborted) return reject(new Stopped());
+    const stop = () => reject(new Stopped());
+    signal.addEventListener("abort", stop, { once: true });
+    work.then(resolve, reject).finally(() => signal.removeEventListener("abort", stop));
+  });
+}
+
 /** `work`, or a `TimedOut` when it takes longer than `ms`; the timer never outlives the answer. */
 async function within<T>(ms: number, work: Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -94,12 +111,19 @@ async function within<T>(ms: number, work: Promise<T>): Promise<T> {
 }
 
 /** Connects to the target by name: nothing is sent to a host that does not answer in time. */
-async function connectTarget(target: RemoteTarget, ms: number): Promise<DaemonClient> {
+async function connectTarget(
+  target: RemoteTarget,
+  ms: number,
+  signal: AbortSignal | undefined,
+): Promise<DaemonClient> {
   const giveUp = new AbortController();
   try {
-    return await within(
-      ms,
-      DaemonClient.connect(target.url, target.token(), "flightdeck-teleport", giveUp.signal),
+    return await unlessStopped(
+      signal,
+      within(
+        ms,
+        DaemonClient.connect(target.url, target.token(), "flightdeck-teleport", giveUp.signal),
+      ),
     );
   } catch (error) {
     giveUp.abort();
@@ -129,8 +153,9 @@ export function runTeleportCli(
       flow.started();
       let targetClient: DaemonClient | undefined;
       try {
-        targetClient = await connectTarget(target, Math.min(stepMs, CONNECT_MS));
+        targetClient = await connectTarget(target, Math.min(stepMs, CONNECT_MS), signal);
       } catch (error) {
+        if (error instanceof Stopped) return failure(1, CANCELLED);
         return explainRemote(
           error,
           { name: target.name, timeoutMs: CONNECT_MS, unsure: "" },
@@ -144,7 +169,7 @@ export function runTeleportCli(
         ) => {
           try {
             return (await within(
-              stepMs,
+              type === "teleport.finish" ? stepMs * FINISH_STEPS : stepMs,
               (client.call as (t: string, p: unknown) => Promise<unknown>)(type, payload),
             )) as TeleportCommands[T][1];
           } catch (error) {
@@ -162,8 +187,11 @@ export function runTeleportCli(
       const lines: string[] = [];
       let sessionName = args.session;
       try {
-        const listed = await within(stepMs, daemon.call("session.list", {})).catch((error) => {
-          throw new HostError("source", "session.list", error);
+        const listed = await unlessStopped(
+          signal,
+          within(stepMs, daemon.call("session.list", {})),
+        ).catch((error) => {
+          throw error instanceof Stopped ? error : new HostError("source", "session.list", error);
         });
         const found = resolveSession(listed.sessions, args.session);
         if ("refusal" in found) return found.refusal;
@@ -182,7 +210,7 @@ export function runTeleportCli(
             return args.confirm;
           },
         });
-        if (outcome.kind === "cancelled") return failure(1, "cancelled: nothing moved");
+        if (outcome.kind === "cancelled") return failure(1, CANCELLED);
         if (outcome.kind === "declined")
           return notConfirmed(args, found.id, target.name, manifest, lines);
         const landed = {
@@ -254,6 +282,7 @@ function explain(
     hideTarget: (text: string) => string;
   },
 ): CliResult {
+  if (error instanceof Stopped) return failure(1, CANCELLED);
   if (error instanceof PackageRefused) return failure(1, packageRefusal(error.why), error.why);
   if (!(error instanceof HostError)) throw error;
   const { side, call, cause } = error;
@@ -279,6 +308,11 @@ function explain(
       { name, timeoutMs: context.stepMs, unsure: "" },
       context.hideTarget,
     );
+  }
+  // A step that stalled is worded with the step's own seconds, not the connect's.
+  if (cause instanceof TimedOut) {
+    const seconds = Math.ceil(context.stepMs / 1000);
+    return failure(2, `${name} did not answer ${call} in ${seconds} s`, "unreachable");
   }
   // The source: the caller's own explanation of a daemon that went (exit 2) is what `runOnLocalDaemon` gives.
   throw cause;
