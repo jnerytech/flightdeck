@@ -2,8 +2,9 @@ import { Drama } from "lucide-react";
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
+import { refusalText } from "@/i18n/errors.ts";
 import { useStoreSlice } from "@/lib/use-store";
-import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
 import {
   EmptyState,
@@ -13,7 +14,7 @@ import {
   NativeSelect,
   Page,
 } from "@/shared/layout/index.ts";
-import type { AppStore } from "../../lib/app-store.ts";
+import type { AppStore, HostResult } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature } from "../../lib/version.ts";
 import type { AppPersona } from "./domain/global-personas.ts";
@@ -26,6 +27,8 @@ const APP = "@app";
 const originKey = (p: AppPersona) => (p.modified ? "packEdited" : p.scope);
 
 const PERSONASPAGE_KEYS = ["projects", "hosts"] as const;
+
+type Action = "trust" | "remove" | "reset" | "publish";
 
 /** Phase 20: the personas of the first online host that keeps them, of a project, and the app's. */
 export const PersonasPage = memo(function PersonasPage(props: {
@@ -51,12 +54,20 @@ export const PersonasPage = memo(function PersonasPage(props: {
   const [removing, setRemoving] = useState<AppPersona | null>(null);
   const [resetting, setResetting] = useState<AppPersona | null>(null);
   const [publishing, setPublishing] = useState<AppPersona | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  /** The action the host has not answered yet: one at a time, so a second press has nothing to send. */
+  const [pending, setPending] = useState<{ id: string; action: Action } | null>(null);
+  const running = useRef(false);
+  /** What the last action came to, said on the page: a refusal, or where a publish went. */
+  const [notice, setNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+  /** Counts the project or host changes, so an answer that arrives after one says nothing. */
+  const view = useRef(0);
   const [editing, setEditing] = useState<AppPersona | "new" | null>(null);
   const list = useRef<HTMLUListElement>(null);
   /** Where the person was when the editor opened: the scroll, and whose Edit button to come back to. */
   const opener = useRef<{ id: string; top: number } | null>(null);
   const keyOf = (p: AppPersona | "new") => (p === "new" ? "new" : `${p.scope}:${p.id}`);
+  /** The Edit button of a persona, or `new` for New persona: the controls that stay on while an action runs. */
+  const editButton = (id: string) => document.querySelector<HTMLElement>(`[data-edit="${id}"]`);
   const scroller = () =>
     list.current?.closest<HTMLElement>("[data-slot='scroll-area-viewport']") ?? null;
   const openEditor = (p: AppPersona | "new") => {
@@ -69,7 +80,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
   // biome-ignore lint/correctness/useExhaustiveDependencies: `personas` is how a saved list asks to be looked at again
   useLayoutEffect(() => {
     if (editing !== null || !opener.current) return;
-    const button = document.querySelector<HTMLElement>(`[data-edit="${opener.current.id}"]`);
+    const button = editButton(opener.current.id);
     if (!button) return;
     const box = scroller();
     if (box) box.scrollTop = opener.current.top;
@@ -86,6 +97,8 @@ export const PersonasPage = memo(function PersonasPage(props: {
   useEffect(() => {
     setPersonas(null);
     setFailed(false);
+    setNotice(null);
+    view.current++;
   }, [project, hostId]);
   // Reads can overlap (a retry, a project picked while one is out): only the latest to start is heard.
   const latest = useRef(0);
@@ -109,46 +122,108 @@ export const PersonasPage = memo(function PersonasPage(props: {
     void reload();
   }, [reload]);
 
+  /**
+   * Runs one action on a persona: the page's buttons are busy until the host answers, a refusal is
+   * said on the page with the persona's name, and a second press while one runs sends nothing.
+   */
+  const act = async <R,>(
+    p: AppPersona,
+    action: Action,
+    request: () => Promise<HostResult<R>>,
+    onDone: (data: R) => Promise<void> | string,
+  ) => {
+    if (running.current) return;
+    running.current = true;
+    const seen = view.current;
+    setNotice(null);
+    setPending({ id: keyOf(p), action });
+    try {
+      const result = await request();
+      if (!result.ok) {
+        const reason = refusalText(result.code, result.message, t, result);
+        setNotice({ tone: "error", text: t("personas.actionFailed", { name: p.name, reason }) });
+        return;
+      }
+      // The person moved to another project or host meanwhile: what this answer says is not about the list they see.
+      if (seen !== view.current) return;
+      const done = onDone(result.data);
+      if (typeof done === "string") setNotice({ tone: "info", text: done });
+      else await done;
+    } finally {
+      running.current = false;
+      setPending(null);
+    }
+  };
+
   const trust = async (p: AppPersona) => {
     if (!hostId || !p.hash) return;
-    const done = await store.hostCommand(hostId, "personas.trust", {
-      projectPath: project,
-      id: p.id,
-      hash: p.hash,
-    });
-    if (done) await reload();
+    // The Trust button turns off while the host answers, and a trusted card loses it: the Edit button stays.
+    editButton(p.id)?.focus();
+    await act(
+      p,
+      "trust",
+      () =>
+        store.hostRequest(hostId, "personas.trust", {
+          projectPath: project,
+          id: p.id,
+          hash: p.hash as string,
+        }),
+      reload,
+    );
   };
 
   const remove = async (p: AppPersona) => {
     setRemoving(null);
-    if (p.scope === "app") store.personas.global.remove(p.id);
-    else if (hostId && (p.scope === "host" || p.scope === "project")) {
-      await store.hostCommand(hostId, "personas.remove", {
-        scope: p.scope,
-        id: p.id,
-        ...(p.scope === "project" ? { projectPath: project } : {}),
-      });
+    if (p.scope === "app") {
+      setNotice(null);
+      store.personas.global.remove(p.id);
+      return reload();
     }
-    await reload();
+    const { scope } = p;
+    if (!hostId || (scope !== "host" && scope !== "project")) return;
+    await act(
+      p,
+      "remove",
+      () =>
+        store.hostRequest(hostId, "personas.remove", {
+          scope,
+          id: p.id,
+          ...(scope === "project" ? { projectPath: project } : {}),
+        }),
+      reload,
+    );
   };
 
   const reset = async (p: AppPersona) => {
     if (!hostId) return;
-    const done = await store.hostCommand(hostId, "personas.reset", { id: p.id, language });
-    if (done) await reload();
+    await act(
+      p,
+      "reset",
+      () => store.hostRequest(hostId, "personas.reset", { id: p.id, language }),
+      reload,
+    );
   };
 
   const publish = async (p: AppPersona) => {
     setPublishing(null);
     if (!hostId || !project) return;
-    const done = await store.hostCommand(hostId, "personas.publishAgent", {
-      id: p.id,
-      projectPath: project,
-      language,
-      confirm: true,
-    });
-    if (done) setMessage(t("personas.published", { path: done.path }));
+    await act(
+      p,
+      "publish",
+      () =>
+        store.hostRequest(hostId, "personas.publishAgent", {
+          id: p.id,
+          projectPath: project,
+          language,
+          confirm: true,
+        }),
+      (done) => t("personas.published", { name: p.name, path: done.path }),
+    );
   };
+
+  /** Whether this action of this persona is the one in flight; every button is off while any is. */
+  const busy = (p: AppPersona, action: Action) =>
+    pending?.id === keyOf(p) && pending.action === action;
 
   const projects = hostId ? (state.projects[hostId] ?? []) : [];
   return (
@@ -194,7 +269,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
           )}
         </Field>
       </div>
-      {message && <output className="block text-sm">{message}</output>}
+      {notice && <InlineNotice tone={notice.tone}>{notice.text}</InlineNotice>}
       {loading && <LoadingState label={t("personas.loading")} />}
       {failed && (
         <ErrorState
@@ -260,44 +335,52 @@ export const PersonasPage = memo(function PersonasPage(props: {
                         {t("personas.edit")}
                       </Button>
                       {!p.trusted && (
-                        <Button
+                        <ActionButton
                           size="sm"
                           variant="outline"
                           aria-label={t("personas.trustFor", { name: p.name })}
-                          onClick={() => void trust(p)}
+                          pending={busy(p, "trust")}
+                          disabled={pending !== null}
+                          onClick={() => trust(p)}
                         >
                           {t("personas.trust")}
-                        </Button>
+                        </ActionButton>
                       )}
                       {p.modified && (
-                        <Button
+                        <ActionButton
                           size="sm"
                           variant="outline"
                           aria-label={t("personas.resetFor", { name: p.name })}
+                          pending={busy(p, "reset")}
+                          disabled={pending !== null}
                           onClick={() => setResetting(p)}
                         >
                           {t("personas.reset")}
-                        </Button>
+                        </ActionButton>
                       )}
                       {project && project !== APP && p.scope !== "app" && (
-                        <Button
+                        <ActionButton
                           size="sm"
                           variant="outline"
                           aria-label={t("personas.publishFor", { name: p.name })}
+                          pending={busy(p, "publish")}
+                          disabled={pending !== null}
                           onClick={() => setPublishing(p)}
                         >
                           {t("personas.publishLabel")}
-                        </Button>
+                        </ActionButton>
                       )}
                       {p.scope !== "pack" && !p.modified && (
-                        <Button
+                        <ActionButton
                           size="sm"
                           variant="outline"
                           aria-label={t("personas.removeFor", { name: p.name })}
+                          pending={busy(p, "remove")}
+                          disabled={pending !== null}
                           onClick={() => setRemoving(p)}
                         >
                           {t("personas.remove")}
-                        </Button>
+                        </ActionButton>
                       )}
                     </div>
                   </>
@@ -314,6 +397,8 @@ export const PersonasPage = memo(function PersonasPage(props: {
           destructive
           onConfirm={() => void remove(removing)}
           onCancel={() => setRemoving(null)}
+          // The removed card is gone after the host answers: the focus goes to a control that stays.
+          onRestoreFocus={() => editButton("new")?.focus()}
         />
       )}
       {resetting && (
@@ -326,6 +411,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
             void reset(resetting);
           }}
           onCancel={() => setResetting(null)}
+          onRestoreFocus={() => editButton(resetting.id)?.focus()}
         />
       )}
       {publishing && (
@@ -334,6 +420,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
           confirmLabel={t("personas.publish")}
           onConfirm={() => void publish(publishing)}
           onCancel={() => setPublishing(null)}
+          onRestoreFocus={() => editButton(publishing.id)?.focus()}
         />
       )}
     </Page>
