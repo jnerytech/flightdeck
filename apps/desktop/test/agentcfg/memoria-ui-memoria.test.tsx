@@ -24,10 +24,19 @@ afterEach(async () => {
 const INDEX = "- [Papel](user_role.md) — quem é o usuário\n";
 const ROLE = "---\nname: papel\ndescription: quem é o usuário\ntype: user\n---\nÉ engenheiro.\n";
 
+/** The store's command door, which a test may wrap to hold or fail one command. */
+interface Door {
+  hostCommand(host: string, type: string, payload: unknown, options?: unknown): Promise<unknown>;
+}
+
 /** The Agente screen of the project, on its Memória tab, over memory the test wrote first. */
-async function open(seed: (put: (name: string, text: string) => void) => void = () => {}) {
+async function open(
+  seed: (put: (name: string, text: string) => void) => void = () => {},
+  wrap: (door: Door) => void = () => {},
+) {
   const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
+  wrap(store as unknown as Door);
   const h = await memoriaHost(cleanups, store);
   seed(h.put);
   render(<App store={store} />);
@@ -337,5 +346,73 @@ describe("memoria-ui: quando a memória não pode ser lida", () => {
     await click("Tentar de novo");
     await settle(() => names().length === 1);
     expect(screen.queryByText(failed)).toBeNull();
+  });
+});
+
+describe("memoria-ui: saving and the suggestions (#3938)", () => {
+  test("while the write is out Save is busy, and a double confirm sends one write and no changed-on-disk notice", async () => {
+    let writes = 0;
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { dir } = await open(SEEDED, (door) => {
+      const real = door.hostCommand.bind(door);
+      door.hostCommand = async (host, type, payload, options) => {
+        if (type === "memory.write") {
+          writes += 1;
+          if (writes === 1) await gate;
+        }
+        return real(host, type, payload, options);
+      };
+    });
+    await settle(() => names().length === 3);
+    await click("Abrir user_role.md");
+    await fill("Conteúdo de user_role.md", EDITED);
+    await click("Salvar");
+    const confirm = screen.queryByRole("button", { name: "Salvar na memória" });
+    expect(confirm).not.toBeNull();
+    // Two presses of Confirm in one tick: both come before React draws the closed dialog.
+    await act(async () => {
+      fireEvent.click(confirm as HTMLElement);
+      fireEvent.click(confirm as HTMLElement);
+    });
+    await uiIdle();
+    const save = () => screen.queryByRole("button", { name: /^Salvar/ }) as HTMLButtonElement;
+    expect(save().getAttribute("aria-busy")).toBe("true");
+    expect(save().disabled).toBe(true);
+    release();
+    await settle(() => readFileSync(join(dir, "user_role.md"), "utf8") === EDITED);
+    await uiIdle();
+    expect(writes).toBe(1);
+    expect(screen.queryByRole("button", { name: "Recarregar" })).toBeNull();
+    expect(save().getAttribute("aria-busy")).toBeNull();
+  });
+
+  test("the saved line is in the page before its text: the same element holds the text when it comes", async () => {
+    await open(SEEDED);
+    await settle(() => names().length === 3);
+    await click("Abrir user_role.md");
+    const line = () => document.querySelector("[data-slot='memory-saved']");
+    const before = line();
+    expect(before).not.toBeNull();
+    expect(before?.textContent).toBe("");
+    await fill("Conteúdo de user_role.md", EDITED);
+    await click("Salvar");
+    await click("Salvar na memória", "button");
+    await settle(() => line()?.textContent === "Memória salva.");
+    expect(line()).toBe(before);
+  });
+
+  test("suggestions that could not be read say so, not that the memory is in order", async () => {
+    await open(SEEDED, (door) => {
+      const real = door.hostCommand.bind(door);
+      door.hostCommand = async (host, type, payload, options) =>
+        type === "memory.suggest" ? null : real(host, type, payload, options);
+    });
+    await settle(() => names().length === 3);
+    await settle(() => screen.queryByText("Não foi possível ler as sugestões.") !== null);
+    expect(screen.queryByText("Não foi possível ler as sugestões.")).not.toBeNull();
+    expect(screen.queryByText("Nenhuma sugestão: a memória está em ordem.")).toBeNull();
   });
 });
