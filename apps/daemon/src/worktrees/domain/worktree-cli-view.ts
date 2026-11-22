@@ -53,9 +53,10 @@ export function removeLines(result: WorktreeRemoveResult): string[] {
         ...(one.branchKept ? ["branch kept"] : []),
       ].join("  "),
     ),
-    ...result.kept.map(
-      (one) => `kept ${one.path}  ${one.detail ? `${one.reason}: ${one.detail}` : one.reason}`,
-    ),
+    ...result.kept.map((one) => {
+      const why = one.detail ? `${one.reason}: ${one.detail}` : one.reason;
+      return `kept ${one.path}  ${why}`;
+    }),
   ];
 }
 

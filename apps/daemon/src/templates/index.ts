@@ -6,3 +6,4 @@ export { BUILTIN_TEMPLATES } from "./domain/builtin.ts";
 export { type LoadedTemplates, loadTemplates } from "./files.ts";
 export { startTemplate } from "./start.ts";
 export { TaskTracker } from "./tasks.ts";
+export { runTemplatesCli, type TemplatesCliArgs } from "./templates-cli.ts";

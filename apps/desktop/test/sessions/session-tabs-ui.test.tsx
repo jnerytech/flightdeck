@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { waiter } from "../wait.ts";
@@ -162,6 +164,43 @@ describe("session-tabs-ui: the views of a session page (issue #107)", () => {
     expect(selected()).toEqual(["Mensagens"]);
     await press(tabs()[5] ?? document.body, { key: "Home" });
     expect(selected()).toEqual(["Conversa"]);
+  });
+
+  // #3821: the row of views scrolls sideways in a narrow pane, so the view that opens (a click, the
+  // arrow keys, Alt+number, the palette) is brought into view, and an edge fade shows tabs are hidden.
+  // Not `scrollIntoView` (#1430): it moves the first Tab's starting point; the row scrolls itself.
+  test("the view that opens is scrolled into view along the row, never with scrollIntoView (#3821)", async () => {
+    const real = Element.prototype.scrollIntoView;
+    let called = false;
+    Element.prototype.scrollIntoView = () => {
+      called = true;
+    };
+    try {
+      mount();
+      const row = within(document.body).queryByRole("tablist") as HTMLElement;
+      // A 100 px wide row; the fifth tab sits from 250 to 330 px.
+      row.getBoundingClientRect = () => ({ left: 0, right: 100 }) as DOMRect;
+      const fifth = tabs()[4] as HTMLElement;
+      fifth.getBoundingClientRect = () => ({ left: 250, right: 330 }) as DOMRect;
+      // happy-dom does not clamp: the reveal at mount, with no layout, left it at -16.
+      row.scrollLeft = 0;
+      await clickTab(4);
+      // The tab ends 16 px (the row's padding, where the edge fade ends) inside the row's right edge.
+      expect(row.scrollLeft).toBe(246);
+      expect(called).toBe(false);
+    } finally {
+      Element.prototype.scrollIntoView = real;
+    }
+  });
+
+  test("the row of views fades at an edge that hides tabs, over the opaque tabs (#3821)", () => {
+    const css = readFileSync(join(import.meta.dir, "../../src/styles/session.css"), "utf8");
+    const start = css.indexOf("@utility session-views {");
+    const rule = css.slice(start, css.indexOf("\n}\n", start)).replace(/\s+/g, " ");
+    expect(rule.includes("overflow-x: auto;")).toBe(true);
+    expect(rule.includes("mask-image: linear-gradient(")).toBe(true);
+    // The row's 1px bottom border stays out of the fade: a second, solid layer covers it.
+    expect(rule.includes("mask-size: 100% calc(100% - 1px), 100% 1px;")).toBe(true);
   });
 
   test("a key the tab bar does not use is left alone: no view changes and the browser keeps it", async () => {

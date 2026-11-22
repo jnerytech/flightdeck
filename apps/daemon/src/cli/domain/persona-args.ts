@@ -65,8 +65,8 @@ function personaFlags(args: PersonaArgs): Array<[string, unknown, readonly strin
 /** A flag name another command takes too, with the commands whose own `...Problem` checks it. */
 const CHECKED_ELSEWHERE = new Map<string, readonly string[]>([
   // `team new --name` is the team's name, checked by `teamProblem`; `project add|update --name` is the project's, by `projectProblem`.
-  // `automation save --name` is the automation's, checked by `automationProblem`.
-  ["--name", ["team", "project", "automation"]],
+  // `automation save --name` is the automation's, checked by `automationProblem`; `template start --name` is the task's, by `templatesProblem`.
+  ["--name", ["team", "project", "automation", "template"]],
   // `budget set` takes the scope too: `budgetProblem` checks it.
   ["--scope", ["budget"]],
   // `review add|update --body` is the comment's: `reviewProblem` checks it.

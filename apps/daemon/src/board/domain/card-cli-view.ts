@@ -375,16 +375,17 @@ export const UNSURE: Partial<Record<CardCliArgs["action"], string>> = {
     "; the mark may or may not have been dismissed: check with `card show` before trying again",
 };
 
+/** Where a comment sits: the whole PR, a file, or a line of a file. */
+function commentPlace(comment: PrComment): string {
+  if (comment.path === null) return "the whole PR";
+  return comment.line === null ? comment.path : `${comment.path}:${comment.line}`;
+}
+
 /** The comments of a card's PR: one line each (id, place, author, state), the text under it, and a comment from outside the team flagged before its text. */
 export function commentsLines(comments: PrComment[]): string[] {
   if (comments.length === 0) return ["no comments"];
   return comments.flatMap((comment) => {
-    const place =
-      comment.path === null
-        ? "the whole PR"
-        : comment.line === null
-          ? comment.path
-          : `${comment.path}:${comment.line}`;
+    const place = commentPlace(comment);
     const author =
       comment.authorAssociation === null
         ? comment.author

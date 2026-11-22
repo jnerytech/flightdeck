@@ -22,13 +22,17 @@ function usage(label: string, bytes: Bytes | null): string {
   return `${label}  ${mib(used)} of ${mib(bytes.totalBytes)} MiB used (${share}%)`;
 }
 
+const loadShare = (percent: number | null) => (percent === null ? "not read" : `${percent}%`);
+
+const cpuShare = (percent: number | null) => (percent === null ? "-" : `${percent}%`);
+
 const rowLine = (row: ResourceRow): string =>
   [
     row.kind,
     row.id,
     row.name ?? "-",
     `${mib(row.rssBytes)} MiB`,
-    `cpu ${row.cpuPercent === null ? "-" : `${row.cpuPercent}%`}`,
+    `cpu ${cpuShare(row.cpuPercent)}`,
     `${row.processes} ${row.processes === 1 ? "process" : "processes"}`,
     row.names.join(", "),
   ]
@@ -64,7 +68,7 @@ export const UNSURE_GUARD =
 export const resourcesLines = (snapshot: ResourcesSnapshot): string[] => [
   usage("memory", snapshot.memory),
   usage("disk", snapshot.disk),
-  `load  ${snapshot.loadPercent === null ? "not read" : `${snapshot.loadPercent}%`}`,
+  `load  ${loadShare(snapshot.loadPercent)}`,
   pauseLine(snapshot),
   ...(snapshot.measured
     ? [...snapshot.rows.map(rowLine), ...snapshot.orphans.map(orphanLine)]

@@ -49,13 +49,16 @@ export const readLines = (file: MemoryFile, content: string): string[] => [
   ...content.split(/\r\n|\r|\n/),
 ];
 
-export const budgetLines = ({ startTokens, memory: m }: ContextBudget): string[] => [
-  `start of a session: ${startTokens} tokens`,
-  `index: ${m.indexLines} lines of ${m.limitLines}, ${m.indexBytes} bytes of ${m.limitBytes}`,
-  `loaded: ${m.loadedLines} lines, ${m.loadedBytes} bytes, ${m.cutBy ? `cut by ${m.cutBy}` : "all of it"}`,
-  ...m.leftOutLines.map((line) => `left out of the index: ${line}`),
-  ...(m.leftOutFiles.length > 0 ? [`left out files: ${m.leftOutFiles.join(", ")}`] : []),
-];
+export const budgetLines = ({ startTokens, memory: m }: ContextBudget): string[] => {
+  const cut = m.cutBy ? `cut by ${m.cutBy}` : "all of it";
+  return [
+    `start of a session: ${startTokens} tokens`,
+    `index: ${m.indexLines} lines of ${m.limitLines}, ${m.indexBytes} bytes of ${m.limitBytes}`,
+    `loaded: ${m.loadedLines} lines, ${m.loadedBytes} bytes, ${cut}`,
+    ...m.leftOutLines.map((line) => `left out of the index: ${line}`),
+    ...(m.leftOutFiles.length > 0 ? [`left out files: ${m.leftOutFiles.join(", ")}`] : []),
+  ];
+};
 
 export const suggestLines = (suggestions: readonly MemorySuggestion[]): string[] =>
   suggestions.length === 0
