@@ -31,13 +31,14 @@ function RepoField(
   const [browsing, setBrowsing] = useState(false);
   const { host, store } = props;
   const hostId = host?.id;
-  const [known, setKnown] = useState<Project[]>([]);
+  // Keyed by host: the render right after a new target is picked never shows the previous host's projects.
+  const [loaded, setLoaded] = useState<{ hostId: string; projects: Project[] } | null>(null);
+  const known = loaded && loaded.hostId === hostId ? loaded.projects : [];
   useEffect(() => {
-    setKnown([]);
     if (!hostId) return;
     let current = true;
     void store.projectList.load(hostId).then((projects) => {
-      if (current) setKnown(projects ?? []);
+      if (current) setLoaded({ hostId, projects: projects ?? [] });
     });
     return () => {
       current = false;
