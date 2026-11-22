@@ -84,9 +84,14 @@ export function BudgetsSection(
   const [removing, setRemoving] = useState<Budget | null>(null);
   const [opened, setOpened] = useState(props.fold?.open ?? true);
   const foldable = props.fold != null;
+  // Going to another host's panel (its `open` flips) is a choice and folds or opens this one; the panels
+  // starting to fold because a second host came is not, and must not close what the person has open.
   const startOpen = props.fold?.open;
+  const seenStart = useRef(startOpen);
   useEffect(() => {
-    if (startOpen !== undefined) setOpened(startOpen);
+    const before = seenStart.current;
+    seenStart.current = startOpen;
+    if (startOpen !== undefined && before !== undefined) setOpened(startOpen);
   }, [startOpen]);
   const shown = !foldable || opened;
   const saving = useBusy();

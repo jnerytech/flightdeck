@@ -1739,7 +1739,7 @@ step(Given, "I am on the budgets of host {string}", async (c, host = "") => {
   await open(c, { name: "settings", section: "budgets" });
   await budgetsOf(c, host).waitFor({ timeout: WAIT });
   // With several hosts the panels start folded unless the route names one (#3912): open this host's.
-  const fold = budgetsOf(c, host).getByRole("button", { expanded: false });
+  const fold = budgetsOf(c, host).locator("[id^=budgets-heading-][aria-expanded=false]");
   if ((await fold.count()) > 0) await fold.first().click();
   mine(c).budgetHost = host;
 });

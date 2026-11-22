@@ -86,7 +86,15 @@ export function NeedsYou(
   });
   const open = (entry: Entry) => {
     if (entry.kind === "alert")
-      go(entry.clientId ? { name: "clients" } : { name: "settings", section: "budgets" });
+      go(
+        entry.clientId
+          ? { name: "clients" }
+          : {
+              name: "settings",
+              section: "budgets",
+              ...(entry.hostId ? { host: entry.hostId } : {}),
+            },
+      );
     else setSelected(entry.key);
   };
   latest.current = { entries, open };
