@@ -182,18 +182,20 @@ describe("botao-motivo-linha: allowed folders", () => {
   });
 });
 
-// #1063: a dialog's footer puts its last button at the dialog's right edge. Its reason hung from the
-// button's left and grew right, so Add project's "Pick or type a folder." was cut by the dialog at
-// 1280. In a footer the reason hangs from the button's right and grows left, inside the dialog.
-// happy-dom has no layout: this reads the rule, and the projetos-novo print shows the fit.
-describe("botao-motivo-linha: in a dialog's footer the reason grows inward (#1063)", () => {
-  // Only the footer's last button is at the dialog's right edge. A button first in the row (the
-  // snippet dialog's Run, with no terminal) is at its left edge: hung from its right, its reason
-  // would grow past the left edge instead, so it keeps hanging from its left.
-  const RULE =
-    /\[data-slot="dialog-footer"\] > \.action-button-box:last-child \.action-reason \{([^}]*)\}/;
+// #1063, #4111: a dialog's footer puts its last button at the dialog's right edge. Its reason hung
+// from the button (#1063 turned it inward), out of the flow, so a long one (the Fork dialog's two
+// sentences) ran past the dialog's bottom edge and was cut (#4111). In a footer the reason is a line
+// of the footer itself: the button's box gives way (display: contents), the footer wraps, and the
+// reason takes the row under the buttons, right-aligned under the last one.
+// happy-dom has no layout: this reads the rules, and the linha-do-tempo-bifurcar-recusa print shows the fit.
+describe("botao-motivo-linha: in a dialog's footer the reason is a line of the footer (#4111)", () => {
+  const rule = (selector: string) =>
+    css.match(
+      new RegExp(`(?:^|\\n)\\s*${selector.replace(/[[\]().>*:]/g, "\\$&")} \\{([^}]*)\\}`),
+    )?.[1] ?? "";
+  const BOX = '[data-slot="dialog-footer"] > .action-button-box:has(> .action-reason)';
 
-  test("the reason of a footer's last button hangs from its right; a button before it keeps the left", () => {
+  test("the reasons sit in the footer's own flow, under its buttons, in the order of the buttons", () => {
     render(
       <Dialog open>
         <DialogContent>
@@ -211,15 +213,25 @@ describe("botao-motivo-linha: in a dialog's footer the reason grows inward (#106
     );
     const footer = document.querySelector('[data-slot="dialog-footer"]');
     const box = (text: string) => screen.queryByText(text)?.parentElement ?? null;
-    const rule = css.match(RULE)?.[1] ?? "";
+    const reason = rule(`${BOX} > .action-reason`);
     expect([
       box("Pick or type a folder.") === footer?.lastElementChild,
       box("Run needs a folder.") === footer?.firstElementChild,
-      /right: 0;/.test(rule),
-      /left: auto;/.test(rule),
-      /text-align: right;/.test(rule),
-      css.includes('[data-slot="dialog-footer"] .action-reason {'),
-    ]).toEqual([true, true, true, true, true, false]);
+      /display: contents;/.test(rule(BOX)),
+      /flex-wrap: wrap;/.test(rule('[data-slot="dialog-footer"]')),
+      /position: static;/.test(reason),
+      /flex-basis: 100%;/.test(reason),
+      /order: 1;/.test(reason),
+      /text-align: right;/.test(reason),
+      /max-width: none;/.test(reason),
+      css.includes('[data-slot="dialog-footer"] > .action-button-box:last-child .action-reason {'),
+    ]).toEqual([true, true, true, true, true, true, true, true, true, false]);
+  });
+
+  // The box gives way, so the button is the footer's own item: the stack's flex: 1 (a width in a
+  // column) would stretch it along a row, where the footer's buttons keep their own width.
+  test("a button whose box gave way keeps its own width in the footer's row", () => {
+    expect(/flex: none;/.test(rule(`${BOX} > button`))).toBe(true);
   });
 });
 
