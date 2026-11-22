@@ -69,7 +69,11 @@ function said(
   params: Params | null | undefined,
   stored: string,
 ): string {
-  if (!code || !(code in ptBR.automationsUi[group])) return stored;
+  const known = !!code && Object.hasOwn(ptBR.automationsUi[group], code);
+  if (!known) return stored;
+  const sentence = ptBR.automationsUi[group][code as never] as string;
+  // A sentence with a value to fill in and no values stored would show its bare placeholder.
+  if (!params && sentence.includes("{")) return stored;
   return t(`automationsUi.${group}.${code}` as Key, params ?? {});
 }
 
