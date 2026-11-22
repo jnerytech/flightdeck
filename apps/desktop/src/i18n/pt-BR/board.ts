@@ -260,6 +260,7 @@ export const board = {
     filter: "Filtrar issues",
     filterPlaceholder: "Título, rótulo ou autor",
     none: "Nenhuma issue encontrada",
+    cut: "Mostrando as primeiras {n} issues. Restrinja a busca em Configurar issues.",
     noMatch: 'Nenhuma issue corresponde a "{filter}"',
     clearFilter: "Limpar filtro",
     count: { one: "{n} issue", other: "{n} issues" },

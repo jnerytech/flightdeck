@@ -56,7 +56,7 @@ export function runIssuesCli(
         projectId,
         ...(args.query === undefined ? {} : { query: args.query }),
       });
-      return shown(args.json, answer, ({ issues }) => listLines(issues));
+      return shown(args.json, answer, ({ issues, truncated }) => listLines(issues, truncated));
     },
   });
 }

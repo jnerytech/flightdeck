@@ -265,6 +265,7 @@ export const board = {
     filter: "Filter issues",
     filterPlaceholder: "Title, label or author",
     none: "No issues found",
+    cut: "Showing the first {n} issues. Narrow the search under Configure issues.",
     noMatch: 'No issue matches "{filter}"',
     clearFilter: "Clear filter",
     count: { one: "{n} issue", other: "{n} issues" },

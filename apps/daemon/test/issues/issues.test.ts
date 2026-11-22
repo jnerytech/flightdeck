@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { githubCoords } from "../../src/github/index.ts";
 import { Issues } from "../../src/issues/issues.ts";
+import { ISSUE_LIMIT } from "../../src/pr/index.ts";
 import { azureCoords } from "../../src/pr-hosts/domain/azure-remote.ts";
 import { startServer } from "../../src/server.ts";
 import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
@@ -372,6 +373,79 @@ describe("issues", () => {
     expect(failing.calls()).toHaveLength(1);
     expect(card.prUrl).toBe(broken.prs.url);
     expect(card.notice).toContain("não comentou na issue");
+  });
+
+  test("a list cut at the limit says so: GitHub is asked for one issue more and the extra one is dropped (#4255)", async () => {
+    const gh = fake(
+      "gh",
+      GH_RULES(Array.from({ length: ISSUE_LIMIT + 1 }, (_, i) => ghIssue(i + 1))),
+    );
+    const { service, project } = await setup(GH_REMOTE, { provider: "github" });
+    const page = await service.listPage(project.id);
+    expect(page.issues).toHaveLength(ISSUE_LIMIT);
+    expect(page.truncated).toBe(true);
+    expect(
+      argAfter(
+        gh.calls().find((c) => c.includes("list")),
+        "--limit",
+      ),
+    ).toBe(String(ISSUE_LIMIT + 1));
+  });
+
+  test("a list of exactly the limit is not marked as cut, for GitHub and Azure (#4255)", async () => {
+    fake("gh", GH_RULES(Array.from({ length: ISSUE_LIMIT }, (_, i) => ghIssue(i + 1))));
+    const gh = await setup(GH_REMOTE, { provider: "github" });
+    const page = await gh.service.listPage(gh.project.id);
+    expect(page.issues).toHaveLength(ISSUE_LIMIT);
+    expect("truncated" in page).toBe(false);
+    fake("az", [
+      { args: ["account", "show"], stdout: "ana@acme.com\n" },
+      {
+        args: ["boards", "query"],
+        stdout: JSON.stringify(Array.from({ length: ISSUE_LIMIT }, (_, i) => azItem(i + 1))),
+      },
+    ]);
+    const az = await setup(AZ_REMOTE, { provider: "azure" });
+    const azPage = await az.service.listPage(az.project.id);
+    expect(azPage.issues).toHaveLength(ISSUE_LIMIT);
+    expect("truncated" in azPage).toBe(false);
+  });
+
+  test("Azure: a list over the limit is cut and marked (#4255)", async () => {
+    fake("az", [
+      { args: ["account", "show"], stdout: "ana@acme.com\n" },
+      {
+        args: ["boards", "query"],
+        stdout: JSON.stringify(Array.from({ length: ISSUE_LIMIT + 1 }, (_, i) => azItem(i + 1))),
+      },
+    ]);
+    const { service, project } = await setup(AZ_REMOTE, { provider: "azure" });
+    const page = await service.listPage(project.id);
+    expect(page.issues).toHaveLength(ISSUE_LIMIT);
+    expect(page.truncated).toBe(true);
+  });
+
+  test("protocolo: issues.list carries truncated when the list was cut (#4255)", async () => {
+    fake("gh", GH_RULES(Array.from({ length: ISSUE_LIMIT + 1 }, (_, i) => ghIssue(i + 1))));
+    const { board, manager, project } = await setup(GH_REMOTE, { provider: "github" });
+    const server = startServer({
+      manager,
+      board,
+      issues: new Issues({ board }),
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [],
+    });
+    cleanups.push(() => server.stop());
+    const client = new FrameClient(server.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    const listed = await client.data<{ issues: unknown[]; truncated?: boolean }>("issues.list", {
+      projectId: project.id,
+    });
+    expect([listed?.issues.length, listed?.truncated]).toEqual([ISSUE_LIMIT, true]);
   });
 
   test("protocolo: issues.list, issues.get e issues.createCard; a integração se configura com project.update", async () => {
