@@ -13,6 +13,15 @@ export interface ExportNote {
 }
 
 /** Says what an export did, so a press is never met with silence. */
-export function exportNote(_result: CostsExport, _t: T): ExportNote | null {
-  return null;
+export function exportNote(result: CostsExport, t: T): ExportNote | null {
+  if (result.kind === "cancelled") return null;
+  const hosts = result.left.join(", ");
+  if (result.kind === "nothing") {
+    const text = hosts === "" ? t("costsUi.exportNoHost") : t("costsUi.exportNothing", { hosts });
+    return { tone: "error", text };
+  }
+  if (result.left.length > 0) {
+    return { tone: "warn", text: t("costsUi.exportSavedLeft", { file: result.filename, hosts }) };
+  }
+  return { tone: "info", text: t("costsUi.exportSaved", { file: result.filename }) };
 }

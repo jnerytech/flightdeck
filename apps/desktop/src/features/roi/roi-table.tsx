@@ -7,6 +7,7 @@ import { formatDecimal } from "@/i18n/format";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { LoadingState, WideTable } from "@/shared/layout/index.ts";
 import { usd } from "../costs/index.ts";
 import { csvOf, type RoiColumn, rowsFrom, sortRows, totalsOf } from "./domain/roi-table.ts";
@@ -106,11 +107,15 @@ export function RoiTable(
         : { column, direction: "asc" },
     );
 
+  // The file the last press saved; a new press clears it, and a cancel leaves it clear.
+  const [saved, setSaved] = useState<string | null>(null);
   const exportCsv = async () => {
+    setSaved(null);
     const text = csvOf(shown, [...COLUMNS.map(label), t("roiUi.table.derivation")], (row) =>
       row.figures.derivation.map((d) => t(d.key as Key, d.vars)).join("; "),
     );
-    await store.system.saveFile(`roi-${from}_${to}.csv`, text);
+    const file = `roi-${from}_${to}.csv`;
+    if (await store.system.saveFile(file, text)) setSaved(file);
   };
 
   return (
@@ -118,11 +123,12 @@ export function RoiTable(
       <div className="flex items-center justify-between gap-2">
         <h2 className="font-medium text-sm">{t("roiUi.tableTitle")}</h2>
         {rows.length > 0 && (
-          <Button variant="outline" size="sm" onClick={exportCsv}>
+          <ActionButton variant="outline" size="sm" onClick={exportCsv}>
             {t("roiUi.table.exportCsv")}
-          </Button>
+          </ActionButton>
         )}
       </div>
+      {saved && <InlineNotice tone="info">{t("roiUi.table.saved", { file: saved })}</InlineNotice>}
       {answers === null && <LoadingState label={t("roiUi.loading")} />}
       {answers !== null && rows.length === 0 && (
         <p className="text-muted-foreground text-sm">{t("roiUi.table.empty")}</p>

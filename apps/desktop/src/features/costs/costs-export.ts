@@ -17,10 +17,13 @@ export async function exportCosts(
   },
   filter: CostsFilter,
 ): Promise<CostsExport> {
+  const nameOf = (id: string) => scope.hosts.find((h) => h.id === id)?.name ?? id;
   if (!scope.acrossHosts) {
     const file = await store.hostCommand(scope.hostId, "costs.export", filter);
-    if (file) await store.system.saveFile(file.filename, file.csv);
-    return { kind: "cancelled" };
+    if (!file) return { kind: "nothing", left: [nameOf(scope.hostId)] };
+    return (await store.system.saveFile(file.filename, file.csv))
+      ? { kind: "saved", filename: file.filename, left: [] }
+      : { kind: "cancelled" };
   }
   const answers = await Promise.allSettled(
     scope.hosts.map(async (h) => ({
@@ -32,8 +35,12 @@ export async function exportCosts(
     if (answer.status !== "fulfilled" || !answer.value.file) return [];
     return [{ host: answer.value.host, ...answer.value.file }];
   });
+  const given = new Set(files.map((f) => f.host));
+  const left = scope.hosts.map((h) => h.name).filter((name) => !given.has(name));
   const csv = mergeHostCsv(files);
   const first = files[0];
-  if (first && csv !== "") await store.system.saveFile(first.filename, csv);
-  return { kind: "cancelled" };
+  if (!first || csv === "") return { kind: "nothing", left };
+  return (await store.system.saveFile(first.filename, csv))
+    ? { kind: "saved", filename: first.filename, left }
+    : { kind: "cancelled" };
 }
