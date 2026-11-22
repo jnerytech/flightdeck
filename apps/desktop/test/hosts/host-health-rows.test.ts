@@ -178,13 +178,22 @@ describe("host-health-rows: a doctor check row", () => {
 });
 
 describe("host-health-rows: the headline", () => {
-  const base = { error: null, read: true, required: 0, optional: 0 };
+  const base = { error: null, offline: false, read: true, required: 0, optional: 0 };
 
   test("a failed read says why, before anything else", () => {
     expect(headlineFor({ ...base, error: "offline", required: 3 }, t)).toEqual({
       text: t("hostDeps.readFailed", { reason: "offline" }),
       look: { icon: "warning", tone: "warn" },
     });
+  });
+
+  test("an offline host says so, before a failed read and before the first read", () => {
+    const offline = {
+      text: t("hostDeps.offline"),
+      look: { icon: "dash", tone: "off" } as const,
+    };
+    expect(headlineFor({ ...base, offline: true, error: "offline" }, t)).toEqual(offline);
+    expect(headlineFor({ ...base, offline: true, read: false }, t)).toEqual(offline);
   });
 
   test("until the first read it says it is checking", () => {

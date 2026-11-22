@@ -95,6 +95,7 @@ export function HostHealth(
   const { text: headline, look: headlineLook } = headlineFor(
     {
       error: props.error ?? null,
+      offline: false,
       read: props.deps !== null || props.doctor !== null,
       required,
       optional,

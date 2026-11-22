@@ -123,7 +123,13 @@ export function checkRow(check: DoctorCheckResult, env: RowEnv): HealthRow {
 
 /** The section's headline and its icon: a failed read, the first read pending, or what is missing. */
 export function headlineFor(
-  state: { error: string | null; read: boolean; required: number; optional: number },
+  state: {
+    error: string | null;
+    offline: boolean;
+    read: boolean;
+    required: number;
+    optional: number;
+  },
   t: T,
 ): { text: string; look: DepLook } {
   if (state.error) {
