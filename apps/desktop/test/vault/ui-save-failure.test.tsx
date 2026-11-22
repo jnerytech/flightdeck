@@ -77,7 +77,7 @@ describe("cofre-ui: a save or a removal that fails (#2601)", () => {
     expect(errors(store).join(" ")).not.toContain(VALUE);
     expect(screen.queryByRole("button", { name: "Guardar" })).not.toBeNull();
     expect((screen.queryByLabelText("Nome") as HTMLInputElement).value).toBe("github");
-    expect((screen.queryByLabelText("Valor") as HTMLTextAreaElement).value).toBe(VALUE);
+    expect((screen.queryByLabelText("Valor") as HTMLInputElement).value).toBe(VALUE);
     expect(store.getState().secrets).toEqual([]);
   });
 

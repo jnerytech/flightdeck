@@ -6,10 +6,12 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { useBusy } from "@/shared/hooks/index.ts";
-import { Form, FormActions } from "@/shared/layout/index.ts";
+import { Form, FormActions, Inline } from "@/shared/layout/index.ts";
 import type { SecretType } from "./vault";
 
 const TYPES: SecretType[] = ["ssh-key", "password", "token", "env"];
+/** A password or a token is one line a person types: it is hidden unless they ask to see it (#3942). */
+const MASKED: ReadonlySet<SecretType> = new Set(["password", "token"]);
 
 const splitTags = (text: string): string[] =>
   text
@@ -32,6 +34,7 @@ export function NewSecretForm(
   const [name, setName] = useState("");
   const [type, setType] = useState<SecretType>("password");
   const [value, setValue] = useState("");
+  const [shown, setShown] = useState(false);
   const [tags, setTags] = useState(props.defaultTags ?? "");
   const [deleteOriginal, setDeleteOriginal] = useState(false);
   const [publicKey, setPublicKey] = useState<string | null>(null);
@@ -80,7 +83,18 @@ export function NewSecretForm(
         <select
           className="h-9 rounded-md border border-input bg-transparent px-2"
           value={type}
-          onChange={(event) => setType(event.target.value as SecretType)}
+          onChange={(event) => {
+            const next = event.target.value as SecretType;
+            setType(next);
+            setShown(false);
+            // A one-line input drops the line breaks of what it shows but not of what we keep:
+            // carrying a pasted key into it would save a different secret than the one on screen.
+            // A break at the very end is a paste accident, so it goes; one inside empties the box.
+            if (MASKED.has(next)) {
+              const oneLine = value.replace(/[\r\n]+$/, "");
+              setValue(/[\r\n]/.test(oneLine) ? "" : oneLine);
+            }
+          }}
         >
           {TYPES.map((option) => (
             <option key={option} value={option}>
@@ -91,13 +105,37 @@ export function NewSecretForm(
       </label>
       <div className="flex flex-col gap-1 text-sm">
         <label htmlFor={`${id}-value`}>{t("vault.value")}</label>
-        <Textarea
-          id={`${id}-value`}
-          value={value}
-          autoComplete="off"
-          spellCheck={false}
-          onChange={(event) => setValue(event.target.value)}
-        />
+        {MASKED.has(type) ? (
+          <>
+            <Input
+              id={`${id}-value`}
+              type={shown ? "text" : "password"}
+              value={value}
+              autoComplete="new-password"
+              spellCheck={false}
+              onChange={(event) => setValue(event.target.value)}
+            />
+            <Inline>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-pressed={shown}
+                onClick={() => setShown(!shown)}
+              >
+                {t("vault.showValue")}
+              </Button>
+            </Inline>
+          </>
+        ) : (
+          <Textarea
+            id={`${id}-value`}
+            value={value}
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(event) => setValue(event.target.value)}
+          />
+        )}
       </div>
       <div className="flex flex-col gap-1 text-sm">
         <label htmlFor={`${id}-tags`}>{t("vault.tags")}</label>
