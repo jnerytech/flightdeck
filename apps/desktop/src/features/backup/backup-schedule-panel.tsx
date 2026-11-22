@@ -20,6 +20,107 @@ function validKeep(text: string): number | null {
 /** The same floor as a backup file's passphrase (the bundle refuses a shorter one). */
 const MIN_PASSPHRASE = 12;
 
+type Scheduler = AppStore["backupScheduler"];
+
+/** Where the backup goes when the target is Drive: the sign-in state and its button. */
+function DriveTarget(
+  props: Readonly<{ scheduler: Scheduler; refused: boolean; setRefused(refused: boolean): void }>,
+) {
+  const { scheduler, refused, setRefused } = props;
+  const t = useT();
+  const signing = useBusy();
+  const toggleSignIn = async () => {
+    if (scheduler.driveSignedIn) {
+      setRefused(false);
+      await scheduler.signOutDrive();
+      return;
+    }
+    setRefused((await scheduler.signInDrive()) === "refused");
+  };
+  return (
+    <Stack gap={1}>
+      <p className="text-muted-foreground text-sm">{t("backupSchedule.driveHelp")}</p>
+      <p>
+        {scheduler.driveSignedIn
+          ? t("backupSchedule.driveSignedIn")
+          : t("backupSchedule.driveSignedOut")}
+      </p>
+      {refused && <InlineNotice tone="warn">{t("backupSchedule.driveRefused")}</InlineNotice>}
+      <div>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={signing.busy}
+          onClick={() => signing.run(toggleSignIn)}
+        >
+          {scheduler.driveSignedIn
+            ? t("backupSchedule.driveSignOut")
+            : t("backupSchedule.driveSignIn")}
+        </Button>
+      </div>
+    </Stack>
+  );
+}
+
+/** Where the backup goes when the target is a folder: its path and the button that chooses it. */
+function FolderTarget(props: Readonly<{ scheduler: Scheduler }>) {
+  const { scheduler } = props;
+  const t = useT();
+  const choosing = useBusy();
+  return (
+    <Stack gap={1}>
+      <p className="[overflow-wrap:anywhere]">
+        <span className="font-medium">{t("backupSchedule.folder")}: </span>
+        {scheduler.folder ?? t("backupSchedule.noFolder")}
+      </p>
+      <div>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={choosing.busy}
+          onClick={() => choosing.run(() => scheduler.chooseFolder())}
+        >
+          {t("backupSchedule.chooseFolder")}
+        </Button>
+      </div>
+    </Stack>
+  );
+}
+
+/** The last run, and when the next is due or what it waits for. */
+function RunLines(
+  props: Readonly<{
+    lastRunAt: number | null;
+    next: ReturnType<typeof nextBackup>;
+    now: number;
+  }>,
+) {
+  const { lastRunAt, next, now } = props;
+  const t = useT();
+  const dueText = (at: number) =>
+    at <= now
+      ? t("backupSchedule.nextDueNow")
+      : t("backupSchedule.nextDue", { when: formatDateTime(new Date(at).toISOString(), t.lang) });
+  return (
+    <>
+      <p className="text-muted-foreground text-sm">
+        {lastRunAt === null
+          ? t("backupSchedule.neverRun")
+          : t("backupSchedule.lastRun", {
+              when: formatDateTime(new Date(lastRunAt).toISOString(), t.lang),
+            })}
+      </p>
+      {next && (
+        <p className="text-muted-foreground text-sm">
+          {"waitingFor" in next
+            ? t(`backupSchedule.nextWaiting.${next.waitingFor}`)
+            : dueText(next.at)}
+        </p>
+      )}
+    </>
+  );
+}
+
 /** Issue #1264: Settings > Backup schedule. The desktop app only: a browser cannot write to a folder. */
 export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
   const scheduler = props.store.backupScheduler;
@@ -28,9 +129,7 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
   useSyncExternalStore(scheduler.subscribe, () => scheduler.version);
   const [passphrase, setPassphrase] = useState("");
   const [keepText, setKeepText] = useState(String(scheduler.schedule().keep));
-  const choosing = useBusy();
   const using = useBusy();
-  const signing = useBusy();
   const [refused, setRefused] = useState(false);
   // #2654: the form is waiting for the passphrase, or the passphrase was just set and the form left.
   const cadenceOn = scheduler.supported && scheduler.schedule().cadence !== "off";
@@ -107,53 +206,9 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
           </fieldset>
         )}
         {onDrive ? (
-          <Stack gap={1}>
-            <p className="text-muted-foreground text-sm">{t("backupSchedule.driveHelp")}</p>
-            <p>
-              {scheduler.driveSignedIn
-                ? t("backupSchedule.driveSignedIn")
-                : t("backupSchedule.driveSignedOut")}
-            </p>
-            {refused && <InlineNotice tone="warn">{t("backupSchedule.driveRefused")}</InlineNotice>}
-            <div>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={signing.busy}
-                onClick={() =>
-                  signing.run(async () => {
-                    if (scheduler.driveSignedIn) {
-                      setRefused(false);
-                      await scheduler.signOutDrive();
-                      return;
-                    }
-                    setRefused((await scheduler.signInDrive()) === "refused");
-                  })
-                }
-              >
-                {scheduler.driveSignedIn
-                  ? t("backupSchedule.driveSignOut")
-                  : t("backupSchedule.driveSignIn")}
-              </Button>
-            </div>
-          </Stack>
+          <DriveTarget scheduler={scheduler} refused={refused} setRefused={setRefused} />
         ) : (
-          <Stack gap={1}>
-            <p className="[overflow-wrap:anywhere]">
-              <span className="font-medium">{t("backupSchedule.folder")}: </span>
-              {scheduler.folder ?? t("backupSchedule.noFolder")}
-            </p>
-            <div>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={choosing.busy}
-                onClick={() => choosing.run(() => scheduler.chooseFolder())}
-              >
-                {t("backupSchedule.chooseFolder")}
-              </Button>
-            </div>
-          </Stack>
+          <FolderTarget scheduler={scheduler} />
         )}
         <Form variant="inline" onSubmit={() => {}}>
           <Field
@@ -228,24 +283,7 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
         {report.status === "done" && report.prune === "failed" && (
           <InlineNotice tone="warn">{t("backupSchedule.pruneFailed")}</InlineNotice>
         )}
-        <p className="text-muted-foreground text-sm">
-          {schedule.lastRunAt === null
-            ? t("backupSchedule.neverRun")
-            : t("backupSchedule.lastRun", {
-                when: formatDateTime(new Date(schedule.lastRunAt).toISOString(), t.lang),
-              })}
-        </p>
-        {next && (
-          <p className="text-muted-foreground text-sm">
-            {"waitingFor" in next
-              ? t(`backupSchedule.nextWaiting.${next.waitingFor}`)
-              : next.at <= now
-                ? t("backupSchedule.nextDueNow")
-                : t("backupSchedule.nextDue", {
-                    when: formatDateTime(new Date(next.at).toISOString(), t.lang),
-                  })}
-          </p>
-        )}
+        <RunLines lastRunAt={schedule.lastRunAt} next={next} now={now} />
       </Stack>
     </Panel>
   );
