@@ -52,6 +52,44 @@ export type MemoryCliArgs = { project: string; json?: boolean } & (
   | { action: "delete"; name: string; expectedHash: string; confirm: true }
 );
 
+export async function runMemoryCli(
+  args: MemoryCliArgs,
+  config: { bind: string; port: number; token: string },
+  options: {
+    timeoutMs?: number;
+    remote?: RemoteTarget;
+    stdin?: ReadableStream<Uint8Array>;
+  } = {},
+): Promise<CliResult> {
+  let content = "";
+  if (args.action === "write") {
+    try {
+      content = await contentOf(args.file, options.stdin ?? Bun.stdin.stream());
+    } catch {
+      return failure(1, `memory write: cannot read the content from ${args.file}`);
+    }
+  }
+  return runOnLocalDaemon({
+    config,
+    ...(options.remote ? { remote: options.remote } : {}),
+    clientName: "flightdeck-memory",
+    timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    unsure: UNSURE,
+    perform: async (daemon, note) => {
+      const { projects } = await daemon.call("project.list", {});
+      const found = resolveProject(projects, args.project);
+      if ("refusal" in found) return found.refusal;
+      const projectId = found.id;
+      try {
+        return await memoryVerb(args, daemon, projectId, content, note);
+      } catch (error) {
+        if (error instanceof DaemonRefusal) return failure(1, error.message, error.reason);
+        throw error;
+      }
+    },
+  });
+}
+
 /** What one memory verb asks of the daemon, and how it prints the answer. */
 async function memoryVerb(
   args: MemoryCliArgs,
@@ -100,42 +138,4 @@ async function memoryVerb(
         : said(...suggestLines(suggestions));
     }
   }
-}
-
-export async function runMemoryCli(
-  args: MemoryCliArgs,
-  config: { bind: string; port: number; token: string },
-  options: {
-    timeoutMs?: number;
-    remote?: RemoteTarget;
-    stdin?: ReadableStream<Uint8Array>;
-  } = {},
-): Promise<CliResult> {
-  let content = "";
-  if (args.action === "write") {
-    try {
-      content = await contentOf(args.file, options.stdin ?? Bun.stdin.stream());
-    } catch {
-      return failure(1, `memory write: cannot read the content from ${args.file}`);
-    }
-  }
-  return runOnLocalDaemon({
-    config,
-    ...(options.remote ? { remote: options.remote } : {}),
-    clientName: "flightdeck-memory",
-    timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    unsure: UNSURE,
-    perform: async (daemon, note) => {
-      const { projects } = await daemon.call("project.list", {});
-      const found = resolveProject(projects, args.project);
-      if ("refusal" in found) return found.refusal;
-      const projectId = found.id;
-      try {
-        return await memoryVerb(args, daemon, projectId, content, note);
-      } catch (error) {
-        if (error instanceof DaemonRefusal) return failure(1, error.message, error.reason);
-        throw error;
-      }
-    },
-  });
 }

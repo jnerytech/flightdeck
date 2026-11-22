@@ -92,6 +92,28 @@ async function changedRefusal(
   }
 }
 
+/** `trust`: a refusal because the action changed since the person looked says the hash it has now. */
+async function trustAction(
+  args: Extract<ActionVerbCliArgs, { action: "trust" }>,
+  daemon: Daemon,
+  scope: Scope,
+  note: { wrote: boolean },
+): Promise<CliResult> {
+  note.wrote = true;
+  try {
+    const trusted = await daemon.call("actions.trust", {
+      ...scope,
+      name: args.name,
+      hash: args.hash,
+    });
+    return shown(args.json, actionJson(trusted), () => [changedLine("trusted", trusted)]);
+  } catch (error) {
+    if (error instanceof DaemonRefusal && error.reason === CHANGED)
+      return changedRefusal(error, daemon, args.name, scope);
+    throw error;
+  }
+}
+
 /** The verb the person typed, asked of the daemon within `scope`; a write sets `note.wrote` before it goes out. */
 async function actionVerb(
   args: ActionVerbCliArgs,
@@ -117,21 +139,7 @@ async function actionVerb(
     });
     return shown(args.json, actionJson(saved), () => [changedLine("saved", saved)]);
   }
-  if (args.action === "trust") {
-    note.wrote = true;
-    try {
-      const trusted = await daemon.call("actions.trust", {
-        ...scope,
-        name: args.name,
-        hash: args.hash,
-      });
-      return shown(args.json, actionJson(trusted), () => [changedLine("trusted", trusted)]);
-    } catch (error) {
-      if (error instanceof DaemonRefusal && error.reason === CHANGED)
-        return changedRefusal(error, daemon, args.name, scope);
-      throw error;
-    }
-  }
+  if (args.action === "trust") return trustAction(args, daemon, scope, note);
   if (args.action === "remove") {
     note.wrote = true;
     const left = await daemon.call("actions.remove", { ...scope, name: args.name });
