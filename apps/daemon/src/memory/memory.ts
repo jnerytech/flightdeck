@@ -219,6 +219,7 @@ export class ProjectMemory {
       project,
       claudeDir: this.claudeDir(),
       managedClaudeMd: this.opts.managedClaudeMd ?? managedClaudeMdPath(),
+      home: userHome(),
       memoryDir: await this.dir(project),
     });
   }
