@@ -290,8 +290,8 @@ describe("agente-ui", () => {
 
   test("the server switches keep a 24 px hit box while the sm track keeps its look", async () => {
     await setup();
-    await settle(() => screen.queryByRole("switch", { name: "Ligar eco" }) !== null);
-    for (const name of ["Ligar eco", "Ligar global"]) {
+    await settle(() => screen.queryByRole("switch", { name: "eco" }) !== null);
+    for (const name of ["eco", "global"]) {
       const classes = (screen.queryByRole("switch", { name }) as HTMLElement).className.split(" ");
       // WCAG 2.5.8: the box is 24 px tall; the padding is not painted, so the track stays thin.
       expect(classes).toContain("hit-switch");
@@ -300,12 +300,10 @@ describe("agente-ui", () => {
 
   test("ligar e desligar grava o settings.local.json; o servidor do usuário não liga", async () => {
     const { repo } = await setup();
-    await settle(() => screen.queryByRole("switch", { name: "Ligar eco" }) !== null);
-    const eco = screen.queryByRole("switch", { name: "Ligar eco" }) as HTMLElement;
+    await settle(() => screen.queryByRole("switch", { name: "eco" }) !== null);
+    const eco = screen.queryByRole("switch", { name: "eco" }) as HTMLElement;
     expect(eco.getAttribute("aria-checked")).toBe("true");
-    expect(screen.queryByRole("switch", { name: "Ligar global" })?.hasAttribute("disabled")).toBe(
-      true,
-    );
+    expect(screen.queryByRole("switch", { name: "global" })?.hasAttribute("disabled")).toBe(true);
     await act(async () => {
       fireEvent.click(eco);
     });
@@ -314,11 +312,9 @@ describe("agente-ui", () => {
     expect(json(settings).disabledMcpjsonServers).toEqual(["eco"]);
     expect(json(settings).other).toBe(1);
     await settle(
-      () =>
-        screen.queryByRole("switch", { name: "Ligar eco" })?.getAttribute("aria-checked") ===
-        "false",
+      () => screen.queryByRole("switch", { name: "eco" })?.getAttribute("aria-checked") === "false",
     );
-    expect(screen.queryByRole("switch", { name: "Ligar eco" })?.getAttribute("aria-checked")).toBe(
+    expect(screen.queryByRole("switch", { name: "eco" })?.getAttribute("aria-checked")).toBe(
       "false",
     );
   });
@@ -591,10 +587,10 @@ describe("agente-ui", () => {
 
   test("the switch also turns the server off in the live session, and its status follows", async () => {
     const { runtime } = await setup({ live: true });
-    await settle(() => screen.queryByRole("switch", { name: "Ligar eco" }) !== null);
+    await settle(() => screen.queryByRole("switch", { name: "eco" }) !== null);
     await settle(() => screen.queryAllByText("Conectado").length === 2);
     await act(async () => {
-      fireEvent.click(screen.queryByRole("switch", { name: "Ligar eco" }) as HTMLElement);
+      fireEvent.click(screen.queryByRole("switch", { name: "eco" }) as HTMLElement);
     });
     await settle(() => runtime.mcpToggles.length === 1);
     expect(runtime.mcpToggles).toEqual([{ name: "eco", enabled: false }]);
@@ -605,10 +601,10 @@ describe("agente-ui", () => {
 
   test("without a live session no status shows, and the switch only writes the file", async () => {
     const { runtime, repo } = await setup();
-    await settle(() => screen.queryByRole("switch", { name: "Ligar eco" }) !== null);
+    await settle(() => screen.queryByRole("switch", { name: "eco" }) !== null);
     expect(screen.queryByText("Conectado")).toBeNull();
     await act(async () => {
-      fireEvent.click(screen.queryByRole("switch", { name: "Ligar eco" }) as HTMLElement);
+      fireEvent.click(screen.queryByRole("switch", { name: "eco" }) as HTMLElement);
     });
     const settings = join(repo, ".claude", "settings.local.json");
     await settle(() => (json(settings).disabledMcpjsonServers ?? []).includes("eco"));
