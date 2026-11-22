@@ -51,19 +51,24 @@ export const CHECKPOINT_FLAGS: Record<string, Handler> = {
   }),
 };
 
+/** What is wrong with the `--preview` and `--confirm` flags of a `rewind` verb, or undefined. */
+function rewindProblem(args: CliArgs): string | undefined {
+  if (args.undoPreview && args.confirm !== undefined)
+    return "--preview: lists what rewind undo would change and takes no --confirm, since it writes nothing";
+  const writes = args.action === "apply" || args.action === "undo";
+  if (args.confirm !== undefined && !writes)
+    return "--confirm: this flag only applies to flightdeckd rewind apply and undo";
+  if (writes && !args.undoPreview && args.confirm === undefined)
+    return `rewind ${args.action} needs --confirm, since it puts the files of the checkout back`;
+  return undefined;
+}
+
 /** What is wrong with the flag, or undefined: `--include-content` belongs to `trace export` only, `--preview` to `rewind undo`. */
 export function checkpointsProblem(args: CliArgs): string | undefined {
   if (args.undoPreview && !(args.command === "rewind" && args.action === "undo"))
     return "--preview: this flag only applies to flightdeckd rewind undo";
-  if (args.command === "rewind") {
-    if (args.undoPreview && args.confirm !== undefined)
-      return "--preview: lists what rewind undo would change and takes no --confirm, since it writes nothing";
-    const writes = args.action === "apply" || args.action === "undo";
-    if (args.confirm !== undefined && !writes)
-      return "--confirm: this flag only applies to flightdeckd rewind apply and undo";
-    if (writes && !args.undoPreview && args.confirm === undefined)
-      return `rewind ${args.action} needs --confirm, since it puts the files of the checkout back`;
-  }
+  const rewind = args.command === "rewind" ? rewindProblem(args) : undefined;
+  if (rewind !== undefined) return rewind;
   if (args.includeContent && !(args.command === "trace" && args.action === "export"))
     return "--include-content: this flag only applies to flightdeckd trace export";
   return undefined;

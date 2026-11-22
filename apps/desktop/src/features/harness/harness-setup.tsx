@@ -102,14 +102,20 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
     // What an older apply wrote is not what the next one will: no commit of it.
     setWrote(null);
     setTicked(false);
-    const got = await store.hostCommand(hostId, "project.harness.preview", {
-      path,
-      parts,
-      ...fromTemplate,
-    });
-    if (got) setShown(got);
+    // Busy while it is asked: a second click cannot send a second preview whose late refusal would pull the focus behind the dialog.
+    setBusy(true);
+    const got = await store
+      .hostRequest(hostId, "project.harness.preview", { path, parts, ...fromTemplate })
+      .finally(() => setBusy(false));
+    if (got.ok) {
+      setShown(got.data);
+      return;
+    }
+    // Said beside the button, like Apply and Commit: the banner alone may sit behind this page.
+    focusOutcome.current = true;
+    setOutcome({ text: refusalText(got.code, got.message, t, got), again: false, refused: true });
     // A refused preview of a template that is gone, or one shared meanwhile: the choice follows the host.
-    else if (template !== "") void readTemplates();
+    if (template !== "") void readTemplates();
   };
 
   const apply = async (seen: HarnessPreview, reformat: boolean) => {

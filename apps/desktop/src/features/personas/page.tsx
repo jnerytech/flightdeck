@@ -49,7 +49,8 @@ export const PersonasPage = memo(function PersonasPage(props: {
   const [personas, setPersonas] = useState<AppPersona[] | null>(null);
   const [failed, setFailed] = useState(false);
   /** What the page shows: nothing while it waits or after a refusal, and no host means no personas to wait for. */
-  const cards = failed ? null : (personas ?? (hostId ? null : []));
+  const waitedFor = hostId ? null : [];
+  const cards = failed ? null : (personas ?? waitedFor);
   const loading = useMinLoading(!failed && cards === null);
   const [removing, setRemoving] = useState<AppPersona | null>(null);
   const [resetting, setResetting] = useState<AppPersona | null>(null);

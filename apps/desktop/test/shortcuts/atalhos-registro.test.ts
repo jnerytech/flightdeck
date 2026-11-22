@@ -11,6 +11,8 @@ import {
   type ShortcutAction,
   shortcutOf,
 } from "../../src/features/shortcuts/domain/shortcuts.ts";
+import { tabIntent } from "../../src/features/tabs/index.ts";
+import { translator } from "../../src/i18n/index.ts";
 
 const key = (k: string, extra: Partial<KeyLike> = {}): KeyLike => ({
   key: k,
@@ -164,5 +166,73 @@ describe("atalhos-registro: the platform", () => {
     expect(isMac({ platform: "Win32" })).toBe(false);
     expect(isMac({})).toBe(false);
     expect(isMac(undefined)).toBe(false);
+  });
+});
+
+// #4117: the sheet tells what Ctrl+Tab does and lists every tab key the app answers.
+describe("atalhos-registro: the tab keys", () => {
+  /** Every key the tab shortcuts could answer, with and without Shift, as the registry spells it. */
+  const CANDIDATES = [
+    ..."abcdefghijklmnopqrstuvwxyz0123456789\\/,.;'[]-=`".split(""),
+    "Tab",
+    "PageUp",
+    "PageDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowUp",
+    "ArrowDown",
+    "Home",
+    "End",
+    "Enter",
+    "Escape",
+  ];
+
+  /** The registry's spelling of a key: a letter in capitals, the digits as the range. */
+  const spelled = (k: string) => (/^[1-9]$/.test(k) ? "1…9" : k.length === 1 ? k.toUpperCase() : k);
+
+  // Shift on a key that does the same without it (Ctrl+Shift+W) is no key of its own.
+  const answered = CANDIDATES.flatMap((k) =>
+    [false, true]
+      .filter((shift) => {
+        const intent = tabIntent(k, shift);
+        return (
+          intent !== null &&
+          (!shift || JSON.stringify(intent) !== JSON.stringify(tabIntent(k, false)))
+        );
+      })
+      .map((shift) => ({ k, shift })),
+  );
+
+  test("the table of candidate keys finds the tab shortcuts the app answers", () => {
+    expect(answered.length).toBeGreaterThanOrEqual(15);
+  });
+
+  test("every key the tab shortcuts answer has a row of the tabs group", () => {
+    const missing = answered
+      .map(({ k, shift }) => ["Mod", ...(shift ? ["Shift"] : []), spelled(k)])
+      .filter(
+        (keys) => !SHORTCUTS.some((s) => s.group === "tabs" && s.keys.join("+") === keys.join("+")),
+      )
+      .map((keys) => keys.join("+"));
+    // The digits are one row for the whole range, however many keys answer.
+    expect([...new Set(missing)]).toEqual([]);
+  });
+
+  test("Ctrl+Tab is told as the last-used tab or the next tab by the order setting, and Ctrl+Shift+Tab the other way, in both languages", () => {
+    const next = SHORTCUTS.find((s) => s.keys.join("+") === "Mod+Tab");
+    const previous = SHORTCUTS.find((s) => s.keys.join("+") === "Mod+Shift+Tab");
+    const en = translator("en");
+    const pt = translator("pt-BR");
+    // The default order is most recently used; "Tab order" is the next tab (#4117, code review).
+    expect(en(next?.label ?? "shortcuts.title")).toMatch(/last tab you used.*next tab.*Tab order/i);
+    expect(pt(next?.label ?? "shortcuts.title")).toMatch(
+      /última aba usada.*próxima aba.*Ordem das abas/i,
+    );
+    expect(en(previous?.label ?? "shortcuts.title")).toMatch(
+      /used longest ago.*previous tab.*Tab order/i,
+    );
+    expect(pt(previous?.label ?? "shortcuts.title")).toMatch(
+      /usada há mais tempo.*aba anterior.*Ordem das abas/i,
+    );
   });
 });

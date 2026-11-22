@@ -1,6 +1,7 @@
 /** Part of the print table (scripts/demo-shots.ts), in print order. */
 import type { Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
+import { DEMO_MESSAGE_ASK, DEMO_MESSAGE_REFUSED } from "../e2e/journeys.ts";
 import {
   ALFA,
   agentRoute,
@@ -22,6 +23,25 @@ async function openForkWithFiles(page: Page): Promise<void> {
   await page
     .getByRole("checkbox", { name: /^(Voltar os arquivos também|Also rewind the files)$/ })
     .check();
+}
+
+/** A session's Messages tab, open with the messages the host holds for it listed (#4088). */
+async function openMessagesTab(page: Page): Promise<void> {
+  await page.getByRole("tab", { name: /^(Mensagens|Messages)$/ }).click();
+  await page.getByText(DEMO_MESSAGE_ASK).first().waitFor();
+}
+
+/** The Messages tab with its form open and a text sent that the host refuses (#4088). */
+async function sendRefusedMessage(page: Page): Promise<void> {
+  await openMessagesTab(page);
+  await page
+    .getByRole("button", { name: /^(Mandar para outra sessão…|Send to another session…)$/ })
+    .click();
+  await page
+    .getByRole("textbox", { name: /^(Texto da mensagem|Message text)$/ })
+    .fill(DEMO_MESSAGE_REFUSED);
+  await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
+  await page.getByText(/(per hour for this session|por hora desta sessão)/).waitFor();
 }
 
 export function agentShots(ids: DemoIds): Shot[] {
@@ -535,6 +555,34 @@ export function agentShots(ids: DemoIds): Shot[] {
       name: "configuracoes-mensagens",
       route: { name: "settings" },
       prepare: showSection(/^(Messages between sessions on|Mensagens entre sessões em) /),
+    },
+    // Issue #4088: the Conversations page with a delivered row, a refused one with its reason and one
+    // to a host the demo does not have, and a session's Messages tab, also with a refused send. The
+    // paused pair and the exception the seed adds show in `configuracoes-mensagens` above.
+    { name: "conversas", route: { name: "conversations" } },
+    {
+      name: "sessao-mensagens",
+      route: { name: "session", host: ALFA, id: ids.idleSession },
+      prepare: openMessagesTab,
+    },
+    {
+      name: "sessao-mensagens-recusa",
+      route: { name: "session", host: ALFA, id: ids.idleSession },
+      wire: [
+        {
+          // Sent as a read of the targets, so the demo's host sends nothing: only the answer is the refusal.
+          command: "messages.send",
+          as: "messages.sessions",
+          data: {
+            id: "demo-refused-send",
+            status: "refused",
+            reason: "The limit of 100 messages per hour for this session was reached.",
+            reasonKey: "messaging_limit_session",
+            reasonParams: { limit: 100 },
+          },
+        },
+      ],
+      prepare: sendRefusedMessage,
     },
     {
       // Issue #38: the allowed-folders row, its input and its button on one line.

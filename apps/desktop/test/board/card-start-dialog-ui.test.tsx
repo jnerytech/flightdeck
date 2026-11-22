@@ -75,7 +75,7 @@ for (const [lang, t, start] of [
       await settle(
         () => !(screen.queryByRole("button", { name: start }) as HTMLButtonElement).disabled,
       );
-      expect(screen.queryByText(t.board.startLoading) === null).toBe(true);
+      expect(screen.queryByText(t.board.startLoading) === null).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
       await act(async () => {
         fireEvent.click(screen.queryByRole("button", { name: start }) as HTMLElement);
       });
@@ -104,7 +104,7 @@ for (const [lang, t, start] of [
       await settle(
         () => !(screen.queryByRole("button", { name: start }) as HTMLButtonElement).disabled,
       );
-      expect(screen.queryByText(t.board.startWorkflowsFailed) === null).toBe(true);
+      expect(screen.queryByText(t.board.startWorkflowsFailed) === null).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
       expect(starts(w.commands)).toEqual([]);
     });
 

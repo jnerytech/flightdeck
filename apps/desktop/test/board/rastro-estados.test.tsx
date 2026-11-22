@@ -174,7 +174,7 @@ describe("rastro-estados (#3706)", () => {
     expect(spoken).not.toBeNull();
     expect(spoken?.textContent).toBe("");
     await click("Next");
-    expect(document.querySelector("[aria-live=polite][aria-atomic=true]") === spoken).toBe(true);
+    expect(document.querySelector("[aria-live=polite][aria-atomic=true]") === spoken).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
     expect(spoken?.textContent?.includes("Step 2") || spoken?.textContent?.includes("a.ts")).toBe(
       true,
     );

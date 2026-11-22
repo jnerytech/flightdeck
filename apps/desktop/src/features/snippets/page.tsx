@@ -155,7 +155,8 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
   };
 
   /** What the page shows: nothing while it waits or after a refusal, and no host means no snippets to wait for. */
-  const cards = failed ? null : (snippets ?? (hostId || project === GLOBAL ? null : []));
+  const waitedFor = hostId || project === GLOBAL ? null : [];
+  const cards = failed ? null : (snippets ?? waitedFor);
   const loading = useMinLoading(!failed && cards === null);
   // The selected client's snippets (those with its tag) come first, and a new one starts with it.
   const clientTag = selectedClient(state.clientList, state.clientSelection)?.defaults.snippetTag;

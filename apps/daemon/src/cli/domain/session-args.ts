@@ -115,23 +115,31 @@ function teleportProblem(args: CliArgs): string | undefined {
   return undefined;
 }
 
-/** What is wrong with the flags of `session`, or of another command that was given one of them. */
-export function sessionProblem(args: CliArgs): string | undefined {
+/** A start flag typed on a verb that does not take it, or on another command. */
+function startFlagProblem(args: CliArgs): string | undefined {
   for (const [flag, option, verbs] of START_FLAGS) {
     if (args.sessionStart?.[option] === undefined) continue;
     if (args.command !== "session" || !verbs.includes(args.action as string))
       return `${flag}: this flag only applies to flightdeckd session ${verbs.join(", ")}`;
   }
-  const moving = args.command === "session" && args.action === "teleport";
+  return undefined;
+}
+
+/** A teleport flag typed when the verb is not `session teleport`. */
+function strayTeleportFlag(args: CliArgs): string | undefined {
   const teleportFlags: Array<[string, unknown]> = [
     ["--to", args.command === "session" ? args.until : args.teleport?.to],
     ["--repo", args.teleport?.repo],
     ["--confirm", args.command === "session" ? args.confirm : undefined],
   ];
   for (const [flag, value] of teleportFlags)
-    if (value !== undefined && !moving)
+    if (value !== undefined)
       return `${flag}: this flag only applies to flightdeckd session teleport`;
-  if (moving) return teleportProblem(args);
+  return undefined;
+}
+
+/** What `session create` and `session fork` still need: a folder, and a persona for a language. */
+function startProblem(args: CliArgs): string | undefined {
   const start = args.sessionStart;
   if (args.command !== "session" || (args.action !== "create" && args.action !== "fork"))
     return undefined;
@@ -139,6 +147,14 @@ export function sessionProblem(args: CliArgs): string | undefined {
   if (args.action === "create" && start.language !== undefined && start.persona === undefined)
     return "--language: only with --persona";
   return undefined;
+}
+
+/** What is wrong with the flags of `session`, or of another command that was given one of them. */
+export function sessionProblem(args: CliArgs): string | undefined {
+  const stray = startFlagProblem(args);
+  if (stray !== undefined) return stray;
+  if (args.command === "session" && args.action === "teleport") return teleportProblem(args);
+  return strayTeleportFlag(args) ?? startProblem(args);
 }
 
 /**

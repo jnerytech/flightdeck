@@ -49,6 +49,219 @@ type Stop =
   | { id: string; kind: "more"; section: PaletteSection }
   | { id: string; kind: "hit"; hit: GlobalHit };
 
+const hitStopId = (hit: GlobalHit) => `hit:${hit.hostId}/${hit.claudeSessionId}/${hit.uuid}`;
+
+/** How many rows of a section show: all when it is uncapped, else what its "more" button has added. */
+const capFor = (section: PaletteSection, limits: Record<string, number>) =>
+  section.uncapped ? section.items.length : (limits[section.title] ?? SECTION_CAP);
+
+/** The rows a section shows; the actions list shows them all. */
+const shownRows = (section: PaletteSection, limits: Record<string, number>, actions: boolean) =>
+  actions ? section.items : section.items.slice(0, capFor(section, limits));
+
+/** The rows a section keeps behind its "more" button. */
+const hiddenRows = (section: PaletteSection, limits: Record<string, number>, actions: boolean) =>
+  actions ? 0 : Math.max(0, section.items.length - capFor(section, limits));
+
+/** The arrows' walk: each section's rows and its "more" button, then the history hits. */
+function walkOf(
+  sections: PaletteSection[],
+  shown: (section: PaletteSection) => PaletteItem[],
+  hiddenOf: (section: PaletteSection) => number,
+  hits: GlobalHit[],
+): Stop[] {
+  return [
+    ...sections.flatMap((section, i): Stop[] => [
+      ...shown(section).map((item): Stop => ({ id: `${i}:${item.id}`, kind: "item", item })),
+      ...(hiddenOf(section) > 0
+        ? [{ id: `more:${section.title}`, kind: "more" as const, section }]
+        : []),
+    ]),
+    ...hits.map((hit): Stop => ({ id: hitStopId(hit), kind: "hit", hit })),
+  ];
+}
+
+/**
+ * What a screen reader hears as the list changes, and what a sighted person reads when it holds
+ * nothing: how many rows and history hits are listed; that the text matches nothing and Enter
+ * searches the history; or that the history search for this very text found nothing. A search
+ * for other text is not this text's answer, so it only adds its hits to the count.
+ */
+function statusOf(
+  t: T,
+  o: { query: string; search: AppState["search"]; inActions: boolean; count: number },
+) {
+  const { query, search } = o;
+  const hitCount = search?.hits.length ?? 0;
+  const typed = query.trim() !== "" && !o.inActions;
+  const current = search !== null && search.query.trim() === query.trim();
+  const searching = current && search.waiting.length > 0;
+  const noMatch = typed && o.count + hitCount === 0 && !current;
+  const historyNone =
+    typed && current && !searching && hitCount === 0 && search.silent.length === 0;
+  let status = "";
+  if (historyNone) status = t("searchUi.historyNone", { query: query.trim() });
+  else if (noMatch) status = t("searchUi.noMatch", { query: query.trim() });
+  else if (typed && !searching) status = t("searchUi.found", { n: o.count + hitCount });
+  return { status, noMatch, historyNone };
+}
+
+/** The chips of the scope the list is narrowed to: the host, and its project. */
+function chipsOf(
+  scope: PaletteScope,
+  state: AppState,
+  t: T,
+  nameOf: (hostId: string) => string,
+): { key: string; kind: string; name: string }[] {
+  if (!scope.hostId) return [];
+  const chips = [{ key: "host", kind: t("palette.filterHost"), name: nameOf(scope.hostId) }];
+  if (scope.projectId) {
+    const project = state.projects[scope.hostId]?.find((p) => p.id === scope.projectId);
+    chips.push({
+      key: "project",
+      kind: t("palette.filterProject"),
+      name: project?.name ?? scope.projectId,
+    });
+  }
+  return chips;
+}
+
+/**
+ * The window is not modal: Esc with the focus on the page behind, or a click there, leaves too.
+ * Returns what takes the listeners off.
+ */
+function leavesOnOutside(
+  dialog: { current: HTMLDialogElement | null },
+  dismissing: { current: () => void },
+): () => void {
+  const outside = (e: Event) => {
+    if (!dialog.current?.contains(e.target as Node)) dismissing.current();
+  };
+  const onEscape = (e: globalThis.KeyboardEvent) => {
+    if (e.key === "Escape") outside(e);
+  };
+  document.addEventListener("pointerdown", outside);
+  document.addEventListener("keydown", onEscape);
+  return () => {
+    document.removeEventListener("pointerdown", outside);
+    document.removeEventListener("keydown", onEscape);
+  };
+}
+
+/** What the palette's keys need of it: where the cursor is and what each key may do. */
+interface KeyContext {
+  chosen: Stop | undefined;
+  cursor: number;
+  stopCount: number;
+  emptyQuery: boolean;
+  inActions: boolean;
+  recent: PaletteItem[];
+  hasChips: boolean;
+  choose(item: PaletteItem): void;
+  activate(stop: Stop): void;
+  toggleActions(chosen: PaletteItem | undefined): void;
+  back(): void;
+  setCursor(at: number): void;
+}
+
+/** Tab: into the chosen entry's actions, unless it goes on to the scope chips. */
+function onTab(e: KeyboardEvent<HTMLInputElement>, k: KeyContext) {
+  // With nothing chosen, Tab goes on to the scope chips (the rows are out of the tab order).
+  const leaves = k.chosen?.kind !== "item" && !k.inActions && !e.shiftKey && k.hasChips;
+  if (leaves) return;
+  e.preventDefault();
+  k.toggleActions(k.chosen?.kind === "item" ? k.chosen.item : undefined);
+}
+
+/** The keys of the text field: Alt+1…6, the arrows, Enter, Tab and Esc inside the actions. */
+function handleKey(e: KeyboardEvent<HTMLInputElement>, k: KeyContext) {
+  const alt = /^[1-6]$/.test(e.key) && e.altKey && k.emptyQuery && !k.inActions;
+  if (alt) {
+    // Alt+1…6 open the recent entries; nowhere outside the palette do they mean anything.
+    e.preventDefault();
+    const recent = k.recent[Number(e.key) - 1];
+    if (recent) k.choose(recent);
+  } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const step = e.key === "ArrowDown" ? 1 : -1;
+    k.setCursor(Math.max(-1, Math.min(k.stopCount - 1, k.cursor + step)));
+  } else if (e.key === "Enter" && k.chosen) {
+    // With nothing chosen, Enter submits the form: the history search.
+    e.preventDefault();
+    k.activate(k.chosen);
+  } else if (e.key === "Tab") {
+    onTab(e, k);
+  } else if (e.key === "Escape" && k.inActions) {
+    // Back to the list; the dialog only closes from there.
+    e.stopPropagation();
+    k.back();
+  }
+}
+
+/** The history search: the hosts still answering or silent, and the hits found, merged by date. */
+function HistoryHits(
+  props: Readonly<{
+    search: NonNullable<AppState["search"]>;
+    uid: string;
+    t: T;
+    name(hostId: string): string;
+    formatDateTime(iso: string): string;
+    domId(stopId: string): string;
+    selectedId: string | undefined;
+    onOpenHit(hit: GlobalHit): void;
+  }>,
+) {
+  const { search, uid, t } = props;
+  return (
+    <section className="flex flex-col gap-1">
+      <h3 className="px-2 font-medium text-muted-foreground text-xs">{t("searchUi.history")}</h3>
+      <output className="flex flex-col px-2 text-muted-foreground text-xs">
+        {search.waiting.map((id) => (
+          <span key={id}>{t("searchUi.searching", { host: props.name(id) })}</span>
+        ))}
+        {search.silent.map((id) => (
+          <span key={id}>{t("searchUi.silent", { host: props.name(id) })}</span>
+        ))}
+      </output>
+      <div
+        id={`${uid}-hits`}
+        role="listbox"
+        aria-label={t("searchUi.results")}
+        className="flex flex-col"
+      >
+        {search.hits.map((hit) => {
+          const when = props.formatDateTime(hit.ts ?? "");
+          const where = `${hit.hostName} · ${basename(hit.cwd)} · ${when}`;
+          const stopId = hitStopId(hit);
+          return (
+            <button
+              type="button"
+              key={stopId}
+              id={props.domId(stopId)}
+              role="option"
+              tabIndex={-1}
+              aria-selected={props.selectedId === stopId}
+              className="palette-row flex w-full min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5 text-left"
+              onClick={() => props.onOpenHit(hit)}
+            >
+              {/* A long title or path ends in an ellipsis; the whole text is in the tooltip. */}
+              <span
+                title={`${hit.hostName} · ${hit.cwd} · ${when}`}
+                className="truncate text-muted-foreground text-xs tabular-nums"
+              >
+                {where}
+              </span>
+              <span title={hit.snippet.replaceAll(/[«»]/g, "")} className="truncate">
+                <Snippet text={hit.snippet} />
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 /**
  * The Ctrl+K palette: live sessions, cards, projects, hosts and actions filtered as you type, then
  * the history search across every host (Enter with nothing chosen), merged by date as each host
@@ -105,19 +318,7 @@ export function GlobalSearch(
 
   useEffect(() => {
     inputRef.current?.focus();
-    // The window is not modal: Esc with the focus on the page behind, or a click there, leaves too.
-    const outside = (e: Event) => {
-      if (!dialogRef.current?.contains(e.target as Node)) dismissing.current();
-    };
-    const onEscape = (e: globalThis.KeyboardEvent) => {
-      if (e.key === "Escape") outside(e);
-    };
-    document.addEventListener("pointerdown", outside);
-    document.addEventListener("keydown", onEscape);
-    return () => {
-      document.removeEventListener("pointerdown", outside);
-      document.removeEventListener("keydown", onEscape);
-    };
+    return leavesOnOutside(dialogRef, dismissing);
   }, []);
 
   const sections: PaletteSection[] = actionsOf
@@ -147,31 +348,13 @@ export function GlobalSearch(
   if (frozen.current === null && !actionsOf) {
     frozen.current = sections.find((section) => section.recent)?.items.map((i) => i.id) ?? [];
   }
-  const capOf = (section: PaletteSection) =>
-    section.uncapped ? section.items.length : (limits[section.title] ?? SECTION_CAP);
-  const shown = (section: PaletteSection) =>
-    actionsOf ? section.items : section.items.slice(0, capOf(section));
-  const hiddenOf = (section: PaletteSection) =>
-    actionsOf ? 0 : Math.max(0, section.items.length - capOf(section));
+  const capOf = (section: PaletteSection) => capFor(section, limits);
+  const shown = (section: PaletteSection) => shownRows(section, limits, actionsOf !== null);
+  const hiddenOf = (section: PaletteSection) => hiddenRows(section, limits, actionsOf !== null);
   /** A row's place in the walk: an entry can sit in two sections (Recent and Sessions), so the section is part of it. */
   const itemStop = (section: number, id: string) => `${section}:${id}`;
   const recentItems = sections.find((section) => section.recent)?.items ?? [];
-  /** The arrows' walk: each section's rows and its "more" button, then the history hits. */
-  const stops: Stop[] = [
-    ...sections.flatMap((section, i): Stop[] => [
-      ...shown(section).map((item): Stop => ({ id: itemStop(i, item.id), kind: "item", item })),
-      ...(hiddenOf(section) > 0
-        ? [{ id: `more:${section.title}`, kind: "more" as const, section }]
-        : []),
-    ]),
-    ...(actionsOf ? [] : (search?.hits ?? [])).map(
-      (hit): Stop => ({
-        id: `hit:${hit.hostId}/${hit.claudeSessionId}/${hit.uuid}`,
-        kind: "hit",
-        hit,
-      }),
-    ),
-  ];
+  const stops = walkOf(sections, shown, hiddenOf, actionsOf ? [] : (search?.hits ?? []));
   /** Where the chosen entry is in the walk; -1 is the text field (or an entry that left). */
   const cursor = stops.findIndex((stop) => stop.id === activeId);
   const setCursor = (at: number) => setActiveId(stops[at]?.id ?? null);
@@ -190,24 +373,13 @@ export function GlobalSearch(
     setActionsOf(null);
     setActiveId(null);
   };
-  /**
-   * What a screen reader hears as the list changes, and what a sighted person reads when it holds
-   * nothing: how many rows and history hits are listed; that the text matches nothing and Enter
-   * searches the history; or that the history search for this very text found nothing. A search
-   * for other text is not this text's answer, so it only adds its hits to the count.
-   */
   const rowCount = stops.filter((stop) => stop.kind === "item").length;
-  const hitCount = search?.hits.length ?? 0;
-  const typed = query.trim() !== "" && !actionsOf;
-  const current = search !== null && search.query.trim() === query.trim();
-  const searching = current && search.waiting.length > 0;
-  const noMatch = typed && rowCount + hitCount === 0 && !current;
-  const historyNone =
-    typed && current && !searching && hitCount === 0 && search.silent.length === 0;
-  let status = "";
-  if (historyNone) status = t("searchUi.historyNone", { query: query.trim() });
-  else if (noMatch) status = t("searchUi.noMatch", { query: query.trim() });
-  else if (typed && !searching) status = t("searchUi.found", { n: rowCount + hitCount });
+  const { status, noMatch, historyNone } = statusOf(t, {
+    query,
+    search,
+    inActions: actionsOf !== null,
+    count: rowCount,
+  });
 
   /** Opens an entry and remembers it for the Recent section (an action of the Tab list is not one). */
   const choose = (item: PaletteItem) => {
@@ -240,55 +412,26 @@ export function GlobalSearch(
     }
   };
 
-  const chips = [
-    ...(scope.hostId
-      ? [{ key: "host", kind: t("palette.filterHost"), name: name(scope.hostId) }]
-      : []),
-    ...(scope.hostId && scope.projectId
-      ? [
-          {
-            key: "project",
-            kind: t("palette.filterProject"),
-            name:
-              props.state.projects[scope.hostId]?.find((p) => p.id === scope.projectId)?.name ??
-              scope.projectId,
-          },
-        ]
-      : []),
-  ];
+  const chips = chipsOf(scope, props.state, t, name);
   const removeChip = (key: string) =>
     setScope((before) =>
       key === "host" ? { hostId: null, projectId: null } : { ...before, projectId: null },
     );
-  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    const chosen = stops[cursor];
-    const alt = /^[1-6]$/.test(e.key) && e.altKey && query.trim() === "" && !actionsOf;
-    if (alt) {
-      // Alt+1…6 open the recent entries; nowhere outside the palette do they mean anything.
-      e.preventDefault();
-      const recent = recentItems[Number(e.key) - 1];
-      if (recent) choose(recent);
-    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      e.preventDefault();
-      const step = e.key === "ArrowDown" ? 1 : -1;
-      setCursor(Math.max(-1, Math.min(stops.length - 1, cursor + step)));
-    } else if (e.key === "Enter" && chosen) {
-      // With nothing chosen, Enter submits the form: the history search.
-      e.preventDefault();
-      activate(chosen);
-    } else if (e.key === "Tab") {
-      // With nothing chosen, Tab goes on to the scope chips (the rows are out of the tab order).
-      const leaves = chosen?.kind !== "item" && !actionsOf && !e.shiftKey && chips.length > 0;
-      if (!leaves) {
-        e.preventDefault();
-        toggleActions(chosen?.kind === "item" ? chosen.item : undefined);
-      }
-    } else if (e.key === "Escape" && actionsOf) {
-      // Back to the list; the dialog only closes from there.
-      e.stopPropagation();
-      back();
-    }
-  };
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) =>
+    handleKey(e, {
+      chosen: stops[cursor],
+      cursor,
+      stopCount: stops.length,
+      emptyQuery: query.trim() === "",
+      inActions: actionsOf !== null,
+      recent: recentItems,
+      hasChips: chips.length > 0,
+      choose,
+      activate,
+      toggleActions,
+      back,
+      setCursor,
+    });
 
   return (
     <dialog
@@ -356,54 +499,16 @@ export function GlobalSearch(
         />
       ))}
       {search && (
-        <section className="flex flex-col gap-1">
-          <h3 className="px-2 font-medium text-muted-foreground text-xs">
-            {t("searchUi.history")}
-          </h3>
-          <output className="flex flex-col px-2 text-muted-foreground text-xs">
-            {search.waiting.map((id) => (
-              <span key={id}>{t("searchUi.searching", { host: name(id) })}</span>
-            ))}
-            {search.silent.map((id) => (
-              <span key={id}>{t("searchUi.silent", { host: name(id) })}</span>
-            ))}
-          </output>
-          <div
-            id={`${uid}-hits`}
-            role="listbox"
-            aria-label={t("searchUi.results")}
-            className="flex flex-col"
-          >
-            {search.hits.map((hit) => {
-              const when = props.store.formatDateTime(hit.ts ?? "");
-              const where = `${hit.hostName} · ${basename(hit.cwd)} · ${when}`;
-              const stopId = `hit:${hit.hostId}/${hit.claudeSessionId}/${hit.uuid}`;
-              return (
-                <button
-                  type="button"
-                  key={stopId}
-                  id={domId(stopId)}
-                  role="option"
-                  tabIndex={-1}
-                  aria-selected={stops[cursor]?.id === stopId}
-                  className="palette-row flex w-full min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5 text-left"
-                  onClick={() => props.onOpenHit(hit)}
-                >
-                  {/* A long title or path ends in an ellipsis; the whole text is in the tooltip. */}
-                  <span
-                    title={`${hit.hostName} · ${hit.cwd} · ${when}`}
-                    className="truncate text-muted-foreground text-xs tabular-nums"
-                  >
-                    {where}
-                  </span>
-                  <span title={hit.snippet.replaceAll(/[«»]/g, "")} className="truncate">
-                    <Snippet text={hit.snippet} />
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
+        <HistoryHits
+          search={search}
+          uid={uid}
+          t={t}
+          name={name}
+          formatDateTime={(iso) => props.store.formatDateTime(iso)}
+          domId={domId}
+          selectedId={stops[cursor]?.id}
+          onOpenHit={props.onOpenHit}
+        />
       )}
     </dialog>
   );

@@ -80,7 +80,7 @@ export const terminal = {
     title: "Move to another host",
     host: "Host",
     noTarget:
-      "No other connected host can receive a session. Connect a host that has teleport, then try again.",
+      "No other host can receive a session. Connect another host that is online and runs an up-to-date Flightdeck, then try again.",
     pickHostReason: "Pick the host to move the session to.",
     repoReason: "Type the repository on that host.",
     pickHost: "Pick a host",
@@ -104,6 +104,8 @@ export const terminal = {
     done: "The session is on {host} now. The one here stays as it was.",
     open: "Open it there",
     close: "Close",
+    retry: "Try again",
+    progress: "Progress of the move",
     plainWs: {
       one: "{hosts} connects without TLS (plain ws://). The transcript and the code of the session travel through this app unencrypted: move only over a network you trust.",
       other:

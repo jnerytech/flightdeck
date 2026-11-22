@@ -219,6 +219,129 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
     });
   }
 
+  for (const [lang, retry, closeLabel] of [
+    ["en", "Try again", "Close"],
+    ["pt-BR", "Tentar de novo", "Fechar"],
+  ] as const) {
+    test(`${lang}: a failed move offers ${retry}, which keeps the host and the repository and lets a second move start (#4123)`, async () => {
+      const { calls, control } = open(lang);
+      await start(lang);
+      await shows(TEXT[lang].secrets);
+      await click(TEXT[lang].move);
+      await act(async () => {
+        control.fail?.(new RequestError("invalid_state", "host says no", "teleport_no_project"));
+      });
+      await shows(TEXT[lang].refused);
+      await click(retry);
+      const host = screen.queryByRole("combobox", {
+        name: TEXT[lang].host,
+      }) as HTMLSelectElement | null;
+      const repo = screen.queryByRole("textbox", { name: "repo-path" }) as HTMLInputElement | null;
+      const kept = [host?.value ?? null, repo?.value ?? null];
+      await click(TEXT[lang].next);
+      const second = calls.args.length;
+      await shows(TEXT[lang].secrets);
+      await click(TEXT[lang].move);
+      await act(async () => {
+        control.fail?.(new RequestError("invalid_state", "x", "teleport_no_project"));
+      });
+      // A second failure offers the way back again.
+      const again = await settle(() => screen.queryByRole("button", { name: retry }) !== null).then(
+        () => true,
+        () => false,
+      );
+      expect([kept, second, again, calls.closed]).toEqual([["h2", "/work/app"], 2, true, 0]);
+    });
+
+    test(`${lang}: Close on a failed move still closes the dialog once (#4123)`, async () => {
+      const { calls, control } = open(lang);
+      await start(lang);
+      await shows(TEXT[lang].secrets);
+      await click(TEXT[lang].move);
+      await act(async () => {
+        control.fail?.(new TypeError("not a refusal"));
+      });
+      await settle(() => screen.queryByRole("alert") !== null);
+      // The dialog's own X has the same name: Close is the form's own button.
+      const form = screen.queryByRole("alert")?.closest("form") ?? null;
+      expect(form).not.toBeNull();
+      const close = within(form as HTMLFormElement).queryByRole("button", { name: closeLabel });
+      expect(close).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(close as HTMLElement);
+      });
+      expect(calls.closed).toBe(1);
+    });
+  }
+
+  test("Try again with a host that is no longer offered asks for a host again instead of moving to it (#4123)", async () => {
+    const targets = [{ id: "h2", name: "pi" }];
+    const { calls, control } = open("en", SUMMARY, false, targets);
+    await start("en");
+    await shows(TEXT.en.secrets);
+    await click(TEXT.en.move);
+    await act(async () => {
+      control.fail?.(new RequestError("invalid_state", "x", "teleport_no_project"));
+    });
+    await shows(TEXT.en.refused);
+    // The host went offline while the move ran: the list has another one now.
+    targets.splice(0, targets.length, { id: "h3", name: "nas" });
+    await click("Try again");
+    const next = screen.queryByRole("button", { name: TEXT.en.next });
+    // The first step is back with no host picked: no repository field, nothing moves.
+    expect([
+      next === null,
+      screen.queryByRole("textbox", { name: "repo-path" }) === null,
+      calls.args.length,
+    ]).toEqual([false, true, 1]);
+  });
+
+  test("a move that landed but names no session offers Close only: Try again would move it twice (#4123)", async () => {
+    const { control } = open("en");
+    await start("en");
+    await shows(TEXT.en.secrets);
+    await click(TEXT.en.move);
+    await act(async () => {
+      control.finish?.({ kind: "moved", sessionId: "", worktree: "/w", branch: "fd/x" });
+    });
+    await settle(() => screen.queryByRole("alert") !== null);
+    expect(screen.queryByRole("button", { name: "Try again" }) === null).toBe(true);
+  });
+
+  for (const lang of ["en", "pt-BR"] as const) {
+    test(`${lang}: the moving step shows a progress bar with the percent beside the text, and a full one while the host finishes (#4127)`, async () => {
+      const { control } = open(lang);
+      await start(lang);
+      await shows(TEXT[lang].secrets);
+      await click(TEXT[lang].move);
+      await act(async () => {
+        control.progress?.(820, 2048);
+      });
+      await shows(lang === "en" ? "Moving… 40%" : "Movendo… 40%");
+      const bar = () => screen.queryByRole("progressbar");
+      const reading = (el: HTMLElement | null) => [
+        el?.getAttribute("aria-valuenow") ?? null,
+        el?.getAttribute("aria-valuemin") ?? null,
+        el?.getAttribute("aria-valuemax") ?? null,
+      ];
+      const during = reading(bar());
+      await act(async () => {
+        control.progress?.(2048, 2048);
+      });
+      await shows(lang === "en" ? "Finishing on pi…" : "Finalizando em pi…");
+      expect([during, reading(bar())]).toEqual([
+        ["40", "0", "100"],
+        ["100", "0", "100"],
+      ]);
+    });
+
+    test(`${lang}: the no-host message names no feature: the word teleport is not in it (#4126)`, async () => {
+      open(lang, SUMMARY, false, []);
+      await shows(REASONS[lang].none);
+      expect((document.body.textContent ?? "").toLowerCase().includes("teleport")).toBe(false);
+    });
+  }
+
   test("Cancel during the move stops it, Escape on the summary says no, and Escape before it closes", async () => {
     const pressEscape = async () => {
       await act(async () => {
@@ -484,12 +607,12 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
 
 const REASONS = {
   en: {
-    none: "No other connected host can receive a session. Connect a host that has teleport, then try again.",
+    none: "No other host can receive a session. Connect another host that is online and runs an up-to-date Flightdeck, then try again.",
     pick: "Pick the host to move the session to.",
     repo: "Type the repository on that host.",
   },
   "pt-BR": {
-    none: "Nenhum outro host conectado pode receber uma sessão. Conecte um host com teleport e tente de novo.",
+    none: "Nenhum outro host pode receber uma sessão. Conecte outro host que esteja online e com o Flightdeck atualizado e tente de novo.",
     pick: "Escolha o host para onde mover a sessão.",
     repo: "Digite o repositório nesse host.",
   },

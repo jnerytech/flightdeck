@@ -6,6 +6,7 @@
  */
 import {
   type CliResult,
+  type DaemonClient,
   json,
   type RemoteTarget,
   runOnLocalDaemon,
@@ -53,43 +54,53 @@ export async function runGithubCli(
     clientName: "flightdeck-github",
     timeoutMs: options.timeoutMs ?? TIMEOUTS[args.action] ?? DEFAULT_TIMEOUT_MS,
     ...(unsure === undefined ? {} : { unsure }),
-    perform: async (daemon, note) => {
-      if (args.action === "status") {
-        const status = await daemon.call("github.status", {});
-        return args.json ? json(statusJson(status)) : said(...statusLines(status));
-      }
-      if (args.action === "repos") {
-        const { repos } = await daemon.call("github.repos", {
-          ...(args.query === undefined ? {} : { query: args.query }),
-        });
-        return args.json ? json({ repos }) : said(...repoLines(repos));
-      }
-      if (args.action === "login") {
-        note.wrote = true;
-        if (args.cancel) {
-          await daemon.call("github.login.cancel", {});
-          return args.json ? json({ cancelled: true }) : said("the sign-in was cancelled");
-        }
-        const login = await daemon.call("github.login.start", {});
-        return args.json ? json(login) : said(...loginLines(login));
-      }
-      if (args.action === "logout") {
-        note.wrote = true;
-        await daemon.call("github.logout", {});
-        return args.json ? json({ loggedOut: true }) : said("signed out of GitHub on this host");
-      }
-      if (args.action === "start") {
-        note.wrote = true;
-        const started = await daemon.call("github.start", {
-          repo: args.repo ?? "",
-          root: args.root ?? "",
-          mode: args.mode ?? "card",
-          ...(args.issue === undefined ? {} : { issue: args.issue }),
-        });
-        return args.json ? json(started) : said(...startLines(started));
-      }
-      const { issues } = await daemon.call("github.issues", { repo: args.repo ?? "" });
-      return args.json ? json({ issues }) : said(...issueListLines(issues));
-    },
+    perform: (daemon, note) =>
+      args.action === "login" || args.action === "logout" || args.action === "start"
+        ? performWrite(args, daemon, note)
+        : performRead(args, daemon),
   });
+}
+
+/** `status`, `repos` and `issues` only read. */
+async function performRead(args: GithubCliArgs, daemon: DaemonClient): Promise<CliResult> {
+  if (args.action === "status") {
+    const status = await daemon.call("github.status", {});
+    return args.json ? json(statusJson(status)) : said(...statusLines(status));
+  }
+  if (args.action === "repos") {
+    const { repos } = await daemon.call("github.repos", {
+      ...(args.query === undefined ? {} : { query: args.query }),
+    });
+    return args.json ? json({ repos }) : said(...repoLines(repos));
+  }
+  const { issues } = await daemon.call("github.issues", { repo: args.repo ?? "" });
+  return args.json ? json({ issues }) : said(...issueListLines(issues));
+}
+
+/** `login`, `logout` and `start` change something: `note.wrote` is set before the write goes out. */
+async function performWrite(
+  args: GithubCliArgs,
+  daemon: DaemonClient,
+  note: { wrote: boolean },
+): Promise<CliResult> {
+  note.wrote = true;
+  if (args.action === "login") {
+    if (args.cancel) {
+      await daemon.call("github.login.cancel", {});
+      return args.json ? json({ cancelled: true }) : said("the sign-in was cancelled");
+    }
+    const login = await daemon.call("github.login.start", {});
+    return args.json ? json(login) : said(...loginLines(login));
+  }
+  if (args.action === "logout") {
+    await daemon.call("github.logout", {});
+    return args.json ? json({ loggedOut: true }) : said("signed out of GitHub on this host");
+  }
+  const started = await daemon.call("github.start", {
+    repo: args.repo ?? "",
+    root: args.root ?? "",
+    mode: args.mode ?? "card",
+    ...(args.issue === undefined ? {} : { issue: args.issue }),
+  });
+  return args.json ? json(started) : said(...startLines(started));
 }

@@ -2782,6 +2782,8 @@ Command[type=messages.relayed].id
 Command[type=messages.relayed].payload
 Command[type=messages.relayed].payload.id
 Command[type=messages.relayed].payload.reason?
+Command[type=messages.relayed].payload.reasonKey?
+Command[type=messages.relayed].payload.reasonParams?
 Command[type=messages.relayed].payload.status
 Command[type=messages.relayed].payload.status="delivered"
 Command[type=messages.relayed].payload.status="queued"
@@ -3380,6 +3382,11 @@ Command[type=rewind.preview].payload.claudeSessionId
 Command[type=rewind.preview].payload.turn
 Command[type=rewind.preview].type
 Command[type=rewind.preview].type=="rewind.preview"
+Command[type=rewind.undoPreview].id
+Command[type=rewind.undoPreview].payload
+Command[type=rewind.undoPreview].payload.claudeSessionId
+Command[type=rewind.undoPreview].type
+Command[type=rewind.undoPreview].type=="rewind.undoPreview"
 Command[type=rewind.undo].id
 Command[type=rewind.undo].payload
 Command[type=rewind.undo].payload.claudeSessionId
@@ -5687,6 +5694,8 @@ MessageInfo.kind="idle"
 MessageInfo.kind="session"
 MessageInfo.kind="system"
 MessageInfo.reason
+MessageInfo.reasonKey?
+MessageInfo.reasonParams?
 MessageInfo.status
 MessageInfo.status="delivered"
 MessageInfo.status="expired"
@@ -5736,6 +5745,8 @@ MessagesUpdatedFrame.message.kind="idle"
 MessagesUpdatedFrame.message.kind="session"
 MessagesUpdatedFrame.message.kind="system"
 MessagesUpdatedFrame.message.reason
+MessagesUpdatedFrame.message.reasonKey?
+MessagesUpdatedFrame.message.reasonParams?
 MessagesUpdatedFrame.message.status
 MessagesUpdatedFrame.message.status="delivered"
 MessagesUpdatedFrame.message.status="expired"
@@ -6895,6 +6906,8 @@ RunConfigInfo.trusted
 RunEnvUpdated.state
 RunEnvUpdated.state.cardId
 RunEnvUpdated.state.error
+RunEnvUpdated.state.errorKey?
+RunEnvUpdated.state.errorParams?
 RunEnvUpdated.state.ports
 RunEnvUpdated.state.processes
 RunEnvUpdated.state.processes[].exitCode
@@ -6946,6 +6959,8 @@ RunResumeCheck.params?
 RunResumeCheck.reason?
 RunState.cardId
 RunState.error
+RunState.errorKey?
+RunState.errorParams?
 RunState.ports
 RunState.processes
 RunState.processes[].exitCode
@@ -7043,6 +7058,8 @@ RunUsage.minutes
 RunUsage.turns
 SendResult.id
 SendResult.reason
+SendResult.reasonKey?
+SendResult.reasonParams?
 SendResult.status
 SendResult.status="delivered"
 SendResult.status="queued"
@@ -7803,6 +7820,8 @@ ServerMessage[type=messages.updated].message.kind="idle"
 ServerMessage[type=messages.updated].message.kind="session"
 ServerMessage[type=messages.updated].message.kind="system"
 ServerMessage[type=messages.updated].message.reason
+ServerMessage[type=messages.updated].message.reasonKey?
+ServerMessage[type=messages.updated].message.reasonParams?
 ServerMessage[type=messages.updated].message.status
 ServerMessage[type=messages.updated].message.status="delivered"
 ServerMessage[type=messages.updated].message.status="expired"
@@ -7901,6 +7920,8 @@ ServerMessage[type=run.updated].type=="run.updated"
 ServerMessage[type=runenv.updated].state
 ServerMessage[type=runenv.updated].state.cardId
 ServerMessage[type=runenv.updated].state.error
+ServerMessage[type=runenv.updated].state.errorKey?
+ServerMessage[type=runenv.updated].state.errorParams?
 ServerMessage[type=runenv.updated].state.ports
 ServerMessage[type=runenv.updated].state.processes
 ServerMessage[type=runenv.updated].state.processes[].exitCode

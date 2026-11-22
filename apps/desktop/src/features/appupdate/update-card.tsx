@@ -38,14 +38,10 @@ function liftToasts(card: HTMLElement | null): (() => void) | undefined {
  * after the first paint, because a region that already holds its text when it appears is often
  * not spoken. The focus stays where it was.
  */
-function CardAnnouncement(props: { text: string }) {
+function CardAnnouncement(props: Readonly<{ text: string }>) {
   const [said, setSaid] = useState(false);
   useEffect(() => setSaid(true), []);
-  return (
-    <p role="status" className="sr-only">
-      {said ? props.text : ""}
-    </p>
-  );
+  return <output className="sr-only">{said ? props.text : ""}</output>;
 }
 
 /**

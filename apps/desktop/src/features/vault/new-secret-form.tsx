@@ -13,6 +13,13 @@ const TYPES: SecretType[] = ["ssh-key", "password", "token", "env"];
 /** A password or a token is one line a person types: it is hidden unless they ask to see it (#3942). */
 const MASKED: ReadonlySet<SecretType> = new Set(["password", "token"]);
 
+/** The text without the line breaks at its end: a scan from the end, linear however long the run. */
+function withoutTrailingBreaks(text: string): string {
+  let end = text.length;
+  while (end > 0 && (text[end - 1] === "\n" || text[end - 1] === "\r")) end--;
+  return text.slice(0, end);
+}
+
 const splitTags = (text: string): string[] =>
   text
     .split(",")
@@ -91,7 +98,7 @@ export function NewSecretForm(
             // carrying a pasted key into it would save a different secret than the one on screen.
             // A break at the very end is a paste accident, so it goes; one inside empties the box.
             if (MASKED.has(next)) {
-              const oneLine = value.replace(/[\r\n]+$/, "");
+              const oneLine = withoutTrailingBreaks(value);
               setValue(/[\r\n]/.test(oneLine) ? "" : oneLine);
             }
           }}

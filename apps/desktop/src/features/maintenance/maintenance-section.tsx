@@ -91,9 +91,10 @@ export function MaintenanceSection(props: Readonly<{ store: AppStore; hostId: st
         size: formatBytes(last.bytes, lang),
       })
     : t("maintenance.noBackup");
-  const cleanupText = cleanup
-    ? store.formatDateTime(cleanup.at)
-    : t(status?.lastPrune ? "maintenance.cleanupUnrecorded" : "maintenance.noCleanup");
+  const noCleanupText = t(
+    status?.lastPrune ? "maintenance.cleanupUnrecorded" : "maintenance.noCleanup",
+  );
+  const cleanupText = cleanup ? store.formatDateTime(cleanup.at) : noCleanupText;
   const noStatus = failed ? (
     <ErrorState
       message={t("maintenance.loadFailed")}

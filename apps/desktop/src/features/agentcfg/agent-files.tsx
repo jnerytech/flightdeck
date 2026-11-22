@@ -109,6 +109,247 @@ function FileHeader(
   );
 }
 
+type T = AppStore["i18n"]["t"];
+
+/** The words of one kind of file: its empty list, its add button and the label of its name field. */
+function kindLabels(kind: Kind, t: T) {
+  return {
+    claudemd: {
+      empty: t("agent.files.emptyClaudemd"),
+      add: t("agent.files.newClaudemd"),
+      field: t("agent.files.pathLabel"),
+    },
+    agent: {
+      empty: t("agent.files.emptyAgent"),
+      add: t("agent.files.newAgent"),
+      field: t("agent.files.agentName"),
+    },
+    skill: {
+      empty: t("agent.files.emptySkill"),
+      add: t("agent.files.newSkill"),
+      field: t("agent.files.skillName"),
+    },
+  }[kind];
+}
+
+/** The small form that asks for the name or path of a new file. */
+function NewFileForm(
+  props: Readonly<{
+    kind: Kind;
+    labels: ReturnType<typeof kindLabels>;
+    typed: string;
+    t: T;
+    onTyped(typed: string): void;
+    onSubmit(): void;
+  }>,
+) {
+  const { kind, labels, typed, t } = props;
+  /** What was typed is not empty and cannot be a path: the rule turns into an error. */
+  const refused = typed.trim() !== "" && newPath(kind, typed) === null;
+  return (
+    <div className="rounded-lg border p-3">
+      <Form variant="inline" onSubmit={props.onSubmit}>
+        <Field
+          label={labels.field}
+          help={t(`agent.files.rule.${kind}`)}
+          error={refused ? t(`agent.files.refused.${kind}`) : undefined}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              autoFocus
+              value={typed}
+              onChange={(e) => props.onTyped(e.target.value)}
+            />
+          )}
+        </Field>
+        <FormActions submit={t("agent.files.create")} disabled={newPath(kind, typed) === null} />
+      </Form>
+    </div>
+  );
+}
+
+type FieldProps = {
+  value: string;
+  readOnly: boolean;
+  disabled: boolean;
+  onChange: (e: { target: { value: string } }) => void;
+};
+
+/** The frontmatter of an agent or a skill as fields: its name and description, and an agent's tools and model. */
+function FrontmatterFields(
+  props: Readonly<{
+    kind: Kind;
+    edit: (key: string) => FieldProps;
+    takeFirst: (el: HTMLInputElement | HTMLTextAreaElement | null) => void;
+    t: T;
+  }>,
+) {
+  const { kind, edit, takeFirst, t } = props;
+  return (
+    <div className="grid gap-2 @2xl:grid-cols-2">
+      <Field label={t("agent.files.name")}>
+        {(control) => <Input {...control} {...edit("name")} ref={takeFirst} />}
+      </Field>
+      <Field label={t("agent.files.description")}>
+        {(control) => <Input {...control} {...edit("description")} />}
+      </Field>
+      {kind === "agent" && (
+        <>
+          <Field label={t("agent.files.tools")}>
+            {(control) => <Input {...control} {...edit("tools")} />}
+          </Field>
+          <Field label={t("agent.files.model")}>
+            {(control) => <Input {...control} {...edit("model")} />}
+          </Field>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** The save button, with why it waits, and the line that says the file was saved. */
+function SaveBar(
+  props: Readonly<{
+    disabled: boolean;
+    nothingChanged: boolean;
+    saved: boolean;
+    t: T;
+    onSave(): Promise<void>;
+  }>,
+) {
+  const { t } = props;
+  return (
+    <div className="flex items-center gap-3">
+      <ActionButton
+        disabled={props.disabled}
+        disabledReason={props.nothingChanged ? t("agent.files.nothingChanged") : undefined}
+        onClick={props.onSave}
+      >
+        {t("agent.files.save")}
+      </ActionButton>
+      {props.saved && (
+        <output className="text-muted-foreground text-sm">{t("agent.files.saved")}</output>
+      )}
+    </div>
+  );
+}
+
+/** What the editor reads from a file's text: its parts, which fields it cannot edit, and whether it may be saved. */
+function editorOf(text: string, form: boolean, readOnly: boolean, onText: (text: string) => void) {
+  const doc = parseDocument(text);
+  const complex = (key: string) => doc.entries.some((e) => e.key === key && e.complex);
+  const edit = (key: string): FieldProps => ({
+    value: getField(doc, key) ?? "",
+    readOnly,
+    disabled: complex(key),
+    onChange: (e) => onText(serialize(setField(doc, key, e.target.value))),
+  });
+  const present = (key: string) => complex(key) || (getField(doc, key) ?? "").trim() !== "";
+  return { doc, complex, edit, valid: !form || (present("name") && present("description")) };
+}
+
+/** The text of the open file: previewed as Markdown, or edited (the body only, when a form holds the frontmatter). */
+function FileBody(
+  props: Readonly<{
+    opened: Opened;
+    text: string;
+    doc: ReturnType<typeof parseDocument>;
+    form: boolean;
+    preview: boolean;
+    takeFirst: (el: HTMLInputElement | HTMLTextAreaElement | null) => void;
+    t: T;
+    onText(text: string): void;
+  }>,
+) {
+  const { opened, text, doc, form, t } = props;
+  if (props.preview) return <Markdown text={form ? doc.body : text} />;
+  return (
+    <Textarea
+      ref={form ? undefined : props.takeFirst}
+      aria-label={form ? t("agent.files.body") : t("agent.files.content", { path: opened.path })}
+      readOnly={opened.readOnly}
+      rows={16}
+      className="font-mono text-sm"
+      value={form ? doc.body : text}
+      onChange={(e) =>
+        props.onText(form ? serialize({ ...doc, body: e.target.value }) : e.target.value)
+      }
+    />
+  );
+}
+
+/** The open file: its header, the frontmatter form of an agent or a skill, the text and the save button. */
+function FileEditor(
+  props: Readonly<{
+    kind: Kind;
+    opened: Opened;
+    originLabel: string;
+    text: string;
+    preview: boolean;
+    stale: { content: string; hash: string } | null;
+    dirty: boolean;
+    justSaved: boolean;
+    takeFirst: (el: HTMLInputElement | HTMLTextAreaElement | null) => void;
+    t: T;
+    onText(text: string): void;
+    onTogglePreview(): void;
+    onReload(): void;
+    onSave(): Promise<void>;
+  }>,
+) {
+  const { kind, opened, text, preview, stale, dirty, justSaved, takeFirst, t } = props;
+  const form = kind !== "claudemd";
+  const { doc, complex, edit, valid } = editorOf(text, form, opened.readOnly, props.onText);
+  const versioned =
+    opened.origin === "project" &&
+    (opened.path === "CLAUDE.local.md" ? t("agent.localFile") : t("agent.versioned"));
+  return (
+    <>
+      <FileHeader
+        opened={opened}
+        originLabel={props.originLabel}
+        preview={preview}
+        t={t}
+        onTogglePreview={props.onTogglePreview}
+      />
+      {versioned && <InlineNotice>{versioned}</InlineNotice>}
+      {stale && (
+        <InlineNotice>
+          {t("agent.files.stale")}{" "}
+          <Button variant="outline" size="sm" onClick={props.onReload}>
+            {t("agent.files.reload")}
+          </Button>
+        </InlineNotice>
+      )}
+      {form && <FrontmatterFields kind={kind} edit={edit} takeFirst={takeFirst} t={t} />}
+      {form && (complex("name") || complex("description")) && (
+        <p className="text-muted-foreground text-xs">{t("agent.files.multiline")}</p>
+      )}
+      <FileBody
+        opened={opened}
+        text={text}
+        doc={doc}
+        form={form}
+        preview={preview}
+        takeFirst={takeFirst}
+        t={t}
+        onText={props.onText}
+      />
+      {!valid && <InlineNotice tone="error">{t("agent.files.needFields")}</InlineNotice>}
+      {!opened.readOnly && (
+        <SaveBar
+          disabled={!valid || !dirty}
+          nothingChanged={valid && !justSaved}
+          saved={justSaved && !dirty}
+          t={t}
+          onSave={props.onSave}
+        />
+      )}
+    </>
+  );
+}
+
 /**
  * One kind of file of the agent: the project's CLAUDE.md, agents or skills (editable, with a hash
  * check) and the user's (read-only). An agent or a skill has a form for its frontmatter.
@@ -243,41 +484,7 @@ export function AgentFiles(
   }
   if (items === null) return <LoadingState label={t("agent.loading")} />;
 
-  const labels = {
-    claudemd: {
-      empty: t("agent.files.emptyClaudemd"),
-      add: t("agent.files.newClaudemd"),
-      field: t("agent.files.pathLabel"),
-    },
-    agent: {
-      empty: t("agent.files.emptyAgent"),
-      add: t("agent.files.newAgent"),
-      field: t("agent.files.agentName"),
-    },
-    skill: {
-      empty: t("agent.files.emptySkill"),
-      add: t("agent.files.newSkill"),
-      field: t("agent.files.skillName"),
-    },
-  }[kind];
-
-  /** What was typed is not empty and cannot be a path: the rule turns into an error. */
-  const refused = typed.trim() !== "" && newPath(kind, typed) === null;
-  const doc = parseDocument(text);
-  const form = kind !== "claudemd";
-  const complex = (key: string) => doc.entries.some((e) => e.key === key && e.complex);
-  const edit = (key: string) => ({
-    value: getField(doc, key) ?? "",
-    readOnly: opened?.readOnly ?? false,
-    disabled: complex(key),
-    onChange: (e: { target: { value: string } }) =>
-      setText(serialize(setField(doc, key, e.target.value))),
-  });
-  const present = (key: string) => complex(key) || (getField(doc, key) ?? "").trim() !== "";
-  const valid = !form || (present("name") && present("description"));
-  const versioned =
-    opened?.origin === "project" &&
-    (opened.path === "CLAUDE.local.md" ? t("agent.localFile") : t("agent.versioned"));
+  const labels = kindLabels(kind, t);
 
   return (
     <div className="grid gap-4 @3xl:grid-cols-[18rem_minmax(0,1fr)]">
@@ -289,28 +496,14 @@ export function AgentFiles(
           </Button>
         </div>
         {creating && (
-          <div className="rounded-lg border p-3">
-            <Form variant="inline" onSubmit={create}>
-              <Field
-                label={labels.field}
-                help={t(`agent.files.rule.${kind}`)}
-                error={refused ? t(`agent.files.refused.${kind}`) : undefined}
-              >
-                {(control) => (
-                  <Input
-                    {...control}
-                    autoFocus
-                    value={typed}
-                    onChange={(e) => setTyped(e.target.value)}
-                  />
-                )}
-              </Field>
-              <FormActions
-                submit={t("agent.files.create")}
-                disabled={newPath(kind, typed) === null}
-              />
-            </Form>
-          </div>
+          <NewFileForm
+            kind={kind}
+            labels={labels}
+            typed={typed}
+            t={t}
+            onTyped={setTyped}
+            onSubmit={create}
+          />
         )}
         {items.length === 0 ? (
           <EmptyState title={labels.empty} />
@@ -331,83 +524,25 @@ export function AgentFiles(
       </div>
 
       <div className="flex min-w-0 flex-col gap-3">
-        {!opened && <p className="text-muted-foreground text-sm">{t("agent.files.pick")}</p>}
-        {opened && (
-          <>
-            <FileHeader
-              opened={opened}
-              originLabel={originLabel(opened.origin)}
-              preview={preview}
-              t={t}
-              onTogglePreview={() => setPreview((on) => !on)}
-            />
-            {versioned && <InlineNotice>{versioned}</InlineNotice>}
-            {stale && (
-              <InlineNotice>
-                {t("agent.files.stale")}{" "}
-                <Button variant="outline" size="sm" onClick={reload}>
-                  {t("agent.files.reload")}
-                </Button>
-              </InlineNotice>
-            )}
-            {form && (
-              <div className="grid gap-2 @2xl:grid-cols-2">
-                <Field label={t("agent.files.name")}>
-                  {(control) => <Input {...control} {...edit("name")} ref={takeFirst} />}
-                </Field>
-                <Field label={t("agent.files.description")}>
-                  {(control) => <Input {...control} {...edit("description")} />}
-                </Field>
-                {kind === "agent" && (
-                  <>
-                    <Field label={t("agent.files.tools")}>
-                      {(control) => <Input {...control} {...edit("tools")} />}
-                    </Field>
-                    <Field label={t("agent.files.model")}>
-                      {(control) => <Input {...control} {...edit("model")} />}
-                    </Field>
-                  </>
-                )}
-              </div>
-            )}
-            {form && (complex("name") || complex("description")) && (
-              <p className="text-muted-foreground text-xs">{t("agent.files.multiline")}</p>
-            )}
-            {preview ? (
-              <Markdown text={form ? doc.body : text} />
-            ) : (
-              <Textarea
-                ref={form ? undefined : takeFirst}
-                aria-label={
-                  form ? t("agent.files.body") : t("agent.files.content", { path: opened.path })
-                }
-                readOnly={opened.readOnly}
-                rows={16}
-                className="font-mono text-sm"
-                value={form ? doc.body : text}
-                onChange={(e) =>
-                  setText(form ? serialize({ ...doc, body: e.target.value }) : e.target.value)
-                }
-              />
-            )}
-            {!valid && <InlineNotice tone="error">{t("agent.files.needFields")}</InlineNotice>}
-            {!opened.readOnly && (
-              <div className="flex items-center gap-3">
-                <ActionButton
-                  disabled={!valid || !dirty}
-                  disabledReason={valid && !justSaved ? t("agent.files.nothingChanged") : undefined}
-                  onClick={save}
-                >
-                  {t("agent.files.save")}
-                </ActionButton>
-                {justSaved && !dirty && (
-                  <output className="text-muted-foreground text-sm">
-                    {t("agent.files.saved")}
-                  </output>
-                )}
-              </div>
-            )}
-          </>
+        {opened ? (
+          <FileEditor
+            kind={kind}
+            opened={opened}
+            originLabel={originLabel(opened.origin)}
+            text={text}
+            preview={preview}
+            stale={stale}
+            dirty={dirty}
+            justSaved={justSaved}
+            takeFirst={takeFirst}
+            t={t}
+            onText={setText}
+            onTogglePreview={() => setPreview((on) => !on)}
+            onReload={reload}
+            onSave={save}
+          />
+        ) : (
+          <p className="text-muted-foreground text-sm">{t("agent.files.pick")}</p>
         )}
       </div>
       {discarding && opened && (
