@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite";
-import { chmod, copyFile, lstat, mkdir, readdir, rm, stat } from "node:fs/promises";
+import type { Stats } from "node:fs";
+import { chmod, copyFile, lstat, mkdir, readdir, rename, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { withLock } from "../kernel/index.ts";
@@ -25,14 +26,23 @@ function backupName(now: number): string {
 /** `backup --out` found something at the path it was asked to write (#3809). */
 export class TargetExists extends Error {
   readonly code = "target_exists";
-  constructor(path: string, isDirectory: boolean) {
+  constructor(path: string, replaceable: boolean) {
     super(
-      isDirectory
-        ? `${path} is a folder, and a backup does not replace a folder: name a file`
-        : `${path} already exists: pass --force to replace it`,
+      replaceable
+        ? `${path} already exists: pass --force to replace it`
+        : `${path} is a folder, a pipe, a device or the open database, and a backup does not replace those: name a file`,
     );
     this.name = "TargetExists";
   }
+}
+
+/** A regular file or a link (replaced as itself), and never the database this daemon has open or its WAL and shared memory. */
+async function replaceable(db: Database, found: Stats): Promise<boolean> {
+  if (!found.isFile() && !found.isSymbolicLink()) return false;
+  const open = await Promise.all(
+    ["", "-wal", "-shm"].map((suffix) => stat(`${db.filename}${suffix}`).catch(() => null)),
+  );
+  return !open.some((own) => own?.ino === found.ino && own?.dev === found.dev);
 }
 
 /**
@@ -40,7 +50,8 @@ export class TargetExists extends Error {
  * outside Windows). `out` replaces the automatic name in `dir`, and refuses whatever it finds there
  * (`lstat`, so a link counts as itself, a dangling one too) unless `force` says to replace a file or
  * the link itself, never a folder and never what a link points to (#3809). The automatic name is not
- * guarded: it is the daemon's own file.
+ * guarded: it is the daemon's own file. A forced replacement is written beside the target and renamed over it, so a
+ * failed write leaves the old file in place and a name planted at the path in between is replaced, not followed.
  */
 export async function backupNow(
   db: Database,
@@ -50,14 +61,33 @@ export async function backupNow(
   force?: boolean,
 ): Promise<BackupInfo> {
   const path = out ?? join(dir, backupName(now));
+  // Only "nothing there" frees the path: any other error (permission, a loop, a name too long) is the person's to see.
+  const found =
+    out === undefined
+      ? null
+      : await lstat(out).catch((error: NodeJS.ErrnoException) => {
+          if (error.code === "ENOENT") return null;
+          throw error;
+        });
+  if (found && !(force && (await replaceable(db, found)))) throw new TargetExists(path, !force);
   await mkdir(dirname(path), { recursive: true });
-  if (out !== undefined) {
-    const found = await lstat(out).catch(() => null);
-    if (found && (!force || found.isDirectory())) throw new TargetExists(out, found.isDirectory());
+  if (!found) {
+    // VACUUM INTO refuses an existing file; the automatic name is the daemon's own, so it may go.
+    if (out === undefined) await rm(path, { force: true });
+    db.query("VACUUM INTO ?").run(path);
+    await chmod(path, 0o600);
+  } else {
+    const beside = `${path}.${process.pid}.tmp`;
+    try {
+      await rm(beside, { force: true });
+      db.query("VACUUM INTO ?").run(beside);
+      await chmod(beside, 0o600);
+      await rename(beside, path);
+    } catch (error) {
+      await rm(beside, { force: true });
+      throw error;
+    }
   }
-  await rm(path, { force: true });
-  db.query("VACUUM INTO ?").run(path);
-  await chmod(path, 0o600);
   return { path, at: new Date(now).toISOString(), bytes: (await stat(path)).size };
 }
 
