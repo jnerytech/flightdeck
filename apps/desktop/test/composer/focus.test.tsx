@@ -68,6 +68,30 @@ describe("composer focus when its buttons go away (#3813)", () => {
     expect(focusedIs(box())).toBe(true);
   });
 
+  test("focus that left Stop on its own is not pulled back when the turn ends", async () => {
+    const { box, button, turn } = setup();
+    await turn("running");
+    const stop = button("Parar o turno");
+    await act(async () => {
+      stop.focus();
+      stop.blur();
+    });
+    await turn("idle");
+    expect(focusedIs(box())).toBe(false);
+  });
+
+  test("when a turn ends while Queue has the focus, the message box has it", async () => {
+    const { box, button, turn } = setup();
+    await turn("running");
+    const queue = button("Enfileirar");
+    await act(async () => {
+      queue.focus();
+    });
+    await turn("idle");
+    expect(button("Enfileirar") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(focusedIs(box())).toBe(true);
+  });
+
   test("focus that was on another control stays there when the turn ends", async () => {
     const { box, button, turn } = setup();
     await turn("running");
