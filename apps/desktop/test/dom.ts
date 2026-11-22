@@ -83,6 +83,35 @@ function guardSameKeys(): void {
  */
 const SIZE_MEMBERS = ["innerWidth", "innerHeight", "outerWidth", "outerHeight"] as const;
 
+const INSPECT = Symbol.for("nodejs.util.inspect.custom");
+const TEXT_PRINT_LIMIT = 40;
+
+/**
+ * How a node reads in a failure message (#3854). Bun prints a happy-dom node whole, with its window and
+ * its event classes: 1.87 GB and 26 s for one failed `toBeNull`, and 10 GB once for a `toEqual`. The
+ * opening tag says which node it was.
+ */
+function printNode(this: Node): string {
+  if (this.nodeType === 3) {
+    const text = this.textContent ?? "";
+    return `#text "${text.length > TEXT_PRINT_LIMIT ? `${text.slice(0, TEXT_PRINT_LIMIT)}…` : text}"`;
+  }
+  const tag = (this.nodeName ?? "node").toLowerCase();
+  const className = (this as { className?: unknown }).className;
+  return typeof className === "string" && className !== ""
+    ? `<${tag} class="${className}">`
+    : `<${tag}>`;
+}
+
+/** Set before the prototypes are snapshot, so the restore after a file keeps it for the next one. */
+function printNodesShort(): void {
+  Object.defineProperty(Node.prototype, INSPECT, {
+    configurable: true,
+    writable: true,
+    value: printNode,
+  });
+}
+
 export function registerDom(): void {
   if (GlobalRegistrator.isRegistered) {
     // A file that assigned window.innerWidth must not freeze the viewport of the files after it.
@@ -95,6 +124,7 @@ export function registerDom(): void {
   } else {
     ensureHappyDom();
   }
+  printNodesShort();
   const snapshot = snapshotPrototypes();
   afterAll(() => restorePrototypes(snapshot));
   guardSameKeys();
