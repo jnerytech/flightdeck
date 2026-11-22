@@ -221,6 +221,8 @@ function strayFlag(args: ProjectArgs, project: boolean): string | undefined {
   for (const [flag, typed, verbs] of FLAG_VERBS)
     if (
       typed(args) &&
+      // `github start --root` is the folder to clone into: `githubProblem` checks it.
+      !(args.command === "github" && flag === "--root") &&
       !(project && verbs.includes(args.action ?? "")) &&
       (project || !SHARED_FLAGS.has(flag))
     )

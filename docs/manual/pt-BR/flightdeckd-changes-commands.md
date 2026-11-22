@@ -44,7 +44,7 @@ fd changes pr session:3f9c1a --title "Corrige o parser" --remote git@github.com:
 Todos exigem `--confirm`; sem ele o comando é recusado com saída `1` e nada muda.
 
 `revert <alvo> <arquivo>` descarta as mudanças de um arquivo. Imprime o comando que as desfaz e até quando:
-`undo-revert <alvo> <arquivo>` devolve o arquivo enquanto o daemon ainda o guarda.
+`undo-revert <alvo> <arquivo>` devolve o arquivo enquanto o daemon ainda o guarda. Os dois exigem uma conexão próxima (este computador ou a Tailscale) quando o arquivo conduz uma sessão (dentro de qualquer pasta `.claude`, ou um `CLAUDE.md` ou `CLAUDE.local.md`, seja qual for a grafia ou o link do caminho), pois ele pode declarar hooks que rodam em toda sessão: por uma distante o daemon recusa com `transport_refused`. Qualquer outro arquivo responde de qualquer lugar.
 
 `commit <alvo>` faz commit dos arquivos que você nomeia em um branch novo. Cada `--digest <caminho>=<digest>` é o digest
 que o `get` imprimiu para aquele arquivo, então o commit tem o que você leu: um arquivo que mudou depois é recusado.

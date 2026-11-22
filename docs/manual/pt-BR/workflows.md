@@ -289,7 +289,7 @@ flightdeckd card dismiss-unblocked <card> [--json]
   `--title` e `--description`; um texto que parece ter um segredo é recusado. O link é impresso. Ele envia o branch, o que roda o hook de pre-push do repositório, então pede uma conexão
   próxima: por uma conexão distante (não este computador nem o Tailscale) o daemon o recusa com `transport_refused`.
 - `update-from-base` faz o rebase do branch do card sobre a base; num conflito ele para e deixa o
-  worktree como estava (saída 1).
+  worktree como estava (saída 1). Ele e o `merge-local` exigem uma conexão próxima (este computador ou a Tailscale): por uma distante o daemon recusa com `transport_refused`.
 - `merge-local` é para um card sem pull request: junta o card na base (um commit de merge, ou um só
   commit com `--squash`), remove o worktree e o branch dele e o move para Concluído. Não dá para
   desfazer, então exige `--confirm`; `--message` é a mensagem do commit. O shell de uma sessão que o

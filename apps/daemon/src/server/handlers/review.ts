@@ -123,9 +123,11 @@ export const reviewHandlers = {
   "review.send": async (payload, { server }) => {
     return await server.needIn("review", "comments").send(payload.target, payload.language);
   },
-  "changes.revert": async (payload, { server }) => {
+  "changes.revert": async (payload, { ws, server }) => {
     const { target, path, confirm } = payload;
-    return await server.needIn("review", "files").revert(target, path, confirm === true);
+    // Restoring a Claude Code settings file puts back content the host may then run: near only (#3825).
+    const guard = () => requireVaultTransport(ws.data.origin, "changes.revert", server.opts.log);
+    return await server.needIn("review", "files").revert(target, path, confirm === true, guard);
   },
   "changes.commit": async (payload, { ws, server }) => {
     const { target, files, message, branch, confirm } = payload;
@@ -155,8 +157,10 @@ export const reviewHandlers = {
     }
     return await server.needIn("review", "sessionPrs").open(target, { title, body, remote });
   },
-  "changes.undoRevert": async (payload, { server }) => {
+  "changes.undoRevert": async (payload, { ws, server }) => {
     const { target, path, confirm } = payload;
-    return await server.needIn("review", "files").undoRevert(target, path, confirm === true);
+    const guard = () =>
+      requireVaultTransport(ws.data.origin, "changes.undoRevert", server.opts.log);
+    return await server.needIn("review", "files").undoRevert(target, path, confirm === true, guard);
   },
 } satisfies Partial<Handlers>;

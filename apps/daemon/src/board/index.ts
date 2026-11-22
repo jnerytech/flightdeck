@@ -6,7 +6,7 @@
  * imports from here.
  */
 
-export type { Board } from "./board.ts";
+export { type Board, DEFAULT_PROMPT_TEMPLATE } from "./board.ts";
 export { runBoardCli } from "./board-cli.ts";
 export { runCardCli } from "./card-cli.ts";
 export { createInside, readInside, type Walk, walkInside } from "./create-inside.ts";

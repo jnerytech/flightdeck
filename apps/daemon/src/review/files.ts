@@ -193,6 +193,15 @@ export class ReviewFiles {
     return searchRepository(real, search, { ...this.opts.search, ...(signal ? { signal } : {}) });
   }
 
+  /** Runs `guard` when the file shapes Claude Code's sessions: by its path, or (a file not there yet too) by where its links lead. */
+  private guardClaudeConfig(
+    where: { realRoot: string; landing: string },
+    path: string,
+    guard?: () => void,
+  ): void {
+    if (isClaudeConfig(path) || isClaudeConfig(relative(where.realRoot, where.landing))) guard?.();
+  }
+
   /**
    * Writes only when the file still has `expectedHash`; otherwise `file_conflict`. `guard` runs
    * when the file shapes Claude Code's sessions (`isClaudeConfig`), by the path asked for or by where its links
@@ -207,8 +216,7 @@ export class ReviewFiles {
   ): Promise<Omit<FileContent, "text">> {
     const where = await this.writable(target, path);
     refuseCredential(where, path);
-    // A file not there yet counts by where its links would put it.
-    if (isClaudeConfig(path) || isClaudeConfig(relative(where.realRoot, where.landing))) guard?.();
+    this.guardClaudeConfig(where, path, guard);
     const { full } = where;
     const bytes = Buffer.from(text, "utf8");
     if (bytes.length > MAX_BYTES) {
@@ -235,6 +243,7 @@ export class ReviewFiles {
     target: string,
     path: string,
     confirm: boolean,
+    guard?: () => void,
   ): Promise<{ path: string; undoUntil: string }> {
     if (!confirm) {
       throw new FlightdeckError(
@@ -244,7 +253,9 @@ export class ReviewFiles {
       );
     }
     const { root, base } = await this.opts.changes.resolve(target);
-    const { full } = await this.writable(target, path);
+    const where = await this.writable(target, path);
+    this.guardClaudeConfig(where, path, guard);
+    const { full } = where;
     await this.pruneTrash();
     let copy: string | null = null;
     if (await exists(full)) {
@@ -256,6 +267,9 @@ export class ReviewFiles {
     const gitPath = path.replaceAll("\\", "/");
     const inSource = await git(root, "cat-file", "-e", `${refArg(source)}:${gitPath}`);
     if (inSource.code === 0) {
+      // A folder put back may hold Claude Code's settings, which its name does not say.
+      const kind = await git(root, "cat-file", "-t", `${refArg(source)}:${gitPath}`);
+      if (kind.stdout.trim() !== "blob") guard?.();
       must(
         await git(
           root,
@@ -278,7 +292,12 @@ export class ReviewFiles {
   }
 
   /** Puts back what the revert replaced, within 30 s of it. */
-  async undoRevert(target: string, path: string, confirm: boolean): Promise<{ path: string }> {
+  async undoRevert(
+    target: string,
+    path: string,
+    confirm: boolean,
+    guard?: () => void,
+  ): Promise<{ path: string }> {
     if (!confirm) {
       throw new FlightdeckError(
         "invalid_state",
@@ -296,7 +315,9 @@ export class ReviewFiles {
         { path },
       );
     }
-    const { full } = await this.writable(target, path);
+    const where = await this.writable(target, path);
+    this.guardClaudeConfig(where, path, guard);
+    const { full } = where;
     if (undo.copy) {
       await mkdir(dirname(full), { recursive: true });
       await copyFile(undo.copy, full);

@@ -44,7 +44,7 @@ fd changes pr session:3f9c1a --title "Fix the parser" --remote git@github.com:me
 Every one of these needs `--confirm`; without it the command is refused with exit `1` and nothing changes.
 
 `revert <target> <file>` discards the changes of one file. It prints the command that takes it back and until when:
-`undo-revert <target> <file>` puts the file back while the daemon still keeps it.
+`undo-revert <target> <file>` puts the file back while the daemon still keeps it. Both need a near connection (this computer or Tailscale) when the file steers a session (inside any `.claude` folder, or a `CLAUDE.md` or `CLAUDE.local.md`, however the path is spelled or linked), since it can declare hooks that run in every session: over a far one the daemon refuses with `transport_refused`. Any other file answers anywhere.
 
 `commit <target>` commits the files you name on a new branch. Each `--digest <path>=<digest>` is the digest `get`
 printed for that file, so the commit holds what you read: a file that changed since is refused. It prints the commit,

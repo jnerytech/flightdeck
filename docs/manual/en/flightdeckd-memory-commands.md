@@ -52,6 +52,7 @@ fd memory delete api tdd.md --expected-hash <hash> --confirm
   `memory_exists` if it does. It prints `wrote <name>  hash: <new hash>`.
 - `delete <project> <name> --expected-hash <hash> --confirm` deletes a note and prints `deleted <name>`. A note that is
   not there is `memory_not_found`, and one that changed is `memory_changed`.
+- `write` and `delete` need a near connection (this computer or Tailscale), since a note is read into the project's sessions: over a far one the daemon refuses with `transport_refused`. `list` and `read` answer anywhere.
 - `--confirm` is required: without it nothing is sent. A name that is not a plain file name, or that is a link, is
   refused by the host (`memory_name_invalid`, `memory_is_link`) with exit `1`.
 
