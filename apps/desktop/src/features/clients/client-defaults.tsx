@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { PersonaPicker } from "@/features/personas/ui.ts";
 import { useDraft } from "@/features/sessions/index.ts";
-import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Stack } from "@/shared/layout/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
@@ -26,6 +26,14 @@ export function ClientDefaults(
   const [tag, setTag, savedTag] = useDraft(client.defaults.snippetTag ?? "");
   const [vaultTag, setVaultTag, savedVaultTag] = useDraft(client.defaults.vaultTag ?? "");
   const [confirming, setConfirming] = useState(false);
+  const tagField = useRef<HTMLInputElement>(null);
+  /** What the last save did: a polite line, not silence (#3875). */
+  const [done, setDone] = useState<string | null>(null);
+  // The host keeps a value trimmed, so a draft that only adds blanks is no change.
+  const changed =
+    persona.trim() !== (client.defaults.persona ?? "") ||
+    tag.trim() !== (client.defaults.snippetTag ?? "") ||
+    vaultTag.trim() !== (client.defaults.vaultTag ?? "");
   const scope = store.clientScope.get();
   const projects = scope.projectKeysOf(client.id);
   const saved = client.defaults.vaultTag;
@@ -63,6 +71,9 @@ export function ClientDefaults(
           savedPersona(persona);
           savedTag(tag);
           savedVaultTag(vaultTag);
+          setDone(t("clients.defaultsSaved"));
+          // The pressed Save is disabled now: a field takes the focus.
+          tagField.current?.focus();
         }}
       >
         {host && (
@@ -71,19 +82,44 @@ export function ClientDefaults(
             hostId={host.id}
             label={t("clients.defaultPersona")}
             value={persona}
-            onChange={setPersona}
+            onChange={(value) => {
+              setPersona(value);
+              setDone(null);
+            }}
           />
         )}
         <Field label={t("clients.snippetTag")} help={t("clients.snippetTagHelp")}>
-          {(control) => <Input {...control} value={tag} onChange={(e) => setTag(e.target.value)} />}
+          {(control) => (
+            <Input
+              {...control}
+              ref={tagField}
+              value={tag}
+              onChange={(e) => {
+                setTag(e.target.value);
+                setDone(null);
+              }}
+            />
+          )}
         </Field>
         <Field label={t("clients.vaultTag")} help={t("clients.vaultTagHelp")}>
           {(control) => (
-            <Input {...control} value={vaultTag} onChange={(e) => setVaultTag(e.target.value)} />
+            <Input
+              {...control}
+              value={vaultTag}
+              onChange={(e) => {
+                setVaultTag(e.target.value);
+                setDone(null);
+              }}
+            />
           )}
         </Field>
-        <FormActions submit={t("clients.saveDefaults")} />
+        <FormActions
+          submit={t("clients.saveDefaults")}
+          disabled={!changed}
+          disabledReason={t("clients.unchanged")}
+        />
       </Form>
+      {done && <InlineNotice tone="info">{done}</InlineNotice>}
       <label className="text-sm">
         <input
           type="checkbox"

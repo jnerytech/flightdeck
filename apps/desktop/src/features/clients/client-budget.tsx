@@ -69,6 +69,7 @@ export function ClientBudget(
       {done && <InlineNotice tone="info">{done}</InlineNotice>}
       <Form
         variant="inline"
+        aria-label={t("clients.budgetForm", { name: client.name })}
         onSubmit={() => {
           if (!store.clients.setBudget(client.id, value)) return;
           setTyped(null);
