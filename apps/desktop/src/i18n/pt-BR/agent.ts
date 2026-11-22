@@ -178,6 +178,8 @@ export const agent = {
       edit: "Editar",
       save: "Salvar",
       saved: "Salvo.",
+      unsaved: "Alterações não salvas",
+      newFile: "Arquivo novo: ele passa a existir depois de Salvar.",
       nothingChanged: "Nada mudou",
       stale:
         "O arquivo mudou no disco depois que você o abriu. O que você escreveu continua aqui; recarregue para ver a versão atual.",

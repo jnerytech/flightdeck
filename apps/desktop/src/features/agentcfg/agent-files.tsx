@@ -1,5 +1,5 @@
 import type { AgentCfgItem } from "@flightdeck/protocol";
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -72,7 +72,14 @@ function FileRow(
           current && "bg-accent",
         )}
       >
-        <span className="font-medium [overflow-wrap:anywhere]">{name}</span>
+        <span className="flex items-center gap-1">
+          {current && (
+            <span data-row-leading className="shrink-0">
+              <ChevronRight aria-hidden="true" className="size-4" />
+            </span>
+          )}
+          <span className="font-medium [overflow-wrap:anywhere]">{name}</span>
+        </span>
         {item.name && item.name !== shownPath(item) && (
           <span className="break-all text-muted-foreground text-xs">{shownPath(item)}</span>
         )}
@@ -141,6 +148,7 @@ function NewFileForm(
     t: T;
     onTyped(typed: string): void;
     onSubmit(): void;
+    onCancel(): void;
   }>,
 ) {
   const { kind, labels, typed, t } = props;
@@ -160,10 +168,21 @@ function NewFileForm(
               autoFocus
               value={typed}
               onChange={(e) => props.onTyped(e.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Escape") return;
+                // The form closes alone: a screen around it must not also close on this key.
+                event.stopPropagation();
+                props.onCancel();
+              }}
             />
           )}
         </Field>
-        <FormActions submit={t("agent.files.create")} disabled={newPath(kind, typed) === null} />
+        <FormActions
+          submit={t("agent.files.create")}
+          disabled={newPath(kind, typed) === null}
+          cancel={t("common.cancel")}
+          onCancel={props.onCancel}
+        />
       </Form>
     </div>
   );
@@ -208,12 +227,12 @@ function FrontmatterFields(
   );
 }
 
-/** The save button, with why it waits, and the line that says the file was saved. */
+/** The save button, with why it waits, and the note beside it: unsaved changes, or that the file was saved. */
 function SaveBar(
   props: Readonly<{
     disabled: boolean;
     nothingChanged: boolean;
-    saved: boolean;
+    note: string | null;
     t: T;
     onSave(): Promise<void>;
   }>,
@@ -228,9 +247,8 @@ function SaveBar(
       >
         {t("agent.files.save")}
       </ActionButton>
-      {props.saved && (
-        <output className="text-muted-foreground text-sm">{t("agent.files.saved")}</output>
-      )}
+      {/* Mounted before its text comes: a live region inserted with its text is often not read. */}
+      <output className="text-muted-foreground text-sm">{props.note}</output>
     </div>
   );
 }
@@ -300,6 +318,9 @@ function FileEditor(
 ) {
   const { kind, opened, text, preview, stale, dirty, justSaved, takeFirst, t } = props;
   const form = kind !== "claudemd";
+  let note: string | null = null;
+  if (text !== opened.saved) note = t("agent.files.unsaved");
+  else if (justSaved && !dirty) note = t("agent.files.saved");
   const { doc, complex, edit, valid } = editorOf(text, form, opened.readOnly, props.onText);
   const versioned =
     opened.origin === "project" &&
@@ -313,6 +334,9 @@ function FileEditor(
         t={t}
         onTogglePreview={props.onTogglePreview}
       />
+      {opened.hash === null && (
+        <p className="text-muted-foreground text-sm">{t("agent.files.newFile")}</p>
+      )}
       {versioned && <InlineNotice>{versioned}</InlineNotice>}
       {stale && (
         <InlineNotice>
@@ -341,7 +365,7 @@ function FileEditor(
         <SaveBar
           disabled={!valid || !dirty}
           nothingChanged={valid && !justSaved}
-          saved={justSaved && !dirty}
+          note={note}
           t={t}
           onSave={props.onSave}
         />
@@ -373,15 +397,16 @@ export function AgentFiles(
   const [justSaved, setJustSaved] = useState(false);
   const [creating, setCreating] = useState(false);
   const [typed, setTyped] = useState("");
-  /** The editor's first field, and a count of the files created: each one moves the focus there (#4080). */
+  /** The editor's first field, and a count of the files shown: each one moves the focus there, a save does not (#4080, #4266). */
   const firstField = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const takeFirst = useCallback((el: HTMLInputElement | HTMLTextAreaElement | null) => {
     firstField.current = el;
   }, []);
-  const [made, setMade] = useState(0);
+  const [shown, setShown] = useState(0);
   useEffect(() => {
-    if (made > 0) firstField.current?.focus();
-  }, [made]);
+    if (shown > 0) firstField.current?.focus();
+  }, [shown]);
+  const newButton = useRef<HTMLButtonElement>(null);
   /** What waits for the person to say the edits of the open file may go (#4078). */
   const [discarding, setDiscarding] = useState<(() => void) | null>(null);
 
@@ -405,6 +430,7 @@ export function AgentFiles(
   };
 
   const show = (file: Opened, content: string) => {
+    setShown((n) => n + 1);
     setOpened(file);
     setText(content);
     setPreview(false);
@@ -445,8 +471,13 @@ export function AgentFiles(
       );
       setCreating(false);
       setTyped("");
-      setMade((n) => n + 1);
     });
+  };
+
+  const cancelCreate = () => {
+    setCreating(false);
+    setTyped("");
+    newButton.current?.focus();
   };
 
   const save = async () => {
@@ -490,7 +521,7 @@ export function AgentFiles(
     <div className="grid gap-4 @3xl:grid-cols-[18rem_minmax(0,1fr)]">
       <div className="flex flex-col gap-3">
         <div>
-          <Button variant="outline" size="sm" onClick={() => setCreating(true)}>
+          <Button ref={newButton} variant="outline" size="sm" onClick={() => setCreating(true)}>
             <Plus aria-hidden="true" />
             {labels.add}
           </Button>
@@ -503,6 +534,7 @@ export function AgentFiles(
             t={t}
             onTyped={setTyped}
             onSubmit={create}
+            onCancel={cancelCreate}
           />
         )}
         {items.length === 0 ? (
