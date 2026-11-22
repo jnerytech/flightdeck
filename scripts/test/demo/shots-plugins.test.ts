@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { rmSync } from "node:fs";
+import { join, sep } from "node:path";
 import { claudeCli } from "../../../apps/daemon/src/plugins/adapters/claude-plugin.ts";
 import { Plugins } from "../../../apps/daemon/src/plugins/plugins.ts";
 import type { DemoIds } from "../../demo-seed.ts";
@@ -55,6 +56,11 @@ describe("the Plugins prints (#3956)", () => {
 });
 
 describe("the demo's plugin folders feed each dialog (#3956)", () => {
+  test("the folder the print previews is inside alfa's allowed folder, or the daemon refuses it and the dialog never loads", () => {
+    const { refusedFolder } = writeDemoPlugins(work);
+    expect(refusedFolder.startsWith(join(work, "alfa", "projects") + sep)).toBe(true);
+  });
+
   test("the host lists a plugin with a long name next to deploy-tools, and lint-rules as available", async () => {
     const { plugins, stop } = await demoManager();
     try {
