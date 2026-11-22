@@ -320,22 +320,28 @@ describe("while-away-ui: the summary at the top of Needs you (#1344)", () => {
     });
   });
 
-  test("the cue goes once the end of the panel is scrolled to, and comes back when it is left (#3919)", async () => {
+  test("the cue goes once the end of the panel is scrolled to, and comes back when it is left; the tab stop stays while it scrolls (#3919)", async () => {
     layout(600, 300);
     open();
+    const box = panel() as HTMLElement;
+    expect(box).not.toBeNull();
     const scrollTo = async (top: number) => {
       await act(async () => {
-        if (!panel()) return;
-        (panel() as HTMLElement).scrollTop = top;
-        fireEvent.scroll(panel() as HTMLElement);
+        box.scrollTop = top;
+        fireEvent.scroll(box);
       });
     };
-    const seen = [cue() !== null];
+    const look = () => ({ cue: cue() !== null, tab: box.getAttribute("tabindex") });
+    const seen = [look()];
     await scrollTo(300);
-    seen.push(cue() !== null);
+    seen.push(look());
     await scrollTo(100);
-    seen.push(cue() !== null);
-    expect(seen).toEqual([true, false, true]);
+    seen.push(look());
+    expect(seen).toEqual([
+      { cue: true, tab: "0" },
+      { cue: false, tab: "0" },
+      { cue: true, tab: "0" },
+    ]);
   });
 
   test("in Portuguese the cue speaks Portuguese (#3919)", () => {
