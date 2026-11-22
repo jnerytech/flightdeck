@@ -7,7 +7,15 @@ import { selectedClient, tagsFirst } from "@/features/clients/index.ts";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
-import { EmptyState, Field, NativeSelect, Page } from "@/shared/layout/index.ts";
+import { useMinLoading } from "@/shared/hooks/index.ts";
+import {
+  EmptyState,
+  ErrorState,
+  Field,
+  LoadingState,
+  NativeSelect,
+  Page,
+} from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature } from "../../lib/version.ts";
@@ -46,7 +54,9 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
   const [project, setProject] = useState("");
   const [query, setQuery] = useState("");
   const [type, setType] = useState<"" | "command" | "prompt">("");
-  const [snippets, setSnippets] = useState<AppSnippet[]>([]);
+  /** `null` until the host answers: an empty list is an answer, not the absence of one. */
+  const [snippets, setSnippets] = useState<AppSnippet[] | null>(null);
+  const [failed, setFailed] = useState(false);
   const [file, setFile] = useState<SnippetFileInfo | null>(null);
   const [removing, setRemoving] = useState<AppSnippet | null>(null);
   const [editing, setEditing] = useState<AppSnippet | "new" | null>(null);
@@ -64,8 +74,12 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
     if (hostId) void store.projectList.load(hostId);
   }, [store, hostId]);
 
+  // Reads can overlap (a retry, a filter typed while one is out): only the latest to start is heard.
+  const latest = useRef(0);
   const reload = useCallback(async () => {
+    const mine = ++latest.current;
     if (project === GLOBAL) {
+      setFailed(false);
       setSnippets(
         store.snippets.global.list({ ...(query ? { query } : {}), ...(type ? { type } : {}) }),
       );
@@ -73,12 +87,15 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
       return;
     }
     if (!hostId) return;
+    setFailed(false);
     const listed = await store.hostCommand(hostId, "snippets.list", {
       ...(project ? { scope: "all", projectPath: project } : { scope: "host" }),
       ...(query ? { query } : {}),
       ...(type ? { type } : {}),
     });
-    if (!listed) return;
+    if (mine !== latest.current) return;
+    setFailed(!listed);
+    if (!listed) return setFile(null);
     setSnippets(listed.snippets);
     setFile(listed.file);
   }, [store, hostId, project, query, type]);
@@ -127,9 +144,12 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
     if (trusted) await reload();
   };
 
+  /** What the page shows: nothing while it waits or after a refusal, and no host means no snippets to wait for. */
+  const cards = failed ? null : (snippets ?? (hostId || project === GLOBAL ? null : []));
+  const loading = useMinLoading(!failed && cards === null);
   // The selected client's snippets (those with its tag) come first, and a new one starts with it.
   const clientTag = selectedClient(state.clientList, state.clientSelection)?.defaults.snippetTag;
-  const ordered = tagsFirst(snippets, clientTag);
+  const ordered = tagsFirst(cards ?? [], clientTag);
   const projects = hostId ? (state.projects[hostId] ?? []) : [];
   // Phase 17's actions are a project's: a snippet with a secret becomes one of the chosen project.
   const actionsProject =
@@ -267,9 +287,20 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
           )}
         </div>
       )}
-      {ordered.length === 0 ? (
-        <EmptyState icon={SquareCode} {...emptyStateFor()} />
-      ) : (
+      {loading && <LoadingState label={t("snippets.loading")} />}
+      {failed && (
+        <ErrorState
+          message={t("snippets.loadFailed")}
+          retryLabel={t("snippets.retry")}
+          onRetry={() => {
+            // A retry shows the loading shape again, so the person sees it was taken.
+            setSnippets(null);
+            void reload();
+          }}
+        />
+      )}
+      {cards?.length === 0 && <EmptyState icon={SquareCode} {...emptyStateFor()} />}
+      {cards && cards.length > 0 && (
         <ul aria-label={t("snippets.list")} className="flex flex-col gap-2">
           {ordered.map((snippet) => (
             <li key={snippet.id} className="flex flex-col gap-2 rounded-lg border p-3">
