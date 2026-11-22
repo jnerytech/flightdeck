@@ -132,6 +132,34 @@ describe("i18n", () => {
     expect(formatTime("2026-11-20T00:00:00Z", "pt-BR", "UTC")).toBe("00:00");
   });
 
+  test("a browser that counts the English hours from 0 still prints midnight as 12:00 AM (#3981)", () => {
+    // Chrome 157 on the CI runner printed "00:00 AM" although the hour cycle was pinned to h12
+    // (#3845): the text is built from the parts, so the engine's pick of 0 never reaches a person.
+    // The method is replaced on the prototype, so a format another test cached is faked too and no
+    // fake is ever left in the cache.
+    const proto = Intl.DateTimeFormat.prototype;
+    const real = proto.formatToParts;
+    const parts = (hour: string, period: string): Intl.DateTimeFormatPart[] => [
+      { type: "hour", value: hour },
+      { type: "literal", value: ":" },
+      { type: "minute", value: "00" },
+      { type: "literal", value: " " },
+      { type: "dayPeriod", value: period },
+    ];
+    try {
+      proto.formatToParts = () => parts("00", "AM");
+      expect(formatTime("2026-11-20T00:00:00Z", "en", "UTC")).toBe("12:00 AM");
+      expect(formatDateTime("2026-11-20T00:00:00Z", "en", "UTC")).toBe("12:00 AM");
+      proto.formatToParts = () => parts("01", "PM");
+      expect(formatTime("2026-11-20T13:00:00Z", "en", "UTC")).toBe("01:00 PM");
+      // No day period: a 24-hour clock keeps its 00.
+      proto.formatToParts = () => parts("00", "AM").slice(0, 3);
+      expect(formatTime("2026-11-20T00:00:00Z", "pt-BR", "UTC")).toBe("00:00");
+    } finally {
+      proto.formatToParts = real;
+    }
+  });
+
   test("datas e horas locais, números, dólares e durações legíveis", () => {
     const iso = "2026-10-29T15:04:00.000Z";
     expect(formatTime(iso, "pt-BR", "America/Sao_Paulo")).toBe("12:04");
