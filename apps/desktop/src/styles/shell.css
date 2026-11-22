@@ -184,13 +184,17 @@
 
 /* The search looks like a field that opens the palette; narrow, only its icon stays. */
 @utility top-bar-search {
-  width: 14rem;
+  /* As wide as its text and keys need, never narrower than 14rem, so the label is not cut (#3954). */
+  width: max-content;
+  min-width: 14rem;
+  max-width: 22rem;
   justify-content: flex-start;
   gap: 0.5rem;
   color: var(--color-muted-foreground);
   font-weight: 400;
   @media (width < 1024px) {
     width: auto;
+    min-width: 0;
     padding-inline: 0.5rem;
   }
 }
