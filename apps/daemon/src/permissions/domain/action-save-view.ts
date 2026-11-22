@@ -96,9 +96,9 @@ const FORMAT = /\p{Cf}/u;
 
 /** Those characters become `?`; every other one (emoji included) stays. */
 const printable = (text: string) =>
-  Array.from(text, (char) => (hidden(char.charCodeAt(0)) || FORMAT.test(char) ? "?" : char)).join(
-    "",
-  );
+  Array.from(text, (char) =>
+    hidden(char.codePointAt(0) ?? 0) || FORMAT.test(char) ? "?" : char,
+  ).join("");
 
 /** The start of `text` up to `limit` characters, and how many were left out (never a silent cut). */
 function cut(text: string, limit: number): string {

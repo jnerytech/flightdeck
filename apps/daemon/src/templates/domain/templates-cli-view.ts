@@ -16,9 +16,9 @@ export function templateLines(result: TemplateListResult): string[] {
     lines.push(`${template.id}  ${template.title.en}  ${template.preset}`);
     for (const field of template.fields) {
       const choices = field.choices?.map((choice) => choice.id).join(", ");
-      lines.push(
-        `  field ${field.id}  ${field.kind}${choices ? `  ${choices}` : ""}${field.optional ? "  (optional)" : ""}`,
-      );
+      const listed = choices ? `  ${choices}` : "";
+      const optional = field.optional ? "  (optional)" : "";
+      lines.push(`  field ${field.id}  ${field.kind}${listed}${optional}`);
     }
   }
   for (const problem of result.problems) lines.push(`problem  ${problem.file}  ${problem.reason}`);

@@ -90,14 +90,15 @@ export const loginLines = (login: GithubLoginResult): string[] => [
   `open ${login.url} and type the code there; run flightdeckd github status to see when the sign-in is done`,
 ];
 
+const openedLines = (started: GithubStartResult): string[] => {
+  if (started.cardId !== undefined) return [`card ${started.cardId}`];
+  if (started.sessionId !== undefined) return [`session ${started.sessionId}`];
+  return [];
+};
+
 /** What `github start` made: the folder (cloned now or already a clone), the project, and the card or session on it. */
 export function startLines(started: GithubStartResult): string[] {
-  const opened =
-    started.cardId !== undefined
-      ? [`card ${started.cardId}`]
-      : started.sessionId !== undefined
-        ? [`session ${started.sessionId}`]
-        : [];
+  const opened = openedLines(started);
   return [
     `${started.reused ? "reused the clone in" : "cloned into"} ${started.path}`,
     `project ${started.projectId}`,

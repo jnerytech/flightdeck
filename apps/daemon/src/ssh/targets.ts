@@ -66,6 +66,21 @@ const notFound = () =>
   new FlightdeckError("not_found", "destination not found", "ssh_target_not_found");
 const validPort = (port: number) => Number.isInteger(port) && port >= 1 && port <= 65_535;
 
+/** Whether a save points the target at another place: the agent forwarded to it would go elsewhere. */
+function movedFrom(
+  previous: Row | null,
+  next: { host: string; port: number; user: string; jump: string | null; viaHost: string | null },
+): boolean {
+  return (
+    previous !== null &&
+    (previous.host !== next.host ||
+      previous.port !== next.port ||
+      previous.user !== next.user ||
+      previous.jump !== next.jump ||
+      previous.via_host !== next.viaHost)
+  );
+}
+
 /** The ssh destinos registered on this host (phase 15): only references to secrets, never secrets. */
 export class SshTargets {
   private readonly now: () => number;
@@ -130,13 +145,7 @@ export class SshTargets {
       : { forwardAgent: false, localForward: [] };
     const wasOn = was.forwardAgent;
     const viaHost = input.viaHost?.trim() || null;
-    const moved =
-      previous !== null &&
-      (previous.host !== input.host ||
-        previous.port !== port ||
-        previous.user !== input.user ||
-        previous.jump !== jump ||
-        previous.via_host !== viaHost);
+    const moved = movedFrom(previous, { host: input.host, port, user: input.user, jump, viaHost });
     if (options.forwardAgent === true && (!wasOn || moved)) guard?.();
     const opensPort = (options.localForward ?? []).some(
       (forward) => bindsBeyondLoopback(forward) && !was.localForward.includes(forward),
