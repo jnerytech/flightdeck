@@ -124,6 +124,10 @@ describe("direcao-visual: três colunas", () => {
     expect(section?.querySelector("[data-slot='group-meta']")?.className ?? "").toContain(
       "text-muted-foreground",
     );
+    // #4015: at 80% it falls under AA once a dialog dims the page behind it (axe on the Teleport prints).
+    expect(section?.querySelector("[data-slot='group-meta']")?.className.includes("/80")).toBe(
+      false,
+    );
     expect(within(alpha).queryByText(/^alfa/)).toBeNull();
     const time = alpha.querySelector("time");
     expect(time?.className ?? "").toContain("tabular-nums");
