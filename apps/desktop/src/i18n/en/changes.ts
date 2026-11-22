@@ -88,6 +88,7 @@ export const changes = {
     draft: "Draft",
     sent: "Sent",
     outdated: "Outdated",
+    outdatedHint: "The code this comment was made on has changed since.",
     lines: "line {line}",
     linesRange: "lines {from}–{to}",
     blankLine: "(blank line)",

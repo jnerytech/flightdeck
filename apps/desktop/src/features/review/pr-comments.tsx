@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/context";
 import { ActionButton } from "@/shared/feedback/index.ts";
-import { ErrorState } from "@/shared/layout/index.ts";
+import { ErrorState, LoadingState } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { isExternalAuthor } from "./domain/review.ts";
 
@@ -63,7 +63,7 @@ export function PrComments(
       />
     );
   }
-  if (comments === null) return null;
+  if (comments === null) return <LoadingState label={t("cardReview.prLoading")} />;
   // Until the user picks by hand, the open comments are the chosen ones.
   const chosen = picked ?? new Set(comments.filter((c) => !c.resolved).map((c) => c.id));
   const toggle = (id: string) => {
