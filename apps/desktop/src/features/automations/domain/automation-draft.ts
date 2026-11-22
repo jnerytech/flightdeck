@@ -55,6 +55,21 @@ export function draftProblems(
   };
 }
 
+/** The field of the trigger step that a daemon refusal is about: the cron expression or the time zone. */
+export function refusedField(reason: string | undefined): "expr" | "tz" | null {
+  if (reason === "automation_tz_unknown") return "tz";
+  return reason?.startsWith("cron_") ? "expr" : null;
+}
+
+/** The time zone names this runtime knows, to suggest in the field; none when it cannot list them. */
+export function timeZones(): string[] {
+  try {
+    return Intl.supportedValuesOf("timeZone");
+  } catch {
+    return [];
+  }
+}
+
 export function triggerOf(draft: Draft): AutomationTrigger {
   switch (draft.trigger) {
     case "cron":

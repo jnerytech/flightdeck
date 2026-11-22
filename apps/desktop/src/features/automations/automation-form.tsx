@@ -1,19 +1,22 @@
 import type { Automation, WorkflowInfo } from "@flightdeck/protocol";
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Field, Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";
+import { refusalText } from "../../i18n/errors.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { AppDialogContent } from "../../shared/feedback/index.ts";
+import { AppDialogContent, InlineNotice } from "../../shared/feedback/index.ts";
 import {
   actionOf,
   type Draft,
   draftOf,
   draftProblems,
+  refusedField,
   STEPS,
+  timeZones,
   triggerOf,
 } from "./domain/automation-draft.ts";
 import {
@@ -45,7 +48,25 @@ export function AutomationForm(
   const [draft, setDraft] = useState<Draft>(() =>
     draftOf(initial, Intl.DateTimeFormat().resolvedOptions().timeZone),
   );
-  const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
+  // What the daemon refused: a message on the cron or time zone field (the step goes back to it), or one for the dialog.
+  const [fieldError, setFieldError] = useState<{ field: "expr" | "tz"; text: string } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [focusField, setFocusField] = useState<"expr" | "tz" | null>(null);
+  const exprRef = useRef<HTMLInputElement>(null);
+  const tzRef = useRef<HTMLInputElement>(null);
+  const zonesId = useId();
+  const zones = useRef(timeZones()).current;
+  useEffect(() => {
+    if (focusField && step === 0) {
+      (focusField === "expr" ? exprRef : tzRef).current?.focus();
+      setFocusField(null);
+    }
+  }, [focusField, step]);
+  const set = (patch: Partial<Draft>) => {
+    setDraft({ ...draft, ...patch });
+    setNotice(null);
+    if (fieldError && fieldError.field in patch) setFieldError(null);
+  };
   // The name and limit messages show after the first Save press, then follow what is typed.
   const [tried, setTried] = useState(false);
   const usable = props.workflows.filter((w) => w.errors.length === 0);
@@ -69,7 +90,8 @@ export function AutomationForm(
       setTried(true);
       return;
     }
-    const saved = await store.hostCommand(props.hostId, "automation.save", {
+    setNotice(null);
+    const result = await store.hostRequest(props.hostId, "automation.save", {
       projectId: props.projectId,
       ...(initial ? { id: initial.id } : {}),
       name: draft.name,
@@ -78,7 +100,19 @@ export function AutomationForm(
       maxRunsPerDay: Number(draft.max.trim()),
       allowExternalAuthors: carriesThirdParty(draft.trigger) && draft.external,
     });
-    if (saved) props.onSaved(saved);
+    if (result.ok) {
+      props.onSaved(result.data);
+      return;
+    }
+    const text = refusalText(result.code, result.message, t, result);
+    const field = refusedField(result.reason);
+    if (field) {
+      setFieldError({ field, text });
+      setFocusField(field);
+      setStep(0);
+    } else {
+      setNotice(text);
+    }
   };
 
   return (
@@ -123,22 +157,36 @@ export function AutomationForm(
                   <Field
                     label={t("automationsUi.form.cron")}
                     help={t("automationsUi.form.cronHint")}
+                    error={fieldError?.field === "expr" ? fieldError.text : undefined}
                   >
                     {(control) => (
                       <Input
                         {...control}
+                        ref={exprRef}
                         value={draft.expr}
                         onChange={(e) => set({ expr: e.target.value })}
                       />
                     )}
                   </Field>
-                  <Field label={t("automationsUi.form.tz")}>
+                  <Field
+                    label={t("automationsUi.form.tz")}
+                    error={fieldError?.field === "tz" ? fieldError.text : undefined}
+                  >
                     {(control) => (
-                      <Input
-                        {...control}
-                        value={draft.tz}
-                        onChange={(e) => set({ tz: e.target.value })}
-                      />
+                      <>
+                        <Input
+                          {...control}
+                          ref={tzRef}
+                          list={zonesId}
+                          value={draft.tz}
+                          onChange={(e) => set({ tz: e.target.value })}
+                        />
+                        <datalist id={zonesId}>
+                          {zones.map((zone) => (
+                            <option key={zone} value={zone} />
+                          ))}
+                        </datalist>
+                      </>
                     )}
                   </Field>
                 </>
@@ -248,6 +296,7 @@ export function AutomationForm(
               </p>
             </div>
           )}
+          {notice !== null && <InlineNotice tone="error">{notice}</InlineNotice>}
           <FormActions
             submit={t(step < 2 ? "automationsUi.form.next" : "automationsUi.form.save")}
             disabled={blocked}
