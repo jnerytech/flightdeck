@@ -48,6 +48,7 @@ function terminals(
   const spawned: Array<{ program: string; args: string[] }> = [];
   const failures: unknown[] = [];
   const cwds: Array<Record<string, string>> = [];
+  const known: Record<string, string> = {};
   let closing: ClosingTerminal | null = over.closing ?? null;
   let tabClosed = false;
   const hosts = (over.hosts ?? [{ id: "h", roots: ["/work"] }]).map((h) => ({
@@ -72,7 +73,11 @@ function terminals(
     },
     close: async (hostId, terminalId, kill) => void closed.push({ hostId, terminalId, kill }),
     showTab: (hostId, terminalId) => void shown.push(`${hostId}/${terminalId}`),
-    setCwds: (next) => void cwds.push(next),
+    cwds: () => known,
+    setCwds: (next) => {
+      cwds.push(next);
+      Object.assign(known, next);
+    },
     closing: () => closing,
     setClosing: (next) => {
       closing = next;
@@ -173,6 +178,13 @@ describe("terminals (#1596)", () => {
 
   test("the terminals a host lists have their folders remembered in one go", async () => {
     const { slice, cwds } = terminals();
+    await slice.host("h").list();
+    expect(cwds).toEqual([{ "h/t-1": "/work" }]);
+  });
+
+  test("a list that tells nothing new does not touch the state, so the host page's refresh does not redraw the app", async () => {
+    const { slice, cwds } = terminals();
+    await slice.host("h").list();
     await slice.host("h").list();
     expect(cwds).toEqual([{ "h/t-1": "/work" }]);
   });
