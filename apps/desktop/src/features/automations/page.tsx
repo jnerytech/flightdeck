@@ -1,16 +1,22 @@
 import type { Automation, AutomationRun, WorkflowInfo } from "@flightdeck/protocol";
 import { Plus, Workflow } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
-import { EmptyState, ErrorState, LoadingState, Page } from "@/shared/layout/index.ts";
+import { EmptyState, ErrorState, LoadingState, Page, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { AutomationForm } from "./automation-form.tsx";
-import { actionText, confirmOnText, triggerText } from "./domain/automations.ts";
+import {
+  actionText,
+  causeText,
+  confirmOnText,
+  detailText,
+  triggerText,
+} from "./domain/automations.ts";
 
 const RUN_TONE: Record<AutomationRun["status"], string> = {
   ok: "text-status-idle",
@@ -28,23 +34,27 @@ function Runs(props: Readonly<{ store: AppStore; automation: Automation; runs: A
     return <p className="text-muted-foreground text-xs">{t("automationsUi.noRuns")}</p>;
   }
   return (
-    <ul
-      aria-label={t("automationsUi.runs", { name: automation.name })}
-      className="flex flex-col gap-1 text-xs"
+    // A long history scrolls inside its row; the list takes the keyboard focus so it can be scrolled.
+    <Stack
+      as="ul"
+      gap={1}
+      scrolls
+      label={t("automationsUi.runs", { name: automation.name })}
+      className="max-h-64 overflow-y-auto text-xs"
     >
       {props.runs.map((run) => (
         <li key={run.id} className="flex flex-wrap items-baseline gap-x-2">
           <time dateTime={run.firedAt} className="text-muted-foreground tabular-nums">
             {store.formatDateTime(run.firedAt)}
           </time>
-          <span>{run.cause}</span>
+          <span>{causeText(t, (iso) => store.formatDateTime(iso), run)}</span>
           <strong className={RUN_TONE[run.status]}>
             {t(`automationsUi.runStatus.${run.status}` as Key)}
           </strong>
-          {run.detail && <span className="text-muted-foreground">{run.detail}</span>}
+          {run.detail && <span className="text-muted-foreground">{detailText(t, run)}</span>}
         </li>
       ))}
-    </ul>
+    </Stack>
   );
 }
 
@@ -70,9 +80,23 @@ export function AutomationsPage(
   const [removing, setRemoving] = useState<Automation | null>(null);
   /** The firings of the automations whose history is open. */
   const [history, setHistory] = useState<Record<string, AutomationRun[]>>({});
-  /** A load that the host refused: the page says so and offers Try again. */
-  const [failed, setFailed] = useState(false);
-  const loading = useMinLoading(automations === null && !failed);
+  /** A load that the host refused: the page says which list and offers Try again. */
+  const [failed, setFailed] = useState<"automations" | "workflows" | null>(null);
+  const loading = useMinLoading(automations === null && failed === null);
+  /** The requests in flight, as `<kind>:<id>`: a control waits for its answer before it sends again. */
+  const inFlight = useRef(new Set<string>());
+  const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
+  const guarded = async (key: string, work: () => Promise<void>) => {
+    if (inFlight.current.has(key)) return;
+    inFlight.current.add(key);
+    setBusy(new Set(inFlight.current));
+    try {
+      await work();
+    } finally {
+      inFlight.current.delete(key);
+      setBusy(new Set(inFlight.current));
+    }
+  };
 
   const load = useCallback(async () => {
     // The page has its own error and Try again (the toast's retry would drop the answer).
@@ -80,7 +104,8 @@ export function AutomationsPage(
       store.hostCommand(hostId, "automation.list", { projectId }, { retry: false }),
       store.hostCommand(hostId, "workflow.list", { projectId }, { retry: false }),
     ]);
-    setFailed(list === null || flows === null);
+    // Without the automations there is no list to show; without the workflows the list still works.
+    setFailed(list === null ? "automations" : flows === null ? "workflows" : null);
     if (list) setAutomations(list.automations);
     if (flows) setWorkflows(flows.workflows);
   }, [store, hostId, projectId]);
@@ -94,38 +119,45 @@ export function AutomationsPage(
         ? (list ?? []).map((a) => (a.id === automation.id ? automation : a))
         : [...(list ?? []), automation],
     );
-  const turnOff = async (automation: Automation) => {
-    const updated = await store.hostCommand(hostId, "automation.toggle", {
-      id: automation.id,
-      enabled: false,
+  const turnOff = (automation: Automation) =>
+    guarded(`toggle:${automation.id}`, async () => {
+      const updated = await store.hostCommand(hostId, "automation.toggle", {
+        id: automation.id,
+        enabled: false,
+      });
+      if (updated) replace(updated);
     });
-    if (updated) replace(updated);
-  };
-  const turnOn = async (automation: Automation) => {
+  const turnOn = (automation: Automation) => {
     setTurningOn(null);
-    const updated = await store.hostCommand(hostId, "automation.toggle", {
-      id: automation.id,
-      enabled: true,
-      confirm: true,
+    return guarded(`toggle:${automation.id}`, async () => {
+      const updated = await store.hostCommand(hostId, "automation.toggle", {
+        id: automation.id,
+        enabled: true,
+        confirm: true,
+      });
+      if (updated) replace(updated);
     });
-    if (updated) replace(updated);
   };
-  const remove = async (automation: Automation) => {
+  const remove = (automation: Automation) => {
     setRemoving(null);
-    const result = await store.hostCommand(hostId, "automation.remove", {
-      id: automation.id,
-      confirm: true,
+    return guarded(`remove:${automation.id}`, async () => {
+      const result = await store.hostCommand(hostId, "automation.remove", {
+        id: automation.id,
+        confirm: true,
+      });
+      if (result) setAutomations(result.automations);
     });
-    if (result) setAutomations(result.automations);
   };
-  const toggleHistory = async (automation: Automation) => {
+  const toggleHistory = (automation: Automation) => {
     if (history[automation.id]) {
-      const { [automation.id]: _closed, ...rest } = history;
-      setHistory(rest);
-      return;
+      setHistory(({ [automation.id]: _closed, ...rest }) => rest);
+      return Promise.resolve();
     }
-    const result = await store.hostCommand(hostId, "automation.runs", { id: automation.id });
-    if (result) setHistory({ ...history, [automation.id]: result.runs });
+    return guarded(`history:${automation.id}`, async () => {
+      const result = await store.hostCommand(hostId, "automation.runs", { id: automation.id });
+      // The latest state, not the one this press saw: two answers in flight must not drop each other.
+      if (result) setHistory((now) => ({ ...now, [automation.id]: result.runs }));
+    });
   };
 
   return (
@@ -141,7 +173,9 @@ export function AutomationsPage(
       <div className="flex max-w-3xl flex-col gap-3">
         {failed && (
           <ErrorState
-            message={t("automationsUi.failed")}
+            message={t(
+              failed === "workflows" ? "automationsUi.failedWorkflows" : "automationsUi.failed",
+            )}
             retryLabel={t("automationsUi.retry")}
             onRetry={() => void load()}
           />
@@ -180,8 +214,9 @@ export function AutomationsPage(
                     {t(automation.enabled ? "automationsUi.on" : "automationsUi.off")}
                   </span>
                   <Switch
-                    aria-label={t("automationsUi.turnOn", { name: automation.name })}
+                    aria-label={t("automationsUi.row", { name: automation.name })}
                     checked={automation.enabled}
+                    disabled={busy.has(`toggle:${automation.id}`)}
                     onCheckedChange={(on) =>
                       on ? setTurningOn(automation) : void turnOff(automation)
                     }
@@ -208,6 +243,7 @@ export function AutomationsPage(
                         : "automationsUi.historyOf",
                       { name: automation.name },
                     )}
+                    disabled={busy.has(`history:${automation.id}`)}
                     onClick={() => void toggleHistory(automation)}
                   >
                     {t(
@@ -228,6 +264,7 @@ export function AutomationsPage(
                     variant="ghost"
                     size="sm"
                     aria-label={t("automationsUi.removeOf", { name: automation.name })}
+                    disabled={busy.has(`remove:${automation.id}`)}
                     onClick={() => setRemoving(automation)}
                   >
                     {t("automationsUi.remove")}
