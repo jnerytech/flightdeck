@@ -359,7 +359,7 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     const w = setup(specs);
     // The store's own respondTo, the one that refuses an allow that was not held (#245).
     const answers: Array<{ held?: boolean }> = [];
-    const done: Array<Promise<void>> = [];
+    const done: Array<Promise<unknown>> = [];
     w.store.respondTo = ((
       hostId: string,
       requestId: string,

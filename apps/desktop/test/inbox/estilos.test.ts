@@ -2,7 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const css = readFileSync(join(import.meta.dir, "../../src/styles/inbox.css"), "utf8");
+const css = readFileSync(join(import.meta.dir, "../../src/styles/inbox.css"), "utf8").replace(
+  /\/\*[\s\S]*?\*\//g,
+  "",
+);
 
 /** The declarations of the rule whose selector list includes `selector`. */
 const ruleOf = (selector: string): string =>
