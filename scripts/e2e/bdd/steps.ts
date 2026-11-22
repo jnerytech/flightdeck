@@ -1657,7 +1657,7 @@ step(Then, "the page says a backup is due and waits for the passphrase", async (
 
 step(When, "I give the schedule a passphrase", async (c) => {
   await schedulePassphrase(c).fill(PASSPHRASE);
-  await c.page.getByRole("button", { name: scheduleText(c).usePassphrase, exact: true }).click();
+  await c.page.getByRole("button", { name: scheduleText(c).setPassphrase, exact: true }).click();
 });
 
 step(Then, "the page says the passphrase is set and when the last backup was made", async (c) => {
@@ -1676,7 +1676,7 @@ step(When, "a daily backup was made into the folder", async (c) => {
   if (!(await cadenceRadio(c, "daily").isChecked())) await cadenceRadio(c, "daily").check();
   await c.page.getByRole("button", { name: scheduleText(c).chooseFolder, exact: true }).click();
   await schedulePassphrase(c).fill(PASSPHRASE);
-  await c.page.getByRole("button", { name: scheduleText(c).usePassphrase, exact: true }).click();
+  await c.page.getByRole("button", { name: scheduleText(c).setPassphrase, exact: true }).click();
   await waitFor(async () => (await folderFiles(c)).length > 0, "the first backup is in the folder");
   mine(c).backupFiles = await folderFiles(c);
 });
