@@ -1141,7 +1141,7 @@ step(
     const row = serviceRow(c);
     await row.waitFor({ timeout: WAIT });
     const offered = await row
-      .getByRole("button", { name: c.t("hostHealth.service.turnOn"), exact: true })
+      .getByRole("button", { name: c.t("hostHealth.service.turnOnRow"), exact: true })
       .count();
     if (offered > 0) throw new Error("Turn it on is offered on a host that runs from source");
   },

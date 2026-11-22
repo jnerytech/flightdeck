@@ -59,7 +59,7 @@ function depAction(item: DepResult, lacking: boolean, env: RowEnv): HealthRow["a
     env.canInstallService &&
     item.fix.some((fix) => fix.command === "flightdeckd service install")
   ) {
-    return { label: env.t("hostHealth.service.turnOn"), run: () => env.confirm("service") };
+    return { label: env.t("hostHealth.service.turnOnRow"), run: () => env.confirm("service") };
   }
   return null;
 }
@@ -121,11 +121,18 @@ export function checkRow(check: DoctorCheckResult, env: RowEnv): HealthRow {
   };
 }
 
-/** The section's headline and its icon: a failed read, the first read pending, or what is missing. */
+/** The section's headline and its icon: an offline host, a failed read, the first read pending, or what is missing. */
 export function headlineFor(
-  state: { error: string | null; read: boolean; required: number; optional: number },
+  state: {
+    error: string | null;
+    offline: boolean;
+    read: boolean;
+    required: number;
+    optional: number;
+  },
   t: T,
 ): { text: string; look: DepLook } {
+  if (state.offline) return { text: t("hostDeps.offline"), look: { icon: "dash", tone: "off" } };
   if (state.error) {
     return {
       text: t("hostDeps.readFailed", { reason: state.error }),
@@ -146,6 +153,45 @@ export function headlineFor(
     };
   }
   return { text: t("hostDeps.allSet"), look: { icon: "check", tone: "ok" } };
+}
+
+/** What the rows say, in one string: two reads with the same signature found the same thing. */
+export function signatureOf(items: DepResult[], checks: DoctorCheckResult[]): string {
+  return [
+    ...items.map((item) => `${item.id}:${item.state}:${item.version ?? ""}:${item.path ?? ""}`),
+    ...checks.map((check) => `${check.id}:${check.status}:${check.detail}`),
+  ]
+    .sort((a, b) => a.localeCompare(b))
+    .join("|");
+}
+
+/** What Check again or a fix was asked at, kept to tell its answer apart (#4323, #4324). */
+export interface Asked {
+  before: string;
+  /** The row a one-click fix was for; null for Check again. */
+  fix: "hooks" | "service" | null;
+  /** The name of that row, kept in case the next read no longer lists it. */
+  name: string;
+  /** The read time when it was asked: a newer one is the answer. */
+  at: number | null;
+  /** The answer, once the first newer read gave it: later reads do not rewrite it. */
+  answer: string | null;
+}
+
+/** The answer to Check again or a fix, in words; null until a newer read arrives or when the read failed. */
+export function resultFor(
+  asked: Asked | null,
+  now: { signature: string; checkedAt: number | null; error: string | null },
+  rows: HealthRow[],
+  t: T,
+): string | null {
+  if (!asked || now.checkedAt === asked.at || now.error) return null;
+  const fixed = asked.fix ? rows.find((row) => row.key === asked.fix) : undefined;
+  if (asked.fix) {
+    const key = fixed && needsYou(fixed) ? "hostHealth.fixedStill" : "hostHealth.fixed";
+    return t(key, { name: fixed?.name ?? asked.name });
+  }
+  return t(now.signature === asked.before ? "hostHealth.resultSame" : "hostHealth.resultChanged");
 }
 
 /** The doctor checks a dependency row does not already say. */

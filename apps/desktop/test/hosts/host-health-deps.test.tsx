@@ -60,7 +60,14 @@ function setup(deps: DepsResult | null) {
     <TooltipProvider>
       <HostHealth
         store={store}
-        host={{ id: "h1", name: "pc", hostInfo: { os: "linux", features: [] } } as never}
+        host={
+          {
+            id: "h1",
+            name: "pc",
+            status: "online",
+            hostInfo: { os: "linux", features: [] },
+          } as never
+        }
         deps={deps}
         doctor={null}
         checkedAt={null}
