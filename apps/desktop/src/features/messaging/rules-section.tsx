@@ -94,7 +94,7 @@ export function MessagingRulesSection(
     paused: null,
   });
   // Where the focus goes once the row the person pressed is gone: the row after it, else its list's heading.
-  const focusNext = useRef<{ list: List; row: string | null } | null>(null);
+  const focusNext = useRef<{ list: List; gone: string; row: string | null } | null>(null);
   // The sessions this host names, so a pair reads "builder and tester" and not two addresses.
   const hubState = useStoreSlice(store, NAME_KEYS);
   const sessionNames = useMemo(
@@ -124,10 +124,16 @@ export function MessagingRulesSection(
   useEffect(() => {
     void read();
   }, [read]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: it runs when the rules change, which is when the pressed row is gone
   useEffect(() => {
     const next = focusNext.current;
-    if (!next) return;
+    // Only the change that took the pressed row away moves the focus, not a reload or another save.
+    if (
+      !next ||
+      !rules ||
+      rules.paused.includes(next.gone) ||
+      rules.policy.exceptions?.some((e) => e.id === next.gone)
+    )
+      return;
     focusNext.current = null;
     const target =
       next.row === null ? headings.current[next.list] : rowButtons.current.get(next.row);
@@ -187,16 +193,23 @@ export function MessagingRulesSection(
   const remove = async (id: string) => {
     const row = `exceptions:${id}`;
     const next = exceptions[exceptions.findIndex((x) => x.id === id) + 1];
-    focusNext.current = { list: "exceptions", row: next ? `exceptions:${next.id}` : null };
+    focusNext.current = {
+      list: "exceptions",
+      gone: id,
+      row: next ? `exceptions:${next.id}` : null,
+    };
     const failed = await put({ exceptions: exceptions.filter((x) => x.id !== id) });
-    if (failed === null) return setRowError(row, null);
+    if (failed === null) {
+      setError(null);
+      return setRowError(row, null);
+    }
     focusNext.current = null;
     setRowError(row, `${t("messagingRulesUi.removeFailed")} ${failed}`);
   };
   const release = async (key: string, pair: string) => {
     const row = `paused:${key}`;
     const next = rules.paused[rules.paused.indexOf(key) + 1];
-    focusNext.current = { list: "paused", row: next ? `paused:${next}` : null };
+    focusNext.current = { list: "paused", gone: key, row: next ? `paused:${next}` : null };
     const got = await store.messaging.releasePair(hostId, key);
     if (got) {
       setRowError(row, null);
@@ -212,6 +225,7 @@ export function MessagingRulesSection(
     else rowButtons.current.delete(row);
   };
   /** A session's name where this host knows it, else its address (as the Messages tab does). */
+  // Session ids are UUIDs, so an id of another host does not collide with this host's; the address prefix is the daemon's own host name, not the roster id.
   const named = (address: string): string =>
     sessionNames.get(address.slice(address.indexOf("/") + 1)) ?? address;
   const add = async () => {

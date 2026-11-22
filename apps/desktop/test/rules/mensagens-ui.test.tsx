@@ -258,7 +258,7 @@ describe("regras-mensagens-ui: who may message whom, retention and paused pairs 
     await open((daemon) => {
       daemon.hub.managed = [managed("s1", "builder")];
     });
-    await settleMaybe(
+    await settle(
       () => screen.queryByRole("button", { name: "Soltar o par builder e h/s2" }) !== null,
     );
     expect(screen.queryByText("builder e h/s2")).not.toBeNull();
@@ -268,9 +268,7 @@ describe("regras-mensagens-ui: who may message whom, retention and paused pairs 
     const { daemon } = await open();
     daemon.refuse.set("messaging.rules.set", "sem acesso");
     await click("Soltar o par h/s1 e h/s2");
-    await settleMaybe(
-      () => screen.queryByText("Não foi possível soltar o par h/s1 e h/s2.") !== null,
-    );
+    await settle(() => screen.queryByText("Não foi possível soltar o par h/s1 e h/s2.") !== null);
     const row = screen.queryByRole("button", { name: "Soltar o par h/s1 e h/s2" })?.closest("li");
     expect(row?.querySelector('[role="alert"]')?.textContent).toBe(
       "Não foi possível soltar o par h/s1 e h/s2.",
@@ -285,7 +283,7 @@ describe("regras-mensagens-ui: who may message whom, retention and paused pairs 
     const { daemon } = await open();
     daemon.refuse.set("messaging.rules.set", "sem acesso");
     await click("Remover a exceção de host pc para projeto app");
-    await settleMaybe(() => document.querySelector("li [role='alert']") !== null);
+    await settle(() => document.querySelector("li [role='alert']") !== null);
     const alert = document.querySelector("li [role='alert']");
     expect(alert?.textContent).toBe(
       "A exceção não pôde ser removida. O host recusou o pedido. sem acesso",
@@ -298,14 +296,10 @@ describe("regras-mensagens-ui: who may message whom, retention and paused pairs 
       daemon.messaging.paused = ["h/s1|h/s2", "h/s3|h/s4"];
     });
     await click("Soltar o par h/s1 e h/s2");
-    await settleMaybe(
-      () => screen.queryByRole("button", { name: "Soltar o par h/s1 e h/s2" }) === null,
-    );
+    await settle(() => screen.queryByRole("button", { name: "Soltar o par h/s1 e h/s2" }) === null);
     expect(document.activeElement?.getAttribute("aria-label")).toBe("Soltar o par h/s3 e h/s4");
     await click("Soltar o par h/s3 e h/s4");
-    await settleMaybe(
-      () => screen.queryByRole("button", { name: "Soltar o par h/s3 e h/s4" }) === null,
-    );
+    await settle(() => screen.queryByRole("button", { name: "Soltar o par h/s3 e h/s4" }) === null);
     expect([document.activeElement?.tagName, document.activeElement?.textContent]).toEqual([
       "H3",
       "Pares pausados por laço",
@@ -323,7 +317,7 @@ async function openRules(lang: "en" | "pt-BR", refused: boolean) {
   if (refused) daemon.refuse.set("messaging.rules.get", "the rules file is unreadable");
   render(<App store={store} />);
   await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
-  await settleMaybe(() => store.getState().hosts[0]?.hostInfo != null);
+  await settle(() => store.getState().hosts[0]?.hostInfo != null);
   await act(async () => {
     store.router.push({ name: "settings" });
   });
@@ -351,7 +345,7 @@ for (const [lang, t] of [
       expect(screen.queryByRole("button", { name: t.messagingRulesUi.retry })).not.toBeNull();
       daemon.refuse.delete("messaging.rules.get");
       await click(t.messagingRulesUi.retry);
-      await settleMaybe(() => screen.queryByLabelText(t.messagingRulesUi.retention) !== null);
+      await settle(() => screen.queryByLabelText(t.messagingRulesUi.retention) !== null);
       expect(document.body.textContent).not.toContain(failed);
       expect(screen.queryByLabelText(t.messagingRulesUi.retention)).not.toBeNull();
       expect(screen.queryByRole("button", { name: t.messagingRulesUi.retry })).toBeNull();
@@ -359,7 +353,7 @@ for (const [lang, t] of [
 
     test("under each value field a hint says what the chosen kind expects", async () => {
       await openRules(lang, false);
-      await settleMaybe(() => screen.queryByLabelText(t.messagingRulesUi.fromValue) !== null);
+      await settle(() => screen.queryByLabelText(t.messagingRulesUi.fromValue) !== null);
       const hints = t.messagingRulesUi.hints;
       // Both sides start as "host".
       expect(screen.queryAllByText(hints.host)).toHaveLength(2);
