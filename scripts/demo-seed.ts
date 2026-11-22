@@ -15,6 +15,8 @@ import { join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { loadConfig } from "../apps/daemon/src/config.ts";
 import { ulid } from "../apps/daemon/src/kernel/ulid.ts";
+import { pairKey } from "../apps/daemon/src/messaging/domain/peers.ts";
+import { DEFAULT_POLICY } from "../apps/daemon/src/messaging/domain/policy.ts";
 import { INSTRUCTIONS_VERSION } from "../apps/daemon/src/teams/domain/instructions.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/support/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
@@ -59,6 +61,10 @@ import {
   DEMO_AWAY_MERGED_CARD,
   DEMO_CLOSED_TEAM,
   DEMO_GATE_CARD,
+  DEMO_MESSAGE_ANSWER,
+  DEMO_MESSAGE_ASK,
+  DEMO_MESSAGE_LOST,
+  DEMO_MESSAGE_REFUSED,
   DEMO_PAUSED_TEAM,
   DEMO_PR_BETA_CARD,
   DEMO_PR_BETA_URL,
@@ -595,6 +601,94 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
         activeTeam,
       );
   }
+  // Issue #4088: messages between two sessions outside a team, for the Conversations page and a
+  // session's Messages tab: a text and its answer, one the pair's hourly limit refused, and one
+  // delivered to a host the demo no longer has (the app names its recipient by address).
+  const outsideSession = "6e2f0c1a-7b3d-4f58-9a41-0d5c8e7b2f19";
+  const talk: Array<{
+    from: string;
+    to: string;
+    toHost: string;
+    text: string;
+    status: "delivered" | "refused";
+    why?: { reason: string; key: string; params: Record<string, string | number> };
+  }> = [
+    {
+      from: diffSession,
+      to: idle.sessionId,
+      toHost: "alfa",
+      text: DEMO_MESSAGE_ASK,
+      status: "delivered",
+    },
+    {
+      from: idle.sessionId,
+      to: diffSession,
+      toHost: "alfa",
+      text: DEMO_MESSAGE_ANSWER,
+      status: "delivered",
+    },
+    {
+      from: idle.sessionId,
+      to: diffSession,
+      toHost: "alfa",
+      text: DEMO_MESSAGE_REFUSED,
+      status: "refused",
+      why: {
+        reason: `The limit of ${DEFAULT_POLICY.perPairPerHour} messages per hour between these two sessions was reached.`,
+        key: "messaging_limit_pair",
+        params: { limit: DEFAULT_POLICY.perPairPerHour },
+      },
+    },
+    {
+      from: idle.sessionId,
+      to: outsideSession,
+      toHost: "gama",
+      text: DEMO_MESSAGE_LOST,
+      status: "delivered",
+    },
+  ];
+  for (const [at, m] of talk.entries()) {
+    const sent = Date.now() - (talk.length - at) * 90_000;
+    teams
+      .query(
+        `INSERT INTO session_messages (id, from_session, from_host, to_session, to_host, text,
+                                       status, reason, created_at, created_ms, delivered_at,
+                                       team_id, kind, reason_key, reason_params)
+         VALUES (?, ?, 'alfa', ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'session', ?, ?)`,
+      )
+      .run(
+        ulid(),
+        m.from,
+        m.to,
+        m.toHost,
+        m.text,
+        m.status,
+        m.why?.reason ?? null,
+        new Date(sent).toISOString(),
+        sent,
+        m.status === "delivered" ? new Date(sent).toISOString() : null,
+        m.why?.key ?? null,
+        m.why ? JSON.stringify(m.why.params) : null,
+      );
+  }
+  // A pair the loop detector paused, whose Settings row offers Release, and the exception that lets
+  // the sessions of alfa and beta talk to each other (the daemon reads the policy from memory,
+  // so it is set through its command; the paused pair is read from the table each time).
+  teams
+    .query("INSERT INTO messaging_paused (pair, at) VALUES (?, ?)")
+    .run(pairKey(`alfa/${idle.sessionId}`, `alfa/${bash.sessionId}`), new Date().toISOString());
+  await client.call("messaging.rules.set", {
+    policy: {
+      exceptions: [
+        {
+          id: "7f0e4d52-3c1a-4a86-9d1b-5e2a6c8b9f03",
+          from: { host: "alfa" },
+          to: { host: "beta" },
+          bothWays: true,
+        },
+      ],
+    },
+  });
   // Issue #4025: a team the person paused and one the plan quota paused, for the Teams footer's prints.
   // Each has a coordinator with no session, so no session list gains a team chip and no count moves;
   // the host acts only on active teams.
