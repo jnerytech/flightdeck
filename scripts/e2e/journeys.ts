@@ -1874,7 +1874,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
 
     // 3b. The top bar and the status bar change at one width, 1024 px, the one `useBreakpoint()`
     // uses (#641, #1850): at 1023 the host's name, the search's text and keys, the version and the
-    // quota window are hidden and the host's icon stands in; at 1024 the full forms show.
+    // quota window are hidden and the host's icon stands in; at 1024 and 1280 the full forms show,
+    // and the search's text is not cut (#3954).
     const shown = () =>
       c.page.evaluate(() => {
         const display = (selector: string) => {
@@ -1891,9 +1892,15 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
           version: display(".top-bar-version"),
           quota: display(".status-quota-window"),
           search: document.querySelector(".top-bar-search")?.getBoundingClientRect().width ?? 0,
+          // The text is cut ("Search or jump t…") when its content is wider than its box (#3954).
+          searchCut: (() => {
+            const text = document.querySelector(".top-bar-search-text");
+            // One pixel of slack for the rounding of a fractional width.
+            return text ? text.scrollWidth > text.clientWidth + 1 : false;
+          })(),
         };
       });
-    for (const width of [1023, 1024]) {
+    for (const width of [1023, 1024, 1280]) {
       await c.page.setViewportSize({ width, height: 800 });
       await c.page.locator(".top-bar-search").waitFor({ timeout: WAIT });
       const now = await shown();
@@ -1907,6 +1914,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
           markHidden: now.mark === "none",
           quotaFits: hidden(now.quota),
           searchWide: now.search >= 150,
+          searchCut: now.searchCut,
         },
         `the top bar at ${width}px`,
       ).toEqual({
@@ -1914,6 +1922,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         markHidden: !compact,
         quotaFits: true,
         searchWide: !compact,
+        searchCut: false,
       });
     }
 
