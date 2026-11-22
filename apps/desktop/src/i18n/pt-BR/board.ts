@@ -627,6 +627,8 @@ export const board = {
     showIdle: "Mostrar sessões ociosas",
     approve: "Aprovar",
     deny: "Negar",
+    openToAnswer: "Abrir para responder",
+    openToAnswerFor: "Abrir para responder: {title}",
     approveFor: "Aprovar {title}",
     denyFor: "Negar {title}",
     holdFor: "Segurar para aprovar {title}",

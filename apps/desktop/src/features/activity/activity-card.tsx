@@ -1,4 +1,5 @@
 import { type MouseEvent, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
 import { pendingText } from "@/features/needs-you/index.ts";
 import { HIGH_RISK_HOLD_MS } from "@/features/permissions/index.ts";
 import { HoldButton } from "@/features/permissions/ui.ts";
@@ -102,6 +103,19 @@ export function ActivityCardView(
         <p data-slot="activity-card-plan" className="activity-card-plan">
           {row.waitingPlan}
         </p>
+      )}
+      {card.column === "needs_you" && !pending && (
+        /* A gate, a vault request, a plan or a question is answered in the session, not here (#4242). */
+        <div className="activity-card-actions">
+          <Button
+            size="sm"
+            variant="outline"
+            aria-label={t("activityBoard.openToAnswerFor", { title: row.title })}
+            onClick={() => props.onOpen(false)}
+          >
+            {t("activityBoard.openToAnswer")}
+          </Button>
+        </div>
       )}
       {pending && (
         <div className="activity-card-request">

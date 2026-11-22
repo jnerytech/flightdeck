@@ -623,6 +623,8 @@ export const board = {
     showIdle: "Show idle sessions",
     approve: "Approve",
     deny: "Deny",
+    openToAnswer: "Open to answer",
+    openToAnswerFor: "Open to answer: {title}",
     approveFor: "Approve {title}",
     denyFor: "Deny {title}",
     holdFor: "Hold to approve {title}",
