@@ -420,4 +420,24 @@ describe("rewind guard (#3825)", () => {
     const rewinder = new Rewinder({ snapshots, sessions, allowedRoots: [dirname(repo)] });
     expect(await reason(rewinder.apply("s1", turn, true, refuse))).toBe("guard ran");
   });
+
+  test("a repository that sits inside a .claude folder is not itself Claude Code's config (#3825)", async () => {
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const snapshots = new Snapshots({ db: store.db });
+    const { repo, root } = gitRepo(join(".claude", "work"));
+    const taken = await snapshots.take({
+      cwd: repo,
+      claudeSessionId: "s1",
+      kind: "before",
+      turnUuid: "u-1",
+    });
+    const turn = "row" in taken ? taken.row.n : -1;
+    const sessions = {
+      busy: () => false,
+      rewindFiles: async () => ({ canRewind: true, filesChanged: [join(repo, "src", "a.ts")] }),
+    };
+    const rewinder = new Rewinder({ snapshots, sessions, allowedRoots: [root] });
+    expect(await reason(rewinder.apply("s1", turn, true, refuse))).not.toBe("guard ran");
+  });
 });

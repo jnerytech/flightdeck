@@ -18,6 +18,7 @@ describe("isClaudeConfig (#3825)", () => {
         ".mcp.json",
         "apps/api/.MCP.JSON",
         "./.mcp.json.",
+        "apps/api/MCP~1.JSO",
       ].filter((path) => !isClaudeConfig(path)),
     ).toEqual([]);
   });
