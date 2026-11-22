@@ -1,8 +1,9 @@
 import type { PermissionUpdate } from "@flightdeck/protocol";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
+import { Field, Form, FormActions } from "@/shared/layout/index.ts";
 import { defaultRule, namesFolder, projectRule } from "./domain/always-allow-rule.ts";
 
 /**
@@ -23,27 +24,47 @@ export function AlwaysAllow(
 ) {
   const t = useT();
   const [rule, setRule] = useState<string | null>(null);
+  const field = useRef<HTMLInputElement>(null);
+  const opener = useRef<HTMLButtonElement>(null);
+  // The button that opened the editor unmounts with it: the focus goes to the field, and back to
+  // the button (or its place) when the editor closes.
+  const editing = rule !== null;
+  const wasEditing = useRef(false);
+  useEffect(() => {
+    if (editing) field.current?.focus();
+    else if (wasEditing.current) opener.current?.focus();
+    wasEditing.current = editing;
+  }, [editing]);
   const session = (props.suggestions ?? []).filter((s) => s.destination === "session");
   if (rule !== null) {
     return (
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          aria-label={t("alwaysAllow.rule")}
-          value={rule}
-          onChange={(e) => setRule(e.target.value)}
-          className="h-8 min-w-48 flex-1 font-mono text-xs"
+      <Form
+        variant="inline"
+        onSubmit={() => {
+          // Enter submits even when the button is off: an empty rule or a sent answer sends nothing.
+          if (props.disabled || rule.trim() === "") return;
+          props.onAllow([projectRule(rule)]);
+        }}
+      >
+        <Field label={t("alwaysAllow.rule")}>
+          {(control) => (
+            <Input
+              {...control}
+              ref={field}
+              value={rule}
+              onChange={(e) => setRule(e.target.value)}
+              className="h-8 font-mono text-xs"
+            />
+          )}
+        </Field>
+        <FormActions
+          submit={t("alwaysAllow.saveRule")}
+          disabled={props.disabled || rule.trim() === ""}
+          disabledReason={rule.trim() === "" ? t("alwaysAllow.ruleEmpty") : undefined}
+          cancel={t("common.cancel")}
+          onCancel={() => setRule(null)}
         />
-        <Button
-          size="sm"
-          disabled={props.disabled}
-          onClick={() => props.onAllow([projectRule(rule)])}
-        >
-          {t("alwaysAllow.saveRule")}
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setRule(null)}>
-          {t("common.cancel")}
-        </Button>
-      </div>
+      </Form>
     );
   }
   return (
@@ -60,6 +81,7 @@ export function AlwaysAllow(
       )}
       {!namesFolder(props.toolName, props.input) && (
         <Button
+          ref={opener}
           variant="outline"
           size="sm"
           disabled={props.disabled}

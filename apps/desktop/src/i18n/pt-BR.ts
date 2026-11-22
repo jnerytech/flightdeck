@@ -233,6 +233,7 @@ export const ptBR = {
   alwaysAllow: {
     rule: "Regra",
     saveRule: "Salvar regra",
+    ruleEmpty: "Digite uma regra para salvá-la.",
     session: "Permitir nesta sessão",
     project: "Sempre neste projeto",
     refusedFolder:
