@@ -10,6 +10,8 @@ export interface FrameRewriter {
   followUp?(frame: string): string[];
   /** The host's answer to a frame the app sends, when the print answers for it: the frame then never leaves the page (#3987). */
   answer?(frame: string): string | undefined;
+  /** A frame the app sends that never leaves the page and is never answered: the command stays pending (#4203). */
+  swallows?(frame: string): boolean;
 }
 
 type Data = Record<string, unknown> & { memory?: { totalBytes?: number }; budgets?: unknown[] };
@@ -122,6 +124,7 @@ export function installHolds(
           return;
         }
       }
+      if (typeof sent === "string" && this.rewriter.swallows?.(sent)) return;
       super.send(sent);
     }
     override addEventListener(

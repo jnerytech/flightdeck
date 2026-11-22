@@ -1,7 +1,9 @@
 import type { KnowledgeFeedState } from "@flightdeck/protocol";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { AppStore } from "@/lib/app-store";
+import { ActionButton } from "@/shared/feedback/index.ts";
+import { Inline } from "@/shared/layout/index.ts";
 
 /**
  * Whether the sessions Flightdeck starts in a project are given the index of its valid documents
@@ -21,6 +23,21 @@ export function KnowledgeFeedSwitch(
     if (result) setState(result);
   }, []);
 
+  // A press is out until the host answers. State for the busy button, a ref for a second press in the same tick.
+  const [sending, setSending] = useState(false);
+  const sendingNow = useRef(false);
+  // The busy button is disabled, which drops the focus: it comes back once the answer is in.
+  const switchButton = useRef<HTMLButtonElement>(null);
+  const refocus = useRef(false);
+  useEffect(() => {
+    if (sending || !refocus.current) return;
+    refocus.current = false;
+    switchButton.current?.focus();
+  }, [sending]);
+
+  // Bumped by Try again: the read runs again.
+  const [reads, setReads] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `reads` only asks for another read.
   useEffect(() => {
     let live = true;
     void store.hostCommand(hostId, "knowledge.feed", { path }).then((result) => {
@@ -29,17 +46,35 @@ export function KnowledgeFeedSwitch(
     return () => {
       live = false;
     };
-  }, [store, hostId, path, received]);
+  }, [store, hostId, path, received, reads]);
 
   const problem = failed && (
     <p role="alert" className="text-sm">
       {t("projectPage.knowledge.feed.failed")}
     </p>
   );
-  if (state === null) return problem || null;
+  // No state to show yet: the alert, and a way to read again.
+  if (state === null) {
+    if (!failed) return null;
+    return (
+      <Inline gap={2}>
+        {problem}
+        <Button type="button" size="sm" variant="outline" onClick={() => setReads((n) => n + 1)}>
+          {t("projectPage.knowledge.retry")}
+        </Button>
+      </Inline>
+    );
+  }
   const own = state.own;
-  const change = (enabled: boolean) => {
-    void store.hostCommand(hostId, "knowledge.setFeed", { path, enabled }).then(received);
+  const change = async (enabled: boolean) => {
+    if (sendingNow.current) return;
+    sendingNow.current = true;
+    setSending(true);
+    const result = await store.hostCommand(hostId, "knowledge.setFeed", { path, enabled });
+    received(result);
+    refocus.current = true;
+    sendingNow.current = false;
+    setSending(false);
   };
   let words = t("projectPage.knowledge.feed.on");
   if (!state.on) {
@@ -54,9 +89,17 @@ export function KnowledgeFeedSwitch(
       {/* A live region: a later change of the words (the index on or off) is read out. */}
       <output className="block text-sm">{words}</output>
       {(state.on || own) && (
-        <Button type="button" size="sm" variant="outline" onClick={() => change(!state.on)}>
+        // The answer is awaited: a second press while it is out is ignored, and the button is busy.
+        <ActionButton
+          ref={switchButton}
+          type="button"
+          size="sm"
+          variant="outline"
+          pending={sending}
+          onClick={() => void change(!state.on)}
+        >
           {t(state.on ? "projectPage.knowledge.feed.turnOff" : "projectPage.knowledge.feed.turnOn")}
-        </Button>
+        </ActionButton>
       )}
       {problem}
     </div>

@@ -92,6 +92,8 @@ export interface DemoIds {
   waitingSession: string;
   /** The permission request `waitingSession` holds open: the bell's print links a row to it (#1168). */
   waitingRequest: string;
+  /** The high-risk request of the terminal session that asks to run `rm -rf build`: the bell's risk print links a row to it (#4203). */
+  dangerRequest: string;
   idleSession: string;
   project: string;
   emptyProject: string;
@@ -907,6 +909,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     tool_name: "Bash",
     tool_input: { command: "rm -rf build" },
   });
+  const dangerRequest = await until(() => client.externals.get("ext-rm"), "the rm -rf request");
   void hook("ext-edit", "PermissionRequest", {
     tool_name: "Edit",
     tool_input: { file_path: join(web, "app.ts"), old_string: "1", new_string: "2" },
@@ -1016,6 +1019,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     ids: {
       waitingSession: bash.sessionId,
       waitingRequest: bashRequest,
+      dangerRequest,
       idleSession: idle.sessionId,
       project: project.id,
       emptyProject: empty.id,
