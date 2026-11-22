@@ -250,6 +250,35 @@ describe("board-ui: projects, columns, filters, drag and the card menu", () => {
     expect(board.getBoard(board.listProjects()[0]?.id ?? "").columns[0]?.cards).toEqual([]);
   });
 
+  test("um título de card sem espaços quebra dentro do card em vez de passar da borda (#3829)", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    await createCard("https://exemplo.com/um/caminho/muito/longo/sem/espacos/nenhum/mesmo", "d");
+    const open = document.querySelector("[data-card] [data-card-open]");
+    expect(open?.classList.contains("break-words")).toBe(true);
+  });
+
+  test("Excluir…: ao fechar o diálogo, por Cancelar ou por Excluir card, o foco fica no board e não na página", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    await createCard("Sobrando", "d");
+    await createCard("Outro", "d");
+    const insideBoard = () =>
+      document.querySelector('[data-slot="board-columns"]')?.contains(document.activeElement) ??
+      false;
+    await cardMenu("Sobrando", "Excluir…");
+    await click("Cancelar");
+    await settle(() => dialog() === null);
+    // Radix moves the focus a tick after the dialog unmounts.
+    await settle(insideBoard);
+    expect(insideBoard()).toBe(true);
+    await cardMenu("Sobrando", "Excluir…");
+    await click("Excluir card");
+    await settle(() => cardItem("Sobrando") === null);
+    await settle(insideBoard);
+    expect(insideBoard()).toBe(true);
+  });
+
   test("Excluir… de um card que já começou explica a recusa e oferece Descartar card no lugar", async () => {
     const { repo, board } = await setup();
     await openBoard(repo);

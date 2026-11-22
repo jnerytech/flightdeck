@@ -26,6 +26,7 @@ export function BoardDialogs(
     hookDialogs: ReactNode;
     deleting: Card | null;
     onDeleteClose(): void;
+    onDeleteRestoreFocus(): void;
     ask: MoveAsk | null;
     onAskClose(): void;
     /** Where the focus goes once a move has happened. */
@@ -60,6 +61,7 @@ export function BoardDialogs(
           hostId={hostId}
           card={props.deleting}
           onClose={props.onDeleteClose}
+          onRestoreFocus={props.onDeleteRestoreFocus}
         />
       )}
       {ask && (

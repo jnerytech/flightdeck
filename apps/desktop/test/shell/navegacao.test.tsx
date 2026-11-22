@@ -255,12 +255,14 @@ describe("navegacao", () => {
     });
     // The menu's Start asks for the workflow and persona first (issue #188).
     await settle(() => screen.queryByRole("dialog", { name: "Iniciar card" }) !== null);
+    const go = () =>
+      within(screen.getByRole("dialog", { name: "Iniciar card" })).getByRole("button", {
+        name: "Iniciar",
+      }) as HTMLButtonElement;
+    // Start waits for the project's workflows (#3827).
+    await settle(() => !go().disabled);
     await act(async () => {
-      fireEvent.click(
-        within(screen.getByRole("dialog", { name: "Iniciar card" })).getByRole("button", {
-          name: "Iniciar",
-        }),
-      );
+      fireEvent.click(go());
     });
     await poll(() => d.board.getCard(card.id).runs.length > 0, 8000);
     expect(d.board.getCard(card.id).runs).toHaveLength(1);

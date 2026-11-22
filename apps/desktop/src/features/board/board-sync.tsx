@@ -20,8 +20,8 @@ import { refusalText } from "@/i18n/errors";
 import { formatDateTime } from "@/i18n/format";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
-import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
-import { NativeSelect } from "@/shared/layout/index.ts";
+import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import { LoadingState, NativeSelect } from "@/shared/layout/index.ts";
 import { uniqueKeys } from "@/shared/lib/index.ts";
 import { logLine } from "./domain/sync-log-line.ts";
 
@@ -50,6 +50,7 @@ export function BoardSyncControl(
   const [picked, setPicked] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [askPush, setAskPush] = useState(false);
+  const [askUnlink, setAskUnlink] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const say = useCallback(
@@ -99,7 +100,10 @@ export function BoardSyncControl(
   }, [ask, show, store, hostId, projectId]);
 
   useEffect(() => {
-    if (open) void load();
+    if (!open) return;
+    // A refusal from the last time the dialog was open is not this opening's.
+    setError(null);
+    void load();
   }, [open, load]);
 
   const link = async () => {
@@ -157,6 +161,21 @@ export function BoardSyncControl(
               <DialogDescription>{t("boardSyncUi.description")}</DialogDescription>
             </DialogHeader>
             {error && <InlineNotice tone="error">{error}</InlineNotice>}
+            {!status && !error && <LoadingState label={t("boardSyncUi.loading")} />}
+            {!status && error && (
+              <div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setError(null);
+                    void load();
+                  }}
+                >
+                  {t("boardSyncUi.retry")}
+                </Button>
+              </div>
+            )}
             {status && !status.linked && (
               <section className="find-block">
                 <p className="text-sm">{t("boardSyncUi.notLinked")}</p>
@@ -184,7 +203,7 @@ export function BoardSyncControl(
                 <ActionButton
                   size="sm"
                   disabled={!picked}
-                  disabledReason={t("boardSyncUi.boards")}
+                  disabledReason={t("boardSyncUi.pickBoard")}
                   onClick={link}
                 >
                   {t("boardSyncUi.link")}
@@ -221,9 +240,9 @@ export function BoardSyncControl(
                     <ActionButton size="sm" variant="outline" onClick={syncNow}>
                       {t("boardSyncUi.syncNow")}
                     </ActionButton>
-                    <ActionButton size="sm" variant="ghost" onClick={unlink}>
+                    <Button size="sm" variant="ghost" onClick={() => setAskUnlink(true)}>
                       {t("boardSyncUi.unlink")}
-                    </ActionButton>
+                    </Button>
                   </div>
                 </section>
                 <section aria-label={t("boardSyncUi.mapTitle")} className="find-block">
@@ -278,6 +297,18 @@ export function BoardSyncControl(
                   )}
                 </section>
               </>
+            )}
+            {askUnlink && (
+              <ConfirmDialog
+                message={t("boardSyncUi.unlinkConfirm", { title: status?.boardTitle ?? "" })}
+                confirmLabel={t("boardSyncUi.unlink")}
+                destructive
+                onCancel={() => setAskUnlink(false)}
+                onConfirm={() => {
+                  setAskUnlink(false);
+                  void unlink();
+                }}
+              />
             )}
             <DialogFooter>
               <Button variant="ghost" onClick={() => setOpen(false)}>

@@ -140,6 +140,11 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
     const dialog = screen.queryByRole("dialog", { name: "Iniciar card" }) as HTMLElement;
     expect(dialog).not.toBeNull();
     expect(within(dialog).queryByLabelText("Workflow")).not.toBeNull();
+    // Start waits for the project's workflows (#3827).
+    await settle(
+      () =>
+        !(within(dialog).getByRole("button", { name: "Iniciar" }) as HTMLButtonElement).disabled,
+    );
     await act(async () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Iniciar" }));
     });
@@ -201,6 +206,8 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
     });
     const dialog = screen.getByRole("dialog", { name: "Iniciar card" });
     const start = within(dialog).getByRole("button", { name: "Iniciar" });
+    // Start waits for the project's workflows (#3827).
+    await settle(() => !(start as HTMLButtonElement).disabled);
     await act(async () => {
       fireEvent.click(start);
       fireEvent.click(start);

@@ -30,6 +30,11 @@ export function ConfirmDialog(
     confirmDisabled?: boolean;
     onConfirm(): void;
     onCancel(): void;
+    /**
+     * The dialog closed: where the focus goes. Left out, Radix returns it to the control that opened
+     * the dialog, which is gone when confirming removes it.
+     */
+    onRestoreFocus?(): void;
   }>,
 ) {
   const t = useT();
@@ -42,7 +47,13 @@ export function ConfirmDialog(
         if (!open && !confirmed.current) props.onCancel();
       }}
     >
-      <AlertDialogContent>
+      <AlertDialogContent
+        onCloseAutoFocus={(event) => {
+          if (!props.onRestoreFocus) return;
+          event.preventDefault();
+          props.onRestoreFocus();
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{props.confirmLabel}</AlertDialogTitle>
           <AlertDialogDescription>{props.message}</AlertDialogDescription>

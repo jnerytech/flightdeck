@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { installFakeCheck } from "../../../../scripts/test/check-guard.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { sidebarNav } from "../sidebar/helpers.ts";
@@ -46,8 +47,8 @@ steps:
 `;
 
 /** A card whose workflow run is waiting at the gate, with its detail open in the app. */
-async function cardAtGate() {
-  const fake = installFakeCheck("fd-lint", [{ args: [], stdout: "sem problemas" }]);
+async function cardAtGate(output = "sem problemas") {
+  const fake = installFakeCheck("fd-lint", [{ args: [], stdout: output }]);
   cleanups.push(() => fake.restore());
   const d = await workflowDaemon(cleanups, { wf: YAML });
   const card = d.board.createCard(d.project.id, { title: "Somar", description: "x" });
@@ -107,6 +108,20 @@ describe("run-ui", () => {
     await click("Abrir etapa lint");
     expect(text("Saída do check lint")).toBe("sem problemas");
     expect(screen.queryByText("código 0")).not.toBeNull();
+  });
+
+  test("a saída de um check recebe o foco do teclado, para rolar com as setas (#3829)", async () => {
+    await cardAtGate();
+    await click("Abrir etapa lint");
+    const block = screen.queryByLabelText("Saída do check lint")?.querySelector("pre");
+    expect(block?.getAttribute("tabindex")).toBe("0");
+  });
+
+  test("um check sem saída mostra um texto no lugar de uma caixa em branco (#3829)", async () => {
+    await cardAtGate("");
+    await click("Abrir etapa lint");
+    expect(text("Saída do check lint")).toBe(ptBR.cardUi.checkNoOutput);
+    expect(screen.queryByLabelText("Saída do check lint")?.querySelector("pre") ?? null).toBeNull();
   });
 
   test("a linha do tempo acompanha run.updated", async () => {

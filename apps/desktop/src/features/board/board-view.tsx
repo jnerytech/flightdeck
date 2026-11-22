@@ -498,6 +498,7 @@ export const BoardView = memo(function BoardView(props: {
         }
         deleting={deleting}
         onDeleteClose={() => setDeleting(null)}
+        onDeleteRestoreFocus={() => boardRef.current?.focus()}
         ask={ask}
         onAskClose={() => setAsk(null)}
         refocus={refocus}
