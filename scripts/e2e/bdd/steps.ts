@@ -3419,3 +3419,100 @@ step(Then, "the focus is on the card I made", async (c) => {
     "the focus is on the new card",
   );
 });
+
+// SSH connections (#3945). The demo's hosts keep their destinations for both language runs, and the
+// config the import reads names one alias per language (`lab-en`, `lab-pt-br`): a step takes the base
+// name a scenario reads and works on the one of its own language.
+const sshName = (c: Context, name: string) => `${name}-${c.lang.toLowerCase()}`;
+const sshList = (c: Context) =>
+  c.page.getByRole("list", { name: c.t("connections.list"), exact: true });
+/** The row of a destination in the list: its name is the first text of the row. */
+const sshRow = (c: Context, name: string) =>
+  sshList(c)
+    .getByRole("listitem")
+    .filter({ has: c.page.getByText(sshName(c, name), { exact: true }) });
+
+step(Given, "I am on Connections", async (c) => {
+  await open(c, { name: "connections" });
+  await c.page
+    .getByRole("button", { name: c.t("connections.newTarget"), exact: true })
+    .waitFor({ timeout: WAIT });
+});
+
+step(When, "I add the destination {string} as {string}", async (c, name = "", address = "") => {
+  const [user = "", host = ""] = address.split("@");
+  await c.page.getByRole("button", { name: c.t("connections.newTarget"), exact: true }).click();
+  await c.page.getByLabel(c.t("connections.form.name"), { exact: true }).fill(sshName(c, name));
+  await c.page.getByLabel(c.t("connections.form.host"), { exact: true }).fill(host);
+  await c.page.getByLabel(c.t("connections.form.user"), { exact: true }).fill(user);
+  await c.page.getByRole("button", { name: c.t("connections.form.save"), exact: true }).click();
+});
+
+step(Then, "the list shows {string} as {string}", async (c, name = "", address = "") => {
+  await sshRow(c, name).getByText(address, { exact: true }).waitFor({ timeout: WAIT });
+});
+
+const startRemoving = async (c: Context, name: string) => {
+  await c.page
+    .getByRole("button", {
+      name: c.t("connections.removeFor", { name: sshName(c, name) }),
+      exact: true,
+    })
+    .click();
+  await c.page.getByRole("alertdialog").waitFor({ timeout: WAIT });
+};
+
+step(When, "I start to remove {string} and cancel", async (c, name = "") => {
+  await startRemoving(c, name);
+  await c.page.getByRole("button", { name: c.t("common.cancel"), exact: true }).click();
+  await c.page.getByRole("alertdialog").waitFor({ state: "detached", timeout: WAIT });
+});
+
+step(When, "I remove {string} and confirm", async (c, name = "") => {
+  await startRemoving(c, name);
+  await c.page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: c.t("connections.remove"), exact: true })
+    .click();
+});
+
+step(Then, "{string} is still listed", async (c, name = "") => {
+  await sshRow(c, name).waitFor({ timeout: WAIT });
+});
+
+step(Then, "{string} is no longer listed", async (c, name = "") => {
+  await sshRow(c, name).waitFor({ state: "detached", timeout: WAIT });
+});
+
+step(When, "I open the import from the SSH config", async (c) => {
+  await c.page.getByRole("button", { name: c.t("connections.importAction"), exact: true }).click();
+});
+
+step(Then, "the import offers {string} to tick", async (c, name = "") => {
+  await c.page
+    .getByRole("checkbox", { name: sshName(c, name), exact: true })
+    .waitFor({ timeout: WAIT });
+});
+
+step(When, "I import only {string}", async (c, name = "") => {
+  const wanted = sshName(c, name);
+  // The panel ticks every name not yet saved, and the other language's run uses the same config.
+  for (const box of await c.page.getByRole("checkbox").all()) {
+    const label = (await box.evaluate((el) => el.parentElement?.textContent ?? "")).trim();
+    if ((await box.isChecked()) !== (label === wanted)) await box.setChecked(label === wanted);
+  }
+  await c.page.getByRole("button", { name: c.t("connections.import.apply"), exact: true }).click();
+});
+
+step(
+  Then,
+  "the page says one destination was created and the list shows {string} with the user and host the config gave it",
+  async (c, name = "") => {
+    await c.page
+      .getByText(c.t("connections.import.created", { n: 1 }), { exact: true })
+      .waitFor({ timeout: WAIT });
+    await sshRow(c, name)
+      .getByText(`ops@${sshName(c, name)}.example.test`, { exact: true })
+      .waitFor({ timeout: WAIT });
+  },
+);
