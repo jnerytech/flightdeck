@@ -623,6 +623,9 @@ export const sessions = {
     fork: "Bifurcar daqui",
     forkTurn: "Bifurcar daqui (turno {n})",
     busy: "A sessão está num turno: pare-a antes de voltar arquivos.",
+    noPrompt: "(sem prompt registrado)",
+    showMore: "Mostrar mais",
+    showLess: "Mostrar menos",
     noUuid:
       "Não achei a mensagem deste turno no transcript, então não dá para bifurcar a partir dele.",
     rewindTitle: "Voltar arquivos até o turno {n}",
