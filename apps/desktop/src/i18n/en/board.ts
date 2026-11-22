@@ -267,7 +267,7 @@ export const board = {
     loading: "Loading issues",
     reload: "Refresh",
     retry: "Try again",
-    failed: "Could not list the issues",
+    failed: "Could not list the issues: {why}",
     row: "Issue {number}: {title}",
     external: "External author",
     externalHint: "Third-party content: automatic approval stays suspended on the card",

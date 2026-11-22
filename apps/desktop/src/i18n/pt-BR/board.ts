@@ -262,7 +262,7 @@ export const board = {
     loading: "Carregando issues",
     reload: "Atualizar",
     retry: "Tentar de novo",
-    failed: "Não consegui listar as issues",
+    failed: "Não consegui listar as issues: {why}",
     row: "Issue {number}: {title}",
     external: "Autor externo",
     externalHint: "Conteúdo de terceiro: a aprovação automática fica suspensa no card",
