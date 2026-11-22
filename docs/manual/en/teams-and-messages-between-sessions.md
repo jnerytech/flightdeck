@@ -24,8 +24,11 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   team's host, and `read_session` and `notify_when_idle` only see sessions of the same host.
 - **In the app:**
   - **Conversations** (sidebar) lists the messages newest first, with filters by state and team;
-  - each session has a **Messages** tab with what it sent and received;
+  - each session has a **Messages** tab with what it sent and received; each row names the other
+    session (**To** or **From**), and hovering it shows the ids;
   - from that tab, **Send to another session…** sends a message from the session to another one.
+    A message that was sent empties the box, so it cannot go out twice; a refused one stays, so you
+    can fix it. With no session to message, the form says so.
 
 ## Standard session names
 

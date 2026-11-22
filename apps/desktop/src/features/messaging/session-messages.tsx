@@ -25,6 +25,7 @@ export function SessionMessages(
   const [result, setResult] = useState<SendResult | null>(null);
   const toField = useRef<HTMLSelectElement>(null);
   const writeButton = useRef<HTMLButtonElement>(null);
+  const textField = useRef<HTMLTextAreaElement>(null);
   // Focus follows the form only after a person opened or closed it, never on the first render.
   const moved = useRef(false);
 
@@ -79,7 +80,11 @@ export function SessionMessages(
     if (!sent) return;
     setResult(sent);
     // A refused text stays, so it can be fixed; a sent one is gone, so it cannot go out twice.
-    if (sent.status !== "refused") setText("");
+    if (sent.status !== "refused") {
+      setText("");
+      // Send is disabled with the empty box, and the focus it held would fall to the page.
+      textField.current?.focus();
+    }
   };
 
   return (
@@ -107,7 +112,12 @@ export function SessionMessages(
           )}
           <Field label={t("sessionMessages.text")}>
             {(control) => (
-              <Textarea {...control} value={text} onChange={(e) => setText(e.target.value)} />
+              <Textarea
+                {...control}
+                ref={textField}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+              />
             )}
           </Field>
           <div className="flex gap-2">

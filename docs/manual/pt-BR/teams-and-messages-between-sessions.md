@@ -25,8 +25,11 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
 - **No app:**
   - **Conversas** (barra lateral) lista as mensagens, a mais nova primeiro, com filtros por estado
     e por time;
-  - cada sessão tem a aba **Mensagens**, com o que ela mandou e recebeu;
-  - nessa aba, **Mandar para outra sessão…** manda uma mensagem da sessão para outra.
+  - cada sessão tem a aba **Mensagens**, com o que ela mandou e recebeu; cada linha diz a outra
+    sessão (**Para** ou **De**), e ao passar o mouse aparecem os ids;
+  - nessa aba, **Mandar para outra sessão…** manda uma mensagem da sessão para outra. Uma mensagem
+    enviada esvazia a caixa, para não sair duas vezes; uma recusada continua lá, para você corrigir.
+    Sem nenhuma sessão para receber, o formulário avisa.
 
 ## Nomes padronizados de sessão
 
