@@ -99,29 +99,25 @@ describe("budgets by host (#3912)", () => {
     expect(document.activeElement === heading("beta")).toBe(true); // NOSONAR: a DOM node in a failed toBe would print the page
   });
 
-  test("with no host the panels are in order, all folded, and the first heading is focused", async () => {
+  test("with no host the panels are in order and all open, as before (#3912)", async () => {
     const { store } = await setup(["costs", "costs"]);
     await act(async () => store.router.push({ name: "settings", section: "budgets" }));
     await settle(() => panels().length === 2);
     expect(panels()).toEqual(["Orçamentos de alfa", "Orçamentos de beta"]);
-    expect(heading("alfa")?.getAttribute("aria-expanded")).toBe("false");
-    expect(heading("beta")?.getAttribute("aria-expanded")).toBe("false");
-    await settleMaybe(() => document.activeElement === heading("alfa"));
-    expect(document.activeElement === heading("alfa")).toBe(true); // NOSONAR: a DOM node in a failed toBe would print the page
+    expect([heading("alfa"), heading("beta")]).toEqual([null, null]);
+    expect([formOf("alfa") !== null, formOf("beta") !== null]).toEqual([true, true]);
   });
 
   test("pressing a folded heading opens its panel, and each form's name carries its host", async () => {
     const { store } = await setup(["costs", "costs"]);
-    await act(async () => store.router.push({ name: "settings", section: "budgets" }));
+    await act(async () => store.router.push({ name: "settings", section: "budgets", host: "h0" }));
     await settle(() => panels().length === 2);
-    expect(formOf("alfa")).toBeNull();
-    expect(heading("alfa")).not.toBeNull();
+    expect(formOf("beta")).toBeNull();
     expect(heading("beta")).not.toBeNull();
     await act(async () => {
-      fireEvent.click(heading("alfa") as HTMLElement);
       fireEvent.click(heading("beta") as HTMLElement);
     });
-    expect(heading("alfa")?.getAttribute("aria-expanded")).toBe("true");
+    expect(heading("beta")?.getAttribute("aria-expanded")).toBe("true");
     expect(formOf("alfa")).not.toBeNull();
     expect(formOf("beta")).not.toBeNull();
   });
