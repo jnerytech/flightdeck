@@ -20,6 +20,7 @@ import { launchFirst } from "./lib/browser/browser.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/browser/visual.ts";
 import { demoFinished, demoInbox, demoSecrets, demoVaultUsage } from "./lib/demo/seeds.ts";
 import { DEMO_AWAY_SINCE } from "./lib/e2e/journeys.ts";
+import { assistantScript } from "./lib/shots/assistant-frames.ts";
 import { holdsScript } from "./lib/shots/holds.ts";
 import { pendingSelectorFor } from "./lib/shots/loaded.ts";
 import { maintenanceScript } from "./lib/shots/maintenance.ts";
@@ -28,6 +29,7 @@ import { releasesScript } from "./lib/shots/releases.ts";
 import { ALFA, DEMO_CLIENTS, DEMO_ROI, type Shot } from "./lib/shots/shot.ts";
 import { sshScript } from "./lib/shots/ssh-frames.ts";
 import { agentShots } from "./lib/shots/table-agent.ts";
+import { assistantShots, demoAssistantPrefs } from "./lib/shots/table-assistant.ts";
 import { automationShots } from "./lib/shots/table-automations.ts";
 import { boardShots } from "./lib/shots/table-board.ts";
 import { harnessShots } from "./lib/shots/table-harness.ts";
@@ -86,6 +88,7 @@ function shots(ids: DemoIds): Shot[] {
     ...permissionShots(ids),
     ...snippetShots(ids),
     ...teleportShots(ids),
+    ...assistantShots(ids),
   ];
 }
 
@@ -165,6 +168,8 @@ interface StorageSeed {
   teleportPreview: boolean;
   /** The app's automatic update is off (#4059). */
   autoUpdateOff: boolean;
+  /** The AI assistant's preferences: set up with the demo host (#4168). */
+  assistant: string | null;
 }
 
 /** Runs in the page before it loads (so it holds no outside names): the storage of a print. */
@@ -196,6 +201,8 @@ function seedStorage(seed: StorageSeed): void {
       "flightdeck.autoUpdate",
       // The tool cards' print dismisses a note (#4099): not for the next start screen.
       "flightdeck.setupToolsDismissed",
+      // The wand prints set the assistant up (#4168): not for the next print, which must start with no provider.
+      "flightdeck.assistant",
     ]) {
       localStorage.removeItem(key);
     }
@@ -216,6 +223,7 @@ function seedStorage(seed: StorageSeed): void {
     if (seed.away) localStorage.setItem("flightdeck.lastActive", seed.away);
     if (seed.teleportPreview) localStorage.setItem("flightdeck.teleportPreview", "true");
     if (seed.autoUpdateOff) localStorage.setItem("flightdeck.autoUpdate", "false");
+    if (seed.assistant) localStorage.setItem("flightdeck.assistant", seed.assistant);
   } catch {
     // No storage, no clients.
   }
@@ -259,6 +267,7 @@ function storageSeed(shot: Shot, lang: string, ids: DemoIds): StorageSeed {
     simple: shot.simple === true,
     teleportPreview: shot.teleportPreview === true,
     autoUpdateOff: shot.autoUpdateOff === true,
+    assistant: shot.assistantReady ? demoAssistantPrefs() : null,
   };
 }
 
@@ -275,6 +284,7 @@ async function installScripts(page: Page, shot: Shot): Promise<void> {
   if (shot.teleport) {
     await page.addInitScript({ content: teleportScript(shot.teleport === "refuses") });
   }
+  if (shot.assistant) await page.addInitScript({ content: assistantScript(shot.assistant) });
 }
 
 /** One print and its checks (theme, layout, accessibility); what is wrong goes to `problems`. */
