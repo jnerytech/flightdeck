@@ -133,6 +133,10 @@ for (const [lang, dict] of [
           .replace("{window}", dict.quota.windows[window])
           .replace("{host}", "alfa");
         expect(within(popover).queryByLabelText(label)).not.toBeNull();
+        // #4306: the meter reads as a percent to a screen reader, not as a fraction.
+        expect(
+          within(popover).queryByLabelText(label)?.getAttribute("aria-valuetext") ?? "",
+        ).toMatch(/^\d+%$/);
       }
       expect(
         within(popover).queryByText(dict.quota.resets.replace("{time}", "14:00")),
@@ -151,9 +155,11 @@ for (const [lang, dict] of [
         fireEvent.change(guardOf(popover, dict) as HTMLElement, { target: { value: "0.7" } });
       });
       await settle(() => quota.state().pauseAt === 0.7);
-      await settle(
-        () => guardOf(screen.queryByRole("dialog") as HTMLElement, dict)?.value === "0.7",
-      );
+      // The guard is busy until the host answers (#4305): the next change waits for it.
+      await settle(() => {
+        const guard = guardOf(screen.queryByRole("dialog") as HTMLElement, dict);
+        return guard?.value === "0.7" && guard.getAttribute("aria-disabled") !== "true";
+      });
       await act(async () => {
         fireEvent.change(guardOf(popover, dict) as HTMLElement, { target: { value: "off" } });
       });

@@ -689,9 +689,9 @@ const MAX_CLI_WORDS = 6;
  * second one stays, since the parser sends `fd fd` to claude, and a later one is an argument. A `start` that another
  * word follows is no word either (#3780).
  */
-export function flightdeckWords(args: string[]): string[] {
+export function flightdeckWords(args: string[], from = 0): string[] {
   const words: string[] = [];
-  for (let i = 0; i < args.length && words.length < MAX_CLI_WORDS; i++) {
+  for (let i = from; i < args.length && words.length < MAX_CLI_WORDS; i++) {
     const arg = args[i] as string;
     if (VALUE_OPTIONS.has(arg)) i++;
     else if (!arg.startsWith("-")) words.push(arg);
@@ -741,9 +741,14 @@ export function runsFlightdeckWords(
   // here as `readArguments` marks it for the CLI itself: a rule reads it as unknown, not as the word it looks like.
   return runnerReadings(args).some((reading) => {
     const words = reading.map((w) => (/[$`*?[{]/.test(w) ? w + EXPANDS : w));
+    // A rule that declares exactly one parameter reads no words of its own, so it is not given a copy of the text after
+    // each start: the copies are quadratic in the text, once per rule (a line of 2000 starts took 4 s on a loaded Pi,
+    // #4317). Any other shape (two parameters, a rest parameter) gets the copy, so a rule never rates lower for it.
+    const ownWords = matches.length !== 1;
     return words.some(
       (_, i) =>
-        startsCli(words, i) && matches(flightdeckWords(words.slice(i + 1)), words.slice(i + 1)),
+        startsCli(words, i) &&
+        matches(flightdeckWords(words, i + 1), ownWords ? words.slice(i + 1) : []),
     );
   });
 }

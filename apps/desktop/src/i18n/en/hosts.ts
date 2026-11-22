@@ -290,8 +290,15 @@ export const hosts = {
     okHide: "Hide {n} checks with nothing to do",
     optionalAbsent: "Optional · not installed",
     okList: "Working",
+    resultSame: "Checked again: nothing changed",
+    resultChanged: "Checked again: the result changed",
+    fixed: "{name}: fixed",
+    fixedStill: "{name}: still needs attention",
+    stale: "The rows below are from the last read that worked",
+    checkOffline: "Connect the host to check it again",
     service: {
       turnOn: "Turn it on",
+      turnOnRow: "Turn on start at boot",
       messageLinux:
         "Flightdeck will install a user service at ~/.config/systemd/user/flightdeckd.service, so flightdeckd starts at the next boot or login. The daemon running now stays as it is.",
       messageWindows:
@@ -316,6 +323,7 @@ export const hosts = {
     check: "Check again",
     checking: "Checking…",
     readFailed: "Could not read the health: {reason}",
+    offline: "This host is offline",
     allSet: "All set",
     optionalMissing: "{n} optional missing",
     requiredMissing: "{n} required missing",

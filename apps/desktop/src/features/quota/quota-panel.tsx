@@ -4,30 +4,36 @@ import { Button } from "@/components/ui/button";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { Grid } from "@/shared/layout/index.ts";
+import { Meter } from "@/shared/status/index.ts";
 import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
 import { hasFeature, hostsWith } from "../../lib/version.ts";
-import { HISTORY_HOURS, projectionText, quotaBars, quotaGroups, SHOWN } from "./domain/quota.ts";
+import { useNow } from "../hosts/index.ts";
+import {
+  HISTORY_HOURS,
+  noPlanReason,
+  projectionText,
+  quotaBars,
+  quotaGroups,
+  SHOWN,
+} from "./domain/quota.ts";
 import { QuotaGuard } from "./quota-guard.tsx";
 
-// The native meter, drawn with the state tokens (WebKit/Blink and Gecko pseudo-elements).
-const METER =
-  "h-2 w-full [&::-webkit-meter-bar]:h-2 [&::-webkit-meter-bar]:rounded-full [&::-webkit-meter-bar]:border-0 [&::-webkit-meter-bar]:bg-muted";
-const METER_OK =
-  "[&::-webkit-meter-optimum-value]:rounded-full [&::-webkit-meter-optimum-value]:bg-status-running [&::-moz-meter-bar]:bg-status-running";
-const METER_HOT =
-  "[&::-webkit-meter-optimum-value]:rounded-full [&::-webkit-meter-optimum-value]:bg-status-error [&::-moz-meter-bar]:bg-status-error";
+const MINUTE_MS = 60_000;
 
 /** One host's card: its name and the two windows with a bar; with costs (phase 8) each window has its projection as a line of text. */
 function HostQuota(
   props: Readonly<{
     store: AppStore;
     quota: AppState["quota"];
+    account: AppState["account"];
     /** The hosts that share the account: the card shows the reading of the first one that has it. */
     hosts: HostView[];
   }>,
 ) {
   const { store } = props;
   const { t } = store.i18n;
+  // The age of a reading moves every minute, with no new reading (#4303).
+  useNow(MINUTE_MS);
   const host = props.hosts.find((h) => props.quota[h.id]) ?? (props.hosts[0] as HostView);
   const names = props.hosts.map((h) => h.name).join(" · ");
   const quota = props.quota[host.id];
@@ -41,10 +47,10 @@ function HostQuota(
   );
   const costs = hasFeature(host.hostInfo?.features, "costs", false);
   const [projections, setProjections] = useState<Record<string, string>>({});
-  // A new reading may move the projection.
+  // A new reading may move the projection. A host with no window has none to project (#4307).
   const readings = JSON.stringify(quota?.windows ?? []);
   useEffect(() => {
-    if (!costs || readings === "") return;
+    if (!costs || readings === "[]") return;
     void Promise.all(
       SHOWN.map((window) =>
         store.hostCommand(host.id, "quota.history", {
@@ -62,41 +68,51 @@ function HostQuota(
           t,
         );
       }
-      setProjections(texts);
+      // A refused read leaves the window's earlier line, not a card that loses it (#4307).
+      setProjections((held) => ({ ...held, ...texts }));
     });
   }, [store, host.id, costs, readings, t]);
   const anyReading = bars.some((bar) => bar.hasReading);
+  const noPlan = noPlanReason(quota, props.account[host.id], t);
+  const stale = props.account[host.id]?.stale === true;
   return (
     <section
       aria-label={t("quota.region", { host: names })}
       className="flex flex-col gap-3 rounded-lg border bg-card p-4 text-card-foreground"
     >
       <h3 className="font-semibold">{names}</h3>
-      {!anyReading && <p className="text-muted-foreground text-sm">{t("quota.noReading")}</p>}
+      {anyReading && stale && <p className="text-sm text-status-needs-you">{t("account.stale")}</p>}
+      {!anyReading && (
+        <p className="text-muted-foreground text-sm">{noPlan ?? t("quota.noReading")}</p>
+      )}
       {anyReading &&
         bars.map((bar) => (
           <div
             key={bar.window}
             data-window={bar.window}
             data-hot={bar.hot}
+            data-out={bar.out ?? undefined}
             className="flex flex-col gap-1"
           >
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-sm">{bar.label}</span>
-              {bar.hasReading && (
-                <span className={cn("font-medium text-sm", bar.hot && "text-status-error")}>
+              {bar.hasReading && bar.percentKnown && (
+                <span
+                  className={cn("font-medium text-sm", (bar.hot || bar.out) && "text-status-error")}
+                >
                   {`${bar.percent}%`}
                 </span>
               )}
             </div>
             {bar.hasReading ? (
               <>
-                <meter
-                  aria-label={t("quota.meter", { window: bar.label, host: names })}
-                  min={0}
-                  max={1}
+                <Meter
+                  label={t("quota.meter", { window: bar.label, host: names })}
                   value={bar.value}
-                  className={cn(METER, bar.hot ? METER_HOT : METER_OK)}
+                  max={1}
+                  valueText={`${bar.percent}%`}
+                  hot={bar.hot || bar.out !== null}
+                  className="w-full"
                 />
                 <div className="flex flex-wrap gap-x-3 text-muted-foreground text-xs">
                   {bar.reset && <span>{bar.reset}</span>}
@@ -111,6 +127,14 @@ function HostQuota(
             )}
           </div>
         ))}
+      {bars.map(
+        (bar) =>
+          bar.out && (
+            <p key={bar.window} className="text-sm text-status-needs-you">
+              {t(`quota.out.${bar.out}`, { window: bar.label })}
+            </p>
+          ),
+      )}
       {hotHosts.length > 0 && (
         <>
           {hotHosts.map((h) => (
@@ -166,7 +190,13 @@ export const QuotaPanel = memo(function QuotaPanel(props: { store: AppStore }) {
   return (
     <Grid cols={{ base: 1, md: 2, xl: 3 }} gap={4}>
       {quotaGroups(hosts, state.account).map((group) => (
-        <HostQuota key={group.key} store={store} quota={state.quota} hosts={group.hosts} />
+        <HostQuota
+          key={group.key}
+          store={store}
+          quota={state.quota}
+          account={state.account}
+          hosts={group.hosts}
+        />
       ))}
     </Grid>
   );

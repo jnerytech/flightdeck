@@ -58,11 +58,16 @@ export const account = {
     resets: "resets at {time}",
     read: "read {ago}",
     hotNotice: "{host}: over {pct}%: new cards wait for the quota; manual sessions go on.",
+    out: {
+      full: "{window}: the plan is at 100%.",
+      rejected: "{window}: the plan refused this window.",
+    },
     guard: {
       label: "New cards wait from",
       labelFor: "New cards wait from, on {host}",
       off: "Never",
       hint: "Sessions already running are never stopped.",
+      failed: "Could not change the guard. Try again.",
       readOnly:
         "New cards wait from {pct}%. This host cannot change it from the app: update flightdeckd.",
       readOnlyOff: "The guard is off. This host cannot change it from the app: update flightdeckd.",

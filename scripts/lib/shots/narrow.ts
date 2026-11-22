@@ -100,6 +100,10 @@ export const NARROW_SHOTS: readonly string[] = [
   "agente-mcp-novo",
   "agente-mcp-testar",
   "agente-mcp-linha-longa",
+  // #4297: Conversations (also cut), and the Messaging rules with a long project path and long session ids, at 390.
+  "conversas",
+  "conversas-cortada",
+  "configuracoes-mensagens-longos",
   // #4269: the Files tab's bad name, discard and stale states and the cut Context carry long text; they wrap at 390.
   "agente-skills-nome-invalido",
   "agente-agentes-descartar",
@@ -123,6 +127,17 @@ export const NARROW_SHOTS: readonly string[] = [
   "projeto-conhecimento-criar-erro",
   "agente-memoria",
   "agente-memoria-nome-erro",
+  // #4287: the Run environment panel's states carry commands, a ports line and a process row with up to three buttons; they wrap at 390.
+  "card-ambiente-revisar",
+  "card-ambiente-confiar",
+  "card-ambiente-confianca-recusada",
+  "card-ambiente-erros",
+  "card-ambiente-parado",
+  "card-ambiente-setup",
+  "card-ambiente-rodando",
+  "card-ambiente-caiu",
+  "card-ambiente-falhou",
+  "card-ambiente-recusado",
   // #4215: the Personas list, the editor of one, its field errors and the row with the most buttons; they wrap at 390.
   "personas",
   "personas-editor-existing",

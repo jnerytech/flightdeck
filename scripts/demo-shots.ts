@@ -28,6 +28,7 @@ import { narrowSizes, unknownNarrowShots } from "./lib/shots/narrow.ts";
 import { releasesScript } from "./lib/shots/releases.ts";
 import { ALFA, DEMO_CLIENTS, DEMO_ROI, type Shot } from "./lib/shots/shot.ts";
 import { sshScript } from "./lib/shots/ssh-frames.ts";
+import { activityShots } from "./lib/shots/table-activity.ts";
 import { agentShots } from "./lib/shots/table-agent.ts";
 import { contextShots, filesShots } from "./lib/shots/table-agent-files.ts";
 import { mcpShots } from "./lib/shots/table-agent-mcp.ts";
@@ -42,8 +43,10 @@ import { harnessShots } from "./lib/shots/table-harness.ts";
 import { hostShots } from "./lib/shots/table-hosts.ts";
 import { issuesShots } from "./lib/shots/table-issues.ts";
 import { knowledgeShots, memoryShots } from "./lib/shots/table-knowledge.ts";
+import { messagingShots } from "./lib/shots/table-messaging.ts";
 import { permissionShots } from "./lib/shots/table-permissions.ts";
 import { personaShots } from "./lib/shots/table-personas.ts";
+import { runenvShots } from "./lib/shots/table-runenv.ts";
 import { shellShots } from "./lib/shots/table-shell.ts";
 import { snippetShots } from "./lib/shots/table-snippets.ts";
 import { teleportShots } from "./lib/shots/table-teleport.ts";
@@ -90,8 +93,10 @@ function shots(ids: DemoIds): Shot[] {
     ...shellShots(ids),
     ...boardShots(ids),
     ...changesShots(ids),
+    ...runenvShots(ids),
     ...agentShots(ids),
     ...mcpShots(ids),
+    ...activityShots(ids),
     ...filesShots(ids),
     ...contextShots(ids),
     ...timelineShots(ids),
@@ -101,6 +106,7 @@ function shots(ids: DemoIds): Shot[] {
     ...knowledgeShots(ids),
     ...memoryShots(ids),
     ...issuesShots(ids),
+    ...messagingShots(ids),
     ...devicesShots(ids),
     ...permissionShots(ids),
     ...personaShots(ids),
@@ -223,6 +229,8 @@ function seedStorage(seed: StorageSeed): void {
       "flightdeck.setupToolsDismissed",
       // The wand prints set the assistant up (#4168): not for the next print, which must start with no provider.
       "flightdeck.assistant",
+      // The Activity print with idle sessions turns Show idle on (#4244): the app keeps it, not for the next print.
+      "flightdeck.activityIdle",
     ]) {
       localStorage.removeItem(key);
     }

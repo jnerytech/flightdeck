@@ -35,6 +35,31 @@ export function onSubscription(
   return (quota?.windows.length ?? 0) > 0 || account?.status === "signed_in";
 }
 
+/**
+ * Why a host has no plan quota to show, in words: its account is an API key, a third-party
+ * provider or not signed in (#4302). `null` when it has a reading, is on a subscription, or its
+ * account is not read yet, so "no reading yet" stays for a reading that can still come.
+ */
+export function noPlanReason(
+  quota: QuotaState | undefined,
+  account: Pick<AccountState, "status" | "provider" | "readAt" | "error"> | undefined,
+  t: T,
+): string | null {
+  if (!account || onSubscription(quota, account)) return null;
+  switch (account.status) {
+    case "api_key":
+      return t("account.apiKey");
+    case "third_party":
+      return t("account.provider", { provider: account.provider ?? "" });
+    case "signed_out":
+      return t("account.signedOut.title");
+    default:
+      // `unknown` before the first read is not an answer yet; after a failed read it says so.
+      if (account.readAt === null && !account.error) return null;
+      return account.error ? t("account.unavailable") : t("account.unknownSignIn");
+  }
+}
+
 /** The two windows the app shows for every host, in order. */
 export const SHOWN = ["five_hour", "seven_day"];
 
@@ -48,6 +73,10 @@ export interface QuotaBar {
   percent: number;
   /** At or over `pauseAt` (or rejected): new cards wait. */
   hot: boolean;
+  /** The plan's own word, whatever the guard: rejected, or at 100% (#4304). */
+  out: "full" | "rejected" | null;
+  /** False for a rejected window the host gave no use for: its "0%" would be made up. */
+  percentKnown: boolean;
   /** "reinicia às 15:00" and "lida há 12 min"; empty without a reading. */
   reset: string;
   age: string;
@@ -57,6 +86,12 @@ export interface QuotaBar {
 export function isHot(window: QuotaWindow, pauseAt: number | null): boolean {
   if (pauseAt === null) return false;
   return window.status === "rejected" || (window.utilization ?? 0) >= pauseAt;
+}
+
+/** Whether the plan rejected the window or it is at 100%: a fact, whatever the guard (#4304). */
+function outOf(window: QuotaWindow): QuotaBar["out"] {
+  if (window.status === "rejected") return "rejected";
+  return (window.utilization ?? 0) >= 1 ? "full" : null;
 }
 
 /** Percentage, reset time and age of the 5-hour and 7-day windows of a host. */
@@ -77,6 +112,8 @@ export function quotaBars(
         value: 0,
         percent: 0,
         hot: false,
+        out: null,
+        percentKnown: false,
         reset: "",
         age: "",
       };
@@ -88,6 +125,8 @@ export function quotaBars(
       value: reading.utilization ?? 0,
       percent: Math.round((reading.utilization ?? 0) * 100),
       hot: isHot(reading, quota?.pauseAt ?? null),
+      out: outOf(reading),
+      percentKnown: reading.utilization !== null || reading.status !== "rejected",
       reset: reading.resetsAt ? t("quota.resets", { time: formatTime(reading.resetsAt) }) : "",
       age: t("quota.read", { ago: formatAgo(now - Date.parse(reading.readAt), t) }),
     };

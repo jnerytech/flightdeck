@@ -5,7 +5,7 @@ import {
   type ServiceInstallResult,
 } from "@flightdeck/protocol";
 import { Check, ChevronRight, Copy, Minus, TriangleAlert, X } from "lucide-react";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Panel, Stack } from "@/shared/layout/index.ts";
@@ -14,6 +14,7 @@ import type { Key } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import type { DepLook } from "../deps/index.ts";
 import {
+  type Asked,
   type Confirming,
   checkRow,
   depRow,
@@ -22,6 +23,8 @@ import {
   healthCounts,
   needsYou,
   type RowEnv,
+  resultFor,
+  signatureOf,
   uncoveredChecks,
 } from "./domain/host-health-rows.ts";
 
@@ -71,6 +74,9 @@ export function HostHealth(
   const lingerLine = serviceDone ? `sudo loginctl enable-linger ${serviceDone.user}` : "";
   const [showFine, setShowFine] = useState(false);
   const fineId = useId();
+  // What Check again or a fix was asked at: the answer is what changed since (#4323, #4324).
+  const [asked, setAsked] = useState<Asked | null>(null);
+  const headRef = useRef<HTMLOutputElement>(null);
   const os = host.hostInfo?.os ?? "";
   const offer = host.hostInfo?.update;
   const update = offer?.available ? offer.version : null;
@@ -92,9 +98,13 @@ export function HostHealth(
     checks: checks.map((check) => checkRow(check, env)),
   };
   const { required, optional } = healthCounts(items, checks);
+  // The page's own test: a host that is not reachable cannot be asked anything.
+  const unreachable = host.status !== "online" && host.status !== "incompatible";
+  const offline = host.status === "offline";
   const { text: headline, look: headlineLook } = headlineFor(
     {
       error: props.error ?? null,
+      offline,
       read: props.deps !== null || props.doctor !== null,
       required,
       optional,
@@ -159,6 +169,35 @@ export function HostHealth(
   const all = [...rows.required, ...rows.optional, ...rows.checks];
   const fine = all.filter((row) => !needsYou(row));
   const count = (tone: DepLook["tone"]) => all.filter((row) => row.look.tone === tone).length;
+  const signature = signatureOf(items, checks);
+  // The latest read, for a fix that asks after its command ran: its closure is the click's.
+  const latest = useRef({ signature, checkedAt: props.checkedAt });
+  latest.current = { signature, checkedAt: props.checkedAt };
+  const ask = (fix: Asked["fix"]) =>
+    setAsked({
+      before: latest.current.signature,
+      fix,
+      name: all.find((row) => row.key === fix)?.name ?? "",
+      at: latest.current.checkedAt,
+      answer: null,
+    });
+  const fresh =
+    asked?.answer === null
+      ? resultFor(
+          asked,
+          { signature, checkedAt: props.checkedAt, error: props.error ?? null },
+          all,
+          t,
+        )
+      : null;
+  // The first newer read is the answer and stays. The button Check again or a fix was pressed on
+  // can be gone or disabled by then, and the focus with it: it goes to the headline.
+  useEffect(() => {
+    if (!fresh) return;
+    setAsked((prev) => (prev?.answer === null ? { ...prev, answer: fresh } : prev));
+    if (document.activeElement === document.body) headRef.current?.focus();
+  }, [fresh]);
+  const result = offline ? null : (asked?.answer ?? fresh);
   const group = (which: "required" | "optional" | "checks") => {
     const problems = rows[which].filter(needsYou);
     return problems.length === 0 ? null : (
@@ -195,13 +234,14 @@ export function HostHealth(
   return (
     <Panel title={t("hostHealth.title")} label={t("hostHealth.title")} slot="host-health">
       <div data-slot="health-summary" className="health-summary">
-        <output className="dep-line">
+        <output ref={headRef} tabIndex={-1} className="dep-line">
           <HeadIcon
             data-slot="dep-icon"
             aria-hidden="true"
             className={toneClass(headlineLook.tone)}
           />
           <strong>{headline}</strong>
+          {result && <span className="dep-found">{result}</span>}
         </output>
         {all.length > 0 && (
           <span className="dep-found">
@@ -212,6 +252,9 @@ export function HostHealth(
             })}
           </span>
         )}
+        {(props.error || offline) && all.length > 0 && (
+          <span className="dep-found">{t("hostHealth.stale")}</span>
+        )}
         {/* Outside the live region: the age changes every minute and must not be announced each time. */}
         {props.checkedAt !== null && (
           <span className="dep-found">
@@ -220,7 +263,16 @@ export function HostHealth(
             })}
           </span>
         )}
-        <ActionButton variant="outline" size="sm" onClick={props.onCheck}>
+        <ActionButton
+          variant="outline"
+          size="sm"
+          disabled={unreachable}
+          disabledReason={t("hostHealth.checkOffline")}
+          onClick={() => {
+            ask(null);
+            return props.onCheck();
+          }}
+        >
           {t("hostDeps.check")}
         </ActionButton>
       </div>
@@ -282,6 +334,7 @@ export function HostHealth(
           onConfirm={() => {
             setConfirming(null);
             void store.hostCommand(host.id, "hooks.install", { confirm: true }).then(() => {
+              ask("hooks");
               props.onHooksChanged();
               return props.onCheck();
             });
@@ -301,6 +354,7 @@ export function HostHealth(
             setConfirming(null);
             void store.hostCommand(host.id, "service.install", { confirm: true }).then((result) => {
               if (result) setServiceDone(result);
+              ask("service");
               return props.onCheck();
             });
           }}

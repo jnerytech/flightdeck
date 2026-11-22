@@ -61,6 +61,7 @@ export const account = {
       labelFor: "Cartões novos esperam a partir de, em {host}",
       off: "Nunca",
       hint: "Sessões que já estão rodando nunca são paradas.",
+      failed: "Não deu para mudar a trava. Tente de novo.",
       readOnly:
         "Cartões novos esperam a partir de {pct}%. Este host não deixa mudar pelo app: atualize o flightdeckd.",
       readOnlyOff:
@@ -77,6 +78,10 @@ export const account = {
       openHostOf: "Abrir a página de {host}",
     },
     hotNotice: "{host}: cota acima de {pct}%: cards novos esperam a cota; sessões manuais seguem.",
+    out: {
+      full: "{window}: o plano está em 100%.",
+      rejected: "{window}: o plano recusou esta janela.",
+    },
     projection: {
       few: "poucas leituras para projetar",
       exhausts: "no ritmo atual, a janela de {window} esgota às {time}",
