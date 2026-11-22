@@ -58,6 +58,8 @@ export const automations = {
     empty: "Nenhuma automação neste projeto",
     emptyAction: "Criar a primeira automação",
     loading: "Carregando automações",
+    failed: "Não deu para ler as automações. Veja se o host está conectado.",
+    retry: "Tentar de novo",
     new: "Nova automação",
     editTitle: "Editar automação",
     row: "Automação {name}",
