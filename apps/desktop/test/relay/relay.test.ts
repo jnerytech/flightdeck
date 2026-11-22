@@ -60,6 +60,41 @@ describe("relay: the app carries messages between the daemons of different hosts
     ]);
   });
 
+  test("a refusal's key and values travel with its reason, from the recipient's answer and from its update", async () => {
+    const why = { reasonKey: "messaging_no_route", reasonParams: { limit: 3 } };
+    const { deps, calls } = setup({
+      "B messages.relay": { status: "refused", reason: "outro projeto", ...why },
+    });
+    await relayMessage(deps, "A", MESSAGE);
+    expect(calls.at(-1)).toEqual([
+      "A",
+      "messages.relayed",
+      { id: "m1", status: "refused", reason: "outro projeto", ...why },
+    ]);
+    const update = setup();
+    const refused: MessageInfo = {
+      id: "m3",
+      fromSession: "s1",
+      fromHost: "host-a",
+      toSession: "s2",
+      toHost: "host-b",
+      text: "oi",
+      status: "refused",
+      reason: "laço",
+      ...why,
+      createdAt: "2026-10-30T12:00:00.000Z",
+      deliveredAt: null,
+      teamId: null,
+      kind: "session",
+    };
+    await relayUpdate(update.deps, "B", refused);
+    expect(update.calls.at(-1)).toEqual([
+      "A",
+      "messages.relayed",
+      { id: "m3", status: "refused", reason: "laço", ...why },
+    ]);
+  });
+
   test("a host that is offline (no authenticated hello) or unknown gets nothing: the message waits in the origin's queue", async () => {
     const { deps, calls } = setup();
     await relayMessage(deps, "A", { ...MESSAGE, toHost: "host-c" });
