@@ -55,7 +55,9 @@ describe.each(["en", "pt-BR"] as const)("the guard while the host answers (%s)",
     render(guard(ask.setPause, 0.8));
     await choose("0.9");
     expect(select().value).toBe("0.9");
-    expect(select().disabled).toBe(true);
+    // Not `disabled`: a focused select that gets disabled loses the keyboard's place.
+    expect(select().disabled).toBe(false);
+    expect(select().getAttribute("aria-disabled")).toBe("true");
     expect(select().getAttribute("aria-busy")).toBe("true");
     await choose("0.6");
     expect(ask.calls).toEqual([0.9]);
@@ -68,7 +70,7 @@ describe.each(["en", "pt-BR"] as const)("the guard while the host answers (%s)",
     await ask.answer(true);
     view.rerender(guard(ask.setPause, 0.9));
     expect(select().value).toBe("0.9");
-    expect(select().disabled).toBe(false);
+    expect(select().getAttribute("aria-disabled")).toBe("false");
     expect(failed()).toBeNull();
   });
 
@@ -78,7 +80,7 @@ describe.each(["en", "pt-BR"] as const)("the guard while the host answers (%s)",
     await choose("0.9");
     await ask.answer(false);
     expect(select().value).toBe("0.8");
-    expect(select().disabled).toBe(false);
+    expect(select().getAttribute("aria-disabled")).toBe("false");
     expect(failed()).not.toBeNull();
     await choose("0.7");
     expect(failed()).toBeNull();

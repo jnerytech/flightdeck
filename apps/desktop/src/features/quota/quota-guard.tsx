@@ -68,7 +68,7 @@ export function QuotaGuard(
           inline
           aria-label={t("quota.guard.labelFor", { host: host.name })}
           value={shown === null ? OFF : String(shown)}
-          disabled={busy}
+          aria-disabled={busy}
           aria-busy={busy}
           onChange={(event) =>
             void change(event.target.value === OFF ? null : Number(event.target.value))
