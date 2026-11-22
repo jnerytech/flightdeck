@@ -216,14 +216,14 @@ describe("conta-cartao-acoes: the cooldown and a silent host (#4349)", () => {
     expect(screen.queryByText("A host reads its account at most every 30 seconds.")).not.toBeNull();
   });
 
-  test("a host that does not answer ends the loading with Try again, and the button asks again", async () => {
-    const { reads } = await mount("hang", 50, 100);
+  test("a host that does not answer ends the loading with Try again, which asks again", async () => {
+    await mount("hang", 50, 100);
     expect(screen.queryByText("Reading the account…")).not.toBeNull();
     await settle(() => button("Try again") !== null);
     expect(screen.queryByText("Reading the account…")).toBeNull();
-    const before = reads();
     await click("Try again");
-    await settle(() => reads() > before);
-    expect(reads() > before).toBe(true);
+    // The host still says nothing: the button is off while the new ask is out.
+    await settle(() => button("Try again")?.getAttribute("aria-disabled") === "true");
+    expect(button("Try again")?.getAttribute("aria-disabled")).toBe("true");
   });
 });

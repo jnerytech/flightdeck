@@ -1,10 +1,12 @@
 import type { AccountState, QuotaWindow } from "@flightdeck/protocol";
+import { useId } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import { formatAgo, formatDuration } from "../../i18n/format.ts";
 import type { Key } from "../../i18n/index.ts";
+import { isAccountPending } from "./pending.ts";
 
 export interface AccountCardProps {
   hostName: string;
@@ -150,7 +152,14 @@ function SignedOutBody(
 function UnknownBody(props: Readonly<{ state: AccountState; refresh: Refresh }>) {
   const t = useT();
   const { state, refresh } = props;
-  if (!state.error) return <p className="text-sm">{t("account.unknownSignIn")}</p>;
+  if (!state.error) {
+    return (
+      <>
+        <p className="text-sm">{t("account.unknownSignIn")}</p>
+        {refresh(t("account.refresh"))}
+      </>
+    );
+  }
   return (
     <>
       <div role="alert">
@@ -224,10 +233,6 @@ function SignedInBody(
   );
 }
 
-/** Nothing was read from the host yet, and nothing went wrong either. */
-const notReadYet = (state: NonNullable<AccountCardProps["state"]>) =>
-  state.status === "unknown" && state.readAt === null && !state.error;
-
 /**
  * The Claude account a host's own `claude` is signed in to: who, the plan and its windows. It
  * shows what the host reports and never asks for a login, a code or a token.
@@ -235,20 +240,31 @@ const notReadYet = (state: NonNullable<AccountCardProps["state"]>) =>
 export function AccountCard(props: Readonly<AccountCardProps>) {
   const t = useT();
   const { hostName, online, state, now, formatTime } = props;
+  const hintId = useId();
+  const off = props.refreshing || props.cooling === true;
+  // The host refuses a sooner read: while the button is off for that, it says so.
   const refresh = (label: string, named = true) => (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      aria-disabled={props.refreshing || undefined}
-      className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
-      {...(named ? { "aria-label": t("account.refreshLabel", { host: hostName }) } : {})}
-      onClick={() => {
-        if (!props.refreshing) props.onRefresh();
-      }}
-    >
-      {label}
-    </Button>
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        aria-disabled={off || undefined}
+        aria-describedby={props.cooling && !props.refreshing ? hintId : undefined}
+        className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
+        {...(named ? { "aria-label": t("account.refreshLabel", { host: hostName }) } : {})}
+        onClick={() => {
+          if (!off) props.onRefresh();
+        }}
+      >
+        {label}
+      </Button>
+      {props.cooling && !props.refreshing && (
+        <span id={hintId} className="text-muted-foreground text-xs">
+          {t("account.cooldown")}
+        </span>
+      )}
+    </>
   );
 
   let body: React.ReactNode;
@@ -256,7 +272,17 @@ export function AccountCard(props: Readonly<AccountCardProps>) {
     body = (
       <p className="text-muted-foreground text-sm">{t("account.offline", { host: hostName })}</p>
     );
-  } else if (state === undefined || notReadYet(state)) {
+  } else if (isAccountPending(state) && props.timedOut) {
+    // The host has not answered in the time the screen waits: say so, and let the person ask again.
+    body = (
+      <>
+        <div role="alert">
+          <p className="font-medium text-sm">{t("account.unavailable")}</p>
+        </div>
+        {refresh(t("account.retry"), false)}
+      </>
+    );
+  } else if (state === undefined || isAccountPending(state)) {
     body = <output className="text-muted-foreground text-sm">{t("account.loading")}</output>;
   } else if (state.status === "signed_out") {
     body = (

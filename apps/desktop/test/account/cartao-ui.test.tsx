@@ -449,9 +449,9 @@ describe("conta-cartao-ui: what the card says after a read and when the host is 
     const button = inCard().queryByRole("button", { name: REFRESH });
     expect(button?.getAttribute("aria-disabled")).toBe("true");
     const hint = button?.getAttribute("aria-describedby");
-    expect(
-      hint !== null && hint !== undefined && document.getElementById(hint)?.textContent,
-    ).toBe("A host reads its account at most every 30 seconds.");
+    expect(hint !== null && hint !== undefined && document.getElementById(hint)?.textContent).toBe(
+      "A host reads its account at most every 30 seconds.",
+    );
   });
 
   test("a read in flight still says Reading…, and a card not cooling gives no reason", () => {
@@ -467,9 +467,9 @@ describe("conta-cartao-ui: what the card says after a read and when the host is 
   test("a host that never answers ends the loading with an alert and a Try again button", () => {
     show({ state: undefined, timedOut: true });
     expect(inCard().queryByText("Reading the account…")).toBeNull();
-    expect(inCard().queryByRole("alert")?.textContent?.includes("The account could not be read.")).toBe(
-      true,
-    );
+    expect(
+      inCard().queryByRole("alert")?.textContent?.includes("The account could not be read."),
+    ).toBe(true);
     expect(inCard().queryByRole("button", { name: "Try again" })).not.toBeNull();
   });
 
