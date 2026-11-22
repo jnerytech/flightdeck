@@ -108,16 +108,29 @@ describe("what each Changes state's print does on the page (#4229)", () => {
   });
 
   test("the PR comments come from the page's wire: a list with an outside author, none, and a refusal", () => {
+    // Answered in the page: the demo's fake gh has no answer for the PR's comments, and a refused
+    // host answer would not be rewritten.
     const list = wireOf("card-pr-comentarios").find((r) => r.command === "pr.comments");
-    const comments = (list && "data" in list ? list.data : { comments: [] }) as {
+    const comments = (list && "reply" in list ? list.reply : { comments: [] }) as {
       comments: Array<{ authorAssociation: string | null }>;
     };
     expect(comments.comments.some((c) => c.authorAssociation === "NONE")).toBe(true);
     expect(wireOf("card-pr-comentarios-vazio")[0]).toEqual({
       command: "pr.comments",
-      data: { comments: [] },
+      reply: { comments: [] },
     });
-    expect(wireOf("card-pr-comentarios-falhou")[0]).toMatchObject({ command: "pr.comments" });
+    expect(wireOf("card-pr-comentarios-falhou")[0]).toMatchObject({
+      command: "pr.comments",
+      reject: expect.any(String),
+    });
+    // The PR card has no worktree, so its diff is answered in the page too.
+    for (const name of [
+      "card-pr-comentarios",
+      "card-pr-comentarios-vazio",
+      "card-pr-comentarios-falhou",
+    ]) {
+      expect(wireOf(name).find((r) => r.command === "changes.get")).toHaveProperty("reply");
+    }
   });
 
   test("the file-kind print lists a binary, a hidden and a too-large file, each with no lines", () => {
