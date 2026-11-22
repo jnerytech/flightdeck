@@ -126,6 +126,9 @@ type StartOptions = {
   memoryReading?: NonNullable<MemoryGateDeps["reading"]>;
   /** How the project key asks git; the process itself when absent (tests hold it). */
   projectGit?: AsyncGitRunner;
+  /** This daemon's own command line, as the helpers it spawns call it back (#3989); the process's own when absent. For the demo and tests that run the
+   * daemon inside another program: never built from the config, the environment or a message, or a far connection would choose what a helper runs. */
+  self?: string[];
   /** The command line of this daemon, for `service.install` (#1200); its own when absent. */
   serviceSelf?: string[];
   /** Whether a port is free, for the cards' blocks; the real loopback probe when absent. */
@@ -185,7 +188,9 @@ async function bootDaemon(
   const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   const claudePath = config.claude?.executablePath ?? config.claudePath;
   // This daemon's own command line, as the sessions' MCP server, the hooks and the terminals call it back.
-  const selfCommand = daemonCommand(process.execPath, Bun.main);
+  // A host program that runs the daemon in its own process (the demo) says the command to call back; no
+  // environment value or protocol message ever does (#3989).
+  const selfCommand = options.self ?? daemonCommand(process.execPath, Bun.main);
   const mcpServer = flightdeckMcpServer(selfCommand, configFile);
   const {
     runtime,

@@ -271,6 +271,9 @@ export async function host(work: string, name: string): Promise<HostRun> {
       // Issue #1364: the memory the hold on new cards reads is a file the journeys write, never the
       // machine's own (a busy runner would hold every card). No file is no reading, so nothing waits.
       memoryReading: () => demoMemory(memoryFile),
+      // The daemon runs inside the demo, so its own entry is not the program it was started as: the
+      // askpass helper ssh runs must call the daemon's entry, or it starts the demo again (#3989).
+      self: [process.execPath, "run", join(import.meta.dir, "../../../apps/daemon/src/bin.ts")],
     },
   );
   const client = await Client.open(daemon.url, token);
