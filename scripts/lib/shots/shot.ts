@@ -101,7 +101,12 @@ export const agentRoute = (ids: DemoIds): Route => ({
 
 /** The session's timeline sheet, open with its turns loaded. */
 export async function openTimeline(page: Page): Promise<void> {
-  await page.getByRole("button", { name: /^(Linha do tempo|Timeline)$/ }).click();
+  const button = page.getByRole("button", { name: /^(Linha do tempo|Timeline)$/ });
+  const more = page.getByRole("button", { name: /^(Mais ações|More actions)$/ });
+  // A narrow session header keeps its actions in the More actions popover: wait for either one.
+  await button.or(more).first().waitFor();
+  if ((await button.count()) === 0) await more.click();
+  await button.click();
   await page.waitForTimeout(1000);
 }
 
