@@ -46,6 +46,34 @@ describe("terminal-ui: a close the host refuses", () => {
     expect(screen.queryByRole("alertdialog")).not.toBeNull();
   });
 
+  test("a terminal the host no longer has is already closed: the screen leaves", async () => {
+    const d = await setup();
+    await settle(() => state("Ao vivo"));
+    interceptWire(d.store, d.hostId, (type, _payload, next) =>
+      type === "terminal.close"
+        ? Promise.reject(new RequestError("not_found", "terminal t1 does not exist"))
+        : next(),
+    );
+    await click("Fechar terminal");
+    await click("Desanexar");
+    await settle(() => d.closed.length === 1);
+    expect(d.closed).toEqual([1]);
+    expect(screen.queryAllByRole("alert")).toHaveLength(0);
+  });
+
+  test("a failure that is not a host refusal says its message, without the error name", async () => {
+    const d = await setup();
+    await settle(() => state("Ao vivo"));
+    interceptWire(d.store, d.hostId, (type, _payload, next) =>
+      type === "terminal.close" ? Promise.reject(new Error("socket closed")) : next(),
+    );
+    await click("Fechar terminal");
+    await click("Desanexar");
+    await settle(() => alertSays("socket closed"));
+    expect(alertSays("Error:")).toBe(false);
+    expect(d.closed).toEqual([]);
+  });
+
   test("a retry the host accepts leaves the screen and the reason is gone", async () => {
     const d = await setup();
     await settle(() => state("Ao vivo"));
