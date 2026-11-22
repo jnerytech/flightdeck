@@ -176,7 +176,7 @@ function seedStorage(seed: StorageSeed): void {
       "flightdeck.sidebarFolded",
       // Every scoped screen reads the data scope (#126): a print that picks a host does not scope the next.
       "flightdeck.dataScope",
-      // configuracoes-backup-agenda (#1328) turns the schedule on and picks the demo folder: not for the next.
+      // configuracoes-backup-agenda (#1328) and the configuracoes-agenda-* prints (#4001) turn the schedule on and pick the demo folder: not for the next.
       "flightdeck.backupSchedule",
       "flightdeck.demoBackupFolder",
       // The Teleport prints turn the preview on (#3987): not for the next print.

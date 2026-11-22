@@ -296,7 +296,8 @@ export function hostShots(ids: DemoIds): Shot[] {
         await page.getByRole("button", { name: CHOOSE_FOLDER }).click();
         await page.getByText("/demo/backups").first().waitFor();
         await setSchedulePassphrase(page);
-        await page.getByText(/^(Last backup|Último backup):/).waitFor();
+        // The run encrypts with the default scrypt cost, slow on a CI runner.
+        await page.getByText(/^(Last backup|Último backup):/).waitFor({ timeout: 60_000 });
         await showSection(SCHEDULE)(page);
       },
     },
@@ -328,7 +329,7 @@ export function hostShots(ids: DemoIds): Shot[] {
         await setSchedulePassphrase(page);
         await page
           .getByText(/^(The last backup could not be saved|O último backup não pôde ser salvo)/)
-          .waitFor();
+          .waitFor({ timeout: 60_000 });
         await showSection(SCHEDULE)(page);
       },
     },
