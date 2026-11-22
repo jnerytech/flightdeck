@@ -10,6 +10,7 @@ import { type Ack, parseServerMessage } from "@flightdeck/protocol";
 import { startDaemon } from "../../../apps/daemon/src/main.ts";
 import { serializeTemplate } from "../../../apps/daemon/src/templates/domain/template-file.ts";
 import { DEMO_UPDATE_CARDS } from "../e2e/journeys.ts";
+import { DEMO_AUTOMATIONS } from "./automations.ts";
 import { demoHostSetup } from "./hosts.ts";
 import { laggingBranches } from "./lagging.ts";
 import { git, writeHistory } from "./seed-files.ts";
@@ -43,6 +44,33 @@ export async function laggingCards(
       made.path,
       id,
     );
+  }
+  db.close();
+}
+
+/**
+ * #3858: the automations of `DEMO_AUTOMATIONS` in a project, saved through the host (born off), the
+ * one marked on turned on with its confirmation, and its past firings written in the host's database
+ * (a firing needs a clock or an event the demo does not have).
+ */
+export async function seedAutomations(
+  client: Client,
+  where: { projectId: string; db: string },
+): Promise<void> {
+  const db = new Database(where.db);
+  for (const { enabled, runs, ...input } of DEMO_AUTOMATIONS) {
+    const saved = await client.call<{ id: string }>("automation.save", {
+      projectId: where.projectId,
+      ...input,
+    }); // NOSONAR: one after the other, so the list shows them in this order
+    if (enabled) {
+      await client.call("automation.toggle", { id: saved.id, enabled: true, confirm: true });
+    }
+    for (const [i, run] of runs.entries()) {
+      db.query(
+        "INSERT INTO automation_runs (id, automation_id, fired_at, cause, status, detail) VALUES (?, ?, ?, ?, ?, ?)",
+      ).run(`${saved.id}-run-${i}`, saved.id, run.firedAt, run.cause, run.status, run.detail);
+    }
   }
   db.close();
 }

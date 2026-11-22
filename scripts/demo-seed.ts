@@ -41,6 +41,7 @@ import {
   laggingCards,
   PROMPT_ONE,
   PROMPT_TWO,
+  seedAutomations,
   sendTelemetry,
   until,
 } from "./lib/demo/seed-host.ts";
@@ -346,6 +347,11 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     projectId: projectIds.billing as string,
     repo: join(alfa.projects, "billing"),
     worktrees: join(work, "worktrees"),
+    db: join(alfa.dataDir, "flightdeck.db"),
+  });
+  // Issue #3858: the Automations prints' list, its history and its turn-on confirmation.
+  await seedAutomations(client, {
+    projectId: project.id,
     db: join(alfa.dataDir, "flightdeck.db"),
   });
   const card = (title: string, description: string) =>
