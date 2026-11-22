@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useTight } from "@/features/sessions/ui.ts";
+import { useTightBands } from "@/features/sessions/ui.ts";
 import type { AppStore } from "@/lib/app-store";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 
@@ -32,7 +32,7 @@ export function UntrustedNotice(
   const [restarting, setRestarting] = useState(false);
   // Issue #422: in a short session area the notice is one line; the project page lists the rest. So
   // while a request waits for the person (#488).
-  const short = useTight();
+  const short = useTightBands();
   useEffect(() => {
     // No folder yet (the session page before its summary): nothing to ask, and the host refuses "".
     if (!announced || stale || !cwd) return;
