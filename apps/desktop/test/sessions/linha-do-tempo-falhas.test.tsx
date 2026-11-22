@@ -67,22 +67,36 @@ function pending() {
   return { promise, settle };
 }
 
+/** A refusal that carries the host's reason, which the app writes in its own language. */
+const refused = (why: { reason: string; params?: Record<string, string | number> }) => ({
+  refusal: { code: "refused", message: "the host said no", ...why },
+});
+
 /**
- * The timeline's button on a store whose host answers each command as the test says: a result, or
- * `null` for a refusal. Every command sent is recorded, in order.
+ * The timeline's button on a store whose host answers each command as the test says: a result, a
+ * `refused(...)` or `null` for a plain refusal. Every command sent is recorded, in order, and so is
+ * each one that went through `hostCommand`, which puts a refusal in the app banner.
  */
 async function timeline(language: "en" | "pt-BR", answers: Record<string, Answer>, busy = false) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
   cleanups.push(() => store.dispose());
   store.i18n.start();
   const sent: string[] = [];
+  const banner: string[] = [];
   const answer = (type: string) => {
     sent.push(type);
     return (answers[type] ?? (async () => null))();
   };
-  store.hostCommand = ((_host: string, type: string) => answer(type)) as never;
+  store.hostCommand = (async (_host: string, type: string) => {
+    banner.push(type);
+    const data = await answer(type);
+    return data !== null && typeof data === "object" && "refusal" in data ? null : data;
+  }) as never;
   store.hostRequest = (async (_host: string, type: string) => {
     const data = await answer(type);
+    if (data !== null && typeof data === "object" && "refusal" in data) {
+      return { ok: false, ...data.refusal };
+    }
     return data === null
       ? { ok: false, code: "refused", message: "the host said no" }
       : { ok: true, data };
@@ -109,7 +123,7 @@ async function timeline(language: "en" | "pt-BR", answers: Record<string, Answer
   await act(async () => {
     fireEvent.click(open as HTMLElement);
   });
-  return { sent, names };
+  return { sent, banner, names, store };
 }
 
 const click = async (name: string | RegExp) => {
@@ -472,5 +486,158 @@ describe("linha-do-tempo-falhas", () => {
     await click("Rewind files");
     expect(screen.queryByRole("dialog", { name: "Rewind files to turn 1" })).toBeNull();
     expect(screen.queryByText("Files rewound to turn 1.")).not.toBeNull();
+  });
+
+  // #4112: a refusal is told once, where it happened, with the host's reason.
+  const TURN_RUNNING = refused({ reason: "rewind_turn_running" });
+  const TURN_RUNNING_TEXT = "The session is in a turn: stop it before rewinding.";
+
+  test("a refused load of the turns is told once, with the host's reason, and not in the banner", async () => {
+    const { banner } = await timeline("en", { "snapshots.list": async () => TURN_RUNNING });
+    expect(alerts()).toEqual([
+      `Could not load the turns of this session: ${TURN_RUNNING_TEXT}Try again`,
+    ]);
+    expect(banner).not.toContain("snapshots.list");
+  });
+
+  test("a refused load of the turns gives its reason in Portuguese", async () => {
+    await timeline("pt-BR", { "snapshots.list": async () => TURN_RUNNING });
+    expect(alerts()).toHaveLength(1);
+    expect(alerts()[0]).toContain("Não deu para carregar os turnos desta sessão: ");
+    expect(alerts()[0]).toContain("A sessão está em um turno");
+  });
+
+  test("a refused rewind preview keeps its dialog open with the reason once, Rewind stays off and the banner is not used", async () => {
+    const { names, banner } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "rewind.preview": async () => TURN_RUNNING,
+    });
+    await click(names.rewind);
+    expect(screen.queryByRole("dialog", { name: "Rewind files to turn 1" })).not.toBeNull();
+    expect(alerts()).toEqual([`Could not work out what the rewind changes: ${TURN_RUNNING_TEXT}`]);
+    expect(screen.queryByText("Working out what changes…")).toBeNull();
+    expect(isDisabled("Rewind files")).toBe(true);
+    expect(banner).not.toContain("rewind.preview");
+  });
+
+  test("a refused Fork file preview gives its reason once and does not use the banner", async () => {
+    const { names, banner } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "rewind.preview": async () => TURN_RUNNING,
+    });
+    await click(names.fork);
+    await tick("Also rewind the files");
+    expect(alerts()).toEqual([
+      `Could not work out what the rewind changes: ${TURN_RUNNING_TEXT}Try again`,
+    ]);
+    expect(banner).not.toContain("rewind.preview");
+  });
+
+  test("a refused Fork keeps its dialog open with an alert that holds the reason, and Fork can be pressed again", async () => {
+    let tries = 0;
+    const { names, banner } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "session.fork": async () => (++tries === 1 ? TURN_RUNNING : { claudeSessionId: "c2" }),
+    });
+    await click(names.fork);
+    await click("Fork");
+    expect(screen.queryByRole("dialog", { name: "Fork from turn 1" })).not.toBeNull();
+    expect(alerts()).toEqual([`Could not fork the conversation: ${TURN_RUNNING_TEXT}`]);
+    expect(banner).not.toContain("session.fork");
+    expect(isBusy("Fork")).toBe(false);
+    await click("Fork");
+    expect(alerts()).toEqual([]);
+    expect(screen.queryByText(/Conversation forked/)).not.toBeNull();
+  });
+
+  test("a Fork refused for its folder offers to allow the folder, and allowing it sends the Fork again", async () => {
+    let tries = 0;
+    const { names, sent, store } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "session.fork": async () =>
+        ++tries === 1 ? refused({ reason: "cwd_outside_roots", params: { cwd: "/repo" } }) : null,
+    });
+    const allowed: Array<[string, string]> = [];
+    store.roster.allowRoot = (async (host: string, folder: string, retry?: () => void) => {
+      allowed.push([host, folder]);
+      retry?.();
+      return true;
+    }) as never;
+    await click(names.fork);
+    await click("Fork");
+    expect(alerts()[0]).toContain("The folder /repo is outside the host's allowed folders");
+    await click("Add to allowed folders");
+    expect(allowed).toEqual([]);
+    const confirm = screen.queryByRole("alertdialog");
+    expect(confirm).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(
+        within(confirm as HTMLElement).getByRole("button", { name: "Add to allowed folders" }),
+      );
+    });
+    expect(allowed).toEqual([["h1", "/repo"]]);
+    expect(sent.filter((type) => type === "session.fork")).toHaveLength(2);
+  });
+
+  test("a Fork refused for another reason offers no way to allow a folder", async () => {
+    const { names } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "session.fork": async () => TURN_RUNNING,
+    });
+    await click(names.fork);
+    await click("Fork");
+    expect(screen.queryByRole("button", { name: "Add to allowed folders" })).toBeNull();
+  });
+
+  test("a refused Fork reads the same in Portuguese", async () => {
+    const { names } = await timeline("pt-BR", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "session.fork": async () => TURN_RUNNING,
+    });
+    await click(names.fork);
+    await click("Bifurcar");
+    expect(alerts()).toHaveLength(1);
+    expect(alerts()[0]).toContain("Não deu para bifurcar a conversa: ");
+  });
+
+  test("a reload refused after a rewind says so above the list, which stays, and Try again brings the new one", async () => {
+    let loads = 0;
+    const { names, banner } = await timeline("en", {
+      "snapshots.list": async () => (++loads === 2 ? TURN_RUNNING : SNAPSHOTS),
+      "rewind.preview": async () => PREVIEW,
+      "rewind.apply": async () => PREVIEW,
+    });
+    await click(names.rewind);
+    await click("Rewind files");
+    expect(screen.queryByText("Files rewound to turn 1.")).not.toBeNull();
+    expect(alerts()).toEqual([
+      `Could not load the turns of this session: ${TURN_RUNNING_TEXT}Try again`,
+    ]);
+    expect(screen.queryByText("fix the README")).not.toBeNull();
+    expect(banner).not.toContain("snapshots.list");
+    await click("Try again");
+    expect(alerts()).toEqual([]);
+    expect(screen.queryByText("fix the README")).not.toBeNull();
+  });
+
+  // The button that had the focus is gone after Try again: the focus goes on, to the list or to the new Try again.
+  const listHasFocus = () => {
+    const list = screen.queryByRole("list", { name: "Turns" });
+    expect(list).not.toBeNull();
+    const focused = document.activeElement;
+    return focused !== null && focused !== document.body && focused.contains(list);
+  };
+
+  test("after Try again brings the turns, the focus is on the list", async () => {
+    let tries = 0;
+    await timeline("en", { "snapshots.list": async () => (++tries === 1 ? null : SNAPSHOTS) });
+    await click("Try again");
+    expect(listHasFocus()).toBe(true);
+  });
+
+  test("after a Try again that is refused again, the focus is on Try again", async () => {
+    await timeline("en", { "snapshots.list": async () => null });
+    await click("Try again");
+    expect(document.activeElement?.textContent).toBe("Try again");
   });
 });
