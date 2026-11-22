@@ -100,9 +100,9 @@ describe("the Messaging state prints (#4297)", () => {
     expect(find("conversas-cortada")?.route).toEqual({ name: "conversations" });
   });
 
-  test("the silent host answers the first read and refuses every one after it", () => {
+  test("the silent-host print refuses the read on every host, since a rule is per command and not per host", () => {
     const rule = find("conversas-host-mudo")?.wire?.[0];
-    expect(rule && "afterRefuse" in rule ? rule.command : null).toBe("messages.list");
+    expect(rule && "refuse" in rule ? rule.command : null).toBe("messages.list");
   });
 
   test("the Messages tab prints a stalled read, a refused read and the open form, on the session the demo gives messages to", () => {
@@ -138,5 +138,46 @@ describe("the Messaging state prints (#4297)", () => {
     for (const name of ["conversas", "conversas-cortada", "configuracoes-mensagens-longos"]) {
       expect(NARROW_SHOTS).toContain(name);
     }
+  });
+
+  /** The calls a print's `prepare` makes on a page, in order, written out as text. */
+  const callsOf = async (name: string): Promise<string[]> => {
+    const calls: string[] = [];
+    const text = (arg: unknown): string => {
+      if (arg instanceof RegExp || typeof arg === "string") return String(arg);
+      if (typeof arg === "object" && arg !== null) return Object.values(arg).map(text).join(",");
+      return typeof arg;
+    };
+    const member = (call: string): unknown =>
+      new Proxy(
+        (...args: unknown[]) => {
+          calls.push(`${call}(${args.map(text).join(",")})`);
+          return recorder;
+        },
+        { get: (_target, prop) => (recorder as Record<string | symbol, unknown>)[prop] },
+      );
+    const recorder: unknown = new Proxy(() => recorder, {
+      get: (_target, prop) => (prop === "then" ? undefined : member(String(prop))),
+    });
+    await find(name)?.prepare?.(recorder as never);
+    return calls;
+  };
+
+  // LoadingState has no text node, only an accessible name, so a wait on text never resolves.
+  test("the loading print waits for the status region by its name, not for text", async () => {
+    const calls = await callsOf("sessao-mensagens-carregando");
+    expect(calls.some((call) => call.startsWith("getByRole(status"))).toBe(true);
+    expect(
+      calls.some((call) => call.includes("Loading messages") && call.startsWith("getByText")),
+    ).toBe(false);
+  });
+
+  // The Settings card shows its title while the rules load, so the print waits for the long value.
+  test("the long-value print waits for the long path to be on screen after it opens the section", async () => {
+    const calls = await callsOf("configuracoes-mensagens-longos");
+    const section = calls.findIndex((call) => call.includes("Messages between sessions"));
+    const value = calls.findIndex((call) => call.includes("billing-reconciliation-worker"));
+    expect(section).toBeGreaterThan(-1);
+    expect(value).toBeGreaterThan(section);
   });
 });
