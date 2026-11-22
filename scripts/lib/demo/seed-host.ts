@@ -276,6 +276,10 @@ export async function host(work: string, name: string): Promise<HostRun> {
       self: [process.execPath, "run", join(import.meta.dir, "../../../apps/daemon/src/bin.ts")],
     },
   );
+  // The daemon took a free port (the config asks for 0), and the askpass helper ssh runs finds the daemon
+  // through this file, so it must name the port the daemon got (#3989).
+  const written = JSON.parse(readFileSync(config, "utf8")) as Record<string, unknown>;
+  writeFileSync(config, JSON.stringify({ ...written, port: Number(new URL(daemon.url).port) }));
   const client = await Client.open(daemon.url, token);
   return {
     url: daemon.url,
