@@ -321,6 +321,14 @@ describe("changes-compose-ui: commenting by keyboard, and a review put in the me
     expect(screen.queryAllByRole("status").map((el) => el.textContent)).toEqual([""]);
   });
 
+  test("the hidden status line sits inside a positioned panel, so it cannot stretch the page's scroll height (#3890)", async () => {
+    await show({ comments: [draft("c1", "app.ts", 2, "use total")] });
+    const panel = screen.getByRole("region", { name: "Changes" });
+    // sr-only is absolute: with no positioned ancestor it lands past the scroller and grows the page.
+    expect(panel.classList.contains("relative")).toBe(true);
+    expect(panel.contains(screen.getByRole("status"))).toBe(true);
+  });
+
   test("after Remove the focus is on the drafts list, or on the panel when none is left (#3890)", async () => {
     await show({
       comments: [draft("c1", "app.ts", 2, "use total"), draft("c2", "cart.ts", 1, "name it")],
