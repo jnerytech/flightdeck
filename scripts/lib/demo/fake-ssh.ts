@@ -40,9 +40,13 @@ export function installDemoSsh(
   const keysFile = join(work, "ssh-keys.json");
   writeFileSync(keysFile, JSON.stringify(keys));
   const { ssh } = installSshTools(join(work, "ssh-bin"), {
-    FD_FAKE_KEYS: keysFile,
-    FD_FAKE_PASSWORD_SHA256: createHash("sha256").update(DEMO_SSH_PASSWORD).digest("hex"),
-    FD_FAKE_HOLD_MS: String(holdMs),
+    // A key or vault destination keeps the machine's own agent: only the password journey is faked.
+    agent: false,
+    env: {
+      FD_FAKE_KEYS: keysFile,
+      FD_FAKE_PASSWORD_SHA256: createHash("sha256").update(DEMO_SSH_PASSWORD).digest("hex"),
+      FD_FAKE_HOLD_MS: String(holdMs),
+    },
   });
   const dir = dirname(ssh);
   env.PATH = [dir, env.PATH].filter(Boolean).join(delimiter);

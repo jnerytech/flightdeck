@@ -9,13 +9,17 @@ const WIN = process.platform === "win32";
 const shQuote = (word: string) => `'${word.replaceAll("'", String.raw`'\''`)}'`;
 
 /**
- * Writes `ssh`, `ssh-keyscan` and, off Windows, `ssh-agent` and `ssh-add` into `bin`, each a wrapper
- * that runs the fake program in its mode. `env` is written into each wrapper, for a caller whose process
+ * Writes `ssh`, `ssh-keyscan` and, off Windows unless `agent` is false, `ssh-agent` and `ssh-add` into `bin`, each a wrapper
+ * that runs the fake program in its mode. `options.env` is written into each wrapper, for a caller whose process
  * environment is not the one to carry it. Returns the path of the `ssh` wrapper.
  */
-export function installSshTools(bin: string, env: Record<string, string> = {}): { ssh: string } {
+export function installSshTools(
+  bin: string,
+  options: { env?: Record<string, string>; agent?: boolean } = {},
+): { ssh: string } {
+  const { env = {}, agent = true } = options;
   mkdirSync(bin, { recursive: true });
-  const tools = ["ssh", "ssh-keyscan", ...(WIN ? [] : ["ssh-agent", "ssh-add"])];
+  const tools = ["ssh", "ssh-keyscan", ...(WIN || !agent ? [] : ["ssh-agent", "ssh-add"])];
   const mode: Record<string, string> = {
     ssh: "ssh",
     "ssh-keyscan": "keyscan",

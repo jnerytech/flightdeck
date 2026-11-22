@@ -124,7 +124,6 @@ async function freePort(): Promise<number> {
   return port;
 }
 
-/** The fake tools, each a small wrapper that runs `fake-ssh-tools.ts` with bun. */
 const fingerprintOf = (key: string) =>
   `SHA256:${createHash("sha256")
     .update(Buffer.from(key.split(" ")[1] ?? "", "base64"))

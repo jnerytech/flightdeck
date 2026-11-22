@@ -919,7 +919,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       },
     },
     stop: async () => {
-      // Newest first: each restore puts back the PATH it saw, so the oldest must go last.
+      // Newest first: a restore of the claude and gh fakes puts back the PATH it saw, so the oldest goes last.
       ssh.restore();
       claude.restore();
       gh.restore();
