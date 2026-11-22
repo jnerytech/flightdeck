@@ -136,6 +136,48 @@ describe("linha-do-tempo-falhas", () => {
     expect(screen.queryByText("Carregando os turnos…")).toBeNull();
   });
 
+  test("Show files is busy until the host answers, so a second click sends nothing", async () => {
+    const files = pending();
+    const { sent } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "snapshots.files": () => files.promise,
+    });
+    await click("Show files of turn 1");
+    expect(isBusy("Show files of turn 1")).toBe(true);
+    await click("Show files of turn 1");
+    expect(sent.filter((type) => type === "snapshots.files")).toHaveLength(1);
+    await act(async () => files.settle(PREVIEW));
+    expect(screen.queryByText("README.md")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Hide files of turn 1" })).not.toBeNull();
+  });
+
+  test("a refused read of a turn's files says so in its row, and Try again reads them again", async () => {
+    let tries = 0;
+    const { sent } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "snapshots.files": async () => (++tries === 1 ? null : PREVIEW),
+    });
+    await click("Show files of turn 1");
+    expect(alerts().some((text) => text.includes("Could not read the files of turn 1"))).toBe(true);
+    expect(screen.queryByRole("button", { name: "Hide files of turn 1" })).toBeNull();
+    await click("Try again");
+    expect(sent.filter((type) => type === "snapshots.files")).toHaveLength(2);
+    expect(screen.queryByText("README.md")).not.toBeNull();
+    expect(alerts()).toEqual([]);
+  });
+
+  test("a refused read of a turn's files reads the same in Portuguese", async () => {
+    await timeline("pt-BR", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "snapshots.files": async () => null,
+    });
+    await click("Ver arquivos do turno 1");
+    expect(alerts().some((text) => text.includes("Não deu para ler os arquivos do turno 1"))).toBe(
+      true,
+    );
+    expect(screen.queryByRole("button", { name: "Tentar de novo" })).not.toBeNull();
+  });
+
   test("the Fork dialog says when the file preview failed and Try again runs it again", async () => {
     let tries = 0;
     const { sent, names } = await timeline("en", {
