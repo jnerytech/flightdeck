@@ -1,5 +1,5 @@
 import type { RewindPreview } from "@flightdeck/protocol";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,11 +15,12 @@ import {
   ConfirmDialog,
   InlineNotice,
 } from "@/shared/feedback/index.ts";
-import { ErrorState, LoadingState } from "@/shared/layout/index.ts";
+import { ErrorState, Inline, LoadingState } from "@/shared/layout/index.ts";
 import { refusalText } from "../../i18n/errors.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { HostResult } from "../../lib/kernel.ts";
 import { TerminalButton } from "../terminal/ui.ts";
+import { TurnContext } from "./turn-prompt.tsx";
 
 export interface Target {
   store: AppStore;
@@ -60,23 +61,68 @@ function PreviewFiles(
   );
 }
 
+/**
+ * A preview read from the host: refused with the answer kept, so the dialog says why, and read again
+ * on demand. `enabled` holds the read back (the Fork dialog reads only once its files box is ticked).
+ */
+function usePreview(read: () => Promise<HostResult<RewindPreview>>, enabled = true) {
+  const [preview, setPreview] = useState<RewindPreview | null>(null);
+  const [refused, setRefused] = useState<Refused | null>(null);
+  const load = useCallback(() => {
+    setRefused(null);
+    void read().then((result) => {
+      setPreview(result.ok ? result.data : null);
+      setRefused(result.ok ? null : result);
+    });
+  }, [read]);
+  useEffect(() => {
+    if (enabled) load();
+  }, [enabled, load]);
+  return { preview, refused, load };
+}
+
+/** The preview's place in a dialog: the files, the reason it was refused with Try again, or the wait. */
+function PreviewState(
+  props: Readonly<{
+    store: AppStore;
+    preview: RewindPreview | null;
+    refused: Refused | null;
+    onRetry(): void;
+    /** The refusal's sentence: it holds `{reason}`. */
+    failed: "timeline.previewFailed" | "timeline.undoPreviewFailed";
+    empty?: string;
+  }>,
+) {
+  const { t } = props.store.i18n;
+  if (props.preview) {
+    return <PreviewFiles store={props.store} preview={props.preview} empty={props.empty} />;
+  }
+  if (props.refused === null) return <LoadingState label={t("timeline.previewing")} />;
+  const { refused } = props;
+  return (
+    <ErrorState
+      message={t(props.failed, { reason: refusalText(refused.code, refused.message, t, refused) })}
+      retryLabel={t("timeline.retry")}
+      onRetry={props.onRetry}
+    />
+  );
+}
+
 /** "Voltar arquivos até aqui": the preview, then the confirmation. */
 export function RewindDialog(
   props: Omit<Target, "cwd"> & { turn: Turn; onClose(): void; onDone(): void },
 ) {
   const { store, hostId, claudeSessionId, turn } = props;
   const { t } = store.i18n;
-  const [preview, setPreview] = useState<RewindPreview | null>(null);
-  // The preview was refused: the dialog stays open and says why, instead of closing with a banner.
-  const [previewRefused, setPreviewRefused] = useState<Refused | null>(null);
+  // A refused preview keeps the dialog open and says why, instead of closing with a banner.
+  const { preview, refused, load } = usePreview(
+    useCallback(
+      () => store.hostRequest(hostId, "rewind.preview", { claudeSessionId, turn: turn.n }),
+      [store, hostId, claudeSessionId, turn.n],
+    ),
+  );
   // Why the host refused the rewind: the dialog stays open and says it, so nothing is lost silently.
   const [refusal, setRefusal] = useState<string | null>(null);
-
-  useEffect(() => {
-    void store
-      .hostRequest(hostId, "rewind.preview", { claudeSessionId, turn: turn.n })
-      .then((result) => (result.ok ? setPreview(result.data) : setPreviewRefused(result)));
-  }, [store, hostId, claudeSessionId, turn.n]);
 
   const apply = async () => {
     setRefusal(null);
@@ -86,7 +132,7 @@ export function RewindDialog(
       confirm: true,
     });
     if (!result.ok) {
-      setRefusal(result.message);
+      setRefusal(refusalText(result.code, result.message, t, result));
       return;
     }
     props.onDone();
@@ -100,18 +146,14 @@ export function RewindDialog(
           <DialogTitle>{t("timeline.rewindTitle", { n: turn.ordinal })}</DialogTitle>
           <DialogDescription>{t("timeline.rewindNote")}</DialogDescription>
         </DialogHeader>
-        {preview ? (
-          <PreviewFiles store={store} preview={preview} />
-        ) : (
-          previewRefused === null && <LoadingState label={t("timeline.previewing")} />
-        )}
-        {previewRefused !== null && (
-          <InlineNotice tone="error">
-            {t("timeline.previewFailed", {
-              reason: refusalText(previewRefused.code, previewRefused.message, t, previewRefused),
-            })}
-          </InlineNotice>
-        )}
+        <TurnContext store={store} turn={turn} />
+        <PreviewState
+          store={store}
+          preview={preview}
+          refused={refused}
+          onRetry={load}
+          failed="timeline.previewFailed"
+        />
         {refusal !== null && (
           <InlineNotice tone="error">{t("timeline.applyFailed", { reason: refusal })}</InlineNotice>
         )}
@@ -140,17 +182,14 @@ export function RewindDialog(
 export function UndoDialog(props: Omit<Target, "cwd"> & { onClose(): void; onDone(): void }) {
   const { store, hostId, claudeSessionId } = props;
   const { t } = store.i18n;
-  const [preview, setPreview] = useState<RewindPreview | null>(null);
-  const [previewFailed, setPreviewFailed] = useState(false);
+  const { preview, refused, load } = usePreview(
+    useCallback(
+      () => store.hostRequest(hostId, "rewind.undoPreview", { claudeSessionId }),
+      [store, hostId, claudeSessionId],
+    ),
+  );
   // Why the host refused the undo: the dialog stays open and says it.
   const [refusal, setRefusal] = useState<string | null>(null);
-
-  useEffect(() => {
-    void store.hostRequest(hostId, "rewind.undoPreview", { claudeSessionId }).then((result) => {
-      if (result.ok) setPreview(result.data);
-      else setPreviewFailed(true);
-    });
-  }, [store, hostId, claudeSessionId]);
 
   const undo = async () => {
     setRefusal(null);
@@ -159,7 +198,7 @@ export function UndoDialog(props: Omit<Target, "cwd"> & { onClose(): void; onDon
       confirm: true,
     });
     if (!result.ok) {
-      setRefusal(result.message);
+      setRefusal(refusalText(result.code, result.message, t, result));
       return;
     }
     props.onDone();
@@ -173,14 +212,14 @@ export function UndoDialog(props: Omit<Target, "cwd"> & { onClose(): void; onDon
           <DialogTitle>{t("timeline.undoTitle")}</DialogTitle>
           <DialogDescription>{t("timeline.undoNote")}</DialogDescription>
         </DialogHeader>
-        {preview ? (
-          <PreviewFiles store={store} preview={preview} empty={t("timeline.undoNothing")} />
-        ) : (
-          !previewFailed && <LoadingState label={t("timeline.previewing")} />
-        )}
-        {previewFailed && (
-          <InlineNotice tone="error">{t("timeline.undoPreviewFailed")}</InlineNotice>
-        )}
+        <PreviewState
+          store={store}
+          preview={preview}
+          refused={refused}
+          onRetry={load}
+          failed="timeline.undoPreviewFailed"
+          empty={t("timeline.undoNothing")}
+        />
         {refusal !== null && (
           <InlineNotice tone="error">{t("timeline.undoFailed", { reason: refusal })}</InlineNotice>
         )}
@@ -213,29 +252,25 @@ export function ForkDialog(
 ) {
   const { store, hostId, claudeSessionId, turn, cwd } = props;
   const { t } = store.i18n;
+  const busyId = useId();
   const [open, setOpen] = useState<"flightdeck" | "terminal">("flightdeck");
   const [withFiles, setWithFiles] = useState(false);
-  const [preview, setPreview] = useState<RewindPreview | null>(null);
-  // The preview was refused: its place says why and Try again asks the host once more.
-  const [previewRefused, setPreviewRefused] = useState<Refused | null>(null);
+  // A refused preview says why in its place, and Try again asks the host once more.
+  const {
+    preview,
+    refused: previewRefused,
+    load: loadPreview,
+  } = usePreview(
+    useCallback(
+      () => store.hostRequest(hostId, "rewind.preview", { claudeSessionId, turn: turn.n }),
+      [store, hostId, claudeSessionId, turn.n],
+    ),
+    withFiles,
+  );
   // The fork was refused: the dialog stays open and says why.
   const [forkRefused, setForkRefused] = useState<Refused | null>(null);
   const [allowing, setAllowing] = useState(false);
   const [forked, setForked] = useState<{ claudeSessionId: string; command: string } | null>(null);
-
-  const loadPreview = useCallback(() => {
-    setPreviewRefused(null);
-    void store
-      .hostRequest(hostId, "rewind.preview", { claudeSessionId, turn: turn.n })
-      .then((result) => {
-        setPreview(result.ok ? result.data : null);
-        setPreviewRefused(result.ok ? null : result);
-      });
-  }, [store, hostId, claudeSessionId, turn.n]);
-
-  useEffect(() => {
-    if (withFiles) loadPreview();
-  }, [withFiles, loadPreview]);
 
   const refusedText = (refused: Refused) => refusalText(refused.code, refused.message, t, refused);
   // A fork refused for its folder keeps the way out the banner's toast offers (#3550).
@@ -273,17 +308,21 @@ export function ForkDialog(
           <DialogTitle>{t("timeline.forkTitle", { n: turn.ordinal })}</DialogTitle>
           <DialogDescription>{t("timeline.forkDescription")}</DialogDescription>
         </DialogHeader>
+        <TurnContext store={store} turn={turn} />
         {forked ? (
           <div className="flex flex-col gap-2 text-sm">
             <p>{t("timeline.forkCommand")}</p>
             <code className="break-all rounded-md bg-muted p-2">{forked.command}</code>
-            <div>
+            <Inline>
+              <Button variant="outline" onClick={() => void store.system.copyText(forked.command)}>
+                {t("timeline.forkCopy")}
+              </Button>
               <TerminalButton
                 store={store}
                 hostId={hostId}
                 target={{ cwd, claudeSessionId: forked.claudeSessionId }}
               />
-            </div>
+            </Inline>
           </div>
         ) : (
           <div className="flex flex-col gap-3 text-sm">
@@ -308,11 +347,16 @@ export function ForkDialog(
                 className="hit-control"
                 checked={withFiles}
                 disabled={props.busy}
+                aria-describedby={props.busy ? busyId : undefined}
                 onChange={(e) => setWithFiles(e.target.checked)}
               />
               {t("timeline.forkFiles")}
             </label>
-            {props.busy && <p className="text-muted-foreground text-xs">{t("timeline.busy")}</p>}
+            {props.busy && (
+              <p id={busyId} className="text-muted-foreground text-xs">
+                {t("timeline.busy")}
+              </p>
+            )}
             {forkRefused !== null && (
               <InlineNotice tone="error">
                 <span>{t("timeline.forkFailed", { reason: refusedText(forkRefused) })}</span>
@@ -329,17 +373,13 @@ export function ForkDialog(
             {withFiles && (
               <>
                 <p className="text-muted-foreground text-xs">{t("timeline.forkFilesNote")}</p>
-                {preview && <PreviewFiles store={store} preview={preview} />}
-                {!preview && previewRefused !== null && (
-                  <ErrorState
-                    message={t("timeline.previewFailed", { reason: refusedText(previewRefused) })}
-                    retryLabel={t("timeline.retry")}
-                    onRetry={loadPreview}
-                  />
-                )}
-                {!preview && previewRefused === null && (
-                  <LoadingState label={t("timeline.previewing")} />
-                )}
+                <PreviewState
+                  store={store}
+                  preview={preview}
+                  refused={previewRefused}
+                  onRetry={loadPreview}
+                  failed="timeline.previewFailed"
+                />
               </>
             )}
           </div>

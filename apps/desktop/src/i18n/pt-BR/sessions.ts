@@ -621,6 +621,7 @@ export const sessions = {
     showFiles: "Ver arquivos do turno {n}",
     filesFailed: "Não deu para ler os arquivos do turno {n}.",
     hideFiles: "Esconder arquivos do turno {n}",
+    filesOf: "Arquivos do turno {n}",
     lines: "+{added} −{removed}",
     change: { modified: "alterado", created: "criado", deleted: "apagado" },
     rewind: "Voltar arquivos até aqui",
@@ -662,7 +663,7 @@ export const sessions = {
     undoNothing: "Nada para desfazer: os arquivos já estão como antes da volta.",
     undoConfirm: "Restaurar arquivos",
     undoFailed: "Não deu para desfazer a volta: {reason}",
-    undoPreviewFailed: "Não deu para saber o que o desfazer muda.",
+    undoPreviewFailed: "Não deu para saber o que o desfazer muda: {reason}",
     forkTitle: "Bifurcar a partir do turno {n}",
     forkDescription: "Cria uma conversa nova a partir deste turno. A original continua como está.",
     forkWhere: "Onde abrir",
@@ -675,5 +676,6 @@ export const sessions = {
     forkNeedsPreview:
       "Bifurcar precisa antes da lista de arquivos acima. Desmarque “Voltar os arquivos também” para bifurcar sem ela.",
     forkCommand: "Conversa bifurcada. Para abrir no terminal, rode:",
+    forkCopy: "Copiar o comando",
   },
 } as const;

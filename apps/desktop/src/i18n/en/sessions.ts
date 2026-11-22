@@ -617,6 +617,7 @@ export const sessions = {
     showFiles: "Show files of turn {n}",
     filesFailed: "Could not read the files of turn {n}.",
     hideFiles: "Hide files of turn {n}",
+    filesOf: "Files of turn {n}",
     lines: "+{added} −{removed}",
     change: { modified: "changed", created: "created", deleted: "deleted" },
     rewind: "Rewind files to here",
@@ -658,7 +659,7 @@ export const sessions = {
     undoNothing: "Nothing to undo: the files are already as they were before the rewind.",
     undoConfirm: "Restore files",
     undoFailed: "Could not undo the rewind: {reason}",
-    undoPreviewFailed: "Could not work out what the undo changes.",
+    undoPreviewFailed: "Could not work out what the undo changes: {reason}",
     forkTitle: "Fork from turn {n}",
     forkDescription: "Creates a new conversation from this turn. The original stays as it is.",
     forkWhere: "Where to open",
@@ -671,5 +672,6 @@ export const sessions = {
     forkNeedsPreview:
       "Fork needs the list of files above first. Untick “Also rewind the files” to fork without it.",
     forkCommand: "Conversation forked. To open it in the terminal, run:",
+    forkCopy: "Copy the command",
   },
 };

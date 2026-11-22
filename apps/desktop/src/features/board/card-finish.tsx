@@ -16,6 +16,8 @@ export function CardFinishDialog(
     hostId: string;
     card: Card;
     onClose(): void;
+    /** The dialog was opened from a menu item that is gone: the focus goes back to the menu's button (#4262). */
+    returnFocus(): void;
     /** Complete was chosen: the caller asks to confirm. */
     onComplete(): void;
     /** Merge was chosen: the caller shows the card's diff, where the merge is. */
@@ -26,7 +28,15 @@ export function CardFinishDialog(
   const { store, hostId, card } = props;
   return (
     <Dialog open onOpenChange={(open) => !open && props.onClose()}>
-      <AppDialogContent aria-describedby={undefined}>
+      <AppDialogContent
+        aria-describedby={undefined}
+        onCloseAutoFocus={(event) => {
+          // Radix would hand the focus to the menu item that opened this, which is gone with its menu. A choice that
+          // opens another dialog keeps the focus it moved there.
+          event.preventDefault();
+          if (document.activeElement === document.body) props.returnFocus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{t("cardUi.finishTitle")}</DialogTitle>
         </DialogHeader>
