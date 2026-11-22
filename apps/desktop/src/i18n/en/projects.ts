@@ -181,6 +181,7 @@ export const projects = {
         denyNote:
           "They stop Claude Code's Read tool on these files and these git add forms. They do not stop a shell command such as cat .env.",
         files: "New files",
+        fileContent: "Contents of {path}",
         conflicts: "Left as they are: these keys already hold something else",
         unreadable: "Not read, so left as they are",
         untrusted: "These hooks and rules load only once you trust this project.",

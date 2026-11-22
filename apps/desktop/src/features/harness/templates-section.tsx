@@ -20,6 +20,14 @@ export function HarnessTemplatesSection(props: Readonly<{ store: AppStore; hostI
   // The Delete button that opened the dialog: a cancel gives the focus back to it.
   const opener = useRef<HTMLElement | null>(null);
   const cancelled = useRef(false);
+  // Where the focus goes once a delete's refresh is in: its row's neighbours, in the order to try.
+  const rows = useRef(new Map<string, HTMLElement>());
+  const emptyNote = useRef<HTMLParagraphElement>(null);
+  const failureNote = useRef<HTMLParagraphElement>(null);
+  const [refocus, setRefocus] = useState<{ round: number; order: string[] }>({
+    round: 0,
+    order: [],
+  });
   const refresh = useCallback(async () => {
     const next = await store.hostCommand(hostId, "harness.templates.list", {});
     setFailed(next === null);
@@ -36,8 +44,21 @@ export function HarnessTemplatesSection(props: Readonly<{ store: AppStore; hostI
     return () => clearTimeout(id);
   }, [deleting]);
 
+  // The Delete button that opened the dialog is gone (or kept, after a refusal) once the list is in:
+  // the focus goes to the next row, the previous one, the empty note or the failure, never the page.
+  useEffect(() => {
+    if (refocus.round === 0) return;
+    // Only a focus the delete left on the page is taken: a person who moved on keeps theirs.
+    const now = document.activeElement;
+    if (now !== null && now !== document.body) return;
+    const row = refocus.order.map((id) => rows.current.get(id)).find((el) => el !== undefined);
+    (row ?? emptyNote.current ?? failureNote.current)?.focus();
+  }, [refocus]);
+
   const remove = async (template: HarnessTemplateInfo) => {
     setDeleting(null);
+    const ids = (templates ?? []).map((item) => item.id);
+    const at = ids.indexOf(template.id);
     // Not retried from the banner: a delete repeated later, unseen, would run without a question.
     const done = await store.hostCommand(
       hostId,
@@ -46,6 +67,10 @@ export function HarnessTemplatesSection(props: Readonly<{ store: AppStore; hostI
       { retry: false },
     );
     await refresh();
+    // A refused delete keeps its row: that row first. A done one: the rows after it, then before it.
+    const around = [...ids.slice(at + 1), ...ids.slice(0, at).reverse()];
+    const order = done ? around : [template.id, ...around];
+    setRefocus((now) => ({ round: now.round + 1, order }));
     if (done) store.success(t("harnessTemplates.deleted", { title: template.title }));
   };
   const facts = (template: HarnessTemplateInfo) =>
@@ -61,18 +86,26 @@ export function HarnessTemplatesSection(props: Readonly<{ store: AppStore; hostI
       <Panel title={t("harnessTemplates.title")} label={t("harnessTemplates.title")}>
         <p className="text-muted-foreground text-sm">{t("harnessTemplates.hint")}</p>
         {templates === null && !failed && (
-          <p className="text-muted-foreground text-sm">{t("harnessTemplates.asking")}</p>
+          <p role="status" className="text-muted-foreground text-sm">
+            {t("harnessTemplates.asking")}
+          </p>
         )}
         {failed && (
           <Inline>
-            <p className="text-sm">{t("harnessTemplates.loadFailed")}</p>
+            <p role="alert" ref={failureNote} tabIndex={-1} className="text-sm">
+              {t("harnessTemplates.loadFailed")}
+            </p>
             <Button variant="outline" size="sm" onClick={() => void refresh()}>
               {t("harnessTemplates.retry")}
             </Button>
           </Inline>
         )}
-        {templates?.length === 0 && <p className="text-sm">{t("harnessTemplates.none")}</p>}
-        {templates && templates.length > 0 && (
+        {!failed && templates?.length === 0 && (
+          <p ref={emptyNote} tabIndex={-1} className="text-sm">
+            {t("harnessTemplates.none")}
+          </p>
+        )}
+        {!failed && templates && templates.length > 0 && (
           <Stack as="ul" gap={2}>
             {templates.map((template) => (
               <li key={template.id}>
@@ -84,6 +117,10 @@ export function HarnessTemplatesSection(props: Readonly<{ store: AppStore; hostI
                     <Button
                       variant="outline"
                       size="sm"
+                      ref={(el) => {
+                        if (el) rows.current.set(template.id, el);
+                        else rows.current.delete(template.id);
+                      }}
                       aria-label={t("harnessTemplates.deleteLabel", { title: template.title })}
                       onClick={(event) => {
                         opener.current = event.currentTarget;

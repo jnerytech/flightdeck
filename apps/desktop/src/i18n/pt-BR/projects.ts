@@ -180,6 +180,7 @@ export const projects = {
         denyNote:
           "Elas impedem a ferramenta Read do Claude Code nestes arquivos e estas formas de git add. Não impedem um comando de shell como cat .env.",
         files: "Arquivos novos",
+        fileContent: "Conteúdo de {path}",
         conflicts: "Ficam como estão: estas chaves já guardam outra coisa",
         unreadable: "Não lidos, então ficam como estão",
         untrusted: "Estes hooks e regras só carregam depois que você confiar neste projeto.",
