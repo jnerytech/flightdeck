@@ -139,7 +139,7 @@ describe("times-apagar-ui: Delete team", () => {
     const w = setup();
     await ready("live-crew");
     expect(screen.queryByRole("button", { name: "Actions for live-crew" }) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
-    expect(screen.queryByRole("button", { name: "Actions for old-crew" }) !== null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Actions for old-crew" })).not.toBeNull();
     expect(w.deletes()).toEqual([]);
   });
 
