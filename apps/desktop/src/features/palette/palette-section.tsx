@@ -21,12 +21,19 @@ const STATE_TONE: Record<NonNullable<PaletteItem["stateKey"]>, StateTone> = {
 export function PaletteSectionView(
   props: Readonly<{
     section: PaletteSection;
+    /** The id of the section's listbox, which the input controls. */
+    listId: string;
     /** The rows shown now: the section's first ones, up to its cap. */
     rows: PaletteItem[];
+    /** The DOM id of a row, which the input names while the arrows are on it. */
+    idOf(item: PaletteItem): string;
     /** Whether a row is the one the keyboard is on. */
     selected(item: PaletteItem): boolean;
     /** How many rows are past the cap, or 0 when the more button does not show. */
     hidden: number;
+    /** The DOM id of the more button, and whether the arrows are on it. */
+    moreId: string;
+    moreSelected: boolean;
     t: T;
     onChoose(item: PaletteItem): void;
     onMore(): void;
@@ -36,13 +43,16 @@ export function PaletteSectionView(
   return (
     <section className="flex flex-col gap-1">
       <h3 className="px-2 font-medium text-muted-foreground text-xs">{section.title}</h3>
-      <div role="listbox" aria-label={section.title} className="flex flex-col">
+      <div role="listbox" id={props.listId} aria-label={section.title} className="flex flex-col">
         {props.rows.map((item, i) => (
           <button
             key={item.id}
+            id={props.idOf(item)}
             type="button"
             role="option"
+            tabIndex={-1}
             aria-label={item.label}
+            aria-describedby={item.detail ? `${props.idOf(item)}-detail` : undefined}
             aria-selected={props.selected(item)}
             className="palette-row flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
             onClick={() => props.onChoose(item)}
@@ -60,7 +70,12 @@ export function PaletteSectionView(
               />
             )}
             <span className="shrink-0 whitespace-nowrap">{item.label}</span>{" "}
-            <span className="min-w-0 truncate text-muted-foreground text-xs">{item.detail}</span>
+            <span
+              id={`${props.idOf(item)}-detail`}
+              className="min-w-0 truncate text-muted-foreground text-xs"
+            >
+              {item.detail}
+            </span>
             {section.recent && i < ALT_KEYS ? (
               <Keycap className="ml-auto shrink-0">{`Alt+${i + 1}`}</Keycap>
             ) : (
@@ -74,7 +89,10 @@ export function PaletteSectionView(
           type="button"
           variant="ghost"
           size="sm"
-          className="h-6 justify-start px-2 text-muted-foreground text-xs"
+          id={props.moreId}
+          tabIndex={-1}
+          aria-current={props.moreSelected ? "true" : undefined}
+          className="palette-row h-6 justify-start px-2 text-muted-foreground text-xs"
           onClick={props.onMore}
         >
           {t("palette.more", { n: props.hidden })}
