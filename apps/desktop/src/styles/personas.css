@@ -21,6 +21,15 @@
     grid-column: 2;
     grid-row: 1 / span 2;
   }
+  /* The auto column takes the width of every button in a line and leaves the name none: stack them. */
+  @media (max-width: 640px) {
+    grid-template-columns: minmax(0, 1fr);
+    & > [data-slot="persona-actions"] {
+      grid-column: 1;
+      grid-row: auto;
+      justify-content: flex-start;
+    }
+  }
 }
 
 @utility persona-actions {
