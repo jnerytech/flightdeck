@@ -594,7 +594,19 @@ describe("assistant-wand-ui: the focus stays where the person is working (issue 
     expect(focused(box())).toBe(true);
   });
 
-  test("Retry puts the focus on Cancel of the new request", async () => {
+  test("Ctrl+I in the field starts the request and leaves the focus in the field", async () => {
+    await make({ run: () => new Promise(() => {}) });
+    type("fix the totl");
+    act(() => box().focus());
+    await act(async () => {
+      fireEvent.keyDown(box(), { key: "i", ctrlKey: true });
+    });
+    await settle(() => screen.queryByRole("status") !== null);
+    expect(focused(box())).toBe(true);
+    expect(focused(button("Cancel"))).toBe(false);
+  });
+
+  test("Retry gives the focus back to the field while the new request runs", async () => {
     let runs = 0;
     await make({
       run: (request) =>
@@ -607,7 +619,7 @@ describe("assistant-wand-ui: the focus stays where the person is working (issue 
     await settle(() => preview() !== null);
     await press(button("Retry", preview()));
     await settle(() => screen.queryByRole("status") !== null);
-    expect(focused(button("Cancel"))).toBe(true);
+    expect(focused(box())).toBe(true);
   });
 
   test("Escape on Cancel stops the request, like Escape in the field", async () => {
