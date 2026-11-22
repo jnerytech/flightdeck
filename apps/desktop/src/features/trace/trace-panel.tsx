@@ -206,7 +206,7 @@ export function TracePanel(
             {t(withContent ? "trace.contentNote" : "trace.structureNote")}
           </p>
           {outcome && (
-            <p role="status" className="text-sm">
+            <output className="text-sm">
               {outcome.saved
                 ? [
                     t("trace.saved"),
@@ -215,7 +215,7 @@ export function TracePanel(
                     .filter(Boolean)
                     .join(" ")
                 : t("trace.notSaved")}
-            </p>
+            </output>
           )}
         </Panel>
       </Stack>
