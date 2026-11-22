@@ -117,17 +117,23 @@ export function TraceReplay(
             </span>
           </Inline>
           {step && (
-            // Said aloud when the person steps, with the counter above: the number alone does not
-            // tell what the step is. Silent while it plays, one step a second (#3935).
-            <div aria-live={playing ? "off" : "polite"} aria-atomic="true">
-              <Stack gap={1}>
-                <span className="font-medium text-sm">{nodeTitle(step, t)}</span>
-                <span className="text-muted-foreground text-xs">{nodeNumbers(step, t)}</span>
-                {step.input && <span className="text-xs">{step.input}</span>}
-                {step.result && <span className="text-xs">{step.result}</span>}
-              </Stack>
-            </div>
+            <Stack gap={1}>
+              <span className="font-medium text-sm">{nodeTitle(step, t)}</span>
+              <span className="text-muted-foreground text-xs">{nodeNumbers(step, t)}</span>
+              {step.input && <span className="text-xs">{step.input}</span>}
+              {step.result && <span className="text-xs">{step.result}</span>}
+            </Stack>
           )}
+          {/* Said aloud when the person steps (#3935). A screen reader speaks only text that changes
+              inside a region that was already polite, so the region stays polite and holds no text
+              while the replay plays, one step a second. */}
+          <div aria-live="polite" aria-atomic="true" className="sr-only">
+            {step && !playing
+              ? [nodeTitle(step, t), nodeNumbers(step, t), step.input, step.result]
+                  .filter(Boolean)
+                  .join(". ")
+              : ""}
+          </div>
           {changed && changed.files.length > 0 && (
             <Stack gap={1}>
               {/* The list carries this name itself; the heading is not read a second time. */}
