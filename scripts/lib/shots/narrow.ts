@@ -33,6 +33,11 @@ export const NARROW_SHOTS: readonly string[] = [
   // #1222: the new-team form and an active team, at every width.
   "times-novo",
   "times-rodando",
+  // #4025: the footer of a running, a paused and a quota-paused team; it wraps at 390.
+  "times-rodape",
+  "times-adicionar",
+  "times-pausado",
+  "times-cota",
   // #1244: Merge PR's confirmation on a card with an open PR.
   "card-merge-pr",
   "workflows-modelos",
