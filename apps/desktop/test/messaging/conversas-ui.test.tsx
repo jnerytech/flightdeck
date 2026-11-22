@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
-import { settle } from "../wait.ts";
+import { settle, settleMaybe } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -82,6 +82,24 @@ describe("conversas-ui: the messages between sessions", () => {
     expect(oldest).toContain("pode revisar o login?");
     expect(oldest).toContain("Entregue");
     expect(oldest).toContain("alfa");
+  });
+
+  test("a host that refuses the list is named with a retry, and the page does not read as empty (#4293)", async () => {
+    const { daemon, list } = await open();
+    daemon.refuse.set("messages.list", "unavailable");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
+    });
+    const named = await settleMaybe(() => screen.queryByText(/alfa não respondeu/) !== null);
+    expect(named).toBe(true);
+    expect(screen.queryByText("Nenhuma mensagem")).toBeNull();
+    daemon.refuse.delete("messages.list");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
+    });
+    const listed = await settleMaybe(() => (list()?.children.length ?? 0) === 2);
+    expect(listed).toBe(true);
+    expect(screen.queryByText(/alfa não respondeu/)).toBeNull();
   });
 
   test("with no messages, the screen says where they come from and links to Times", async () => {
