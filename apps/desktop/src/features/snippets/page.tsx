@@ -65,6 +65,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
   const [importing, setImporting] = useState(false);
   const [importingFile, setImportingFile] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   const openSettings = () => props.go({ name: "settings", section: "assistant" });
   const clearFilters = () => {
     setQuery("");
@@ -126,10 +127,15 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
       return reload();
     }
     if (!hostId) return;
+    // Busy until the list is read again too: the row is on screen until then, and a second press
+    // would remove what is already gone.
     setRemovingNow(snippet.id);
-    const done = await store.hostCommand(hostId, "snippets.remove", { id: snippet.id });
-    setRemovingNow(null);
-    if (done !== null) await reload();
+    try {
+      const done = await store.hostCommand(hostId, "snippets.remove", { id: snippet.id });
+      if (done !== null) await reload();
+    } finally {
+      setRemovingNow(null);
+    }
   };
 
   const trust = async () => {
@@ -305,7 +311,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
       )}
       {cards?.length === 0 && <EmptyState icon={SquareCode} {...emptyStateFor()} />}
       {cards && cards.length > 0 && (
-        <ul aria-label={t("snippets.list")} className="flex flex-col gap-2">
+        <ul ref={listRef} aria-label={t("snippets.list")} className="flex flex-col gap-2">
           {ordered.map((snippet) => (
             <li key={snippet.id} className="flex flex-col gap-2 rounded-lg border p-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -364,6 +370,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
                   variant="outline"
                   size="sm"
                   aria-label={t("snippets.removeFor", { name: snippet.name })}
+                  data-remove={snippet.id}
                   pending={removingNow === snippet.id}
                   onClick={() => setRemoving(snippet)}
                 >
@@ -381,8 +388,12 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
           destructive
           onConfirm={() => void remove(removing)}
           onCancel={() => setRemoving(null)}
-          // The row's own Remove is busy or gone once the dialog closes: the focus goes to a control that stays.
-          onRestoreFocus={() => searchRef.current?.focus()}
+          // A cancel goes back to the row's Remove; a confirm leaves it busy or gone, so the focus goes to a control that stays.
+          onRestoreFocus={() => {
+            const rows = listRef.current?.querySelectorAll<HTMLButtonElement>("[data-remove]");
+            const row = Array.from(rows ?? []).find((b) => b.dataset.remove === removing.id);
+            (row && !row.disabled ? row : searchRef.current)?.focus();
+          }}
         />
       )}
     </Page>
