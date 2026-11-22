@@ -1,12 +1,11 @@
 import type { ModelOption } from "@flightdeck/protocol";
-import { Check } from "lucide-react";
 import { type KeyboardEvent, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { T } from "@/i18n/index";
 
 const optionClass = (active: boolean, chosen: boolean) =>
-  `flex cursor-pointer items-start justify-between gap-2 px-3 py-1.5 text-sm hover:bg-accent ${active ? "bg-accent" : ""} ${chosen ? "font-medium" : ""}`;
+  `cursor-pointer px-3 py-1.5 text-sm hover:bg-accent ${active ? "bg-accent" : ""} ${chosen ? "font-medium" : ""}`;
 
 export interface ModelPickerProps {
   t: T;
@@ -127,21 +126,21 @@ export function ModelPicker(props: Readonly<ModelPickerProps>) {
                   if (e.key === "Enter" || e.key === " ") props.onChange(row.id);
                 }}
               >
-                <span>
-                  {row.text}
-                  {row.option?.promptPerMTok !== undefined &&
-                    row.option.completionPerMTok !== undefined && (
-                      <span className="block text-muted-foreground text-xs">
-                        {t("modelPicker.perMillion", {
-                          prompt: `$${row.option.promptPerMTok}`,
-                          completion: `$${row.option.completionPerMTok}`,
-                        })}
-                      </span>
-                    )}
-                </span>
+                {row.text}
                 {row.id === value && (
-                  <Check aria-hidden="true" data-chosen className="size-4 shrink-0" />
+                  <span aria-hidden="true" data-chosen>
+                    {" ✓"}
+                  </span>
                 )}
+                {row.option?.promptPerMTok !== undefined &&
+                  row.option.completionPerMTok !== undefined && (
+                    <span className="block text-muted-foreground text-xs">
+                      {t("modelPicker.perMillion", {
+                        prompt: `$${row.option.promptPerMTok}`,
+                        completion: `$${row.option.completionPerMTok}`,
+                      })}
+                    </span>
+                  )}
               </div>
             ));
             return group.name === null ? (

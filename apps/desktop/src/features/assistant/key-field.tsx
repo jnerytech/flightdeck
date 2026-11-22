@@ -134,7 +134,7 @@ export function KeyField(
   return (
     <fieldset aria-label={props.name} className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
       {entering ? (
-        <Form variant="inline" className="gap-2" onSubmit={() => void save()}>
+        <Form variant="inline" onSubmit={() => void save()}>
           <Field label={label} error={error}>
             {(control) => (
               <Input
