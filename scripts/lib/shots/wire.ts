@@ -100,11 +100,12 @@ export function wireRewriter(rules: WireRule[]): FrameRewriter {
         return JSON.stringify({ type: "ack", id: message.id, ok: false, error });
       }
       if (!("reply" in rule)) return undefined;
-      // `"{in 25s}"` is the time 25 s from now: an offer that expires shows its real length.
-      const data = JSON.stringify(rule.reply).replace(/"\{in (\d+)s\}"/g, (_, seconds: string) =>
+      // `"{in 30s}"` is the time 30 s from now: an offer that expires shows its real length.
+      const data = JSON.stringify(rule.reply)?.replace(/"\{in (\d+)s\}"/g, (_, seconds: string) =>
         JSON.stringify(new Date(Date.now() + Number(seconds) * 1000).toISOString()),
       );
-      return `{"type":"ack","id":${JSON.stringify(message.id)},"ok":true,"data":${data}}`;
+      const body = data === undefined ? "" : `,"data":${data}`;
+      return `{"type":"ack","id":${JSON.stringify(message.id)},"ok":true${body}}`;
     },
     swallows(frame) {
       const message = parse(frame);
