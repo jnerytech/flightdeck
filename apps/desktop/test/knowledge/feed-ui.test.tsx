@@ -23,6 +23,10 @@ function setup(
     features?: string[];
     state?: KnowledgeFeedState | null;
     afterSet?: KnowledgeFeedState | null;
+    /** The answers of `knowledge.feed`, one per read, the last one repeating (default: `state`). */
+    reads?: Array<KnowledgeFeedState | null>;
+    /** An answer of `knowledge.setFeed` that arrives only when this promise settles. */
+    hold?: Promise<KnowledgeFeedState | null>;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -35,8 +39,16 @@ function setup(
   store.hostCommand = (async (_host: string, type: string, payload: unknown) => {
     sent.push([type, payload]);
     if (type === "knowledge.list") return { entries: [], truncated: false };
-    if (type === "knowledge.feed") return "state" in options ? options.state : ON;
-    if (type === "knowledge.setFeed") return "afterSet" in options ? options.afterSet : OFF;
+    if (type === "knowledge.feed") {
+      const reads = options.reads;
+      if (reads)
+        return reads[Math.min(sent.filter(([t]) => t === type).length - 1, reads.length - 1)];
+      return "state" in options ? options.state : ON;
+    }
+    if (type === "knowledge.setFeed") {
+      if (options.hold) return options.hold;
+      return "afterSet" in options ? options.afterSet : OFF;
+    }
     return null;
   }) as never;
   const state = {
@@ -168,5 +180,72 @@ describe("knowledge-feed-ui: whether agents are given the index (#76)", () => {
       ).not.toBeNull(),
     );
     expect(within(region).queryByRole("button", { name: "Desligar" })).not.toBeNull();
+  });
+
+  test("a second press on the switch while its answer is not in sends no second request, and the button says it is busy", async () => {
+    let release: (value: KnowledgeFeedState | null) => void = () => {};
+    const hold = new Promise<KnowledgeFeedState | null>((resolve) => {
+      release = resolve;
+    });
+    const { view, sent } = setup({ hold });
+    render(view);
+    const button = () => within(panel()).getByRole("button", { name: "Turn off" });
+    await waitFor(() =>
+      expect(within(panel()).queryByRole("button", { name: "Turn off" })).not.toBeNull(),
+    );
+    fireEvent.click(button());
+    fireEvent.click(button());
+    const during = {
+      asked: sent.filter(([type]) => type === "knowledge.setFeed").length,
+      busy: button().getAttribute("aria-busy"),
+    };
+    release(OFF);
+    await waitFor(() =>
+      expect(within(panel()).queryByRole("button", { name: "Turn on" })).not.toBeNull(),
+    );
+    expect(during).toEqual({ asked: 1, busy: "true" });
+  });
+
+  test("a first read that fails shows Try again, and pressing it reads again and shows the switch", async () => {
+    const { view, sent } = setup({ reads: [null, ON] });
+    render(view);
+    await waitFor(() =>
+      expect(
+        within(panel()).queryByText("The index switch could not be read or changed on this host."),
+      ).not.toBeNull(),
+    );
+    const retry = within(panel()).queryByRole("button", { name: "Try again" });
+    expect(retry).not.toBeNull();
+    fireEvent.click(retry as HTMLElement);
+    await waitFor(() =>
+      expect(within(panel()).queryByRole("button", { name: "Turn off" })).not.toBeNull(),
+    );
+    expect(sent.filter(([type]) => type === "knowledge.feed")).toHaveLength(2);
+  });
+
+  test("a later read that fails keeps the state shown and offers no Try again", async () => {
+    const { view } = setup({ afterSet: null });
+    render(view);
+    await waitFor(() =>
+      expect(within(panel()).queryByRole("button", { name: "Turn off" })).not.toBeNull(),
+    );
+    fireEvent.click(within(panel()).getByRole("button", { name: "Turn off" }));
+    await waitFor(() =>
+      expect(
+        within(panel()).queryByText("The index switch could not be read or changed on this host."),
+      ).not.toBeNull(),
+    );
+    expect([
+      within(panel()).queryByText(switchedOn) !== null,
+      within(panel()).queryByRole("button", { name: "Try again" }) !== null,
+    ]).toEqual([true, false]);
+  });
+
+  test("the retry is written in Portuguese too", async () => {
+    render(setup({ language: "pt-BR", state: null }).view);
+    const region = await screen.findByRole("region", { name: "Conhecimento do projeto" });
+    await waitFor(() =>
+      expect(within(region).queryByRole("button", { name: "Tentar de novo" })).not.toBeNull(),
+    );
   });
 });
