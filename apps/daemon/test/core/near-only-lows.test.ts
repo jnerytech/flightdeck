@@ -13,6 +13,7 @@ import { SshTargets } from "../../src/ssh/targets.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import type { DaemonUpdater } from "../../src/updates/apply.ts";
 import { SECURITY } from "../personas/model-setup.ts";
+import { SECURITY as HOST_PERSONA } from "../personas/subagent-setup.ts";
 import { git, newBoard } from "../support/board-helpers.ts";
 import { tempDir } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
@@ -55,10 +56,17 @@ async function nearAndFar() {
     allowedRoots: [root],
   });
   const ssh = new SshTargets({ db: new EventStore(":memory:").db });
+  const published: string[] = [];
   const personas = new Personas({
     db: new EventStore(":memory:").db,
     allowedRoots: [root],
     scanner: new SecretScanner(),
+    publisher: {
+      publish: async (request) => {
+        published.push(request.name);
+        return { path: `.claude/agents/${request.name}.md` };
+      },
+    },
   });
   const applied: unknown[] = [];
   const updater = {
@@ -100,7 +108,7 @@ async function nearAndFar() {
   const [near, far] = clients as [FrameClient, FrameClient];
   const reasonOf = async (call: Promise<{ error?: unknown }>) =>
     ((await call).error as { reason?: string } | undefined)?.reason ?? null;
-  return { near, far, board, project, repo, applied, toggled, personas, reasonOf };
+  return { near, far, board, project, repo, applied, toggled, personas, published, reasonOf };
 }
 
 describe("applying a daemon update needs a near connection (#3815)", () => {
@@ -149,17 +157,24 @@ describe("a project's automatic approval: turning it on needs a near connection 
     const farRename = await reasonOf(
       far.request("project.update", { projectId: project.id, name: "renamed" }),
     );
-    // Low risk without the AI, once a person turned it off: turning it back on is a loosening.
+    // On, with low risk asked to the AI: a far connection cannot make low risk skip it.
     const nearStrict = await reasonOf(
       near.request("project.update", {
         projectId: project.id,
-        autoApprove: { lowWithoutAi: false },
+        autoApprove: { enabled: true, lowWithoutAi: false },
       }),
     );
     const farLoose = await reasonOf(
-      far.request("project.update", { projectId: project.id, autoApprove: { lowWithoutAi: true } }),
+      far.request("project.update", {
+        projectId: project.id,
+        autoApprove: { enabled: true, lowWithoutAi: true },
+      }),
     );
     const afterLoose = auto().lowWithoutAi;
+    // A bare off, which the protocol fills with its defaults, is no loosening.
+    const farBareOff = await reasonOf(
+      far.request("project.update", { projectId: project.id, autoApprove: { enabled: false } }),
+    );
     expect([
       farOn,
       farSame,
@@ -172,6 +187,7 @@ describe("a project's automatic approval: turning it on needs a near connection 
       nearStrict,
       farLoose,
       afterLoose,
+      farBareOff,
     ]).toEqual([
       "transport_refused",
       null,
@@ -184,8 +200,9 @@ describe("a project's automatic approval: turning it on needs a near connection 
       null,
       "transport_refused",
       false,
+      null,
     ]);
-    expect(auto()).toMatchObject({ enabled: false, lowWithoutAi: false });
+    expect(auto().enabled).toBe(false);
   });
 });
 
@@ -281,6 +298,18 @@ describe("writing Claude Code's settings through file.write needs a near connect
     symlinkSync(join(repo, ".claude"), join(repo, "via"));
     const missing = join(repo, ".claude", "settings.local.json");
     const farMissing = await write(far, "via/settings.local.json", "0".repeat(64));
+    // What shapes a session as a settings file does: agents, skills, commands, rules, any CLAUDE.md,
+    // and a `.claude` folder deeper in the repository.
+    const config = [
+      ".claude/agents/new.md",
+      ".claude/skills/x/SKILL.md",
+      ".claude/commands/go.md",
+      "CLAUDE.md",
+      "docs/CLAUDE.local.md",
+      "apps/web/.claude/settings.json",
+    ];
+    const farConfig: Array<string | null> = [];
+    for (const path of config) farConfig.push(await write(far, path, "0".repeat(64)));
     const farOther = await write(far, "a.txt", sha("original\n"));
     const nearSettings = await write(near, ".claude/settings.json", sha("{}\n"));
     expect([
@@ -288,6 +317,7 @@ describe("writing Claude Code's settings through file.write needs a near connect
       afterFar,
       farMissing,
       existsSync(missing),
+      farConfig,
       farOther,
       nearSettings,
       settings(),
@@ -296,6 +326,7 @@ describe("writing Claude Code's settings through file.write needs a near connect
       "{}\n",
       "transport_refused",
       false,
+      config.map(() => "transport_refused"),
       null,
       null,
       hook,
@@ -322,6 +353,23 @@ describe("trusting a project's persona needs a near connection (#3815)", () => {
       false,
       null,
       true,
+    ]);
+  });
+});
+
+describe("publishing a persona as a project agent needs a near connection (#3815)", () => {
+  test("a far connection is refused and nothing is written; a near one publishes", async () => {
+    const { near, far, repo, personas, published, reasonOf } = await nearAndFar();
+    await personas.save({ scope: "host", persona: HOST_PERSONA });
+    const ask = { id: "seg", projectPath: repo, confirm: true };
+    const farPublish = await reasonOf(far.request("personas.publishAgent", ask));
+    const afterFar = [...published];
+    const nearPublish = await reasonOf(near.request("personas.publishAgent", ask));
+    expect([farPublish, afterFar, nearPublish, published]).toEqual([
+      "transport_refused",
+      [],
+      null,
+      ["persona-seg"],
     ]);
   });
 });
