@@ -272,6 +272,28 @@ describe("automacoes-ui: turning on and off", () => {
     expect(row("Revisar issues auto")?.textContent).toContain("Ligada");
   });
 
+  test("a row's switch keeps one name in both states: it never says Ligar for an automation that is already on (#4186)", async () => {
+    const d = await online();
+    await createLabelAutomation();
+    await settle(() => row("Revisar issues auto") !== null);
+    const named = () =>
+      screen.queryByRole("switch", { name: "Automação Revisar issues auto" }) !== null;
+    const off = named();
+    await toggle("Automação Revisar issues auto");
+    await click("Ligar", screen.queryByRole("alertdialog"));
+    await settle(() => automationsOf(d)[0]?.enabled === true);
+    await settle(() => (row("Revisar issues auto")?.textContent ?? "").includes("Ligada"));
+    expect({
+      off,
+      on: named(),
+      stale: screen.queryByRole("switch", { name: /^Ligar / }) !== null,
+    }).toEqual({
+      off: true,
+      on: true,
+      stale: false,
+    });
+  });
+
   test("turning off needs no confirmation", async () => {
     const d = await online();
     await createLabelAutomation();
