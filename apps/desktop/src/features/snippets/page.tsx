@@ -6,8 +6,16 @@ import { Input } from "@/components/ui/input";
 import { selectedClient, tagsFirst } from "@/features/clients/index.ts";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
-import { ConfirmDialog } from "@/shared/feedback/index.ts";
-import { EmptyState, Field, NativeSelect, Page } from "@/shared/layout/index.ts";
+import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
+import { useMinLoading } from "@/shared/hooks/index.ts";
+import {
+  EmptyState,
+  ErrorState,
+  Field,
+  LoadingState,
+  NativeSelect,
+  Page,
+} from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature } from "../../lib/version.ts";
@@ -46,13 +54,18 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
   const [project, setProject] = useState("");
   const [query, setQuery] = useState("");
   const [type, setType] = useState<"" | "command" | "prompt">("");
-  const [snippets, setSnippets] = useState<AppSnippet[]>([]);
+  /** `null` until the host answers: an empty list is an answer, not the absence of one. */
+  const [snippets, setSnippets] = useState<AppSnippet[] | null>(null);
+  const [failed, setFailed] = useState(false);
   const [file, setFile] = useState<SnippetFileInfo | null>(null);
   const [removing, setRemoving] = useState<AppSnippet | null>(null);
+  /** The snippet whose removal the host has not answered: its Remove is busy, so a second press has nothing to send. */
+  const [removingNow, setRemovingNow] = useState<string | null>(null);
   const [editing, setEditing] = useState<AppSnippet | "new" | null>(null);
   const [importing, setImporting] = useState(false);
   const [importingFile, setImportingFile] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   const openSettings = () => props.go({ name: "settings", section: "assistant" });
   const clearFilters = () => {
     setQuery("");
@@ -64,8 +77,12 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
     if (hostId) void store.projectList.load(hostId);
   }, [store, hostId]);
 
+  // Reads can overlap (a retry, a filter typed while one is out): only the latest to start is heard.
+  const latest = useRef(0);
   const reload = useCallback(async () => {
+    const mine = ++latest.current;
     if (project === GLOBAL) {
+      setFailed(false);
       setSnippets(
         store.snippets.global.list({ ...(query ? { query } : {}), ...(type ? { type } : {}) }),
       );
@@ -73,12 +90,15 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
       return;
     }
     if (!hostId) return;
+    setFailed(false);
     const listed = await store.hostCommand(hostId, "snippets.list", {
       ...(project ? { scope: "all", projectPath: project } : { scope: "host" }),
       ...(query ? { query } : {}),
       ...(type ? { type } : {}),
     });
-    if (!listed) return;
+    if (mine !== latest.current) return;
+    setFailed(!listed);
+    if (!listed) return setFile(null);
     setSnippets(listed.snippets);
     setFile(listed.file);
   }, [store, hostId, project, query, type]);
@@ -107,8 +127,15 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
       return reload();
     }
     if (!hostId) return;
-    const done = await store.hostCommand(hostId, "snippets.remove", { id: snippet.id });
-    if (done !== null) await reload();
+    // Busy until the list is read again too: the row is on screen until then, and a second press
+    // would remove what is already gone.
+    setRemovingNow(snippet.id);
+    try {
+      const done = await store.hostCommand(hostId, "snippets.remove", { id: snippet.id });
+      if (done !== null) await reload();
+    } finally {
+      setRemovingNow(null);
+    }
   };
 
   const trust = async () => {
@@ -127,9 +154,12 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
     if (trusted) await reload();
   };
 
+  /** What the page shows: nothing while it waits or after a refusal, and no host means no snippets to wait for. */
+  const cards = failed ? null : (snippets ?? (hostId || project === GLOBAL ? null : []));
+  const loading = useMinLoading(!failed && cards === null);
   // The selected client's snippets (those with its tag) come first, and a new one starts with it.
   const clientTag = selectedClient(state.clientList, state.clientSelection)?.defaults.snippetTag;
-  const ordered = tagsFirst(snippets, clientTag);
+  const ordered = tagsFirst(cards ?? [], clientTag);
   const projects = hostId ? (state.projects[hostId] ?? []) : [];
   // Phase 17's actions are a project's: a snippet with a secret becomes one of the chosen project.
   const actionsProject =
@@ -254,9 +284,9 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
           <p className="font-mono">{t("snippets.file.path", { path: file.path })}</p>
           <p>{file.trusted ? t("snippets.file.trusted") : t("snippets.file.untrusted")}</p>
           {!file.trusted && (
-            <Button size="sm" variant="outline" className="self-start" onClick={() => void trust()}>
+            <ActionButton size="sm" variant="outline" className="self-start" onClick={trust}>
               {t("snippets.file.trust")}
-            </Button>
+            </ActionButton>
           )}
           {file.errors.length > 0 && (
             <ul aria-label={t("snippets.file.errors")} className="list-disc pl-5 text-destructive">
@@ -267,10 +297,21 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
           )}
         </div>
       )}
-      {ordered.length === 0 ? (
-        <EmptyState icon={SquareCode} {...emptyStateFor()} />
-      ) : (
-        <ul aria-label={t("snippets.list")} className="flex flex-col gap-2">
+      {loading && <LoadingState label={t("snippets.loading")} />}
+      {failed && (
+        <ErrorState
+          message={t("snippets.loadFailed")}
+          retryLabel={t("snippets.retry")}
+          onRetry={() => {
+            // A retry shows the loading shape again, so the person sees it was taken.
+            setSnippets(null);
+            void reload();
+          }}
+        />
+      )}
+      {cards?.length === 0 && <EmptyState icon={SquareCode} {...emptyStateFor()} />}
+      {cards && cards.length > 0 && (
+        <ul ref={listRef} aria-label={t("snippets.list")} className="flex flex-col gap-2">
           {ordered.map((snippet) => (
             <li key={snippet.id} className="flex flex-col gap-2 rounded-lg border p-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -293,16 +334,16 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
                 {snippet.run ?? snippet.text}
               </p>
               <div className="flex gap-2">
-                <Button
+                <ActionButton
                   variant="outline"
                   size="sm"
                   aria-label={t(snippet.favorite ? "snippets.unfavorite" : "snippets.favorite", {
                     name: snippet.name,
                   })}
-                  onClick={() => void favorite(snippet)}
+                  onClick={() => favorite(snippet)}
                 >
                   <Star className={snippet.favorite ? "fill-current" : ""} aria-hidden />
-                </Button>
+                </ActionButton>
                 <Button
                   variant="outline"
                   size="sm"
@@ -325,14 +366,16 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
                 >
                   {t("snippets.edit")}
                 </Button>
-                <Button
+                <ActionButton
                   variant="outline"
                   size="sm"
                   aria-label={t("snippets.removeFor", { name: snippet.name })}
+                  data-remove={snippet.id}
+                  pending={removingNow === snippet.id}
                   onClick={() => setRemoving(snippet)}
                 >
                   {t("snippets.remove")}
-                </Button>
+                </ActionButton>
               </div>
             </li>
           ))}
@@ -345,6 +388,12 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
           destructive
           onConfirm={() => void remove(removing)}
           onCancel={() => setRemoving(null)}
+          // A cancel goes back to the row's Remove; a confirm leaves it busy or gone, so the focus goes to a control that stays.
+          onRestoreFocus={() => {
+            const rows = listRef.current?.querySelectorAll<HTMLButtonElement>("[data-remove]");
+            const row = Array.from(rows ?? []).find((b) => b.dataset.remove === removing.id);
+            (row && !row.disabled ? row : searchRef.current)?.focus();
+          }}
         />
       )}
     </Page>
