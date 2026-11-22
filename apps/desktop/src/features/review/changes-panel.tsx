@@ -1,13 +1,24 @@
 import type { ChangesResult, DiffFile, ReviewComment } from "@flightdeck/protocol";
 import { reviewMessage } from "@flightdeck/protocol";
 import { Pencil, RotateCcw } from "lucide-react";
-import { lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import {
+  lazy,
+  type ReactNode,
+  Suspense,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
-import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import { cn } from "@/lib/utils";
+import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import { Stack } from "@/shared/layout/index.ts";
 import { formatBytes } from "@/shared/lib/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { DiffView } from "./diff-view.tsx";
@@ -17,6 +28,9 @@ import { ReviewList } from "./review-list.tsx";
 
 // CodeMirror is ~800 KB of source and only opens with a file: it loads when an editor is opened.
 const FileEditor = lazy(() => import("./file-editor.tsx").then((m) => ({ default: m.FileEditor })));
+
+/** How long the status line about a comment stays: 6 s, by the store's clock. */
+const NOTICE_MS = 6000;
 
 /** What the host offers to take back a revert: the file and when the offer ends. */
 interface Undo {
@@ -58,6 +72,7 @@ export function ChangesPanel(
   const [selection, setSelection] = useState<Selection | null>(null);
   const [body, setBody] = useState("");
   const commentBox = useRef<HTMLTextAreaElement>(null);
+  const hintId = useId();
   const panel = useRef<HTMLElement>(null);
   // Focus brings the draft into view: it sits after the whole diff (#1496). Once the drafts were
   // sent, the reviewer's first comment in the history is where they went.
@@ -81,6 +96,16 @@ export function ChangesPanel(
   useEffect(() => {
     if (selection) commentBox.current?.focus();
   }, [selection]);
+  // What the last add, save or remove did, said in a polite status line; it fades after a while.
+  // A new object for each, so the same words said twice are heard twice and the 6 s start over.
+  const [notice, setNotice] = useState<{ text: string } | null>(null);
+  const say = (text: string) => setNotice({ text });
+  useEffect(() => {
+    if (notice === null) return;
+    return store.later(() => setNotice(null), NOTICE_MS);
+  }, [store, notice]);
+  // After a remove the pressed button is gone: the list (or the panel, when it is empty) takes the focus.
+  const refocus = useRef(false);
   const [reverting, setReverting] = useState<string | null>(null);
   const [undo, setUndo] = useState<Undo | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -88,10 +113,22 @@ export function ChangesPanel(
   const loadComments = useCallback(async () => {
     const result = await store.hostCommand(hostId, "review.list", { target });
     if (result) setComments(result.comments);
+    return result !== null;
   }, [store, hostId, target]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `comments` is the trigger
+  useEffect(() => {
+    if (!refocus.current) return;
+    refocus.current = false;
+    const list = panel.current?.querySelector<HTMLElement>("[data-review-list]");
+    (list ?? panel.current)?.focus();
+  }, [comments]);
 
+  // Counts the answers the screen took, so a read that was slow does not undo a newer one.
+  const latest = useRef(0);
   const refresh = useCallback(async () => {
+    const mine = ++latest.current;
     const result = await store.hostRequest(hostId, "changes.get", { target });
+    if (mine !== latest.current) return;
     if (result.ok) {
       setChanges(result.data);
       setUnavailable(null);
@@ -105,6 +142,7 @@ export function ChangesPanel(
   useEffect(() => {
     void refresh();
     return store.watchChanges(hostId, target, (update) => {
+      latest.current++;
       setChanges(update);
       setUnavailable(null);
       void loadComments();
@@ -137,7 +175,26 @@ export function ChangesPanel(
     });
     if (!added) return;
     closeComposer();
+    say(t("changes.commentAdded"));
     await loadComments();
+  };
+
+  /** Whether the host took the new text: a refused save leaves the edit box open for the person. */
+  const updateComment = async (id: string, text: string) => {
+    const saved = await store.hostCommand(hostId, "review.update", { id, body: text });
+    if (saved) say(t("changes.commentSaved"));
+    await loadComments();
+    return saved !== null;
+  };
+
+  const removeComment = async (id: string) => {
+    const removed = await store.hostCommand(hostId, "review.remove", { id });
+    if (removed) {
+      say(t("changes.commentRemoved"));
+      refocus.current = true;
+    }
+    // No new list, no render to focus after: the flag must not wait for a later one.
+    if (!(await loadComments())) refocus.current = false;
   };
 
   const send = async () => {
@@ -186,6 +243,7 @@ export function ChangesPanel(
         .trim()
     : "";
 
+  const blank = body.trim() === "";
   const composer = selection && (
     <form aria-label={t("changes.composer")} className="flex flex-col gap-2 rounded-md border p-3">
       <p className="font-mono text-xs">{where}</p>
@@ -195,6 +253,7 @@ export function ChangesPanel(
         value={body}
         className="min-h-16"
         onChange={(e) => setBody(e.target.value)}
+        aria-describedby={hintId}
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
@@ -206,8 +265,17 @@ export function ChangesPanel(
           }
         }}
       />
+      <p id={hintId} className="text-muted-foreground text-xs">
+        {blank ? t("changes.commentBlank") : t("changes.commentShortcut")}
+      </p>
       <div className="flex gap-2">
-        <Button type="button" size="sm" onClick={() => void addComment()}>
+        <Button
+          type="button"
+          size="sm"
+          disabled={blank}
+          aria-describedby={hintId}
+          onClick={() => void addComment()}
+        >
           {t("changes.addComment")}
         </Button>
         <Button type="button" variant="outline" size="sm" onClick={closeComposer}>
@@ -263,7 +331,16 @@ export function ChangesPanel(
   if (unavailable !== null && changes === null) {
     return (
       <section aria-label={t("changes.region")}>
-        <InlineNotice tone="info">{t("changes.unavailable", { reason: unavailable })}</InlineNotice>
+        <Stack gap={2}>
+          <InlineNotice tone="error">
+            {t("changes.unavailable", { reason: unavailable })}
+          </InlineNotice>
+          <div>
+            <ActionButton variant="outline" size="sm" onClick={() => refresh()}>
+              {t("changes.retry")}
+            </ActionButton>
+          </div>
+        </Stack>
       </section>
     );
   }
@@ -278,12 +355,22 @@ export function ChangesPanel(
       }
     : {};
   return (
-    <section ref={panel} aria-label={t("changes.region")} className="flex flex-col gap-4">
+    <section
+      ref={panel}
+      aria-label={t("changes.region")}
+      tabIndex={-1}
+      className="relative flex flex-col gap-4 focus-visible:outline-2 focus-visible:outline-ring"
+    >
+      {unavailable !== null && (
+        <InlineNotice tone="error">
+          {t("changes.refreshFailed", { reason: unavailable })} {t("changes.staleHint")}
+        </InlineNotice>
+      )}
       {props.extra?.(changes, refresh, goToDrafts)}
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => void refresh()}>
+        <ActionButton variant="outline" size="sm" onClick={() => refresh()}>
           {t("changes.refresh")}
-        </Button>
+        </ActionButton>
         <Button
           variant="outline"
           size="sm"
@@ -328,15 +415,15 @@ export function ChangesPanel(
           />
         </>
       )}
+      {/* Always in the page, so a screen reader is already listening when the words arrive. */}
+      <output className={cn("text-muted-foreground text-sm", notice === null && "sr-only")}>
+        {notice?.text}
+      </output>
       {comments.length > 0 && (
         <ReviewList
           comments={comments}
-          onUpdate={(id, text) =>
-            void store.hostCommand(hostId, "review.update", { id, body: text }).then(loadComments)
-          }
-          onRemove={(id) =>
-            void store.hostCommand(hostId, "review.remove", { id }).then(loadComments)
-          }
+          onUpdate={updateComment}
+          onRemove={(id) => void removeComment(id)}
           onSend={() => void send()}
           {...(props.onCompose
             ? {
