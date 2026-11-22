@@ -85,6 +85,9 @@ export const NARROW_SHOTS: readonly string[] = [
   "sessao-aprovacao-risco-alto",
   "projeto-regras",
   "aprovacoes-automaticas",
+  // #4190: the Automations form's first step and its field errors at 390.
+  "automacoes-gatilho",
+  "automacoes-form-erros",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */
