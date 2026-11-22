@@ -378,4 +378,11 @@ describe("layout", () => {
     });
     expect(retried).toBe(1);
   });
+
+  test("the error state keeps its retry button out of the destructive red, for contrast in the dark theme (#4042)", async () => {
+    render(<ErrorState message="host offline" retryLabel="Tentar de novo" onRetry={() => {}} />);
+    const retry = screen.queryByRole("button", { name: "Tentar de novo" });
+    expect(retry).not.toBeNull();
+    expect((retry as HTMLElement).className.split(/\s+/).includes("text-foreground")).toBe(true);
+  });
 });

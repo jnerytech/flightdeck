@@ -21,7 +21,8 @@ import { type VisualMode, VOLATILE_RULES } from "./lib/browser/visual.ts";
 import { demoFinished, demoInbox, demoSecrets, demoVaultUsage } from "./lib/demo/seeds.ts";
 import { DEMO_AWAY_SINCE } from "./lib/e2e/journeys.ts";
 import { holdsScript } from "./lib/shots/holds.ts";
-import { PENDING_SELECTOR } from "./lib/shots/loaded.ts";
+import { pendingSelectorFor } from "./lib/shots/loaded.ts";
+import { maintenanceScript } from "./lib/shots/maintenance.ts";
 import { narrowSizes, unknownNarrowShots } from "./lib/shots/narrow.ts";
 import { ALFA, DEMO_CLIENTS, DEMO_ROI, type Shot } from "./lib/shots/shot.ts";
 import { sshScript } from "./lib/shots/ssh-frames.ts";
@@ -264,6 +265,8 @@ async function printShot(
     // Playwright's routeWebSocket never saw the app's sockets under Bun: the page's own WebSocket is
     // wrapped instead.
     if (shot.holds) await page.addInitScript({ content: holdsScript() });
+    if (shot.maintenance)
+      await page.addInitScript({ content: maintenanceScript(shot.maintenance) });
     if (shot.wire) await page.addInitScript({ content: wireScript(shot.wire) });
     if (shot.ssh) await page.addInitScript({ content: sshScript(shot.askpass === true) });
     if (shot.teleport) {
@@ -285,7 +288,7 @@ async function printShot(
     // A skeleton or a busy region is a screen still loading: the print waits for the real one.
     await page.waitForFunction(
       (selector) => document.querySelector(selector) === null,
-      PENDING_SELECTOR,
+      pendingSelectorFor(shot),
       { timeout: 15_000 },
     );
     if (visual !== "off") await stabilize(page);
