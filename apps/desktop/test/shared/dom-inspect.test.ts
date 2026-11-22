@@ -82,7 +82,10 @@ describe("a DOM node in a test failure (#3854)", () => {
 
   test("a cut never splits an emoji", () => {
     const out = printed(document.createTextNode(`${"x".repeat(39)}🙂🙂`));
-    expect({ whole: out.isWellFormed(), cut: out.endsWith('🙂…"') }).toEqual({
+    expect({
+      whole: !out.includes("\uFFFD") && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(out),
+      cut: out.endsWith('🙂…"'),
+    }).toEqual({
       whole: true,
       cut: true,
     });

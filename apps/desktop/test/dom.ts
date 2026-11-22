@@ -88,18 +88,26 @@ const TEXT_PRINT_LIMIT = 40;
 
 /**
  * How a node reads in a failure message (#3854). Bun prints a happy-dom node whole, with its window and
- * its event classes: 1.87 GB and 26 s for one failed `toBeNull`, and 10 GB once for a `toEqual`. The
- * opening tag says which node it was.
+ * its event classes: 1.87 GB and 26 s for one failed `toBeNull`. The opening tag says which node it was.
+ * (A failed `toEqual` against a plain object is Bun's own diff of the node's properties, not this print.)
  */
 function printNode(this: Node): string {
-  if (this.nodeType === 3) {
-    const text = this.textContent ?? "";
-    return `#text "${text.length > TEXT_PRINT_LIMIT ? `${text.slice(0, TEXT_PRINT_LIMIT)}…` : text}"`;
+  if (this.nodeType === 3 || this.nodeType === 8) {
+    const letters = Array.from(this.textContent ?? "");
+    const shown =
+      letters.length > TEXT_PRINT_LIMIT
+        ? `${letters.slice(0, TEXT_PRINT_LIMIT).join("")}…`
+        : letters.join("");
+    return this.nodeType === 3
+      ? `#text ${JSON.stringify(shown)}`
+      : `<!-- ${shown.replace(/\s+/g, " ")} -->`;
   }
-  const tag = (this.nodeName ?? "node").toLowerCase();
+  if (this.nodeType !== 1)
+    return { 9: "#document", 11: "#document-fragment" }[this.nodeType] ?? `#${this.nodeName}`;
+  const tag = this.nodeName.toLowerCase();
   const className = (this as { className?: unknown }).className;
   return typeof className === "string" && className !== ""
-    ? `<${tag} class="${className}">`
+    ? `<${tag} class=${JSON.stringify(className)}>`
     : `<${tag}>`;
 }
 
