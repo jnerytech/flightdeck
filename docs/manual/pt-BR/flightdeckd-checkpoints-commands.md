@@ -43,7 +43,7 @@ fd rewind undo 3f9c1a --preview
 
 `undo <sessão> --preview` diz o que o `undo` mudaria agora: os arquivos que diferem entre o estado guardado antes do
 último rewind e o checkout como está, com as linhas adicionadas e removidas. Isso inclui as edições feitas depois do
-rewind, que um undo sobrescreveria. Não aceita `--confirm`, não escreve nada, e `--preview` com `--confirm` é recusado
+rewind, que um undo sobrescreveria. Não aceita `--confirm`, não muda arquivo nem referência, e `--preview` com `--confirm` é recusado
 com saída `1`. Depois que o undo rodou, ou quando o checkout já é igual ao estado guardado, imprime `no file changed`.
 Sem rewind para desfazer, o daemon recusa com saída `1`.
 

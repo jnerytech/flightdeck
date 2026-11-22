@@ -66,7 +66,7 @@ export class Rewinder {
     return sdk ?? (await this.restore(target));
   }
 
-  /** What `undo` would change: the files that differ between the saved state and the working tree. Writes nothing. */
+  /** What `undo` would change: the files that differ between the saved state and the working tree. Changes no file and no ref. */
   async undoPreview(claudeSessionId: string): Promise<RewindPreview> {
     const row = await this.inRoots(this.newestSafety(claudeSessionId));
     return (await this.snapshotDiff(row)).preview;

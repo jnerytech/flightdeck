@@ -40,6 +40,9 @@ describe("risk rules: a session rewinding its own checkout through flightdeckd f
         ['fd rewind undo s1 --preview "$C"', REASON],
         ["fd rewind undo s1 --preview; fd rewind undo s1 $C", REASON],
         ["fd rewind undo s1 --con*", REASON],
+        // A here-string is stdin, not an argument: its `--preview` does not make the line a preview.
+        ["C=--confirm; fd rewind undo s1 $C <<< --preview", REASON],
+        ["fd rewind undo s1 $'--confirm' <<< --preview", REASON],
         ["fd rewind undo s1 && fd rewind undo s2 --preview", REASON],
         ['bash -c "fd rewind undo s1 $C; echo --preview"', REASON],
         ["fd rewind apply s1 2 --preview --confirm", REASON],

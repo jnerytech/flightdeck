@@ -43,7 +43,7 @@ fd rewind undo 3f9c1a --preview
 
 `undo <session> --preview` says what `undo` would change right now: the files that differ between the state saved
 before the last rewind and the checkout as it is, with the lines added and removed. That includes edits made after
-the rewind, which an undo would overwrite. It takes no `--confirm`, writes nothing, and `--preview` with `--confirm`
+the rewind, which an undo would overwrite. It takes no `--confirm`, changes no file and no ref, and `--preview` with `--confirm`
 is refused with exit `1`. Once the undo has run, or when the checkout already equals the saved state, it prints
 `no file changed`. With no rewind to undo the daemon refuses with exit `1`.
 
