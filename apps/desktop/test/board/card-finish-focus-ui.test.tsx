@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
-import { settle } from "../wait.ts";
+import { settle, settleMaybe } from "../wait.ts";
 import { chooseFromCardMenu } from "./card-menu.ts";
 
 registerDom();
@@ -78,11 +78,8 @@ describe("card-finish-focus-ui: the focus goes back to Actions when the Finish d
         });
       });
       await settle(() => screen.queryByRole("dialog", { name: words.dialog }) === null);
-      // Radix hands the focus back in a timer of its own: let it run.
-      await act(async () => {
-        await new Promise((done) => setTimeout(done, 50));
-      });
-      expect(actionsHasFocus(words.actions)).toBe(true);
+      // Radix hands the focus back in a timer of its own: wait for it.
+      expect(await settleMaybe(() => actionsHasFocus(words.actions))).toBe(true);
     });
   }
 });
