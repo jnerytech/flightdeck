@@ -77,6 +77,8 @@ for (const [lang, t] of [
       for (const [status, reason] of [
         ["offline", t.hostPage.needsOnline],
         ["incompatible", t.hostPage.needsUpdate],
+        ["connecting", t.hostPage.needsConnection],
+        ["unauthorized", t.hostOffline.unauthorized],
       ] as const) {
         await asStatus(store, status);
         const button = screen.getByRole("button", { name: t.hostHome.newSession });
@@ -93,7 +95,19 @@ for (const [lang, t] of [
       expect(seen.map((row) => [row.status, row.hangs])).toEqual([
         ["offline", false],
         ["incompatible", false],
+        ["connecting", false],
+        ["unauthorized", false],
       ]);
+    });
+
+    test("an online host's New session is on and has no reason line (issue #3862)", async () => {
+      const store = await awayPage(lang);
+      await asStatus(store, "online");
+      const button = screen.getByRole("button", { name: t.hostHome.newSession });
+      expect([
+        (button as HTMLButtonElement).disabled,
+        button.hasAttribute("aria-describedby"),
+      ]).toEqual([false, false]);
     });
 
     test("an incompatible host's Information panel names the other version, a refused token names the token", async () => {
