@@ -10,7 +10,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AssistField } from "@/features/assistant/ui.ts";
 import { useT } from "@/i18n/context";
@@ -84,18 +83,25 @@ export function CardReview(
         <output aria-label={t("cardReview.positionLabel")} className="text-sm tabular-nums">
           {t("cardReview.position", { ahead, behind, base })}
         </output>
-        <ActionButton variant="outline" size="sm" disabled={behind === 0} onClick={() => update()}>
+        <ActionButton
+          variant="outline"
+          size="sm"
+          disabled={behind === 0}
+          disabledReason={t("cardReview.upToDate", { base })}
+          onClick={() => update()}
+        >
           {t("cardReview.updateFromBase")}
         </ActionButton>
         {!card.prUrl && (
-          <Button
+          <ActionButton
             variant="outline"
             size="sm"
             disabled={ahead === 0}
+            disabledReason={t("cardReview.nothingToMerge", { base })}
             onClick={() => setMerging(true)}
           >
             {t("cardReview.merge")}
-          </Button>
+          </ActionButton>
         )}
       </div>
       {refusal && (

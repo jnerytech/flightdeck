@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/context";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { ErrorState } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { isExternalAuthor } from "./domain/review.ts";
 
@@ -29,15 +30,28 @@ export function PrComments(
   const t = useT();
   const { store, hostId, cardId } = props;
   const [comments, setComments] = useState<PrComment[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [picked, setPicked] = useState<Set<string> | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `moment` is the trigger
   useEffect(() => {
     void store.hostCommand(hostId, "pr.comments", { cardId }).then((result) => {
-      setComments(result?.comments ?? []);
+      // A refusal is `null`: it is a failed read, not a PR with no comments.
+      setFailed(result === null);
+      if (result) setComments(result.comments);
     });
-  }, [store, hostId, cardId, props.moment]);
+  }, [store, hostId, cardId, props.moment, attempt]);
 
+  if (failed) {
+    return (
+      <ErrorState
+        message={t("cardReview.prFailed")}
+        retryLabel={t("cardReview.prRetry")}
+        onRetry={() => setAttempt((n) => n + 1)}
+      />
+    );
+  }
   if (comments === null) return null;
   // Until the user picks by hand, the open comments are the chosen ones.
   const chosen = picked ?? new Set(comments.filter((c) => !c.resolved).map((c) => c.id));
