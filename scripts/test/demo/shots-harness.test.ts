@@ -39,6 +39,12 @@ async function calls(name: string): Promise<string[]> {
   return made;
 }
 
+/** Whether a click follows the last call that names `target`: the print presses what it found. */
+const clickedAfter = (made: string[], target: string): boolean => {
+  const at = made.findLastIndex((call) => call.includes(target));
+  return at > -1 && made.slice(at).includes("click()");
+};
+
 const wired = (name: string, command: string) =>
   named(name)?.wire?.find((rule) => rule.command === command);
 
@@ -119,6 +125,7 @@ describe("the harness prints (#4110)", () => {
     const open = made.findIndex((call) => call.includes("Configurar o Claude Code"));
     expect(panel).toBeGreaterThan(-1);
     expect(open).toBeGreaterThan(panel);
+    expect(clickedAfter(made, "Configurar o Claude Code")).toBe(true);
   });
 
   test("the share print opens the share dialog and names the template", async () => {
@@ -127,6 +134,7 @@ describe("the harness prints (#4110)", () => {
     const field = made.findIndex((call) => call.startsWith("fill("));
     expect(open).toBeGreaterThan(-1);
     expect(field).toBeGreaterThan(open);
+    expect(made.slice(open, field)).toContain("click()");
   });
 
   test("the delete print opens Settings, scrolls to the templates, then asks to delete the first one", async () => {
@@ -139,6 +147,7 @@ describe("the harness prints (#4110)", () => {
     expect(settings).toBeGreaterThan(-1);
     expect(section).toBeGreaterThan(settings);
     expect(del).toBeGreaterThan(section);
+    expect(clickedAfter(made, "Apagar o modelo")).toBe(true);
   });
 
   test("no print clicks once its dialog is open, so none confirms a share, a delete, an apply or a commit", async () => {
@@ -146,7 +155,10 @@ describe("the harness prints (#4110)", () => {
       const made = await calls(name);
       const dialog = made.findIndex((call) => call.includes("alertdialog"));
       if (dialog === -1) continue;
-      expect(made.slice(dialog)).not.toContain("click()");
+      const after = made.slice(dialog);
+      expect(after).not.toContain("click()");
+      // Enter in the share dialog's field would share too.
+      expect(after.some((call) => /^(press|keyboard|dblclick|check)\b/.test(call))).toBe(false);
     }
   });
 });
