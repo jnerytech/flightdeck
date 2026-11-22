@@ -447,6 +447,7 @@ export const OPTIONS_WITH_VALUE = [
   "--digests",
   "--depth",
   "--root",
+  "--issue",
   "--limit",
   "--out",
   "--from",

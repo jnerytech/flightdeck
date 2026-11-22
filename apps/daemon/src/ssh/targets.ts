@@ -1,7 +1,8 @@
 import type { Database } from "bun:sqlite";
 import type { SshAuth, SshOptions, SshTarget } from "@flightdeck/protocol";
 import { FlightdeckError, parseJsonOr, parseJsonWith, ulid } from "../kernel/index.ts";
-import { PinnedKey, StoredOptions, Tags, WasForwardAgent } from "./domain/row-json.ts";
+import { bindsBeyondLoopback } from "./domain/forward-bind.ts";
+import { PinnedKey, StoredOptions, Tags, WasOptions } from "./domain/row-json.ts";
 
 export interface SshTargetsOptions {
   db: Database;
@@ -104,7 +105,8 @@ export class SshTargets {
   /**
    * `guard` runs when the save turns ForwardAgent on (it was off, or the target is new) or leaves it on
    * while the host, port, user, jump or route changes (the agent would go to another place), once the
-   * request is valid and before anything changes: it throws to refuse.
+   * request is valid and before anything changes: it throws to refuse. It also runs when a LocalForward
+   * listens on an address other than loopback and was not there before.
    */
   save(input: SshTargetInput, guard?: () => void): SshTarget {
     const previous = input.id ? this.row(input.id) : null;
@@ -123,9 +125,10 @@ export class SshTargets {
     const secretRef = this.secretRef(auth, input.secretRef);
     const jump = this.jump(input.jump ?? null, input.id);
     const options = this.options(input.options ?? {});
-    const wasOn = previous
-      ? parseJsonOr(WasForwardAgent, previous.options, { forwardAgent: false }).forwardAgent
-      : false;
+    const was = previous
+      ? parseJsonOr(WasOptions, previous.options, { forwardAgent: false, localForward: [] })
+      : { forwardAgent: false, localForward: [] };
+    const wasOn = was.forwardAgent;
     const viaHost = input.viaHost?.trim() || null;
     const moved =
       previous !== null &&
@@ -135,6 +138,10 @@ export class SshTargets {
         previous.jump !== jump ||
         previous.via_host !== viaHost);
     if (options.forwardAgent === true && (!wasOn || moved)) guard?.();
+    const opensPort = (options.localForward ?? []).some(
+      (forward) => bindsBeyondLoopback(forward) && !was.localForward.includes(forward),
+    );
+    if (opensPort) guard?.();
     if (options.forwardAgent === true && !wasOn && input.confirm !== true) {
       throw new FlightdeckError(
         "invalid_state",

@@ -169,13 +169,16 @@ export const agentsHandlers = {
     const { projectId, name } = payload;
     return await server.needIn("agentSetup", "memory").read(server.projectPath(projectId), name);
   },
-  "memory.write": async (payload, { server }) => {
+  "memory.write": async (payload, { ws, server }) => {
+    // A project's auto memory is read into the person's sessions: changing it is near only (#3825).
+    requireVaultTransport(ws.data.origin, "memory.write", server.opts.log);
     const { projectId, confirm, ...input } = payload;
     return await server
       .needIn("agentSetup", "memory")
       .write(server.projectPath(projectId), { ...input, confirm: confirm === true });
   },
-  "memory.delete": async (payload, { server }) => {
+  "memory.delete": async (payload, { ws, server }) => {
+    requireVaultTransport(ws.data.origin, "memory.delete", server.opts.log);
     const { projectId, confirm, ...input } = payload;
     await server
       .needIn("agentSetup", "memory")

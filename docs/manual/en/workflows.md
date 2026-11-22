@@ -282,7 +282,7 @@ flightdeckd card dismiss-unblocked <card> [--json]
   printed. It pushes the branch, which runs the repository's pre-push hook, so it needs a near connection: over a
   far connection (not this computer or Tailscale) the daemon refuses it with `transport_refused`.
 - `update-from-base` rebases the card's branch on its base; on a conflict it stops and leaves the
-  worktree as it was (exit 1).
+  worktree as it was (exit 1). It and `merge-local` need a near connection (this computer or Tailscale): over a far one the daemon refuses with `transport_refused`.
 - `merge-local` is for a card with no pull request: it merges the card into its base (a merge commit,
   or one commit with `--squash`), removes its worktree and branch, and moves it to Done. It cannot be
   undone, so it needs `--confirm`; `--message` is the commit message. A session's own shell that runs it
