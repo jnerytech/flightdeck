@@ -21,11 +21,12 @@ export function AgentPage(
   const { t } = store.i18n;
   const host = store.getState().hosts.find((h) => h.id === hostId);
   const withMemory = hasFeature(host?.hostInfo?.features, "memory", false);
+  const withPersonas = hasFeature(host?.hostInfo?.features, "personas", false);
   return (
-    <Page title={t("agent.title", { project: props.projectName })} subtitle={t("agent.subtitle")}>
-      {hasFeature(host?.hostInfo?.features, "personas", false) && (
-        <SubagentsSwitch store={store} hostId={hostId} projectId={projectId} />
-      )}
+    <Page
+      title={t("agent.title", { project: props.projectName })}
+      subtitle={t(withMemory ? "agent.subtitleMemory" : "agent.subtitle")}
+    >
       <Tabs defaultValue="mcp">
         <TabsList aria-label={t("agent.tabs")}>
           <TabsTrigger value="mcp">{t("agent.tabMcp")}</TabsTrigger>
@@ -49,7 +50,10 @@ export function AgentPage(
           </TabsContent>
         )}
         {(["claudemd", "agent", "skill"] as const).map((kind) => (
-          <TabsContent key={kind} value={kind}>
+          <TabsContent key={kind} value={kind} className="flex flex-col gap-4">
+            {kind === "agent" && withPersonas && (
+              <SubagentsSwitch store={store} hostId={hostId} projectId={projectId} />
+            )}
             <AgentFiles store={store} hostId={hostId} projectId={projectId} kind={kind} />
           </TabsContent>
         ))}
