@@ -1,7 +1,8 @@
 import { Database } from "bun:sqlite";
+import { randomUUID } from "node:crypto";
 import type { Stats } from "node:fs";
 import { chmod, copyFile, lstat, mkdir, readdir, rename, rm, stat } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { withLock } from "../kernel/index.ts";
 import { MIGRATIONS } from "../store/index.ts";
@@ -26,9 +27,9 @@ function backupName(now: number): string {
 /** `backup --out` found something at the path it was asked to write (#3809). */
 export class TargetExists extends Error {
   readonly code = "target_exists";
-  constructor(path: string, replaceable: boolean) {
+  constructor(path: string, forceWouldReplace: boolean) {
     super(
-      replaceable
+      forceWouldReplace
         ? `${path} already exists: pass --force to replace it`
         : `${path} is a folder, a pipe, a device or the open database, and a backup does not replace those: name a file`,
     );
@@ -37,11 +38,12 @@ export class TargetExists extends Error {
 }
 
 /** A regular file or a link (replaced as itself), and never the database this daemon has open or its WAL and shared memory. */
-async function replaceable(db: Database, found: Stats): Promise<boolean> {
+async function replaceable(db: Database, out: string, found: Stats): Promise<boolean> {
   if (!found.isFile() && !found.isSymbolicLink()) return false;
-  const open = await Promise.all(
-    ["", "-wal", "-shm"].map((suffix) => stat(`${db.filename}${suffix}`).catch(() => null)),
-  );
+  const names = ["", "-wal", "-shm"].map((suffix) => `${db.filename}${suffix}`);
+  // By name too: a link that is the database's own name has an inode of its own, which `stat` of the name would not match.
+  if (names.some((name) => resolve(name) === resolve(out))) return false;
+  const open = await Promise.all(names.map((name) => stat(name).catch(() => null)));
   return !open.some((own) => own?.ino === found.ino && own?.dev === found.dev);
 }
 
@@ -69,7 +71,10 @@ export async function backupNow(
           if (error.code === "ENOENT") return null;
           throw error;
         });
-  if (found && !(force && (await replaceable(db, found)))) throw new TargetExists(path, !force);
+  if (found && out !== undefined) {
+    const may = await replaceable(db, out, found);
+    if (!(force && may)) throw new TargetExists(path, !force && may);
+  }
   await mkdir(dirname(path), { recursive: true });
   if (!found) {
     // VACUUM INTO refuses an existing file; the automatic name is the daemon's own, so it may go.
@@ -77,7 +82,8 @@ export async function backupNow(
     db.query("VACUUM INTO ?").run(path);
     await chmod(path, 0o600);
   } else {
-    const beside = `${path}.${process.pid}.tmp`;
+    // An unpredictable name, so a name planted beforehand is never written through.
+    const beside = `${path}.${randomUUID().slice(0, 8)}.tmp`;
     try {
       await rm(beside, { force: true });
       db.query("VACUUM INTO ?").run(beside);

@@ -22,11 +22,15 @@ function onlyCounts(own: string[]): boolean {
  * or any word the shell expands, which may split into `--force` wherever it stands.
  */
 function mayReplace(own: string[]): boolean {
-  return own.some(
-    (w, i) =>
-      isExpanded(w) ||
-      ((w === "--force" || w.startsWith("--force=")) && !TAKES_A_VALUE.has(own[i - 1] ?? "")),
-  );
+  if (own.some(isExpanded)) return true;
+  // Left to right, as the parser reads: a value flag takes the next word whatever it is, so in `--config --out --force`
+  // the `--out` is a path and the `--force` a flag.
+  for (let i = 0; i < own.length; i++) {
+    const w = own[i] as string;
+    if (TAKES_A_VALUE.has(w)) i++;
+    else if (w === "--force" || w.startsWith("--force=")) return true;
+  }
+  return false;
 }
 
 /**
