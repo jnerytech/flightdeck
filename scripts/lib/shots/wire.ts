@@ -91,11 +91,14 @@ export function wireRewriter(rules: WireRule[]): FrameRewriter {
       const rule = ruleOf(frame);
       return rule !== undefined && "hold" in rule;
     },
+    swallows(frame) {
+      const message = parse(frame);
+      return rules.some((r) => r.command === message?.type && "pending" in r);
+    },
     answer(frame) {
       const message = parse(frame);
       const rule = rules.find((r) => r.command === message?.type);
       if (!message || !rule || typeof message.id !== "string") return undefined;
-      if ("pending" in rule) return null;
       if ("deny" in rule) {
         const error = { code: "unavailable", message: rule.deny };
         return JSON.stringify({ type: "ack", id: message.id, ok: false, error });

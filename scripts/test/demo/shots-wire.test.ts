@@ -213,10 +213,14 @@ describe("shots-wire: a denied and a pending command never reach the host (#4236
 
   test("a pending command is swallowed with no answer at all, and any other frame is left to the host", () => {
     const wire = wireRewriter([{ command: "knowledge.setStatus", pending: true }]);
+    const status = ask("r1", "knowledge.setStatus", { status: "obsolete" });
+    const list = ask("r2", "knowledge.list");
     expect([
-      wire.answer?.(ask("r1", "knowledge.setStatus", { status: "obsolete" })),
-      wire.answer?.(ask("r2", "knowledge.list")),
-    ]).toEqual([null, undefined]);
+      wire.swallows?.(status),
+      wire.answer?.(status),
+      wire.swallows?.(list),
+      wire.swallows?.("{"),
+    ]).toEqual([true, undefined, false, false]);
   });
 
   test("the page's socket sends neither a denied nor a pending command: the app hears the refusal of the first and nothing of the second", async () => {
