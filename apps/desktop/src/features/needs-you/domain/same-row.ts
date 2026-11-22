@@ -7,7 +7,7 @@ import type { QuietAlert } from "./quiet.ts";
 
 /** A line of the list: a budget alert (opens Settings), a paused loop or a request (shows its card). */
 export type Entry =
-  | { kind: "alert"; key: string; label: string; clientId?: string }
+  | { kind: "alert"; key: string; label: string; clientId?: string; hostId?: string }
   | { kind: "loop"; key: string; alert: LoopAlert }
   | { kind: "watch"; key: string; alert: WatchAlert }
   | { kind: "quiet"; key: string; alert: QuietAlert }

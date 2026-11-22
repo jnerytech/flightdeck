@@ -15,6 +15,7 @@ export function entriesOf(state: AppState, t: T, nowMs: number): Entry[] {
       key: `alert/${a.hostId}/${a.label}`,
       label: a.label,
       ...(a.clientId ? { clientId: a.clientId } : {}),
+      ...(a.hostId ? { hostId: a.hostId } : {}),
     })),
     ...state.loopAlerts.map((alert) => ({
       kind: "loop" as const,

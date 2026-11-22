@@ -150,13 +150,21 @@ export const CostsPage = memo(function CostsPage(props: {
       subtitle={t("costsUi.subtitle")}
       actions={
         <>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => store.router.push({ name: "settings", section: "budgets" })}
-          >
-            {t("costsUi.setBudget")}
-          </Button>
+          {hosts.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                store.router.push({
+                  name: "settings",
+                  section: "budgets",
+                  ...(!acrossHosts && hostId ? { host: hostId } : {}),
+                })
+              }
+            >
+              {t("costsUi.setBudget")}
+            </Button>
+          )}
           <ActionButton variant="outline" size="sm" onClick={exportCsv}>
             {t("costsUi.export")}
           </ActionButton>
