@@ -153,11 +153,13 @@ export function GlobalSearch(
     actionsOf ? section.items : section.items.slice(0, capOf(section));
   const hiddenOf = (section: PaletteSection) =>
     actionsOf ? 0 : Math.max(0, section.items.length - capOf(section));
+  /** A row's place in the walk: an entry can sit in two sections (Recent and Sessions), so the section is part of it. */
+  const itemStop = (section: number, id: string) => `${section}:${id}`;
   const recentItems = sections.find((section) => section.recent)?.items ?? [];
   /** The arrows' walk: each section's rows and its "more" button, then the history hits. */
   const stops: Stop[] = [
-    ...sections.flatMap((section): Stop[] => [
-      ...shown(section).map((item): Stop => ({ id: item.id, kind: "item", item })),
+    ...sections.flatMap((section, i): Stop[] => [
+      ...shown(section).map((item): Stop => ({ id: itemStop(i, item.id), kind: "item", item })),
       ...(hiddenOf(section) > 0
         ? [{ id: `more:${section.title}`, kind: "more" as const, section }]
         : []),
@@ -204,7 +206,8 @@ export function GlobalSearch(
     if (stop.kind === "item") choose(stop.item);
     else if (stop.kind === "hit") props.onOpenHit(stop.hit);
     else {
-      setActiveId(stop.section.items[capOf(stop.section)]?.id ?? null);
+      const next = stop.section.items[capOf(stop.section)];
+      setActiveId(next ? itemStop(sections.indexOf(stop.section), next.id) : null);
       expand(stop.section);
     }
   };
@@ -215,7 +218,7 @@ export function GlobalSearch(
     else if (chosen && chosen.actions.length > 0) {
       setActionsOf(chosen);
       // The actions are their own list: its first one is chosen.
-      setActiveId("action:0");
+      setActiveId(itemStop(0, "action:0"));
     }
   };
 
@@ -257,7 +260,7 @@ export function GlobalSearch(
       activate(chosen);
     } else if (e.key === "Tab") {
       // With nothing chosen, Tab goes on to the scope chips (the rows are out of the tab order).
-      const leaves = !chosen && !actionsOf && !e.shiftKey && chips.length > 0;
+      const leaves = chosen?.kind !== "item" && !actionsOf && !e.shiftKey && chips.length > 0;
       if (!leaves) {
         e.preventDefault();
         toggleActions(chosen?.kind === "item" ? chosen.item : undefined);
@@ -288,9 +291,9 @@ export function GlobalSearch(
         <Input
           ref={inputRef}
           role="combobox"
-          aria-expanded="true"
+          aria-expanded={stops.length > 0}
           aria-autocomplete="list"
-          aria-controls={listIds.join(" ")}
+          aria-controls={listIds.length > 0 ? listIds.join(" ") : undefined}
           aria-activedescendant={activeDomId}
           aria-label={t("searchUi.input")}
           placeholder={t("searchUi.placeholder")}
@@ -314,8 +317,8 @@ export function GlobalSearch(
           section={section}
           listId={`${uid}-list-${i}`}
           rows={shown(section)}
-          idOf={(item) => domId(item.id)}
-          selected={(item) => stops[cursor]?.id === item.id}
+          idOf={(item) => domId(itemStop(i, item.id))}
+          selected={(item) => stops[cursor]?.id === itemStop(i, item.id)}
           hidden={hiddenOf(section)}
           moreId={domId(`more:${section.title}`)}
           moreSelected={stops[cursor]?.id === `more:${section.title}`}

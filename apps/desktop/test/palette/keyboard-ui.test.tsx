@@ -41,10 +41,11 @@ const manyCards = Object.fromEntries(
 );
 
 /** The palette over one host, with the history search's state when `search` is given. */
-function open(over: Record<string, unknown> = {}, route?: object) {
+function open(over: Record<string, unknown> = {}, route?: object, recents: string[] = []) {
   const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   store.palette.load = (async () => {}) as never;
+  store.palette.recents = () => recents;
   if (route) store.router.push(route as never);
   const state = {
     ...store.getState(),
@@ -136,6 +137,32 @@ describe("palette-keyboard: the history hits are in the arrow walk (#3887)", () 
   });
 });
 
+describe("palette-keyboard: an entry in two sections is two stops (#3887)", () => {
+  /** The rows and the more buttons, in the order the page shows them: what the arrows must walk. */
+  const walk = () =>
+    Array.from(
+      screen
+        .getByRole("dialog")
+        .querySelectorAll<HTMLElement>('[role="option"], button[aria-current], button'),
+    ).filter((el) => el.getAttribute("role") === "option" || /\bmore$/.test(el.textContent ?? ""));
+  const marked = (el: HTMLElement) =>
+    el.getAttribute("aria-selected") === "true" || el.getAttribute("aria-current") === "true";
+
+  test("each arrow chooses the next row in page order, and every row has its own id", async () => {
+    open({}, undefined, ["session:h1/a", "session:h1/b"]);
+    const stops = walk();
+    const chosenAfter: number[] = [];
+    for (let i = 0; i < stops.length; i++) {
+      await key("ArrowDown");
+      chosenAfter.push(walk().findIndex(marked));
+    }
+    expect({
+      unique: new Set(stops.map((el) => el.id)).size === stops.length,
+      chosenAfter,
+    }).toEqual({ unique: true, chosenAfter: stops.map((_, i) => i) });
+  });
+});
+
 describe("palette-keyboard: the more row is in the arrow walk (#3887)", () => {
   test("ArrowDown past the eighth row reaches '22 more'; Enter shows more and keeps the walk on the first new row", async () => {
     open({ cards: manyCards });
@@ -172,6 +199,13 @@ describe("palette-keyboard: the scope chips are reached by Tab (#3887)", () => {
     open({}, onBoard);
     await key("ArrowDown");
     expect(await key("Tab")).toBe(false);
+  });
+
+  test("with a more button chosen Tab still leaves for the chips: it has no actions to show", async () => {
+    open({ cards: manyCards }, onBoard);
+    await type("card");
+    for (let i = 0; i < 9; i++) await key("ArrowDown");
+    expect(await key("Tab")).toBe(true);
   });
 
   test("the rows are out of the tab order, so Tab goes from the input to the chips", () => {
