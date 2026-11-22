@@ -118,7 +118,7 @@ describe.each(["en", "pt-BR"] as const)("settings, global shortcut field (%s)", 
     expect(screen.queryByRole("dialog", { name: w.sheet })).not.toBeNull();
     await act(async () => void fireEvent.keyDown(document.body, { key: "Escape" }));
     expect(screen.queryByRole("dialog", { name: w.sheet })).toBeNull();
-    expect(document.activeElement === button).toBe(true);
+    expect(document.activeElement === button).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
     store.dispose();
   });
 });
