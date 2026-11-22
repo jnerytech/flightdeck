@@ -69,7 +69,9 @@ export function PaletteSectionView(
                 className="size-3.5 shrink-0 text-muted-foreground"
               />
             )}
-            <span className="shrink-0 whitespace-nowrap">{item.label}</span>{" "}
+            <span className="min-w-0 truncate" title={item.label}>
+              {item.label}
+            </span>{" "}
             <span
               id={`${props.idOf(item)}-detail`}
               className="min-w-0 truncate text-muted-foreground text-xs"
