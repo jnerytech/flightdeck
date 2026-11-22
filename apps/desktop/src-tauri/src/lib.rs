@@ -547,6 +547,12 @@ fn set_close_to_tray(state: State<TrayState>, enabled: bool) {
 /// product's name, which is the same in every language.
 const STARTUP_OPEN_TEXT: &str = "Flightdeck";
 
+/// Whether closing the window hides it to the tray. Before the page has sent its labels the tray has
+/// no Quit, so a close then exits instead of leaving the app with no way out (#4120).
+fn close_hides_to_tray(close_to_tray: bool, _labelled: bool) -> bool {
+    close_to_tray
+}
+
 fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
     let open = MenuItem::with_id(app, "open", STARTUP_OPEN_TEXT, true, None::<&str>)?;
     // The submenu and Quit are built now but join the menu with the first `tray_set_menu`.
@@ -720,5 +726,13 @@ mod tray_startup_tests {
     #[test]
     fn the_tray_starts_with_the_product_name_and_no_translated_text() {
         assert_eq!(STARTUP_OPEN_TEXT, "Flightdeck");
+    }
+
+    #[test]
+    fn a_close_before_the_tray_has_its_quit_exits_instead_of_hiding() {
+        assert!(!close_hides_to_tray(true, false));
+        assert!(close_hides_to_tray(true, true));
+        assert!(!close_hides_to_tray(false, true));
+        assert!(!close_hides_to_tray(false, false));
     }
 }
