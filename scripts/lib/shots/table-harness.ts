@@ -75,11 +75,16 @@ async function showTemplates(page: Page): Promise<void> {
   await showSection(TEMPLATES)(page);
 }
 
-/** What a print waits for before the shot: the dialog in place, the pointer away from its buttons. */
-async function settled(page: Page): Promise<void> {
-  await page.getByRole("alertdialog").waitFor({ timeout: 8000 });
+/** The pointer away from the buttons, and a beat for the focus ring and the animation to settle. */
+async function park(page: Page): Promise<void> {
   await page.mouse.move(1000, 700);
   await page.waitForTimeout(400);
+}
+
+/** What a print waits for before the shot: the dialog in place. */
+async function settled(page: Page): Promise<void> {
+  await page.getByRole("alertdialog").waitFor({ timeout: 8000 });
+  await park(page);
 }
 
 export function harnessShots(ids: DemoIds): Shot[] {
@@ -107,18 +112,23 @@ export function harnessShots(ids: DemoIds): Shot[] {
     {
       name: "projeto-harness-preview-recusa",
       route: project,
+      // The templates are answered too: the dialog's "Start from" reads the host's, which the demo does not fix.
       wire: [
         {
           command: "project.harness.preview",
           refuse: "The setup could not be read: git is not available here.",
         },
+        templates(TEMPLATE_LIST),
       ],
       prepare: async (page) => {
         await showPanel(page);
         await page.getByRole("button", { name: SETUP }).click();
-        await page.getByRole("alert").filter({ hasText: /\S/ }).waitFor({ timeout: 8000 });
-        await page.mouse.move(1000, 700);
-        await page.waitForTimeout(400);
+        // The refusal's text is the title plus the host's message, in either language.
+        await page
+          .getByRole("alert")
+          .filter({ hasText: /git is not available here/ })
+          .waitFor({ timeout: 8000 });
+        await park(page);
       },
     },
     {
