@@ -126,6 +126,11 @@ describe("notify-prefs-ui: Settings has a Notifications section (issue #149)", (
   });
 });
 
+const pickSound = (mode: "off" | "system" | "file") =>
+  act(async () => {
+    fireEvent.change(within(panel()).getByLabelText("Sound"), { target: { value: mode } });
+  });
+
 describe("notify-prefs-ui: the sound (issue #149)", () => {
   test("off, system default or a file, with a volume, saved when changed", async () => {
     const { store } = settings();
@@ -147,8 +152,61 @@ describe("notify-prefs-ui: the sound (issue #149)", () => {
     expect(store.notifyPrefs.value.sound.volume).toBeCloseTo(0.8);
   });
 
+  test("the volume and the file chooser are live only for the sound that uses them, and say why when not (#3865)", async () => {
+    settings();
+    const state = () => {
+      const volume = within(panel()).getByLabelText("Volume") as HTMLInputElement;
+      const file = within(panel()).getByLabelText("Choose a sound file") as HTMLInputElement;
+      const hint = (el: HTMLElement) =>
+        document.getElementById(el.getAttribute("aria-describedby") ?? "")?.textContent ?? null;
+      return {
+        volume: [volume.disabled, hint(volume)],
+        file: [file.disabled, hint(file)],
+      };
+    };
+    const seen = [state()];
+    await pickSound("system");
+    seen.push(state());
+    await pickSound("file");
+    seen.push(state());
+    expect(seen).toEqual([
+      {
+        volume: [true, "Pick a sound to set the volume."],
+        file: [true, 'Choose "A file" to pick one.'],
+      },
+      { volume: [false, null], file: [true, 'Choose "A file" to pick one.'] },
+      { volume: [false, null], file: [false, null] },
+    ]);
+  });
+
+  test("a file kept earlier stays shown while the chooser is disabled (#3865)", async () => {
+    const { store } = settings();
+    await pickSound("file");
+    const input = within(panel()).getByLabelText("Choose a sound file") as HTMLInputElement;
+    const file = new File([new Uint8Array([1, 2, 3])], "ding.mp3", { type: "audio/mpeg" });
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [file] } });
+    });
+    await waitFor(() => expect(store.notifyPrefs.value.sound.fileName).toBe("ding.mp3"));
+    await pickSound("system");
+    expect(within(panel()).queryByText("ding.mp3")).not.toBeNull();
+  });
+
+  test("the volume shows as a percentage that follows the slider (#3865)", async () => {
+    const { store } = settings();
+    await pickSound("system");
+    const volume = within(panel()).getByLabelText("Volume") as HTMLInputElement;
+    const shown = () => within(panel()).queryByTestId("notify-volume-value")?.textContent ?? null;
+    const first = shown();
+    await act(async () => {
+      fireEvent.change(volume, { target: { value: "60" } });
+    });
+    expect([first, shown(), store.notifyPrefs.value.sound.volume]).toEqual(["50%", "60%", 0.6]);
+  });
+
   test("a file over the cap is refused before it is read", async () => {
     const { store } = settings();
+    await pickSound("file");
     const input = within(panel()).getByLabelText("Choose a sound file") as HTMLInputElement;
     const big = new File([new Uint8Array(500_000)], "long.wav", { type: "audio/wav" });
     let read = false;
@@ -170,6 +228,7 @@ describe("notify-prefs-ui: the sound (issue #149)", () => {
 
   test("choosing a file keeps it and shows its name; a file that is not audio is refused", async () => {
     const { store } = settings();
+    await pickSound("file");
     const input = within(panel()).getByLabelText("Choose a sound file") as HTMLInputElement;
     const file = new File([new Uint8Array([1, 2, 3])], "ding.mp3", { type: "audio/mpeg" });
     await act(async () => {
