@@ -3,7 +3,7 @@
 import type { McpServerView } from "@flightdeck/protocol";
 import type { Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
-import { agentRoute, type Shot } from "./shot.ts";
+import { agentRoute, type Shot, toastSettled } from "./shot.ts";
 import type { WireRule } from "./wire.ts";
 
 const ECO = { command: "node", args: ["eco-server.js"], env: { ECO_MODE: "demo" } };
@@ -96,6 +96,7 @@ export function mcpShots(ids: DemoIds): Shot[] {
       wire: [{ command: "mcp.list", refuse: "The MCP servers could not be read." }],
       prepare: async (page) => {
         await button(page, /^(Try again|Tentar de novo)$/).waitFor({ timeout: 15_000 });
+        await toastSettled(page);
       },
     },
     {

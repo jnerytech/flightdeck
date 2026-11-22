@@ -74,6 +74,19 @@ export async function showToast(page: Page): Promise<void> {
   await page.waitForTimeout(500);
 }
 
+/**
+ * A refused host command also raises a toast. A print that shows the refusal waits for the toast to
+ * be in place and still, or the gap guard reads it mid-slide (#747, #4269).
+ */
+export async function toastSettled(page: Page): Promise<void> {
+  await page
+    .locator('[data-sonner-toast][data-mounted="true"]')
+    .first()
+    .waitFor({ timeout: 15_000 });
+  // timing: sonner's enter animation (400 ms) ends before the shot.
+  await page.waitForTimeout(600);
+}
+
 export const ALFA = "demo-alfa";
 
 /** The clients the client prints start with: Acme claims the demo's `github.com/acme/*` projects. */
