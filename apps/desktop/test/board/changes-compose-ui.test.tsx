@@ -304,7 +304,7 @@ describe("changes-compose-ui: commenting by keyboard, and a review put in the me
     await show({ comments: [draft("c1", "app.ts", 2, "use total")] });
     // The live region is there before its first words, or a screen reader may miss them.
     expect(screen.queryAllByRole("status").length).toBeGreaterThan(0);
-    expect(screen.queryAllByRole("status").map((el) => el.textContent)).toEqual([""]);
+    expect(screen.queryAllByRole("status").map((el) => el.textContent)).toEqual(["", ""]);
     await pick("Edit the comment on app.ts, line 2");
     await act(async () => {
       fireEvent.change(screen.getByRole("textbox", { name: "Comment text" }), {
@@ -318,7 +318,7 @@ describe("changes-compose-ui: commenting by keyboard, and a review put in the me
     }) as HTMLTextAreaElement | null;
     expect(box !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(box?.value).toBe("refused");
-    expect(screen.queryAllByRole("status").map((el) => el.textContent)).toEqual([""]);
+    expect(screen.queryAllByRole("status").map((el) => el.textContent)).toEqual(["", ""]);
   });
 
   test("the hidden status line sits inside a positioned panel, so it cannot stretch the page's scroll height (#3890)", async () => {
@@ -326,7 +326,7 @@ describe("changes-compose-ui: commenting by keyboard, and a review put in the me
     const panel = screen.getByRole("region", { name: "Changes" });
     // sr-only is absolute: with no positioned ancestor it lands past the scroller and grows the page.
     expect(panel.classList.contains("relative")).toBe(true);
-    expect(panel.contains(screen.getByRole("status"))).toBe(true);
+    expect(screen.getAllByRole("status").every((line) => panel.contains(line))).toBe(true);
   });
 
   test("after Remove the focus is on the drafts list, or on the panel when none is left (#3890)", async () => {
