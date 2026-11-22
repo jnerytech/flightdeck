@@ -460,7 +460,12 @@ describe("orcamentos-ui", () => {
     });
     await settle(() => screen.queryByRole("button", { name: "Definir um orçamento" }) !== null);
     await click("Definir um orçamento");
-    expect(store.router.current).toEqual({ name: "settings", section: "budgets" });
+    // The only host is the one being read: the route names it (#3912).
+    expect(store.router.current).toEqual({
+      name: "settings",
+      section: "budgets",
+      host: store.getState().hosts[0]?.id,
+    });
   });
 
   test("a notificação de um orçamento de projeto diz o nome do projeto, não a chave", async () => {

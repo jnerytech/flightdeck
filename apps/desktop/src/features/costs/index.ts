@@ -11,6 +11,7 @@ export {
   type ClientBudgetsSliceState,
   initialClientBudgetsState,
 } from "./client-budgets-store.ts";
+export { budgetHeadingId, budgetPanels } from "./domain/budget-panels.ts";
 export {
   budgetAlerts,
   budgetLabel,

@@ -1,8 +1,9 @@
-import { memo, type ReactNode, useState } from "react";
+import { memo, type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AssistantSettings } from "@/features/assistant/ui.ts";
 import { BackupAllPanel, BackupSchedulePanel } from "@/features/backup/ui.ts";
+import { budgetHeadingId, budgetPanels } from "@/features/costs/index.ts";
 import { BudgetsSection } from "@/features/costs/ui.ts";
 import { NotificationPrefs } from "@/features/notifications/ui.ts";
 import type { Density, ThemeMode } from "@/features/shell/index.ts";
@@ -42,6 +43,8 @@ export const Settings = memo(function Settings(props: {
   settings: SettingsState;
   /** The part to open on, by id. */
   section?: string;
+  /** The host a per-host part (Budgets) opens on. */
+  host?: string;
   onCloseToTray(enabled: boolean): void;
   onAutostart(enabled: boolean): void;
   onGlobalShortcut(text: string): void;
@@ -68,6 +71,10 @@ export const Settings = memo(function Settings(props: {
   const [query, setQuery] = useState("");
   // Budgets came with the costs (phase 8).
   const budgetHosts = hostsWith(state.hosts, "costs");
+  const panels = budgetPanels(
+    budgetHosts.map((h) => h.id),
+    props.host,
+  );
   const watchHosts = hostsWith(state.hosts, "watch");
   const messagingHosts = hostsWith(state.hosts, "messaging");
   const sections: SettingsSection[] = [
@@ -171,15 +178,21 @@ export const Settings = memo(function Settings(props: {
             words: t("settingsRail.words.budgets"),
             node: (
               <>
-                {budgetHosts.map((h) => (
-                  <BudgetsSection
-                    key={h.id}
-                    store={props.store}
-                    hostId={h.id}
-                    hostName={h.name}
-                    budgets={state.budgets[h.id] ?? []}
-                  />
-                ))}
+                {panels.order.map((id) => {
+                  const h = budgetHosts.find((host) => host.id === id);
+                  return (
+                    h && (
+                      <BudgetsSection
+                        key={h.id}
+                        store={props.store}
+                        hostId={h.id}
+                        hostName={h.name}
+                        budgets={state.budgets[h.id] ?? []}
+                        fold={panels.foldable ? { open: panels.open === h.id } : null}
+                      />
+                    )
+                  );
+                })}
               </>
             ),
           },
@@ -278,6 +291,11 @@ export const Settings = memo(function Settings(props: {
         ? t("settingsRail.matchesOne")
         : t("settingsRail.matches", { n: shown.length });
   const { current, go } = useSettingsRail(shown, props.section);
+  // After the rail's own jump to the section: the heading of the host's panel takes the focus (#3912).
+  const headingFocus = props.section === "budgets" ? panels.focus : null;
+  useEffect(() => {
+    if (headingFocus) document.getElementById(budgetHeadingId(headingFocus))?.focus();
+  }, [headingFocus]);
 
   return (
     <Page title={t("prefs.title")}>

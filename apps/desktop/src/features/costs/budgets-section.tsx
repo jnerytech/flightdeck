@@ -1,4 +1,5 @@
 import type { Budget } from "@flightdeck/protocol";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import { Meter } from "@/shared/status/index.ts";
 import { refusalText } from "../../i18n/errors.ts";
 import type { AppStore, HostResult } from "../../lib/app-store.ts";
 import { type Draft, draftOf, EMPTY, MIN_PCT, missingOf } from "./domain/budget-draft.ts";
+import { budgetHeadingId } from "./domain/budget-panels.ts";
 import { budgetLabel, budgetLine, budgetsSharingName, projectName } from "./domain/budgets.ts";
 import { periodRange } from "./domain/costs.ts";
 
@@ -72,12 +74,21 @@ export function BudgetsSection(
     hostId: string;
     hostName: string;
     budgets: Budget[];
+    /** Several hosts' panels fold (#3912): `open` is whether this one starts open; null for a panel that does not fold. */
+    fold?: { open: boolean } | null;
   }>,
 ) {
   const t = useT();
   const { store, hostId } = props;
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [removing, setRemoving] = useState<Budget | null>(null);
+  const [opened, setOpened] = useState(props.fold?.open ?? true);
+  const foldable = props.fold != null;
+  const startOpen = props.fold?.open;
+  useEffect(() => {
+    if (startOpen !== undefined) setOpened(startOpen);
+  }, [startOpen]);
+  const shown = !foldable || opened;
   const saving = useBusy();
   const { budgets } = props;
   const rootRef = useRef<HTMLElement>(null);
@@ -208,238 +219,265 @@ export function BudgetsSection(
   const title = t("budgetsUi.title", { host: props.hostName });
   return (
     <section ref={rootRef} aria-label={title}>
-      <Panel title={title}>
-        <Stack gap={4}>
-          {done && <InlineNotice tone="info">{done}</InlineNotice>}
-          {lookupFailed && (
-            <InlineNotice tone="error">
-              {t("budgetsUi.projectsFailed", {
-                reason: refusalText(lookupFailed.code, lookupFailed.message, t, lookupFailed),
-              })}
-            </InlineNotice>
-          )}
-          {budgets.length === 0 ? (
-            <p className="text-muted-foreground text-sm">{t("budgetsUi.none")}</p>
+      <Panel
+        title={
+          foldable ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              id={budgetHeadingId(hostId)}
+              aria-expanded={opened}
+              onClick={() => setOpened(!opened)}
+            >
+              {opened ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+              {title}
+            </Button>
           ) : (
-            <Stack as="ul" gap={2}>
-              {visible.map((budget) => (
-                <li key={budget.id} data-budget={budget.id}>
-                  <Stack gap={1}>
-                    <ListRow
-                      title={
-                        <span
-                          className="whitespace-normal break-words"
-                          title={budget.projectKey ?? undefined}
-                        >
-                          {budgetLine(budget, t)}
-                          {sameName.has(budget.id) && (
-                            <span className="block text-muted-foreground text-xs">
-                              {budget.projectKey}
-                            </span>
-                          )}
-                        </span>
-                      }
-                      trailing={
-                        <Inline gap={1}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={t("budgetsUi.edit", { label: rowName(budget) })}
-                            data-action="edit"
-                            onClick={() => {
-                              setDraft(draftOf(budget));
-                              setFocus({ kind: "form" });
-                            }}
+            title
+          )
+        }
+      >
+        {shown && (
+          <Stack gap={4}>
+            {done && <InlineNotice tone="info">{done}</InlineNotice>}
+            {lookupFailed && (
+              <InlineNotice tone="error">
+                {t("budgetsUi.projectsFailed", {
+                  reason: refusalText(lookupFailed.code, lookupFailed.message, t, lookupFailed),
+                })}
+              </InlineNotice>
+            )}
+            {budgets.length === 0 ? (
+              <p className="text-muted-foreground text-sm">{t("budgetsUi.none")}</p>
+            ) : (
+              <Stack as="ul" gap={2}>
+                {visible.map((budget) => (
+                  <li key={budget.id} data-budget={budget.id}>
+                    <Stack gap={1}>
+                      <ListRow
+                        title={
+                          <span
+                            className="whitespace-normal break-words"
+                            title={budget.projectKey ?? undefined}
                           >
-                            {t("budgetsUi.editShort")}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={t("budgetsUi.remove", { label: rowName(budget) })}
-                            onClick={() => setRemoving(budget)}
-                          >
-                            {t("budgetsUi.removeShort")}
-                          </Button>
-                        </Inline>
-                      }
-                    />
-                    <Meter
-                      label={t("budgetsUi.meter", {
-                        label: rowName(budget),
-                        percent: Math.round(budget.fraction * 100),
-                      })}
-                      value={Math.min(budget.fraction, 1)}
-                      max={1}
-                      hot={budget.fraction >= HOT_FROM}
-                      className="w-full"
-                    />
-                  </Stack>
-                </li>
-              ))}
-            </Stack>
-          )}
-          {hidden > 0 && (
-            <p className="text-muted-foreground text-sm">
-              {hidden === 1
-                ? t("clients.budgetsHiddenOne")
-                : t("clients.budgetsHiddenMany", { count: hidden })}
-            </p>
-          )}
-          <Form
-            variant="inline"
-            aria-label={
-              editing ? t("budgetsUi.edit", { label: budgetLabel(editing, t) }) : t("budgetsUi.new")
-            }
-            onSubmit={() => saving.run(save)}
-          >
-            <Grid cols={{ base: 1, sm: 2 }} gap={4}>
-              <Field label={t("budgetsUi.scope")}>
-                {(control) => (
-                  <NativeSelect
-                    {...control}
-                    value={draft.scope}
-                    onChange={(e) => set({ scope: e.target.value as Draft["scope"] })}
+                            {budgetLine(budget, t)}
+                            {sameName.has(budget.id) && (
+                              <span className="block text-muted-foreground text-xs">
+                                {budget.projectKey}
+                              </span>
+                            )}
+                          </span>
+                        }
+                        trailing={
+                          <Inline gap={1}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label={t("budgetsUi.edit", { label: rowName(budget) })}
+                              data-action="edit"
+                              onClick={() => {
+                                setDraft(draftOf(budget));
+                                setFocus({ kind: "form" });
+                              }}
+                            >
+                              {t("budgetsUi.editShort")}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label={t("budgetsUi.remove", { label: rowName(budget) })}
+                              onClick={() => setRemoving(budget)}
+                            >
+                              {t("budgetsUi.removeShort")}
+                            </Button>
+                          </Inline>
+                        }
+                      />
+                      <Meter
+                        label={t("budgetsUi.meter", {
+                          label: rowName(budget),
+                          percent: Math.round(budget.fraction * 100),
+                        })}
+                        value={Math.min(budget.fraction, 1)}
+                        max={1}
+                        hot={budget.fraction >= HOT_FROM}
+                        className="w-full"
+                      />
+                    </Stack>
+                  </li>
+                ))}
+              </Stack>
+            )}
+            {hidden > 0 && (
+              <p className="text-muted-foreground text-sm">
+                {hidden === 1
+                  ? t("clients.budgetsHiddenOne")
+                  : t("clients.budgetsHiddenMany", { count: hidden })}
+              </p>
+            )}
+            <Form
+              variant="inline"
+              aria-label={
+                editing
+                  ? t("budgetsUi.formEdit", {
+                      label: budgetLabel(editing, t),
+                      host: props.hostName,
+                    })
+                  : t("budgetsUi.formNew", { host: props.hostName })
+              }
+              onSubmit={() => saving.run(save)}
+            >
+              <Grid cols={{ base: 1, sm: 2 }} gap={4}>
+                <Field label={t("budgetsUi.scope")}>
+                  {(control) => (
+                    <NativeSelect
+                      {...control}
+                      value={draft.scope}
+                      onChange={(e) => set({ scope: e.target.value as Draft["scope"] })}
+                    >
+                      <option value="host">{t("budgetsUi.host")}</option>
+                      <option value="project">{t("budgetsUi.project")}</option>
+                    </NativeSelect>
+                  )}
+                </Field>
+                {draft.scope === "project" && (
+                  <Field
+                    label={t("budgetsUi.projectLabel")}
+                    {...(projects.length === 0 ? { help: t("budgetsUi.keyHelp") } : {})}
                   >
-                    <option value="host">{t("budgetsUi.host")}</option>
-                    <option value="project">{t("budgetsUi.project")}</option>
-                  </NativeSelect>
+                    {(control) =>
+                      projects.length === 0 ? (
+                        <Input
+                          {...control}
+                          value={draft.projectKey}
+                          onChange={(e) => set({ projectKey: e.target.value })}
+                        />
+                      ) : (
+                        <NativeSelect
+                          {...control}
+                          value={draft.other ? OTHER : draft.projectKey}
+                          onChange={(e) =>
+                            set(
+                              e.target.value === OTHER
+                                ? { other: true, projectKey: "" }
+                                : { other: false, projectKey: e.target.value },
+                            )
+                          }
+                        >
+                          <option value="">{t("budgetsUi.pickProject")}</option>
+                          {projects.map((project) => (
+                            <option key={project.key} value={project.key}>
+                              {project.label}
+                            </option>
+                          ))}
+                          <option value={OTHER}>{t("budgetsUi.otherProject")}</option>
+                        </NativeSelect>
+                      )
+                    }
+                  </Field>
                 )}
-              </Field>
-              {draft.scope === "project" && (
-                <Field
-                  label={t("budgetsUi.projectLabel")}
-                  {...(projects.length === 0 ? { help: t("budgetsUi.keyHelp") } : {})}
-                >
-                  {(control) =>
-                    projects.length === 0 ? (
+                {draft.scope === "project" && draft.other && (
+                  <Field label={t("budgetsUi.keyLabel")} help={t("budgetsUi.keyHelp")}>
+                    {(control) => (
                       <Input
                         {...control}
                         value={draft.projectKey}
                         onChange={(e) => set({ projectKey: e.target.value })}
                       />
-                    ) : (
+                    )}
+                  </Field>
+                )}
+                {(byWindow || byShare) && (
+                  <Field label={t("budgetsUi.unit")}>
+                    {(control) => (
                       <NativeSelect
                         {...control}
-                        value={draft.other ? OTHER : draft.projectKey}
-                        onChange={(e) =>
-                          set(
-                            e.target.value === OTHER
-                              ? { other: true, projectKey: "" }
-                              : { other: false, projectKey: e.target.value },
-                          )
-                        }
+                        value={draft.unit}
+                        onChange={(e) => set({ unit: e.target.value as Draft["unit"] })}
                       >
-                        <option value="">{t("budgetsUi.pickProject")}</option>
-                        {projects.map((project) => (
-                          <option key={project.key} value={project.key}>
-                            {project.label}
-                          </option>
-                        ))}
-                        <option value={OTHER}>{t("budgetsUi.otherProject")}</option>
+                        <option value="usd">{t("budgetsUi.unitUsd")}</option>
+                        <option value="five_hour">{t("budgetsUi.unitFiveHour")}</option>
+                        <option value="seven_day">{t("budgetsUi.unitSevenDay")}</option>
                       </NativeSelect>
-                    )
-                  }
-                </Field>
-              )}
-              {draft.scope === "project" && draft.other && (
-                <Field label={t("budgetsUi.keyLabel")} help={t("budgetsUi.keyHelp")}>
-                  {(control) => (
-                    <Input
-                      {...control}
-                      value={draft.projectKey}
-                      onChange={(e) => set({ projectKey: e.target.value })}
-                    />
-                  )}
-                </Field>
-              )}
-              {(byWindow || byShare) && (
-                <Field label={t("budgetsUi.unit")}>
-                  {(control) => (
-                    <NativeSelect
-                      {...control}
-                      value={draft.unit}
-                      onChange={(e) => set({ unit: e.target.value as Draft["unit"] })}
-                    >
-                      <option value="usd">{t("budgetsUi.unitUsd")}</option>
-                      <option value="five_hour">{t("budgetsUi.unitFiveHour")}</option>
-                      <option value="seven_day">{t("budgetsUi.unitSevenDay")}</option>
-                    </NativeSelect>
-                  )}
-                </Field>
-              )}
-              {!byShare && (
-                <Field label={t("budgetsUi.period")}>
-                  {(control) => (
-                    <NativeSelect
-                      {...control}
-                      value={draft.period}
-                      onChange={(e) => set({ period: e.target.value as Draft["period"] })}
-                    >
-                      <option value="day">{t("budgets.day")}</option>
-                      <option value="month">{t("budgets.month")}</option>
-                    </NativeSelect>
-                  )}
-                </Field>
-              )}
-              {byShare ? (
+                    )}
+                  </Field>
+                )}
+                {!byShare && (
+                  <Field label={t("budgetsUi.period")}>
+                    {(control) => (
+                      <NativeSelect
+                        {...control}
+                        value={draft.period}
+                        onChange={(e) => set({ period: e.target.value as Draft["period"] })}
+                      >
+                        <option value="day">{t("budgets.day")}</option>
+                        <option value="month">{t("budgets.month")}</option>
+                      </NativeSelect>
+                    )}
+                  </Field>
+                )}
+                {byShare ? (
+                  <Field
+                    label={t("budgetsUi.limitPct")}
+                    help={draft.scope === "project" ? t("budgetsUi.estimateHelp") : undefined}
+                  >
+                    {(control) => (
+                      <Input
+                        {...control}
+                        type="number"
+                        min={MIN_PCT}
+                        max={100}
+                        step="any"
+                        value={draft.limitPct}
+                        onChange={(e) => set({ limitPct: e.target.value })}
+                      />
+                    )}
+                  </Field>
+                ) : (
+                  <Field label={t("budgetsUi.limit")}>
+                    {(control) => (
+                      <Input
+                        {...control}
+                        type="number"
+                        min={0}
+                        step="any"
+                        value={draft.limitUsd}
+                        onChange={(e) => set({ limitUsd: e.target.value })}
+                      />
+                    )}
+                  </Field>
+                )}
                 <Field
-                  label={t("budgetsUi.limitPct")}
-                  help={draft.scope === "project" ? t("budgetsUi.estimateHelp") : undefined}
+                  label={t("budgetsUi.action")}
+                  help={t(
+                    draft.action === "queue" ? "budgetsUi.queueHelp" : "budgetsUi.notifyHelp",
+                  )}
                 >
                   {(control) => (
-                    <Input
+                    <NativeSelect
                       {...control}
-                      type="number"
-                      min={MIN_PCT}
-                      max={100}
-                      step="any"
-                      value={draft.limitPct}
-                      onChange={(e) => set({ limitPct: e.target.value })}
-                    />
+                      value={draft.action}
+                      onChange={(e) => set({ action: e.target.value as Draft["action"] })}
+                    >
+                      <option value="notify">{t("budgets.notify")}</option>
+                      <option value="queue">{t("budgets.queue")}</option>
+                    </NativeSelect>
                   )}
                 </Field>
-              ) : (
-                <Field label={t("budgetsUi.limit")}>
-                  {(control) => (
-                    <Input
-                      {...control}
-                      type="number"
-                      min={0}
-                      step="any"
-                      value={draft.limitUsd}
-                      onChange={(e) => set({ limitUsd: e.target.value })}
-                    />
-                  )}
-                </Field>
-              )}
-              <Field
-                label={t("budgetsUi.action")}
-                help={t(draft.action === "queue" ? "budgetsUi.queueHelp" : "budgetsUi.notifyHelp")}
-              >
-                {(control) => (
-                  <NativeSelect
-                    {...control}
-                    value={draft.action}
-                    onChange={(e) => set({ action: e.target.value as Draft["action"] })}
-                  >
-                    <option value="notify">{t("budgets.notify")}</option>
-                    <option value="queue">{t("budgets.queue")}</option>
-                  </NativeSelect>
-                )}
-              </Field>
-            </Grid>
-            <FormActions
-              submit={t(editing ? "budgetsUi.save" : "budgetsUi.create")}
-              busy={saving.busy}
-              disabled={needs !== null}
-              disabledReason={needs}
-              {...(editing
-                ? { cancel: t("budgetsUi.cancelEdit"), onCancel: () => setDraft(EMPTY) }
-                : {})}
-            />
-          </Form>
-        </Stack>
+              </Grid>
+              <FormActions
+                submit={t(editing ? "budgetsUi.save" : "budgetsUi.create")}
+                busy={saving.busy}
+                disabled={needs !== null}
+                disabledReason={needs}
+                {...(editing
+                  ? { cancel: t("budgetsUi.cancelEdit"), onCancel: () => setDraft(EMPTY) }
+                  : {})}
+              />
+            </Form>
+          </Stack>
+        )}
       </Panel>
       {removing && (
         <ConfirmDialog

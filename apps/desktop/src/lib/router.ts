@@ -71,8 +71,8 @@ export type Route =
   | { name: "terminal"; host: string; terminalId: string }
   /** A card's running app, in a frame (phase 24); only loopback addresses open. */
   | { name: "preview"; url: string; title: string }
-  /** `section`: the part of Settings to open on (its id, such as "budgets"). */
-  | { name: "settings"; section?: string }
+  /** `section`: the part of Settings to open on (its id, such as "budgets"); `host`: the host a per-host section opens on. */
+  | { name: "settings"; section?: string; host?: string }
   /** The Custos screen (phase 8, track A). A budget alert opens it for its `host`, `projectKey` or `client`. */
   | {
       name: "costs";
