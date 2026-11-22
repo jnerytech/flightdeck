@@ -60,13 +60,15 @@ export function useTeamActions(
   /** Runs a team command and says what came of it; `focus` is where the focus goes after it. */
   const act = async (
     command: Promise<HostResult<TeamInfo>>,
-    done: { text: string; focus?: AfterFocus; gone?: boolean },
+    done: { text: string; focus?: AfterFocus; gone?: boolean; retry?: AfterFocus },
   ) => {
     setNotice(null);
     const result = await command;
     if (!result.ok) {
       const reason = refusalText(result.code, result.message, t, result);
       setNotice({ text: t("teamsUi.refused", { reason }), refused: true });
+      // A busy button lost the focus: a refusal gives it back, ready for another try.
+      if (done.retry) setFocus(done.retry);
       return false;
     }
     props.onChanged(result.data);
@@ -82,7 +84,8 @@ export function useTeamActions(
     if (!target) return;
     const timer = setTimeout(() => {
       target.focus();
-      setFocus(null);
+      // A newer request that came in meanwhile is not ours to clear.
+      setFocus((now) => (now === focus ? null : now));
     }, 0);
     return () => clearTimeout(timer);
   }, [focus, team]);
