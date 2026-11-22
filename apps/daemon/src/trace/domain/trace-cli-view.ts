@@ -42,8 +42,9 @@ export function traceLines(trace: SessionTrace): string[] {
     ...(trace.costUsd === null ? [] : [dollars(trace.costUsd)]),
     ...(trace.durationMs === null ? [] : [seconds(trace.durationMs)]),
   ];
+  const totalsSuffix = totals.length === 0 ? "" : `: ${totals.join(", ")}`;
   return [
-    `${trace.claudeSessionId}${totals.length === 0 ? "" : `: ${totals.join(", ")}`}`,
+    `${trace.claudeSessionId}${totalsSuffix}`,
     ...(trace.costliest === null ? [] : [`costliest: ${trace.costliest}`]),
     ...(trace.slowest === null ? [] : [`slowest: ${trace.slowest}`]),
     ...treeLines(trace.turns, 0),

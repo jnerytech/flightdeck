@@ -12,8 +12,10 @@ export interface ActivityCliArgs {
 }
 
 /** A section's heading: the count, as `n of m` when the daemon cut the list to its newest. */
-const heading = (label: string, list: ActivityList<unknown>) =>
-  `${label}: ${list.items.length < list.total ? `${list.items.length} of ${list.total}` : list.total}`;
+const heading = (label: string, list: ActivityList<unknown>) => {
+  const count = list.items.length < list.total ? `${list.items.length} of ${list.total}` : list.total;
+  return `${label}: ${count}`;
+};
 
 const percent = (share: number | null) =>
   share === null ? "unknown" : `${Math.round(share * 100)}%`;
@@ -21,7 +23,8 @@ const percent = (share: number | null) =>
 /** Why a run failed: the key the app translates, with its params, so the check or the step is not lost. */
 const why = ({ reasonKey, reasonParams }: ActivityRun) => {
   const params = Object.entries(reasonParams ?? {}).map(([key, value]) => `${key}=${value}`);
-  return `${reasonKey ?? "failed"}${params.length > 0 ? ` (${params.join(", ")})` : ""}`;
+  const shown = params.length > 0 ? ` (${params.join(", ")})` : "";
+  return `${reasonKey ?? "failed"}${shown}`;
 };
 
 export function activityLines(result: ActivitySinceResult): string[] {
@@ -51,8 +54,10 @@ export function activityLines(result: ActivitySinceResult): string[] {
       (r) => `${r.runId} ${r.workflowName} on card ${r.cardId}, ${why(r)}, ${r.at}`,
     );
   }
-  if (quota.length > 0)
-    lines.push(`quota: ${quota.map((q) => `${q.window} ${percent(q.utilization)}`).join(", ")}`);
+  if (quota.length > 0) {
+    const windows = quota.map((q) => `${q.window} ${percent(q.utilization)}`);
+    lines.push(`quota: ${windows.join(", ")}`);
+  }
   return lines;
 }
 
