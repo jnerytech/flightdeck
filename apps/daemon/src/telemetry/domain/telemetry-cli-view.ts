@@ -10,6 +10,12 @@ const iso = (at: number) => new Date(at).toISOString();
 const ms = (value: number) => `${Math.round(value)} ms`;
 const dollars = (value: number) => `$${value.toFixed(4)}`;
 
+const successWord = (success: boolean | null): string | null =>
+  success === null ? null : success ? "ok" : "failed";
+
+const decisionText = (decision: string | null, source: string | null): string | null =>
+  decision === null || source === null ? decision : `${decision} by ${source}`;
+
 /** One line per step: what it was, when, and each part the step has, in the order the app's timeline shows them. */
 function itemLine(item: TelemetryItem): string {
   const parts = [
@@ -18,13 +24,9 @@ function itemLine(item: TelemetryItem): string {
     item.toolName,
     item.durationMs === null ? null : ms(item.durationMs),
     item.costUsd === null ? null : dollars(item.costUsd),
-    item.success === null ? null : item.success ? "ok" : "failed",
+    successWord(item.success),
     item.error === null ? null : `error ${item.error}`,
-    item.decision === null
-      ? null
-      : item.source === null
-        ? item.decision
-        : `${item.decision} by ${item.source}`,
+    decisionText(item.decision, item.source),
     item.waitMs === null ? null : `waited ${ms(item.waitMs)}`,
   ];
   return `  ${parts.filter((part) => part !== null).join("  ")}`;
