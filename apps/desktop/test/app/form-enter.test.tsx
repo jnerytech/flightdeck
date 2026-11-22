@@ -119,10 +119,12 @@ describe("form-enter: dialogs are forms", () => {
   test("Novo servidor MCP: Enter saves into the .mcp.json", async () => {
     const s = store();
     const asked: string[] = [];
-    s.hostCommand = (async (_host: string, type: string) => {
+    s.hostCommand = (async (_host: string, type: string) =>
+      type === "mcp.list" ? { servers: [] } : null) as typeof s.hostCommand;
+    s.hostRequest = (async (_host: string, type: string) => {
       asked.push(type);
-      return type === "mcp.list" ? { servers: [] } : null;
-    }) as typeof s.hostCommand;
+      return { ok: false, code: "bad_request", message: "recusado" };
+    }) as typeof s.hostRequest;
     render(
       <TContext.Provider value={s.i18n.t}>
         <AgentMcp store={s} hostId="h" projectId="p" />
