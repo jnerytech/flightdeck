@@ -43,7 +43,13 @@ function board(session: ExternalSession) {
   store.now = () => NOW;
   const { hosts, hub, unread } = activityState([], store.getState());
   const externals = { "h1/c1": session };
-  (store as unknown as { update(patch: object): void }).update({ hosts, hub, unread, externals });
+  (store as unknown as { update(patch: object): void }).update({
+    hosts,
+    hostsLoaded: true,
+    hub,
+    unread,
+    externals,
+  });
   return store;
 }
 
