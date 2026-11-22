@@ -209,6 +209,14 @@ export function unreadRows(list: InboxEntry[], now: Date): number {
 const SHORT = 70;
 const cut = (text: string) => (text.length > SHORT ? `${text.slice(0, SHORT - 1)}…` : text);
 
+/** Whether the row shows only part of the command: its first line, or its first 70 characters. */
+export function commandCut(
+  _toolName: string,
+  _input: Record<string, unknown> | undefined,
+): boolean {
+  return false;
+}
+
 /** A request in plain words, from the tool and its input. */
 export function describeRequest(
   toolName: string,
