@@ -105,7 +105,7 @@ export function timelineShots(ids: DemoIds): Shot[] {
       ],
       prepare: async (page) => {
         await openRewind(page);
-        await page.getByRole("button", { name: TRY_AGAIN }).waitFor({ timeout: WAIT });
+        await page.getByRole("button", { name: TRY_AGAIN }).first().waitFor({ timeout: WAIT });
         await page.waitForTimeout(400);
       },
     },
@@ -126,6 +126,7 @@ export function timelineShots(ids: DemoIds): Shot[] {
           .click({ timeout: WAIT });
         await page
           .getByText(/^(Não deu para voltar os arquivos|Could not rewind the files)/)
+          .first()
           .waitFor({ timeout: WAIT });
         await page.mouse.move(1000, 700);
         await page.waitForTimeout(400);
@@ -142,7 +143,10 @@ export function timelineShots(ids: DemoIds): Shot[] {
       ],
       prepare: async (page) => {
         await openRewind(page);
-        await page.getByText(/^(Nada para voltar|Nothing to rewind)/).waitFor({ timeout: WAIT });
+        await page
+          .getByText(/^(Nada para voltar|Nothing to rewind)/)
+          .first()
+          .waitFor({ timeout: WAIT });
         await page.waitForTimeout(400);
       },
     },
@@ -178,7 +182,10 @@ export function timelineShots(ids: DemoIds): Shot[] {
       prepare: async (page) => {
         await openUndo(page);
         await page.getByText(/^(Desfazer a volta|Undo the rewind)$/).waitFor({ timeout: WAIT });
-        await page.getByText(/README\.md/).waitFor({ timeout: WAIT });
+        await page
+          .getByText(/README\.md/)
+          .first()
+          .waitFor({ timeout: WAIT });
         await page.waitForTimeout(400);
       },
     },
@@ -198,8 +205,9 @@ export function timelineShots(ids: DemoIds): Shot[] {
           .getByText(
             /^(Não deu para saber o que o desfazer muda|Could not work out what the undo changes)/,
           )
+          .first()
           .waitFor({ timeout: WAIT });
-        await page.getByRole("button", { name: TRY_AGAIN }).waitFor({ timeout: WAIT });
+        await page.getByRole("button", { name: TRY_AGAIN }).first().waitFor({ timeout: WAIT });
         await page.waitForTimeout(400);
       },
     },
