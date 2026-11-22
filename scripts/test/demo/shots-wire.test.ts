@@ -302,7 +302,9 @@ describe("shots-wire: the states the table prints (#3982)", () => {
       true,
     );
     expect(named("sino-respondendo")?.inbox).toBe(true);
-    expect(named("sino-respondendo")?.wire).toEqual([{ command: "permission.respond", hold: true }]);
+    expect(named("sino-respondendo")?.wire).toEqual([
+      { command: "permission.respond", hold: true },
+    ]);
   });
 
   test("the bell prints a high-risk request from the dangerous command's row, which the other bell prints leave out (#4203)", () => {
