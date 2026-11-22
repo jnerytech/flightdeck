@@ -93,7 +93,8 @@ export function teleportShots(_ids: DemoIds): Shot[] {
       query: { plain: "demo-beta" },
       prepare: async (page) => {
         await pickHost(page);
-        await page.getByRole("dialog").getByRole("note").waitFor({ timeout: 15_000 });
+        // The plain-ws note is the app's warning notice, a polite status (#4124).
+        await page.getByRole("dialog").getByRole("status").waitFor({ timeout: 15_000 });
       },
     },
     {

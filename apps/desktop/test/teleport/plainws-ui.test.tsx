@@ -80,7 +80,9 @@ const pick = async (select: HTMLElement, id: string) => {
     fireEvent.change(select, { target: { value: id } });
   });
 };
-const warning = () => screen.queryByRole("note")?.textContent ?? null;
+// The note is the app's warning notice: a polite status, in the warning color (#4124).
+const warning = () => screen.queryByRole("status")?.textContent ?? null;
+const FOLLOWING = 4; // Node.DOCUMENT_POSITION_FOLLOWING
 
 describe("teleport-plainws: the dialog warns before a move over plain ws:// (#100)", () => {
   test("a remote ws:// target is named in the warning", async () => {
@@ -105,5 +107,21 @@ describe("teleport-plainws: the dialog warns before a move over plain ws:// (#10
     const before = warning();
     await pick(select, to);
     expect([before, warning()]).toEqual([null, null]);
+  });
+
+  test("the note comes after the host select, so showing it moves nothing the person is using (#4124)", async () => {
+    const { select, to } = await setup({ to: "ws://192.168.1.5:7420/v1/ws" });
+    await pick(select, to);
+    const note = screen.queryByRole("status");
+    expect(note).not.toBeNull();
+    expect(select.compareDocumentPosition(note as HTMLElement)).toBe(FOLLOWING);
+  });
+
+  test("the note takes the app's warning style, not only a heavier font (#4124)", async () => {
+    const { select, to } = await setup({ to: "ws://192.168.1.5:7420/v1/ws" });
+    await pick(select, to);
+    const note = screen.queryByRole("status");
+    expect(note).not.toBeNull();
+    expect((note as HTMLElement).className).toContain("text-status-needs-you");
   });
 });

@@ -11,7 +11,7 @@ import { Bar, Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";
 import { formatBytes } from "@/shared/lib/index.ts";
 import { useT } from "../../i18n/context.tsx";
 import { translateError } from "../../i18n/errors.ts";
-import { AppDialogContent } from "../../shared/feedback/index.ts";
+import { AppDialogContent, InlineNotice } from "../../shared/feedback/index.ts";
 import {
   plainText,
   type TeleportOutcome,
@@ -163,12 +163,6 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
         <DialogHeader>
           <DialogTitle>{t("teleportUi.title")}</DialogTitle>
         </DialogHeader>
-        {plain.length > 0 &&
-          (phase.at === "pick" || phase.at === "preparing" || phase.at === "confirm") && (
-            <p role="note" className="font-medium text-sm">
-              {t("teleportUi.plainWs", { n: plain.length, hosts: plain.join(", ") })}
-            </p>
-          )}
         {phase.at === "pick" && props.targets.length === 0 && (
           <Form variant="dialog" onSubmit={close}>
             <p role="note">{t("teleportUi.noTarget")}</p>
@@ -216,6 +210,9 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
         {phase.at === "confirm" && (
           <Form variant="dialog" onSubmit={() => reply(true)}>
             <p>
+              {t("teleportUi.to")} {host} · <span className="font-mono">{repo.trim()}</span>
+            </p>
+            <p>
               {t("teleportUi.branch")}{" "}
               {phase.summary.branch ? (
                 <bdi className="font-mono">{phase.summary.branch}</bdi>
@@ -226,7 +223,9 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
             <p>{t("teleportUi.ahead", { n: phase.summary.ahead })}</p>
             <p>{t("teleportUi.changed", { n: phase.summary.changed })}</p>
             <p>{t("teleportUi.size", { size: formatBytes(phase.summary.bytes) })}</p>
-            <p>{t("teleportUi.secrets", { n: phase.summary.secretLines })}</p>
+            <p className={phase.summary.secretLines > 0 ? "text-status-needs-you" : undefined}>
+              {t("teleportUi.secrets", { n: phase.summary.secretLines })}
+            </p>
             <FormActions
               submit={t("teleportUi.move")}
               cancel={t("teleportUi.back")}
@@ -291,6 +290,13 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
             )}
           </Form>
         )}
+        {/* After the form: showing it when a host is picked moves nothing the person is using. */}
+        {plain.length > 0 &&
+          (phase.at === "pick" || phase.at === "preparing" || phase.at === "confirm") && (
+            <InlineNotice>
+              {t("teleportUi.plainWs", { n: plain.length, hosts: plain.join(", ") })}
+            </InlineNotice>
+          )}
       </AppDialogContent>
     </Dialog>
   );

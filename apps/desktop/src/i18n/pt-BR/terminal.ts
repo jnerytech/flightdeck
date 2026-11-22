@@ -90,6 +90,7 @@ export const terminal = {
     next: "Continuar",
     preparing: "Preparando a sessão…",
     cancel: "Cancelar",
+    to: "Para:",
     branch: "Branch:",
     noBranch: "nenhuma (um HEAD solto)",
     ahead: "Commits ainda fora do origin: {n}",

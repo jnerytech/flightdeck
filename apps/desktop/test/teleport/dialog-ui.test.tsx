@@ -64,6 +64,7 @@ function open(
   summary: TeleportSummary = SUMMARY,
   held = false,
   targets: ReadonlyArray<{ id: string; name: string }> = [{ id: "h2", name: "pi" }],
+  plain?: (target: string) => string[],
 ) {
   const calls = {
     opened: [] as string[][],
@@ -83,6 +84,7 @@ function open(
     <TContext.Provider value={translator(lang)}>
       <TeleportDialog
         targets={targets}
+        {...(plain ? { plain } : {})}
         repoField={(_hostId, value, onChange) => (
           <input aria-label="repo-path" value={value} onChange={(e) => onChange(e.target.value)} />
         )}
@@ -659,4 +661,45 @@ describe("teleport-dialog-ui: the dialog says why it cannot go on (#3725)", () =
       expect(screen.queryByRole("button", { name: t.next })?.hasAttribute("disabled")).toBe(false);
     });
   }
+});
+
+/** The confirm step's own lines (#4125): the destination first, and the secrets count in the warning style. */
+describe("teleport-dialog-ui: the summary says where the session goes and flags secrets (#4125)", () => {
+  const TO = { en: "To: pi · /work/app", "pt-BR": "Para: pi · /work/app" } as const;
+  const lines = () => [...document.querySelectorAll("form p")].map((p) => p.textContent ?? "");
+  const secretsLine = () => screen.queryByText(/^(Lines that look like|Linhas que parecem) /);
+
+  for (const lang of ["en", "pt-BR"] as const) {
+    test(`${lang}: the first line names the host and the repository, the repository in monospace`, async () => {
+      open(lang);
+      await start(lang);
+      await shows(TEXT[lang].secrets);
+      expect(lines()[0]).toBe(TO[lang]);
+      expect(document.querySelector("form p span.font-mono")?.textContent).toBe("/work/app");
+    });
+  }
+
+  test("secret-looking lines above zero take the warning style", async () => {
+    open("en");
+    await start("en");
+    await shows(TEXT.en.secrets);
+    expect(secretsLine()?.className.includes("text-status-needs-you")).toBe(true);
+  });
+
+  test("no secret-looking lines leaves the line plain", async () => {
+    open("en", { ...SUMMARY, secretLines: 0 });
+    await start("en");
+    await shows("Lines that look like secrets: 0");
+    expect(secretsLine()).not.toBeNull();
+    expect(secretsLine()?.className.includes("text-status-needs-you")).toBe(false);
+  });
+
+  test("a plain ws:// host still shows its warning on the summary", async () => {
+    open("en", SUMMARY, false, [{ id: "h2", name: "pi" }], () => ["pi"]);
+    await start("en");
+    await shows(TEXT.en.secrets);
+    expect(screen.queryByRole("status")?.textContent?.startsWith("pi connects without TLS")).toBe(
+      true,
+    );
+  });
 });
