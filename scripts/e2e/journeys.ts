@@ -3207,18 +3207,33 @@ async function historyFormProblems(c: Context): Promise<string[]> {
     const form = document.querySelector("form[data-variant='inline']");
     const labels = [...(form?.querySelectorAll("label") ?? [])];
     const tops = labels.map((label) => Math.round(label.getBoundingClientRect().top));
-    if (labels.length !== 4 || Math.max(...tops) - Math.min(...tops) > 1) {
+    const sorted = [...tops].sort((a, b) => a - b);
+    // The pane is narrow, so the form may wrap: labels on one row share a top, and a row is a whole
+    // line below the one before (a gap of a few pixels is a ragged row, not a new one).
+    const ragged = sorted.some(
+      (top, i) =>
+        i > 0 && top - (sorted[i - 1] as number) > 1 && top - (sorted[i - 1] as number) < 16,
+    );
+    if (labels.length !== 4 || ragged) {
       found.push(`the labels of the filter form sit at tops ${tops.join(", ")}`);
     }
     const button = form?.querySelector<HTMLElement>("button[type='submit']");
-    const input = form?.querySelector<HTMLElement>("input, select");
-    if (!button || !input) return [...found, "the filter form has no Filter button or input"];
+    const lastRow = labels.filter(
+      (label) => Math.round(label.getBoundingClientRect().top) === sorted[sorted.length - 1],
+    );
+    const inputs = lastRow
+      .map((label) => label.control)
+      .filter((control): control is HTMLElement => control instanceof HTMLElement);
+    if (!button || inputs.length === 0)
+      return [...found, "the filter form has no Filter button or input"];
     const at = button.getBoundingClientRect();
-    const row = input.getBoundingClientRect();
-    if (Math.abs(at.top + at.height / 2 - (row.top + row.height / 2)) > 2) {
-      found.push(
-        `the Filter button is not level with the inputs (button centre ${Math.round(at.top + at.height / 2)}, input centre ${Math.round(row.top + row.height / 2)})`,
-      );
+    for (const input of inputs) {
+      const row = input.getBoundingClientRect();
+      if (Math.abs(at.top + at.height / 2 - (row.top + row.height / 2)) > 2) {
+        found.push(
+          `the Filter button is not level with the inputs (button centre ${Math.round(at.top + at.height / 2)}, input centre ${Math.round(row.top + row.height / 2)})`,
+        );
+      }
     }
     return found;
   });
