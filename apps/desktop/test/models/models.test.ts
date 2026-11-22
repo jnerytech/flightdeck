@@ -5,9 +5,9 @@ import {
   MAIN_MODELS,
   MORE_MODELS,
   modelName,
-} from "../../src/features/sessions/domain/model-menu.ts";
+} from "../../src/features/models/index.ts";
 
-describe("model-menu: the names", () => {
+describe("models: the names", () => {
   test("a versioned id reads as the family and the version", () => {
     expect(modelName("claude-opus-5-5")).toBe("Opus 5.5");
     expect(modelName("claude-sonnet-5-5")).toBe("Sonnet 5.5");
@@ -37,7 +37,7 @@ describe("model-menu: the names", () => {
   });
 });
 
-describe("model-menu: which row is the model in use", () => {
+describe("models: which row is the model in use", () => {
   test("an id matches itself only", () => {
     expect(isCurrentModel("claude-opus-5-5", "claude-opus-5-5")).toBe(true);
     expect(isCurrentModel("claude-opus-5-5", "claude-opus-5-4")).toBe(false);
@@ -57,7 +57,7 @@ describe("model-menu: which row is the model in use", () => {
   });
 });
 
-describe("model-menu: the lists", () => {
+describe("models: the lists", () => {
   test("the efforts go from the lightest to max", () => {
     expect(EFFORTS).toEqual(["low", "medium", "high", "xhigh", "max"]);
   });
