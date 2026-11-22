@@ -195,6 +195,7 @@ test's baseline, with the issue that renames them.
 | `mcp` | MCP server | The Flightdeck MCP server a Claude Code session runs: its tools over the local daemon (projects, cards, runs, messages, actions, snippets) and whether its program is still there |
 | `memory` | memory | Claude Code's auto memory of a project, edited only by an explicit action |
 | `messaging` | message | Messages between sessions, their policy, loops and exceptions |
+| `models` | model | The Claude models a person can choose: the current list, how each reads ("Opus 5.5") and the efforts; the session menu, the persona editor and the assistant settings share it (#4216) |
 | `names` | standard name | The display name and alias of every session |
 | `needs-you` | needs you | The sessions that wait for an answer: the screen and its rows, and the summary of what happened while the person was away |
 | `notifications` | notification | Which events notify, quiet hours, the sound and the preferences screen that sets them |
