@@ -515,3 +515,135 @@ describe("assistant-wand-ui: the preview tells what the answer was checked again
     expect(within(dialog).queryByRole("list", { name: "Observações" })).not.toBeNull();
   });
 });
+
+/** Whether the element is the one with the focus: a boolean, so a failed check never prints a DOM node. */
+const focused = (el: Element | null) => el !== null && document.activeElement === el;
+const button = (name: string | RegExp, within_: HTMLElement | null = null) =>
+  (within_ ? within(within_) : screen).queryByRole("button", { name }) as HTMLElement | null;
+/** Puts the focus on a button the way a keyboard does, then presses it. */
+const press = (el: HTMLElement | null) =>
+  act(async () => {
+    el?.focus();
+    if (el) fireEvent.click(el);
+  });
+const preview = () => screen.queryByRole("dialog", { name: "AI suggestion" }) as HTMLElement | null;
+
+describe("assistant-wand-ui: the focus stays where the person is working (issue #4166)", () => {
+  test("a suggestion that arrives while the person types in the field does not take the focus, and is announced", async () => {
+    let answer: (text: string) => void = () => {};
+    await make({
+      run: (request) =>
+        new Promise((resolve) => {
+          answer = (text) => resolve({ ...ANSWER, text, model: request.model });
+        }),
+    });
+    type("fix the totl");
+    await click("Improve with AI");
+    await settle(() => screen.queryByRole("status") !== null);
+    act(() => box().focus());
+    await act(async () => answer("Fix the total."));
+    await settle(() => preview() !== null);
+    expect(focused(box())).toBe(true);
+    expect(screen.queryByText("AI suggestion ready.")).not.toBeNull();
+  });
+
+  test("Accept, Discard and Dismiss give the focus back to the field", async () => {
+    await make();
+    type("fix the totl");
+    await click("Improve with AI");
+    await settle(() => preview() !== null);
+    await press(button("Accept", preview()));
+    expect(focused(box())).toBe(true);
+    await click("Undo");
+    act(() => box().blur());
+    await click("Improve with AI");
+    await settle(() => preview() !== null);
+    await press(button("Discard", preview()));
+    expect(focused(box())).toBe(true);
+  });
+
+  test("Dismiss on a failed request gives the focus back to the field", async () => {
+    await make({
+      run: () => {
+        throw { reason: "assistant_unavailable" };
+      },
+    });
+    type("fix the totl");
+    await click("Improve with AI");
+    await settle(() => screen.queryByRole("alert") !== null);
+    await press(button("Dismiss"));
+    expect(focused(box())).toBe(true);
+  });
+
+  test("Edit puts the focus in the After text", async () => {
+    await make();
+    type("fix the totl");
+    await click("Improve with AI");
+    await settle(() => preview() !== null);
+    await press(button("Edit", preview()));
+    expect(focused(screen.queryByRole("textbox", { name: "After" }))).toBe(true);
+  });
+
+  test("starting puts the focus on Cancel, and Cancel gives it back to the field", async () => {
+    await make({ run: () => new Promise(() => {}) });
+    type("fix the totl");
+    await press(button("Improve with AI"));
+    await settle(() => screen.queryByRole("status") !== null);
+    expect(focused(button("Cancel"))).toBe(true);
+    await press(button("Cancel"));
+    expect(focused(box())).toBe(true);
+  });
+
+  test("Retry puts the focus on Cancel of the new request", async () => {
+    let runs = 0;
+    await make({
+      run: (request) =>
+        ++runs === 1
+          ? { ...ANSWER, text: "Fix the total.", model: request.model }
+          : new Promise(() => {}),
+    });
+    type("fix the totl");
+    await click("Improve with AI");
+    await settle(() => preview() !== null);
+    await press(button("Retry", preview()));
+    await settle(() => screen.queryByRole("status") !== null);
+    expect(focused(button("Cancel"))).toBe(true);
+  });
+
+  test("Escape on Cancel stops the request, like Escape in the field", async () => {
+    await make({ run: () => new Promise(() => {}) });
+    type("fix the totl");
+    await press(button("Improve with AI"));
+    await settle(() => screen.queryByRole("status") !== null);
+    await act(async () => {
+      fireEvent.keyDown(button("Cancel") as HTMLElement, { key: "Escape" });
+    });
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(focused(box())).toBe(true);
+  });
+
+  test("the Undo chip says how long it lasts, and when it ends with the focus on Undo the focus goes to the field", async () => {
+    await make();
+    type("fix the totl");
+    const timers = watchTimers();
+    const acceptedAt = Date.now();
+    await accepted();
+    expect(screen.queryByText("You can undo for 15 seconds.")).not.toBeNull();
+    act(() => button("Undo")?.focus());
+    const spy = spyOn(Date, "now").mockReturnValue(acceptedAt + 16_000);
+    await act(async () => timers.fire());
+    spy.mockRestore();
+    expect(button("Undo")).toBeNull();
+    expect(focused(box())).toBe(true);
+  });
+
+  test("it reads in Portuguese", async () => {
+    await make({}, { language: "pt-BR" });
+    type("corrige o totl");
+    await click("Melhorar com IA");
+    await settle(() => screen.queryByRole("dialog", { name: "Sugestão da IA" }) !== null);
+    expect(screen.queryByText("Sugestão da IA pronta.")).not.toBeNull();
+    await click("Aceitar");
+    expect(screen.queryByText("Você pode desfazer por 15 segundos.")).not.toBeNull();
+  });
+});
