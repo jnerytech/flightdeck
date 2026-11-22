@@ -287,12 +287,39 @@ describe("conexoes-ui: the connection test", () => {
     expect(said).toContain("O servidor recusou a autenticação");
   });
 
-  test("a destino that is not saved yet cannot be tested", async () => {
+  test("a destino that is not saved yet has no Test button, since there is nothing saved to test (#4330)", async () => {
     await open({ targets: [] });
     await click("Novo destino");
+    expect(screen.queryByRole("button", { name: "Salvar destino" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Testar conexão" })).toBeNull();
+  });
+
+  test("a change in the form turns Test off and says to save first (#4330)", async () => {
+    await open();
+    await click("Editar vps");
+    expect(
+      (screen.queryByRole("button", { name: "Testar conexão" }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+    expect(screen.queryByText("Salve para testar estes valores")).toBeNull();
+    await fill("Host", "outro.example.com");
     expect(
       (screen.queryByRole("button", { name: "Testar conexão" }) as HTMLButtonElement).disabled,
     ).toBe(true);
+    expect(screen.queryByText("Salve para testar estes valores")).not.toBeNull();
+    // Back to the saved value: the saved destino can be tested again.
+    await fill("Host", "vps.example.com");
+    expect(
+      (screen.queryByRole("button", { name: "Testar conexão" }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
+
+  test("the result of a test goes away when the form changes, since it was about the saved values (#4330)", async () => {
+    await open();
+    await click("Editar vps");
+    await click("Testar conexão");
+    expect(screen.queryByText("Conexão ok.")).not.toBeNull();
+    await fill("Porta", "2222");
+    expect(screen.queryByText("Conexão ok.")).toBeNull();
   });
 
   test("the jump, the host that opens it, keep-alive, compression and local forwards are saved; ForwardAgent ticked and then cleared stays off", async () => {
