@@ -105,8 +105,20 @@ export function installHolds(
   ) => void;
   class Held extends Base {
     readonly rewriter = make();
+    /** What the app's message listeners hear, to give them an answer the print makes in the host's place. */
+    readonly hear: Array<(data: string) => void> = [];
     override send(data: Parameters<WebSocket["send"]>[0]): void {
-      if (typeof data === "string") this.rewriter.fromApp(data);
+      if (typeof data === "string") {
+        this.rewriter.fromApp(data);
+        const answer = this.rewriter.answer?.(data);
+        if (answer !== undefined) {
+          // Never sent: the host would do what the print only shows (#3987).
+          queueMicrotask(() => {
+            for (const listener of this.hear) listener(answer);
+          });
+          return;
+        }
+      }
       super.send(data);
     }
     override addEventListener(
@@ -118,6 +130,7 @@ export function installHolds(
         listen.call(this, type, listener, options);
         return;
       }
+      this.hear.push((data) => listener.call(this, new MessageEvent("message", { data })));
       const rewritten = (event: Event) => {
         const data = (event as MessageEvent).data;
         if (typeof data !== "string") return listener.call(this, event);
