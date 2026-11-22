@@ -16,6 +16,7 @@ import { inSequence } from "@flightdeck/protocol";
 import { loadConfig } from "../apps/daemon/src/config.ts";
 import { ulid } from "../apps/daemon/src/kernel/ulid.ts";
 import { pairKey } from "../apps/daemon/src/messaging/domain/peers.ts";
+import { DEFAULT_POLICY } from "../apps/daemon/src/messaging/domain/policy.ts";
 import { INSTRUCTIONS_VERSION } from "../apps/daemon/src/teams/domain/instructions.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/support/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
@@ -598,8 +599,8 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       );
   }
   // Issue #4088: messages between two sessions outside a team, for the Conversations page and a
-  // session's Messages tab: two delivered, one the pair's hourly limit refused, and one to a host
-  // the demo does not have. The newest is last.
+  // session's Messages tab: a text and its answer, one the pair's hourly limit refused, and one
+  // delivered to a host the demo no longer has (the app names its recipient by address).
   const outsideSession = "6e2f0c1a-7b3d-4f58-9a41-0d5c8e7b2f19";
   const talk: Array<{
     from: string;
@@ -630,9 +631,9 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       text: DEMO_MESSAGE_REFUSED,
       status: "refused",
       why: {
-        reason: "The limit of 20 messages per hour between these two sessions was reached.",
+        reason: `The limit of ${DEFAULT_POLICY.perPairPerHour} messages per hour between these two sessions was reached.`,
         key: "messaging_limit_pair",
-        params: { limit: 20 },
+        params: { limit: DEFAULT_POLICY.perPairPerHour },
       },
     },
     {
@@ -640,12 +641,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       to: outsideSession,
       toHost: "gama",
       text: DEMO_MESSAGE_LOST,
-      status: "refused",
-      why: {
-        reason: "The host gama is not known: the app describes the hosts.",
-        key: "messaging_host_unknown",
-        params: { host: "gama" },
-      },
+      status: "delivered",
     },
   ];
   for (const [at, m] of talk.entries()) {

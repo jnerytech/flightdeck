@@ -155,12 +155,13 @@ export const DEMO_QUOTA_TEAM = "quota-crew";
 export const DEMO_TEAM_REPORT = "Somei o frete no total do carrinho; os testes passam.";
 
 /** The messages between two sessions outside a team that the Conversations page and a Messages tab print (issue #4088). */
-export const DEMO_MESSAGE_ASK = "Terminei o arredondamento. Pode revisar o PR 128?";
-export const DEMO_MESSAGE_ANSWER = "Revisei: falta só o teste do total com frete.";
+export const DEMO_MESSAGE_ASK = "I finished the rounding. Can you review PR 128?";
+export const DEMO_MESSAGE_ANSWER =
+  "Reviewed: only the test for the total with shipping is missing.";
 /** The text of a message the host refused, because the pair reached its hourly limit. */
-export const DEMO_MESSAGE_REFUSED = "Mandei o ajuste do frete, vê se fecha o PR?";
-/** The text of a message to a host the app does not know. */
-export const DEMO_MESSAGE_LOST = "Preciso do resultado do job de ontem.";
+export const DEMO_MESSAGE_REFUSED = "I sent the shipping fix. Can we close the PR?";
+/** The text of a message to a host the demo no longer has. */
+export const DEMO_MESSAGE_LOST = "I need the result of yesterday's job.";
 
 /** The coordinator's report the active team shows as its outcome, marked done (issue #1220). */
 export const DEMO_TEAM_OUTCOME = "Total do carrinho corrigido; o PR está pronto para revisão.";

@@ -3,19 +3,14 @@ import type { DemoIds } from "../../demo-seed.ts";
 import { agentShots } from "../../lib/shots/table-agent.ts";
 
 const IDS = { idleSession: "idle" } as DemoIds;
-const NAMES = [
-  "conversas",
-  "sessao-mensagens",
-  "sessao-mensagens-recusa",
-  "configuracoes-mensagens-pausa",
-];
+const NAMES = ["conversas", "sessao-mensagens", "sessao-mensagens-recusa"];
 const shots = () => agentShots(IDS).filter((shot) => NAMES.includes(shot.name));
 const named = (name: string) => shots().find((shot) => shot.name === name);
 
-// #4088: the Conversations page, a session's Messages tab with a refused send, and a paused pair
-// with an exception in Settings had no print, so no axe check and no review of their states.
+// #4088: the Conversations page and a session's Messages tab, also with a refused send, had no
+// print, so no axe check and no review of their states.
 describe("the messaging prints (#4088)", () => {
-  test("the table prints the Conversations page, the Messages tab with and without a refused send, and the paused pair in Settings", () => {
+  test("the table prints the Conversations page, the Messages tab with and without a refused send, ", () => {
     expect(shots().map((shot) => shot.name)).toEqual(NAMES);
   });
 
@@ -25,18 +20,19 @@ describe("the messaging prints (#4088)", () => {
       const route = named(name)?.route;
       expect(route?.name === "session" ? route.id : null).toBe("idle");
     }
-    expect(named("configuracoes-mensagens-pausa")?.route).toEqual({ name: "settings" });
   });
 
   test("the refused-send print answers the send with a refusal that carries its reason key, and the other one sends nothing", () => {
     expect(named("sessao-mensagens-recusa")?.wire).toEqual([
       {
+        // Asked as a read, so the demo's host sends nothing and only the answer is the refusal.
         command: "messages.send",
+        as: "messages.sessions",
         data: {
           id: expect.any(String),
           status: "refused",
           reason: expect.stringContaining("limit"),
-          reasonKey: "messaging_limit_pair",
+          reasonKey: "messaging_limit_session",
           reasonParams: { limit: expect.any(Number) },
         },
       },

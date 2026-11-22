@@ -41,7 +41,7 @@ async function sendRefusedMessage(page: Page): Promise<void> {
     .getByRole("textbox", { name: /^(Texto da mensagem|Message text)$/ })
     .fill(DEMO_MESSAGE_REFUSED);
   await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
-  await page.getByText(/(The limit of|O limite de) 20 /).waitFor();
+  await page.getByText(/(per hour for this session|por hora desta sessão)/).waitFor();
 }
 
 export function agentShots(ids: DemoIds): Shot[] {
@@ -557,8 +557,8 @@ export function agentShots(ids: DemoIds): Shot[] {
       prepare: showSection(/^(Messages between sessions on|Mensagens entre sessões em) /),
     },
     // Issue #4088: the Conversations page with a delivered row, a refused one with its reason and one
-    // to a host the demo does not have; a session's Messages tab, and with a refused send; and the
-    // paused pair and the exception under Settings > Messages between sessions.
+    // to a host the demo does not have, and a session's Messages tab, also with a refused send. The
+    // paused pair and the exception the seed adds show in `configuracoes-mensagens` above.
     { name: "conversas", route: { name: "conversations" } },
     {
       name: "sessao-mensagens",
@@ -570,22 +570,19 @@ export function agentShots(ids: DemoIds): Shot[] {
       route: { name: "session", host: ALFA, id: ids.idleSession },
       wire: [
         {
+          // Sent as a read of the targets, so the demo's host sends nothing: only the answer is the refusal.
           command: "messages.send",
+          as: "messages.sessions",
           data: {
             id: "demo-refused-send",
             status: "refused",
-            reason: "The limit of 20 messages per hour between these two sessions was reached.",
-            reasonKey: "messaging_limit_pair",
-            reasonParams: { limit: 20 },
+            reason: "The limit of 100 messages per hour for this session was reached.",
+            reasonKey: "messaging_limit_session",
+            reasonParams: { limit: 100 },
           },
         },
       ],
       prepare: sendRefusedMessage,
-    },
-    {
-      name: "configuracoes-mensagens-pausa",
-      route: { name: "settings" },
-      prepare: showSection(/^(Messages between sessions on|Mensagens entre sessões em) /),
     },
     {
       // Issue #38: the allowed-folders row, its input and its button on one line.
