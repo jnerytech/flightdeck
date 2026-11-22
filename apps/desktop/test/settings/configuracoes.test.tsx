@@ -121,6 +121,38 @@ describe("configuracoes", () => {
     expect(autostartCalls).toEqual([true, false]);
   });
 
+  test("the cache lifetime select is live only while the cache timer is on (#3843)", async () => {
+    setup();
+    await openSettings();
+    const timer = checkbox("Contador do cache do prompt");
+    const lifetime = () => screen.queryByLabelText("Duração do cache") as HTMLSelectElement | null;
+    expect(lifetime()).not.toBeNull();
+    const states = [lifetime()?.disabled];
+    await act(async () => {
+      fireEvent.click(timer);
+    });
+    states.push(lifetime()?.disabled);
+    await act(async () => {
+      fireEvent.click(timer);
+    });
+    states.push(lifetime()?.disabled);
+    expect(states).toEqual([true, false, true]);
+  });
+
+  test("the font size hint sits in its row, in the control column, and the box names it (#3843)", async () => {
+    setup();
+    await openSettings();
+    const box = screen.queryByLabelText("Tamanho da fonte do terminal") as HTMLInputElement | null;
+    expect(box).not.toBeNull();
+    const hint = document.getElementById(box?.getAttribute("aria-describedby") ?? "");
+    expect(hint?.textContent).toBe("Entre 10 e 24 px.");
+    const row = box?.closest(".setting-row") ?? null;
+    expect([
+      row?.contains(hint) ?? false,
+      hint?.classList.contains("setting-hint") ?? true,
+    ]).toEqual([true, false]);
+  });
+
   test("sem suporte a auto-start a opção fica desabilitada e explica o motivo", async () => {
     setup("unsupported");
     await openSettings();
