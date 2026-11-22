@@ -90,7 +90,7 @@ describe("conversas-ui: the messages between sessions", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
     });
-    const named = await settleMaybe(() => screen.queryByText(/alfa não respondeu/) !== null);
+    const named = await settleMaybe(() => screen.queryByText(/Sem resposta de alfa/) !== null);
     expect(named).toBe(true);
     expect(screen.queryByText("Nenhuma mensagem")).toBeNull();
     daemon.refuse.delete("messages.list");
@@ -99,7 +99,7 @@ describe("conversas-ui: the messages between sessions", () => {
     });
     const listed = await settleMaybe(() => (list()?.children.length ?? 0) === 2);
     expect(listed).toBe(true);
-    expect(screen.queryByText(/alfa não respondeu/)).toBeNull();
+    expect(screen.queryByText(/Sem resposta de alfa/)).toBeNull();
   });
 
   test("with no messages, the screen says where they come from and links to Times", async () => {
