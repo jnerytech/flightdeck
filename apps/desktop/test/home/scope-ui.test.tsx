@@ -192,6 +192,40 @@ describe("home-scope-ui: Home adds up the hosts in the data scope (#126)", () =>
     expect(/\$1\.00/.test(spend())).toBe(true);
   });
 
+  // #3847: the trigger sat straight in the page header's column, which stretched it to the full width.
+  test("the scope trigger keeps its own width: it is not a direct child of the page header", async () => {
+    setup();
+    await settle(() => /\$7\.00/.test(spend()));
+    const trigger = screen.queryByRole("button", { name: "Data from All hosts" });
+    expect(trigger !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    const header = trigger?.closest("[data-slot=page-header]");
+    expect(header !== null && trigger?.parentElement?.parentElement === header).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+  });
+
+  test.each([
+    ["en", "Data from All hosts", "Hosts"],
+    ["pt-BR", "Dados de Todos os hosts", "Hosts"],
+  ] as const)(
+    "the hosts of the scope menu are a named group (%s)",
+    async (language, menu, name) => {
+      setup({ language });
+      await settle(() => screen.queryByRole("button", { name: menu }) !== null);
+      const trigger = screen.queryByRole("button", { name: menu });
+      await act(async () => {
+        fireEvent.pointerDown(trigger as HTMLElement, {
+          button: 0,
+          ctrlKey: false,
+          pointerType: "mouse",
+        });
+      });
+      const group = screen.queryByRole("group", { name });
+      expect(group !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+      expect(
+        within(group as HTMLElement).queryByRole("menuitemradio", { name: "alfa" }) !== null, // NOSONAR: the boolean keeps a DOM node out of the failure diff
+      ).toBe(true);
+    },
+  );
+
   test("the Projects group of Data from scopes Home to a project", async () => {
     const { store } = setup();
     act(() => store.projectKeys.note(["github.com/x/y", "github.com/x/z"]));
