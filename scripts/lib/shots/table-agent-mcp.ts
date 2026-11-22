@@ -46,10 +46,10 @@ const TEST_ANSWER: WireRule = {
   },
 };
 
-/** A user's server of a long command and a long name: its row must wrap inside the window. */
+/** A project server of a long command and a long name: its row, with all three buttons, must wrap inside the window. */
 const LONG = server("a-server-whose-name-is-long-enough-to-need-a-break-inside-the-row", {
-  origin: "user-project",
-  readOnly: true,
+  origin: "project",
+  readOnly: false,
   command:
     "/usr/local/lib/node_modules/@demo/mcp-server-with-a-very-long-package-name/node_modules/@demo/another-nested-package/bin/serve.js",
   args: ["--workspace", "/home/demo/projects/flightdeck-web", "--log-level", "debug", "--stdio"],

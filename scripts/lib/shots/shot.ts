@@ -69,9 +69,7 @@ export interface Shot {
  */
 export async function showToast(page: Page): Promise<void> {
   await page.evaluate(() => window.dispatchEvent(new Event("flightdeck:demo-toast")));
-  await page.locator('[data-sonner-toast][data-mounted="true"]').first().waitFor();
-  // timing: sonner's enter animation (400 ms) ends before the shot.
-  await page.waitForTimeout(500);
+  await toastSettled(page);
 }
 
 /**
