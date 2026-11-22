@@ -261,7 +261,7 @@ Para testar: entre no GitHub na página do host, abra o **Board** de um projeto,
   uma sessão roda, **Parar** lidera e **Fazer merge do PR** espera no menu, e com checks falhando
   ele não é oferecido). O resto está no menu **Ações** (⋯) ao
   lado: **Iniciar com workflow ou persona…** (o mesmo diálogo do **Iniciar card** do board),
-  **Iniciar**, **Iniciar em segundo plano**, **Parar**, **Abrir PR**, **Fazer merge do PR**,
+  **Iniciar**, **Iniciar em segundo plano, sem terminal**, **Parar**, **Abrir PR**, **Fazer merge do PR**,
   **Finalizar…** e **Descartar**. Um card cuja execução terminou abre em **Mudanças**. Enquanto uma
   execução espera num portão, **Aprovar** e **Negar** do próprio portão, no alto da página, são
   os únicos botões principais: o painel Execução não lidera com nada até o portão ser respondido.

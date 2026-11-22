@@ -231,6 +231,75 @@ describe("bg-ui: the actions of a session", () => {
     expect(screen.queryByText(/Não dá para mandar mensagem/)).not.toBeNull();
   });
 
+  describe("the Message field (#4170)", () => {
+    const type = async (value: string) => {
+      const field = screen.queryByLabelText("Mensagem") as HTMLInputElement;
+      await act(async () => {
+        fireEvent.change(field, { target: { value } });
+      });
+      return field;
+    };
+    const sends = (daemon: { commands: Array<{ type: string }> }) =>
+      daemon.commands.filter((c) => c.type === "bg.message").length;
+
+    test("Enter sends once: the field is in a form, a second submit before the answer sends nothing", async () => {
+      const { daemon } = await openPanel();
+      const field = await type("continue");
+      const form = field.closest("form") as HTMLFormElement;
+      expect(form).not.toBeNull();
+      await act(async () => {
+        fireEvent.submit(form);
+        fireEvent.submit(form);
+      });
+      await settle(() => field.value === "");
+      expect(sends(daemon)).toBe(1);
+    });
+
+    test("Enviar is off while the box is blank or only spaces, and on with text", async () => {
+      await openPanel();
+      const off = () =>
+        (screen.queryByRole("button", { name: "Enviar" }) as HTMLButtonElement).disabled;
+      expect(off()).toBe(true);
+      await type("   ");
+      expect(off()).toBe(true);
+      await type("oi");
+      expect(off()).toBe(false);
+    });
+
+    test("a sent message is said in a status line and the focus stays in the field", async () => {
+      await openPanel();
+      const field = await type("continue");
+      await click("Enviar");
+      await settle(() => screen.queryByText("Mensagem enviada.") !== null);
+      expect(screen.queryByText("Mensagem enviada.")).not.toBeNull();
+      expect(field.value).toBe("");
+      expect(document.activeElement === field).toBe(true);
+    });
+
+    test("a refusal is said beside the field, the text stays and the field has the focus", async () => {
+      const { daemon } = await openPanel();
+      daemon.bg.refused.set("bg.message", { reason: "bg_no_message_path" });
+      const field = await type("de novo");
+      await click("Enviar");
+      await settle(() => screen.queryByText(/A mensagem não foi enviada/) !== null);
+      expect(screen.queryByText(/A mensagem não foi enviada/)).not.toBeNull();
+      expect(field.value).toBe("de novo");
+      expect(document.activeElement === field).toBe(true);
+    });
+
+    test("in English the status line is English", async () => {
+      const { store } = await openPanel();
+      await act(async () => store.i18n.setLang("en"));
+      const field = screen.queryByLabelText("Message") as HTMLInputElement;
+      await act(async () => {
+        fireEvent.change(field, { target: { value: "go" } });
+      });
+      await click("Send");
+      await settle(() => screen.queryByText("Message sent.") !== null);
+      expect(screen.queryByText("Message sent.")).not.toBeNull();
+    });
+  });
+
   test("Parar asks first, naming the session, and sends nothing until it is confirmed (#4169)", async () => {
     const { daemon } = await openPanel();
     await click("Parar");
@@ -441,6 +510,49 @@ describe("bg-ui: Iniciar em segundo plano", () => {
       screen.queryByText("Escreva o primeiro prompt para iniciar em segundo plano."),
     ).toBeNull();
     expect(daemon.commands.some((c) => c.type === "bg.start")).toBe(false);
+  });
+
+  const tickAndFill = async () => {
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("Primeiro prompt") as HTMLTextAreaElement, {
+        target: { value: "limpe os logs" },
+      });
+      fireEvent.click(screen.queryByLabelText("Iniciar em segundo plano") as HTMLInputElement);
+    });
+  };
+
+  test("the option's hint is its accessible description (#4172)", async () => {
+    await newSession();
+    const box = screen.queryByLabelText("Iniciar em segundo plano") as HTMLInputElement;
+    const hint = document.getElementById(box.getAttribute("aria-describedby") ?? "-");
+    expect(hint?.textContent?.includes("sem terminal")).toBe(true);
+  });
+
+  test("a start that works says so in a notice naming the folder (#4172)", async () => {
+    const { store } = await newSession();
+    const said: string[] = [];
+    const success = store.success.bind(store);
+    store.success = (text: string) => {
+      said.push(text);
+      success(text);
+    };
+    await tickAndFill();
+    await click("Criar sessão");
+    await settle(() => said.length > 0);
+    expect(said[0]).toBe('Sessão "work" iniciada em segundo plano. Ela aparece em Sessões.');
+  });
+
+  test("a start the host refuses keeps the form and says so beside the option (#4172)", async () => {
+    const { daemon, store } = await newSession();
+    daemon.bg.refused.set("bg.start", { reason: "bg_cli_failed", params: { message: "boom" } });
+    await tickAndFill();
+    await click("Criar sessão");
+    await settle(() => screen.queryByText("Não foi possível iniciar em segundo plano.") !== null);
+    expect(screen.queryByText("Não foi possível iniciar em segundo plano.")).not.toBeNull();
+    expect(store.router.current.name).toBe("new-session");
+    expect((screen.queryByLabelText("Primeiro prompt") as HTMLTextAreaElement).value).toBe(
+      "limpe os logs",
+    );
   });
 
   test("a host without bg has no such option", async () => {

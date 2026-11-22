@@ -247,12 +247,14 @@ export function CardRunForm(
                       void store.background
                         .start(hostId, { cardId, ...(ref ? { persona: ref } : {}) })
                         .then((started) => {
-                          if (started) store.router.push({ name: "hub" });
+                          if (!started) return;
+                          store.success(t("bg.started", { name: card.title }));
+                          store.router.push({ name: "hub" });
                         });
                     })
                   }
                 >
-                  {t("bg.start")}
+                  {t("bg.startItem")}
                 </DropdownMenuItem>
               )}
               {step !== "stop" && alive && (

@@ -317,7 +317,7 @@ describe.each(LANGS)("issues panel rows ($lang)", (words) => {
     await settle(() => alertText() !== "");
     const row = within(panel()).getAllByRole("listitem")[0] as HTMLElement;
     expect(within(row).queryByRole("alert")?.textContent ?? "").toContain("gh auth login");
-    expect(within(panel()).getAllByRole("alert").length).toBe(1);
+    expect(within(panel()).getAllByRole("alert")).toHaveLength(1);
     expect(button(words.createFor(1))?.getAttribute("aria-busy")).toBeNull();
     await press(words.createFor(1));
     expect(h.creates()).toBe(2);

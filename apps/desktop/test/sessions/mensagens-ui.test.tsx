@@ -218,7 +218,7 @@ describe("sessao-mensagens-ui: a paused pair (#4086)", () => {
     const rows = [...(list()?.children ?? [])] as HTMLElement[];
     const paused = rows.find((li) => li.textContent?.includes("de novo")) as HTMLElement;
     const other = rows.find((li) => li.textContent?.includes("outra")) as HTMLElement;
-    expect(within(other).queryAllByRole("button", { name: RULES }).length).toBe(0);
+    expect(within(other).queryAllByRole("button", { name: RULES })).toHaveLength(0);
     const link = within(paused).queryByRole("button", { name: RULES });
     expect(link).not.toBeNull();
     await act(async () => {
