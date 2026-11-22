@@ -1,5 +1,5 @@
 import type { Project, WatchSettings } from "@flightdeck/protocol";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
@@ -8,6 +8,7 @@ import { Field, FieldRow, Grid, Inline, Panel, Stack } from "@/shared/layout/ind
 import {
   loopProblemsOf,
   validateWatchDraft,
+  watchDraftChanged,
   watchDraftOf,
   watchPatchOf,
 } from "./domain/watch-settings.ts";
@@ -21,6 +22,7 @@ function ProjectWatchSettings(
 ) {
   const t = useT();
   const { store, hostId, project, far } = props;
+  const headingId = useId();
   const [saved, setSaved] = useState<WatchSettings | null>(null);
   const [draft, setDraft] = useState(watchDraftOf(null));
   const keep = useCallback((settings: WatchSettings | null) => {
@@ -41,155 +43,161 @@ function ProjectWatchSettings(
     if (settings) store.success(t("watchSettingsUi.saved"));
   };
   if (saved === null) return <h4 className="font-medium text-sm">{project.name}</h4>;
+  const changed = watchDraftChanged(draft, saved);
   return (
-    <Stack gap={3}>
-      <h4 className="font-medium text-sm">{project.name}</h4>
-      <Inline gap={2}>
-        <label className="text-sm">
-          <input
-            type="checkbox"
-            checked={draft.enabled}
-            onChange={(e) => set({ enabled: e.target.checked })}
-          />{" "}
-          {t("watchSettingsUi.enabled")}
-        </label>
-      </Inline>
-      <Grid cols={{ base: 1, sm: 3 }} gap={3}>
-        <Field label={t("watchSettingsUi.maxRounds")} help={t("watchSettingsUi.maxRoundsHelp")}>
-          {(control) => (
-            <Input
-              {...control}
-              type="number"
-              value={draft.maxRounds}
-              onChange={(e) => set({ maxRounds: e.target.value })}
-            />
-          )}
-        </Field>
-        <Field label={t("watchSettingsUi.budget")}>
-          {(control) => (
-            <Input
-              {...control}
-              type="number"
-              placeholder={t("watchSettingsUi.noLimit")}
-              value={draft.budgetUsd}
-              onChange={(e) => set({ budgetUsd: e.target.value })}
-            />
-          )}
-        </Field>
-        <Field label={t("watchSettingsUi.daily")}>
-          {(control) => (
-            <Input
-              {...control}
-              type="number"
-              placeholder={t("watchSettingsUi.noLimit")}
-              value={draft.dailyUsd}
-              onChange={(e) => set({ dailyUsd: e.target.value })}
-            />
-          )}
-        </Field>
-      </Grid>
-      <Field label={t("watchSettingsUi.timeout")}>
-        {(control) => (
-          <Input
-            {...control}
-            type="number"
-            disabled={far}
-            value={draft.checkTimeoutMin}
-            onChange={(e) => set({ checkTimeoutMin: e.target.value })}
-          />
-        )}
-      </Field>
-      <Field label={t("watchSettingsUi.checks")}>
-        {(control) => (
-          <textarea
-            {...control}
-            className={TEXTAREA}
-            rows={3}
-            disabled={far}
-            value={draft.checks}
-            onChange={(e) => set({ checks: e.target.value })}
-          />
-        )}
-      </Field>
-      {draft.loop && (
-        <Stack gap={3}>
-          <h5 className="font-medium text-sm">{t("watchSettingsUi.loopTitle")}</h5>
-          <p className="text-muted-foreground text-sm">{t("watchSettingsUi.loopIntro")}</p>
-          <Inline gap={2}>
-            <label className="text-sm">
-              <input
-                type="checkbox"
-                disabled={far}
-                checked={draft.loop.checkLoopDefault}
-                onChange={(e) =>
-                  set({
-                    loop: {
-                      ...(draft.loop as NonNullable<typeof draft.loop>),
-                      checkLoopDefault: e.target.checked,
-                    },
-                  })
-                }
-              />{" "}
-              {t("watchSettingsUi.checkLoopDefault")}
-            </label>
-          </Inline>
-          <Field
-            label={t("watchSettingsUi.checkRounds")}
-            error={loopProblems.checkRounds ?? undefined}
-          >
+    // A group named by the project, so every control is read inside it (#3864).
+    <fieldset aria-labelledby={headingId} className="setting-group">
+      <Stack gap={3}>
+        <h4 id={headingId} className="font-medium text-sm">
+          {project.name}
+        </h4>
+        <Inline gap={2}>
+          <label className="text-sm">
+            <input
+              type="checkbox"
+              checked={draft.enabled}
+              onChange={(e) => set({ enabled: e.target.checked })}
+            />{" "}
+            {t("watchSettingsUi.enabled")}
+          </label>
+        </Inline>
+        <Grid cols={{ base: 1, sm: 3 }} gap={3}>
+          <Field label={t("watchSettingsUi.maxRounds")} help={t("watchSettingsUi.maxRoundsHelp")}>
             {(control) => (
               <Input
                 {...control}
                 type="number"
-                disabled={far}
-                value={draft.loop?.checkRounds ?? ""}
-                onChange={(e) =>
-                  set({
-                    loop: {
-                      ...(draft.loop as NonNullable<typeof draft.loop>),
-                      checkRounds: e.target.value,
-                    },
-                  })
-                }
+                value={draft.maxRounds}
+                onChange={(e) => set({ maxRounds: e.target.value })}
               />
             )}
           </Field>
-          <Field
-            label={t("watchSettingsUi.checkEnv")}
-            help={t("watchSettingsUi.checkEnvHelp")}
-            error={loopProblems.checkEnv ?? undefined}
-          >
+          <Field label={t("watchSettingsUi.budget")}>
             {(control) => (
-              <textarea
+              <Input
                 {...control}
-                className={TEXTAREA}
-                rows={2}
-                disabled={far}
-                value={draft.loop?.checkEnv ?? ""}
-                onChange={(e) =>
-                  set({
-                    loop: {
-                      ...(draft.loop as NonNullable<typeof draft.loop>),
-                      checkEnv: e.target.value,
-                    },
-                  })
-                }
+                type="number"
+                placeholder={t("watchSettingsUi.noLimit")}
+                value={draft.budgetUsd}
+                onChange={(e) => set({ budgetUsd: e.target.value })}
               />
             )}
           </Field>
-        </Stack>
-      )}
-      <FieldRow>
-        <ActionButton
-          size="sm"
-          disabled={problem !== null}
-          disabledReason={problem ?? undefined}
-          onClick={save}
-        >
-          {t("watchSettingsUi.save")}
-        </ActionButton>
-      </FieldRow>
-    </Stack>
+          <Field label={t("watchSettingsUi.daily")}>
+            {(control) => (
+              <Input
+                {...control}
+                type="number"
+                placeholder={t("watchSettingsUi.noLimit")}
+                value={draft.dailyUsd}
+                onChange={(e) => set({ dailyUsd: e.target.value })}
+              />
+            )}
+          </Field>
+        </Grid>
+        <Field label={t("watchSettingsUi.timeout")}>
+          {(control) => (
+            <Input
+              {...control}
+              type="number"
+              disabled={far}
+              value={draft.checkTimeoutMin}
+              onChange={(e) => set({ checkTimeoutMin: e.target.value })}
+            />
+          )}
+        </Field>
+        <Field label={t("watchSettingsUi.checks")}>
+          {(control) => (
+            <textarea
+              {...control}
+              className={TEXTAREA}
+              rows={3}
+              disabled={far}
+              value={draft.checks}
+              onChange={(e) => set({ checks: e.target.value })}
+            />
+          )}
+        </Field>
+        {draft.loop && (
+          <Stack gap={3}>
+            <h5 className="font-medium text-sm">{t("watchSettingsUi.loopTitle")}</h5>
+            <p className="text-muted-foreground text-sm">{t("watchSettingsUi.loopIntro")}</p>
+            <Inline gap={2}>
+              <label className="text-sm">
+                <input
+                  type="checkbox"
+                  disabled={far}
+                  checked={draft.loop.checkLoopDefault}
+                  onChange={(e) =>
+                    set({
+                      loop: {
+                        ...(draft.loop as NonNullable<typeof draft.loop>),
+                        checkLoopDefault: e.target.checked,
+                      },
+                    })
+                  }
+                />{" "}
+                {t("watchSettingsUi.checkLoopDefault")}
+              </label>
+            </Inline>
+            <Field
+              label={t("watchSettingsUi.checkRounds")}
+              error={loopProblems.checkRounds ?? undefined}
+            >
+              {(control) => (
+                <Input
+                  {...control}
+                  type="number"
+                  disabled={far}
+                  value={draft.loop?.checkRounds ?? ""}
+                  onChange={(e) =>
+                    set({
+                      loop: {
+                        ...(draft.loop as NonNullable<typeof draft.loop>),
+                        checkRounds: e.target.value,
+                      },
+                    })
+                  }
+                />
+              )}
+            </Field>
+            <Field
+              label={t("watchSettingsUi.checkEnv")}
+              help={t("watchSettingsUi.checkEnvHelp")}
+              error={loopProblems.checkEnv ?? undefined}
+            >
+              {(control) => (
+                <textarea
+                  {...control}
+                  className={TEXTAREA}
+                  rows={2}
+                  disabled={far}
+                  value={draft.loop?.checkEnv ?? ""}
+                  onChange={(e) =>
+                    set({
+                      loop: {
+                        ...(draft.loop as NonNullable<typeof draft.loop>),
+                        checkEnv: e.target.value,
+                      },
+                    })
+                  }
+                />
+              )}
+            </Field>
+          </Stack>
+        )}
+        <FieldRow>
+          <ActionButton
+            size="sm"
+            disabled={problem !== null || !changed}
+            disabledReason={problem ?? t("watchSettingsUi.unchanged")}
+            onClick={save}
+          >
+            {t("watchSettingsUi.save")}
+          </ActionButton>
+        </FieldRow>
+      </Stack>
+    </fieldset>
   );
 }
 
