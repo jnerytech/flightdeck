@@ -19,6 +19,8 @@ export function ApprovalActions(
      * is a request the daemon judged no risk for (an older daemon) or a gate, which has none.
      */
     risk: RiskLevel | undefined;
+    /** False when the request is only partly shown (#4199): Deny stays, Approve goes. */
+    canApprove?: boolean;
     pending?: boolean;
     size?: "sm";
     /** A plan to approve says so ("Approve the plan" / "Keep planning"). */
@@ -34,7 +36,7 @@ export function ApprovalActions(
   const size = props.size ? { size: props.size } : {};
   return (
     <>
-      {props.risk === "high" ? (
+      {props.canApprove === false ? null : props.risk === "high" ? (
         <HoldButton
           label={t("approval.hold")}
           hint={t("approval.holdHint")}
