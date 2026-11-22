@@ -39,15 +39,11 @@ const MISSING_TOOLS: DepsResult = {
 
 /**
  * The start screen shows its cards from what a host page read earlier (only that page asks the host),
- * so the print opens a host page and closes its tab: the area is left with no tab, which is the start screen.
+ * so the print opens a host page and then the shared "Sessions" tab, whose area has no host tab: the
+ * start screen. (Closing the host tab does not work: the window opens a host's overview again.)
  */
 async function startScreen(page: Page): Promise<void> {
-  // The tab's × is aria-hidden (the tab closes by its menu and keys), so it is found by its label.
-  const close = page
-    .locator('button[aria-label^="Close tab "], button[aria-label^="Fechar aba "]')
-    .first();
-  await close.waitFor({ state: "attached", timeout: 15_000 });
-  await close.click({ force: true });
+  await page.getByRole("tab", { name: /^(Sessions|Sessões)$/ }).click({ timeout: 15_000 });
   const note = page
     .getByRole("note")
     .filter({ hasText: /GitHub CLI|Git\b/ })
