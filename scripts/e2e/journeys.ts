@@ -2366,7 +2366,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const columns = c.page.locator("[data-slot='board-columns']");
     const cut = await columns.evaluate((box) => ({
       cut: box.scrollWidth > box.clientWidth,
-      fade: getComputedStyle(box).maskImage !== "none",
+      fade: Number.parseFloat(getComputedStyle(box).getPropertyValue("--board-fade")) > 0,
     }));
     if (cut.cut && !cut.fade) {
       throw new Error("a board column is cut at the Files panel edge with no cue that it scrolls");
