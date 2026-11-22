@@ -312,15 +312,28 @@ step(When, "I move it anyway", async (c) =>
     .click(),
 );
 
-/** Finish… sits under the card page's menu (#1197). */
+/**
+ * Finish… sits under the card page's menu (#1197). The menu is not modal (#4173), so the focus a closing
+ * dialog hands back to its button can land just after a click that opened the menu, and closes it again:
+ * the open-and-choose is tried again, up to three times, and says so when the menu never stays open (#4247).
+ */
 const fromCardMenu = async (c: Context, item: string) => {
-  await c.page
-    .getByRole("button", {
-      name: c.t("board.cardActions", { title: mine(c).card ?? "" }),
-      exact: true,
-    })
-    .click();
-  await c.page.getByRole("menuitem", { name: item, exact: true }).click();
+  const trigger = c.page.getByRole("button", {
+    name: c.t("board.cardActions", { title: mine(c).card ?? "" }),
+    exact: true,
+  });
+  const entry = c.page.getByRole("menuitem", { name: item, exact: true });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    // A click toggles: only a menu that is not open gets one.
+    if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
+    try {
+      await entry.click({ timeout: 2000 });
+      return;
+    } catch {
+      // The menu closed again, or never opened: look at it once more.
+    }
+  }
+  throw new Error(`the card menu did not stay open for "${item}" after 3 tries`);
 };
 
 step(When, "I open the card and read the three ways to finish it", async (c) => {
