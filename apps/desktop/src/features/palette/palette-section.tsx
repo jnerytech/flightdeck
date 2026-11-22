@@ -74,7 +74,7 @@ export function PaletteSectionView(
             </span>{" "}
             <span
               id={`${props.idOf(item)}-detail`}
-              className="min-w-0 truncate text-muted-foreground text-xs"
+              className="min-w-0 shrink-[3] truncate text-muted-foreground text-xs"
             >
               {item.detail}
             </span>
