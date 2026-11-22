@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { PersonaPicker } from "@/features/personas/ui.ts";
 import { useDraft } from "@/features/sessions/index.ts";
@@ -26,6 +26,7 @@ export function ClientDefaults(
   const [tag, setTag, savedTag] = useDraft(client.defaults.snippetTag ?? "");
   const [vaultTag, setVaultTag, savedVaultTag] = useDraft(client.defaults.vaultTag ?? "");
   const [confirming, setConfirming] = useState(false);
+  const tagField = useRef<HTMLInputElement>(null);
   /** What the last save did: a polite line, not silence (#3875). */
   const [done, setDone] = useState<string | null>(null);
   // The host keeps a value trimmed, so a draft that only adds blanks is no change.
@@ -71,6 +72,8 @@ export function ClientDefaults(
           savedTag(tag);
           savedVaultTag(vaultTag);
           setDone(t("clients.defaultsSaved"));
+          // The pressed Save is disabled now: a field takes the focus.
+          tagField.current?.focus();
         }}
       >
         {host && (
@@ -89,6 +92,7 @@ export function ClientDefaults(
           {(control) => (
             <Input
               {...control}
+              ref={tagField}
               value={tag}
               onChange={(e) => {
                 setTag(e.target.value);
