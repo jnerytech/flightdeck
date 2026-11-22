@@ -94,4 +94,10 @@ describe("quota slice: a host's plan usage", () => {
     await s.quota.setPause("b", 0.7);
     expect(s.state().quota.b?.pauseAt).toBe(0.9);
   });
+
+  test("setPause says whether the host took the change (#4305)", async () => {
+    const s = slice({ a: reading(0.5), b: null }, { a: "alfa", b: "beta" });
+    expect(await s.quota.setPause("a", 0.8)).toBe(true);
+    expect(await s.quota.setPause("b", 0.7)).toBe(false);
+  });
 });

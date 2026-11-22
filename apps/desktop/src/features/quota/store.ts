@@ -58,11 +58,13 @@ export class QuotaSlice {
 
   /**
    * Sets the guard "new cards wait from N%" on a host (`null` turns it off); the host's answer is its
-   * new quota state. A refusal goes to the banner and leaves the guard as it was.
+   * new quota state. A refusal goes to the banner and leaves the guard as it was. Says whether the
+   * host took it, so the screen next to the guard can say it did not (#4305).
    */
-  async setPause(hostId: string, pauseAt: number | null): Promise<void> {
+  async setPause(hostId: string, pauseAt: number | null): Promise<boolean> {
     const state = await this.core.setPauseAt(hostId, pauseAt);
     if (state) this.updated(hostId, state);
+    return state !== null;
   }
 
   /** Crossing `pauseAt` (and 95%, and the plan's refusal) notifies once per account, window and reset. */

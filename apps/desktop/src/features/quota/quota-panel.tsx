@@ -54,10 +54,10 @@ function HostQuota(
   );
   const costs = hasFeature(host.hostInfo?.features, "costs", false);
   const [projections, setProjections] = useState<Record<string, string>>({});
-  // A new reading may move the projection.
+  // A new reading may move the projection. A host with no window has none to project (#4307).
   const readings = JSON.stringify(quota?.windows ?? []);
   useEffect(() => {
-    if (!costs || readings === "") return;
+    if (!costs || readings === "[]") return;
     void Promise.all(
       SHOWN.map((window) =>
         store.hostCommand(host.id, "quota.history", {
@@ -75,7 +75,8 @@ function HostQuota(
           t,
         );
       }
-      setProjections(texts);
+      // A refused read leaves the window's earlier line, not a card that loses it (#4307).
+      setProjections((held) => ({ ...held, ...texts }));
     });
   }, [store, host.id, costs, readings, t]);
   const anyReading = bars.some((bar) => bar.hasReading);
