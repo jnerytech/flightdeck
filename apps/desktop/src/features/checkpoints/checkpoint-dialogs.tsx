@@ -61,7 +61,9 @@ function PreviewFiles(
 }
 
 /** "Voltar arquivos até aqui": the preview, then the confirmation. */
-export function RewindDialog(props: Target & { turn: Turn; onClose(): void; onDone(): void }) {
+export function RewindDialog(
+  props: Omit<Target, "cwd"> & { turn: Turn; onClose(): void; onDone(): void },
+) {
   const { store, hostId, claudeSessionId, turn } = props;
   const { t } = store.i18n;
   const [preview, setPreview] = useState<RewindPreview | null>(null);
@@ -135,7 +137,7 @@ export function RewindDialog(props: Target & { turn: Turn; onClose(): void; onDo
  * "Desfazer volta": what the undo would put back, read from the host when the dialog opens (the
  * files may have changed since the sheet did), and the confirmation that overwrites them (#4036).
  */
-export function UndoDialog(props: Target & { onClose(): void; onDone(): void }) {
+export function UndoDialog(props: Omit<Target, "cwd"> & { onClose(): void; onDone(): void }) {
   const { store, hostId, claudeSessionId } = props;
   const { t } = store.i18n;
   const [preview, setPreview] = useState<RewindPreview | null>(null);

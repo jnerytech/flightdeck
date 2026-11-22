@@ -14,7 +14,9 @@ const bodyOf = (name: SettingsGroupName) => `settings-group-body-${name}`;
 function hasPanel(body: Element | null): boolean {
   if (!body) return false;
   return [...body.children].some((child) =>
-    child.hasAttribute("data-gate") ? (child.firstElementChild?.childElementCount ?? 0) > 0 : true,
+    child instanceof HTMLElement && child.dataset.gate !== undefined
+      ? (child.firstElementChild?.childElementCount ?? 0) > 0
+      : true,
   );
 }
 

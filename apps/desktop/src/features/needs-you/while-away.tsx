@@ -172,7 +172,7 @@ export function WhileAway(
       ref={box}
       aria-label={t("away.title")}
       data-slot="while-away"
-      tabIndex={scrollable ? 0 : undefined}
+      tabIndex={scrollable ? 0 : undefined} // NOSONAR: a scrollable region must take the focus, or the keyboard cannot scroll it
       className="max-h-[45%] scroll-pb-8 overflow-y-auto border-b p-4 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
     >
       <Stack gap={3}>

@@ -183,4 +183,22 @@ describe("cofre-ui: the New secret Value hides what is typed for a password or a
     await change(words.type, "token");
     expect(field(words.value).value).toBe("ghp_token");
   });
+
+  // #4134: Sonar S8786 flagged the pattern that strips the trailing breaks. These rows pin the
+  // pastes it must keep handling the same way, long runs included.
+  test("a long run of line breaks at the end is dropped, and the text before it stays", async () => {
+    const { words } = await openForm();
+    await change(words.type, "env");
+    await change(words.value, `ghp_token${"\r\n".repeat(3000)}`);
+    await change(words.type, "token");
+    expect(field(words.value).value).toBe("ghp_token");
+  });
+
+  test("a long run of line breaks inside a value empties the masked box", async () => {
+    const { words } = await openForm();
+    await change(words.type, "env");
+    await change(words.value, `first${"\n".repeat(3000)}second\n`);
+    await change(words.type, "token");
+    expect(field(words.value).value).toBe("");
+  });
 });

@@ -144,11 +144,7 @@ export function AccountCard(props: Readonly<AccountCardProps>) {
       <p className="text-muted-foreground text-sm">{t("account.offline", { host: hostName })}</p>
     );
   } else if (state === undefined || notReadYet(state)) {
-    body = (
-      <p role="status" className="text-muted-foreground text-sm">
-        {t("account.loading")}
-      </p>
-    );
+    body = <output className="text-muted-foreground text-sm">{t("account.loading")}</output>;
   } else if (state.status === "signed_out") {
     body = (
       <>

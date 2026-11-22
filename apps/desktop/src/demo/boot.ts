@@ -26,8 +26,9 @@ export function parseDemoHosts(json: string | undefined, search = ""): DemoHost[
   const only = params.get("hosts");
   if (only === "none") return [];
   const plain = (params.get("plain") ?? "").split(",");
+  const wanted = new Set((only ?? "").split(","));
   const kept = parseJsonText(json ?? "[]", z.array(DemoHost), []).filter(
-    (host) => only === null || only === "all" || only.split(",").includes(host.id),
+    (host) => only === null || only === "all" || wanted.has(host.id),
   );
   return kept.map((host) => {
     if (!plain.includes(host.id)) return host;
