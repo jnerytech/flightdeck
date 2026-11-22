@@ -165,6 +165,8 @@ export const agent = {
       stale:
         "O arquivo mudou no disco depois que você o abriu. O que você escreveu continua aqui; recarregue para ver a versão atual.",
       reload: "Recarregar",
+      discardMessage: "Descartar as edições de {name}? O que você escreveu se perde.",
+      discardConfirm: "Descartar",
     },
   },
 } as const;
