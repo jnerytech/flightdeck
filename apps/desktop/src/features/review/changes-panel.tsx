@@ -344,7 +344,7 @@ export function ChangesPanel(
       ref={panel}
       aria-label={t("changes.region")}
       tabIndex={-1}
-      className="flex flex-col gap-4 focus-visible:outline-2 focus-visible:outline-ring"
+      className="relative flex flex-col gap-4 focus-visible:outline-2 focus-visible:outline-ring"
     >
       {props.extra?.(changes, refresh, goToDrafts)}
       <div className="flex flex-wrap items-center gap-2">
