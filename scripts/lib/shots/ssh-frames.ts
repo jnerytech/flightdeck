@@ -25,35 +25,42 @@ export function sshRewriter(askpass = false): FrameRewriter {
     }
   };
   const stamp = "2026-11-09T08:00:00.000Z";
-  const target = (
-    n: number,
-    name: string,
-    host: string,
-    user: string,
-    port: number,
-    tags: string[],
-    auth: string,
-    hostKey: string | null,
-  ) => ({
+  const target = (n: number, row: Record<string, unknown>) => ({
     id: `print-ssh-${n}`,
-    name,
-    host,
-    port,
-    user,
+    port: 22,
     viaHost: null,
-    auth,
     secretRef: null,
     jump: null,
     options: {},
-    tags,
-    hostKey,
+    hostKey: null,
     createdAt: stamp,
     updatedAt: stamp,
+    ...row,
   });
   const targets = [
-    target(1, "build-server", "203.0.113.10", "deploy", 22, ["ci"], "agent", "SHA256:printkeyone"),
-    target(2, "staging", "staging.example.test", "deploy", 2222, ["staging"], "password", null),
-    target(3, "docs-site", "203.0.113.24", "web", 22, ["prod", "web"], "agent", null),
+    target(1, {
+      name: "build-server",
+      host: "203.0.113.10",
+      user: "deploy",
+      tags: ["ci"],
+      auth: "agent",
+      hostKey: "SHA256:printkeyone",
+    }),
+    target(2, {
+      name: "staging",
+      host: "staging.example.test",
+      user: "deploy",
+      port: 2222,
+      tags: ["staging"],
+      auth: "password",
+    }),
+    target(3, {
+      name: "docs-site",
+      host: "203.0.113.24",
+      user: "web",
+      tags: ["prod", "web"],
+      auth: "agent",
+    }),
   ];
   const entry = (alias: string, host: string, user: string, port: number, exists: boolean) => ({
     alias,

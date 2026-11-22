@@ -117,17 +117,21 @@ export function hostShots(ids: DemoIds): Shot[] {
       name: "cofre-copiar",
       route: { name: "vault" },
       prepare: async (page) => {
-        await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-        await page.getByRole("button", { name: /^(New secret|Novo segredo)$/ }).click();
-        await page.getByLabel(/^(Name|Nome)$/).fill("demo-token");
-        await page.getByLabel(/^(Value|Valor)$/).fill("demo-not-a-real-token");
-        await page.getByRole("button", { name: /^(Save|Salvar)$/ }).click();
-        await page.getByRole("button", { name: /^(Copy|Copiar) demo-token$/ }).click();
-        await page.getByText(/^(Copied|Copiado)$/).waitFor();
-        // timing: sonner's enter animation (400 ms) ends before the shot.
-        await page.waitForTimeout(500);
-        // The permission was for the copy: the context's later prints do not keep it.
-        await page.context().clearPermissions();
+        const context = page.context();
+        await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+        try {
+          await page.getByRole("button", { name: /^(New secret|Novo segredo)$/ }).click();
+          await page.getByLabel(/^(Name|Nome)$/).fill("demo-token");
+          await page.getByLabel(/^(Value|Valor)$/).fill("demo-not-a-real-token");
+          await page.getByRole("button", { name: /^(Save|Salvar)$/ }).click();
+          await page.getByRole("button", { name: /^(Copy|Copiar) demo-token$/ }).click();
+          await page.getByText(/^(Copied|Copiado)$/).waitFor();
+          // timing: sonner's enter animation (400 ms) ends before the shot.
+          await page.waitForTimeout(500);
+        } finally {
+          // The permission was for the copy: the context's later prints do not keep it.
+          await context.clearPermissions();
+        }
       },
     },
     {
