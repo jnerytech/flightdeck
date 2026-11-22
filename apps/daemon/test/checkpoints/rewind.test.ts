@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
   existsSync,
+  linkSync,
   mkdirSync,
   readdirSync,
   readFileSync,
@@ -346,5 +347,53 @@ describe("rewind: the snapshot's repository must sit inside allowedRoots (#3554)
     expect((await outside.preview("s1", turn)).via).toBe("snapshot");
     await rewinder.apply("s1", turn, true);
     expect(existsSync(join(repo, "novo.txt"))).toBe(false);
+  });
+});
+
+describe("rewind guard (#3825)", () => {
+  const refuse = () => {
+    throw new Error("guard ran");
+  };
+
+  test("the guard runs, before anything is written, when the rewind would put back Claude Code's settings, by apply and by undo", async () => {
+    const { rewinder, repo, turn } = await turnWith(
+      (dir) => {
+        mkdirSync(join(dir, ".claude"));
+        writeFileSync(join(dir, ".claude", "settings.json"), "{}\n");
+        writeFileSync(join(dir, "a.txt"), "original\n");
+      },
+      (dir) => {
+        writeFileSync(join(dir, ".claude", "settings.json"), '{"hooks":{}}\n');
+        writeFileSync(join(dir, "a.txt"), "edited\n");
+      },
+    );
+    const refused = await reason(rewinder.apply("s1", turn, true, refuse));
+    expect([refused, read(join(repo, ".claude", "settings.json")), read(join(repo, "a.txt"))]).toEqual(
+      ["guard ran", '{"hooks":{}}\n', "edited\n"],
+    );
+    expect(await reason(rewinder.apply("s1", turn, true))).toBe("ok");
+    expect(await reason(rewinder.undo("s1", true, refuse))).toBe("guard ran");
+    expect(read(join(repo, ".claude", "settings.json"))).toBe("{}\n");
+  });
+
+  test("the guard also runs for a file another hard link shares, and stays quiet for a plain file", async () => {
+    const { rewinder, repo, turn } = await turnWith(
+      (dir) => {
+        writeFileSync(join(dir, "x.txt"), "one\n");
+        linkSync(join(dir, "x.txt"), join(dir, "twin.txt"));
+        writeFileSync(join(dir, "plain.txt"), "p\n");
+      },
+      (dir) => {
+        writeFileSync(join(dir, "x.txt"), "two\n");
+      },
+    );
+    expect(await reason(rewinder.apply("s1", turn, true, refuse))).toBe("guard ran");
+    expect(read(join(repo, "twin.txt"))).toBe("two\n");
+    const plain = await turnWith(
+      (dir) => writeFileSync(join(dir, "plain.txt"), "p\n"),
+      (dir) => writeFileSync(join(dir, "plain.txt"), "q\n"),
+    );
+    expect(await reason(plain.rewinder.apply("s1", plain.turn, true, refuse))).toBe("ok");
+    expect(read(join(plain.repo, "plain.txt"))).toBe("p\n");
   });
 });
