@@ -8,6 +8,8 @@ import {
   healthCounts,
   needsYou,
   type RowEnv,
+  resultFor,
+  signatureOf,
   uncoveredChecks,
 } from "../../src/features/hosts/domain/host-health-rows.ts";
 import { translator } from "../../src/i18n/index.ts";
@@ -255,5 +257,31 @@ describe("host-health-rows: which checks and counts the section shows", () => {
     });
     const tones: HealthRow["look"]["tone"][] = ["ok", "warn", "error", "off"];
     expect(tones.map((tone) => needsYou(row(tone)))).toEqual([false, true, true, false]);
+  });
+
+  test("the signature is the same for the same findings in any order, and changes with a version or a detail", () => {
+    const git = dep("git", "required", "ok", { version: "2.40" });
+    const gh = dep("gh", "optional", "ok", { version: "2.0" });
+    const hooks = check("hooks", "ok");
+    expect(signatureOf([git, gh], [hooks])).toBe(signatureOf([gh, git], [hooks]));
+    expect(signatureOf([{ ...git, version: "2.41" }, gh], [hooks])).not.toBe(
+      signatureOf([git, gh], [hooks]),
+    );
+    expect(signatureOf([git, gh], [{ ...hooks, detail: "another detail" }])).not.toBe(
+      signatureOf([git, gh], [hooks]),
+    );
+  });
+
+  test("a fix whose row is no longer listed is told as fixed, by the name it was asked with", () => {
+    const asked = {
+      before: "x",
+      fix: "service" as const,
+      name: "Start at boot",
+      at: 1,
+      answer: null,
+    };
+    expect(resultFor(asked, { signature: "y", checkedAt: 2, error: null }, [], t)).toBe(
+      t("hostHealth.fixed", { name: "Start at boot" }),
+    );
   });
 });

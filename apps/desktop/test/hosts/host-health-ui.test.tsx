@@ -488,6 +488,10 @@ function Live(props: Readonly<{ after: DepsResult }>) {
   const store = fixture.store;
   return (
     <TooltipProvider>
+      {/* A read nobody asked for: the store's own refresh. */}
+      <button type="button" onClick={() => setNow({ deps: DEPS, at: NOW + 1 })}>
+        background read
+      </button>
       <HostHealth
         store={store}
         host={fixture.host}
@@ -564,6 +568,28 @@ describe("host-health-ui: the result of a check, a failed read, an offline host,
     );
     expect((live()?.textContent ?? "").includes("Claude Code hooks: fixed")).toBe(true);
     expect(document.activeElement === live()).toBe(true);
+  });
+
+  test("the result line is the answer to what was asked: a later read nobody asked for does not rewrite it", async () => {
+    render(<Live after={withoutHooks} />);
+    await act(
+      async () =>
+        void fireEvent.click(
+          within(row("Claude Code hooks")).getByRole("button", { name: "Install hooks" }),
+        ),
+    );
+    await act(
+      async () =>
+        void fireEvent.click(
+          within(screen.getByRole("alertdialog")).getByRole("button", { name: "Install hooks" }),
+        ),
+    );
+    expect((live()?.textContent ?? "").includes("Claude Code hooks: fixed")).toBe(true);
+    await act(
+      async () => void fireEvent.click(screen.getByRole("button", { name: "background read" })),
+    );
+    expect((live()?.textContent ?? "").includes("Claude Code hooks: fixed")).toBe(true);
+    expect((live()?.textContent ?? "").includes("still needs attention")).toBe(false);
   });
 
   test("a fix that did not clear the problem says so", async () => {
