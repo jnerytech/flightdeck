@@ -102,6 +102,7 @@ export function hostShots(ids: DemoIds): Shot[] {
       name: "host-manutencao-limpando",
       route: { name: "host", host: ALFA },
       maintenance: { holdClean: true },
+      busy: true,
       prepare: maintenancePanel(async (page) => {
         await page.getByRole("button", { name: CLEAN }).click();
         await page.getByRole("alertdialog").getByRole("button", { name: CLEAN }).click();

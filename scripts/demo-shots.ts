@@ -271,12 +271,15 @@ async function printShot(
       await page.screenshot({ path: join(dir, `${shot.name}-FALHOU.png`) });
       throw error;
     });
-    // A skeleton or a busy region is a screen still loading: the print waits for the real one.
-    await page.waitForFunction(
-      (selector) => document.querySelector(selector) === null,
-      PENDING_SELECTOR,
-      { timeout: 15_000 },
-    );
+    // A skeleton or a busy region is a screen still loading: the print waits for the real one,
+    // unless the print is of a task held in progress (#4001).
+    if (!shot.busy) {
+      await page.waitForFunction(
+        (selector) => document.querySelector(selector) === null,
+        PENDING_SELECTOR,
+        { timeout: 15_000 },
+      );
+    }
     if (visual !== "off") await stabilize(page);
     await page.screenshot({
       path: join(dir, `${shot.name}.png`),
