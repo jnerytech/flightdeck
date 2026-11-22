@@ -22,7 +22,7 @@ const ALLOWED = [
   // #3754: the fallback text of a refusal the screen shows from the dictionary by its code (`approval_proof_required`).
   "the device's signature was declined",
   // The products' own names, and a refusal reason code (the screen translates it, it is not shown as is).
-  "Fable 5.1",
+  "Fable 5.2",
   "Opus 5.5",
   "Sonnet 5.5",
   "Haiku 5.5",

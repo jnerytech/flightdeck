@@ -13,7 +13,14 @@ import { useStoreSlice } from "@/lib/use-store";
 import { hostsWith } from "@/lib/version";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { NativeSelect, Panel } from "@/shared/layout/index.ts";
-import { confirmHost, modelFor, needsHostConfirm, profileFor } from "./domain/assistant-prefs.ts";
+import {
+  type AssistantPrefs,
+  confirmHost,
+  modelFor,
+  needsHostConfirm,
+  profileFor,
+} from "./domain/assistant-prefs.ts";
+import { failureOf, refusalText } from "./domain/refusal-text.ts";
 import { KeyField } from "./key-field.tsx";
 import { ModelPicker } from "./model-picker.tsx";
 
@@ -23,7 +30,7 @@ const PROFILES: AssistantProfile[] = ["quick", "careful"];
 
 /** The host provider's models: the Claude Code ids that are current, apart from what the host defaults to. */
 const HOST_MODELS: ModelOption[] = [
-  { id: "claude-fable-5-1", label: "Fable 5.1" },
+  { id: "claude-fable-5-2", label: "Fable 5.2" },
   { id: "claude-opus-5-5", label: "Opus 5.5" },
   { id: "claude-sonnet-5-5", label: "Sonnet 5.5" },
   { id: "claude-haiku-5-5", label: "Haiku 5.5" },
@@ -33,13 +40,37 @@ const HOST_MODELS: ModelOption[] = [
 const kindLabel = (t: T, kind: AssistantKind) =>
   t(`assistantKinds.${kind.replace(".", "_")}` as Key);
 
+/** The kinds of text a profile covers now: the defaults, as moved in Advanced. */
+const kindsOf = (t: T, prefs: AssistantPrefs, profile: AssistantProfile) =>
+  (Object.keys(KIND_SPECS) as AssistantKind[])
+    .filter((kind) => profileFor(prefs, kind) === profile)
+    .map((kind) => kindLabel(t, kind))
+    .join(", ");
+
+/** The model a profile will use, by the name the list gives it when the list has it. */
+const modelInUse = (
+  prefs: AssistantPrefs,
+  provider: AssistantProvider,
+  profile: AssistantProfile,
+  options: ModelOption[] | null,
+) => {
+  const id = modelFor(prefs, provider, profile);
+  return options?.find((option) => option.id === id)?.label ?? id;
+};
+
 const onLinux = () =>
   typeof navigator !== "undefined" &&
   /linux/i.test(navigator.userAgent) &&
   !/android/i.test(navigator.userAgent);
 
 /** The models of an API provider, from the provider through the shell (null while loading). */
-function useModels(store: AppStore, provider: AssistantProvider | null) {
+function useModels(
+  store: AppStore,
+  t: T,
+  provider: AssistantProvider | null,
+  /** Whether the provider has a key: a key saved or removed asks for the list again. */
+  keyed: boolean,
+) {
   const [state, setState] = useState<{ options: ModelOption[] | null; error?: string }>({
     options: null,
   });
@@ -51,12 +82,21 @@ function useModels(store: AppStore, provider: AssistantProvider | null) {
     setState({ options: null });
     store.assistant.models(provider).then(
       (options) => current && setState({ options }),
-      (error) => current && setState({ options: [], error: String(error?.reason ?? error) }),
+      (error) => {
+        if (!current) return;
+        const failure = failureOf(error);
+        // No key yet is not a refusal to repeat: Settings is where it is saved.
+        const text =
+          failure.reason === "assistant_not_configured"
+            ? t("assistantSettings.modelsNoKey")
+            : refusalText(t, failure);
+        setState({ options: [], error: text });
+      },
     );
     return () => {
       current = false;
     };
-  }, [store, provider, attempt]);
+  }, [store, t, provider, attempt, keyed]);
   return { ...state, retry: () => setAttempt((n) => n + 1) };
 }
 
@@ -64,8 +104,7 @@ function useModels(store: AppStore, provider: AssistantProvider | null) {
 export function AssistantSettings(props: Readonly<{ store: AppStore; t: T }>) {
   const { store, t } = props;
   const prefs = useSyncExternalStore(store.assistant.subscribe, () => store.assistant.prefs());
-  // Read for the redraw only: the keys saved or removed change what the screen shows.
-  useSyncExternalStore(store.assistant.subscribe, () => store.assistant.keys());
+  const keys = useSyncExternalStore(store.assistant.subscribe, () => store.assistant.keys());
   const { hosts } = useStoreSlice(store, HOSTS_KEYS);
   const apiSupported = store.assistant.supported;
   const [confirming, setConfirming] = useState<{ hostId: string; provider: boolean } | null>(null);
@@ -77,7 +116,14 @@ export function AssistantSettings(props: Readonly<{ store: AppStore; t: T }>) {
   useEffect(() => {
     if (setupNotice) store.assistant.setupShown();
   }, [setupNotice, store]);
-  const models = useModels(store, prefs.provider);
+  const models = useModels(
+    store,
+    t,
+    prefs.provider,
+    prefs.provider === "anthropic" || prefs.provider === "openrouter"
+      ? keys[prefs.provider]
+      : false,
+  );
 
   const able = hostsWith(hosts, "assistant");
   const hostId = able.find((host) => host.id === prefs.hostId)?.id ?? able[0]?.id ?? null;
@@ -234,9 +280,20 @@ export function AssistantSettings(props: Readonly<{ store: AppStore; t: T }>) {
                   ? { error: models.error, onRetry: models.retry }
                   : {})}
               />
+              {kindsOf(t, prefs, profile) !== "" && (
+                <p className="text-muted-foreground text-xs">
+                  {t("assistantSettings.usedFor", { kinds: kindsOf(t, prefs, profile) })}
+                </p>
+              )}
               <p className="text-muted-foreground text-xs">
-                {t(`assistantSettings.${profile}Hint` as Key)}{" "}
-                {modelFor(prefs, prefs.provider as AssistantProvider, profile)}
+                {t("assistantSettings.modelInUse", {
+                  model: modelInUse(
+                    prefs,
+                    prefs.provider as AssistantProvider,
+                    profile,
+                    providerModels,
+                  ),
+                })}
               </p>
             </div>
           ))}
