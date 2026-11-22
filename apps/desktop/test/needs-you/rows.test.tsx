@@ -14,7 +14,10 @@ const { App } = await import("../../src/app/App.tsx");
 afterEach(() => cleanup());
 
 /** Needs you with one open gate of a workflow run, on the card "Ship the cart". */
-async function withGate(lang: "en" | "pt-BR", risk: Record<string, string> = {}) {
+async function withGate(
+  lang: "en" | "pt-BR",
+  risk: { risk?: "low" | "medium" | "high"; riskReason?: string } = {},
+) {
   const store = new AppStore(memoryPlatform(false, lang).platform);
   render(<App store={store} />);
   await act(async () => {
@@ -144,8 +147,18 @@ for (const [lang, t] of [
         risk: "high",
         word: t.approval.risk.high,
         reason: "deletes files",
-        name: `alfa · Backend tests: Bash: npm test --silent · ${t.approval.risk.high}`,
+        name: `alfa · Backend tests (${t.approval.risk.high}): Bash: npm test --silent`,
       });
+    });
+
+    test("the seal keeps its width on a narrow row: it neither shrinks nor wraps", async () => {
+      await withGate(lang, { risk: "medium" });
+      const holder = document.querySelector(
+        `button[aria-label*="Backend tests"] [data-risk]`,
+      )?.parentElement;
+      expect(holder?.className.split(" ")).toEqual(
+        expect.arrayContaining(["shrink-0", "whitespace-nowrap"]),
+      );
     });
 
     test("a request with no risk has no seal and keeps its name", async () => {
@@ -157,35 +170,48 @@ for (const [lang, t] of [
       }).toEqual({ seal: false, name: "alfa · Backend tests: Bash: npm test --silent" });
     });
 
-    test("a request whose risk changes redraws its row with the new seal", async () => {
+    test("a request whose risk changes redraws its row: the seal and the name follow, and none is left when the risk goes", async () => {
       const store = await withGate(lang, { risk: "low" });
-      const sealOf = () =>
-        document.querySelector(`button[aria-label*="Backend tests"] [data-risk]`)?.textContent;
-      const before = sealOf();
-      await act(async () => {
+      const row = () =>
+        document.querySelector(`button[aria-label*="Backend tests"]`) as HTMLElement;
+      const look = () => ({
+        seal: row().querySelector("[data-risk]")?.textContent ?? null,
+        name: row().getAttribute("aria-label"),
+      });
+      const setRisk = async (risk: object) => {
         const host = store.getState().hosts[0] as {
           sessions: Array<{ pendingPermissions: object[] }>;
         };
-        (store as unknown as { update(patch: object): void }).update({
-          hosts: [
-            {
-              ...host,
-              sessions: [
-                {
-                  ...host.sessions[0],
-                  pendingPermissions: [
-                    {
-                      ...host.sessions[0]?.pendingPermissions[0],
-                      risk: "high",
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
+        const permission = {
+          requestId: "r1",
+          toolName: "Bash",
+          input: { command: "npm test --silent" },
+          createdAt: "2026-11-04T13:00:00Z",
+          ...risk,
+        };
+        await act(async () => {
+          (store as unknown as { update(patch: object): void }).update({
+            hosts: [
+              { ...host, sessions: [{ ...host.sessions[0], pendingPermissions: [permission] }] },
+            ],
+          });
         });
-      });
-      expect([before, sealOf()]).toEqual([t.approval.risk.low, t.approval.risk.high]);
+      };
+      const low = look();
+      await setRisk({ risk: "high" });
+      const high = look();
+      await setRisk({});
+      expect([low, high, look()]).toEqual([
+        {
+          seal: t.approval.risk.low,
+          name: `alfa · Backend tests (${t.approval.risk.low}): Bash: npm test --silent`,
+        },
+        {
+          seal: t.approval.risk.high,
+          name: `alfa · Backend tests (${t.approval.risk.high}): Bash: npm test --silent`,
+        },
+        { seal: null, name: "alfa · Backend tests: Bash: npm test --silent" },
+      ]);
     });
 
     test("a row's detail starts under its title, past the status dot (#588)", async () => {
