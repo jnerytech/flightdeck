@@ -126,6 +126,8 @@ export const changes = {
     overwrite: "Overwrite with my version",
     sessionsHere: "Sessions that touched {path}",
     sessionsList: "Sessions that touched this",
+    sessionsLoading: "Reading the sessions…",
+    sessionsFailed: "Could not read the sessions.",
     sessionsNone: "No session recorded an edit to this file.",
     sessionEdits: { one: "{n} edit", other: "{n} edits" },
     sessionLast: "last on {when}",

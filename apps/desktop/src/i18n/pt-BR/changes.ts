@@ -126,6 +126,8 @@ export const changes = {
     overwrite: "Sobrescrever com a minha versão",
     sessionsHere: "Sessões que mexeram em {path}",
     sessionsList: "Sessões que mexeram aqui",
+    sessionsLoading: "Lendo as sessões…",
+    sessionsFailed: "Não consegui ler as sessões.",
     sessionsNone: "Nenhuma sessão registrou edição neste arquivo.",
     sessionEdits: { one: "{n} edição", other: "{n} edições" },
     sessionLast: "última em {when}",
