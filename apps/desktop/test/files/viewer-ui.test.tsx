@@ -100,6 +100,48 @@ describe("file-viewer-ui: a file of the tree, read only, with line numbers (#506
     expect(screen.queryByRole("region", { name: "File README.md" })).toBeNull();
   });
 
+  test("a file that opens takes the focus and comes into view; Close gives the focus back to its button (#3850)", async () => {
+    const scrolled: unknown[] = [];
+    const proto = Element.prototype as { scrollIntoView?: (options?: unknown) => void };
+    proto.scrollIntoView = function (this: Element, options?: unknown) {
+      if ((this as HTMLElement).getAttribute("aria-label") === "File README.md") {
+        scrolled.push(options);
+      }
+    };
+    const { store } = host();
+    await show(store);
+    await press("README.md");
+    const viewer = screen.queryByRole("region", { name: "File README.md" });
+    expect(viewer).not.toBeNull();
+    expect(document.activeElement === viewer).toBe(true);
+    expect(scrolled).toEqual([{ block: "nearest" }]);
+    await press("Close");
+    expect(document.activeElement === screen.queryByRole("button", { name: "README.md" })).toBe(
+      true,
+    );
+  });
+
+  test("a second file takes the focus too, and Close returns to the second one's button (#3850)", async () => {
+    const { store } = host();
+    await show(store);
+    await press("README.md");
+    await press("app.ts");
+    const viewer = screen.queryByRole("region", { name: "File app.ts" });
+    expect(viewer).not.toBeNull();
+    expect(document.activeElement === viewer).toBe(true);
+    await press("Close");
+    expect(document.activeElement === screen.queryByRole("button", { name: "app.ts" })).toBe(true);
+  });
+
+  test("the opened file takes the focus in Portuguese too (#3850)", async () => {
+    const { store } = host();
+    await show(store, "pt-BR");
+    await press("README.md");
+    const viewer = screen.queryByRole("region", { name: "Arquivo README.md" });
+    expect(viewer).not.toBeNull();
+    expect(document.activeElement === viewer).toBe(true);
+  });
+
   test("a credential cannot be opened, and a file that is not text says so", async () => {
     const { store, read } = host();
     await show(store);
