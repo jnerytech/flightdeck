@@ -16,6 +16,12 @@ function vaultTab(name: string | RegExp): NonNullable<Shot["prepare"]> {
   };
 }
 
+/** Opens the command palette and types a query into its input (#4052). */
+async function askPalette(page: Page, query: string): Promise<void> {
+  await page.keyboard.press("Control+K");
+  await page.locator("dialog[open]").getByRole("combobox").fill(query);
+}
+
 /** Connections, once its destinos are in the list. */
 async function listed(page: Page): Promise<void> {
   await page.getByRole("list", { name: /^(Destinations|Destinos)$/ }).waitFor();
@@ -496,6 +502,47 @@ export function hostShots(ids: DemoIds): Shot[] {
       prepare: async (page) => {
         await page.keyboard.press("Control+K");
         await page.waitForTimeout(800);
+      },
+    },
+    {
+      // #4052: a query that matches rows (the demo host's name is the same in both languages): the status region counts them out of sight.
+      name: "paleta-busca",
+      route: { name: "hub" },
+      prepare: async (page) => {
+        await askPalette(page, "alfa");
+        await page.locator("dialog[open]").getByRole("option").first().waitFor();
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      // #4052: a query that matches nothing: the line below the input says so and offers the history.
+      // It needs the demo to have more than one online project; with one, a Start row would match any text.
+      name: "paleta-sem-resultado",
+      route: { name: "hub" },
+      prepare: async (page) => {
+        await askPalette(page, "zzqxw");
+        await page.getByText(/^(Nothing matches|Nada corresponde a) /).waitFor();
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      // #4052: Enter searches the history: the hits, and "no answer" for the host that is offline.
+      name: "paleta-historico",
+      route: { name: "hub" },
+      prepare: async (page) => {
+        await askPalette(page, "revisão do arquivo");
+        await page.keyboard.press("Enter");
+        await page.locator('dialog[open] [id$="-hits"] button').first().waitFor({ timeout: 8000 });
+        await page
+          .getByText(/(no answer|sem resposta)$/)
+          .first()
+          .waitFor();
+        // A host that is slow keeps its "searching" line until it answers: the print waits for it to go.
+        await page
+          .getByText(/(searching|buscando)…$/)
+          .first()
+          .waitFor({ state: "hidden" });
+        await page.waitForTimeout(400);
       },
     },
     // The hard states.
