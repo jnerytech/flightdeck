@@ -321,16 +321,16 @@ describe.each(LANGS)("issues panel rows ($lang)", (words) => {
     expect(title?.className.split(" ")).toContain("break-words");
   });
 
-  test("the external seal is described by its reason, which a screen reader reads with it (#4258)", async () => {
+  test("the external seal carries its reason as text a screen reader reads with it, in one node (#4258)", async () => {
     const outside: Answer = { ok: true, data: { issues: [{ ...issue(1), external: true }] } };
     const h = host({ list: [outside] });
     render(<Switch store={h.store(words.lang)} id="p1" />);
     await settle(() => rows() === 1);
     const seal = within(panel()).queryByText(words.seal);
     expect(seal).not.toBeNull();
-    const why = seal?.getAttribute("aria-describedby") ?? "";
-    expect(why).not.toBe("");
-    expect(document.getElementById(why)?.textContent).toBe(words.sealWhy);
+    expect(seal?.textContent).toContain(words.sealWhy);
+    expect(seal?.getAttribute("aria-describedby")).toBeNull();
+    expect(seal?.querySelector(".sr-only")?.textContent).toContain(words.sealWhy);
   });
 
   test("each row's create and open buttons name their issue", async () => {
