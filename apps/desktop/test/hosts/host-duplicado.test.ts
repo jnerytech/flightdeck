@@ -33,6 +33,10 @@ describe("host-duplicado", () => {
     });
   });
 
+  test("an address pasted with spaces around it still counts as the same", () => {
+    expect(hostDuplicates(draft({ address: " 100.64.0.1 " }), hosts)).toEqual({ address: "My PC" });
+  });
+
   test("a name and address nobody has give no duplicate", () => {
     expect(hostDuplicates(draft({}), hosts)).toEqual({});
   });
