@@ -44,4 +44,25 @@ describe("projectScopeName: the Data from button names the project Home showed (
       projectScopeName(after, "docs-site").test("Dados de docs-site"),
     ]).toEqual([true, false]);
   });
+
+  test("a folder or a host with a space in its name is still matched", () => {
+    expect([
+      matches("docs-site", "My Projects/docs-site"),
+      matches("docs-site", "docs-site · build box"),
+      matches("docs-site", "a/b/docs-site · alfa"),
+    ]).toEqual([true, true, true]);
+  });
+
+  test("a project of another name with the same host or folder does not match", () => {
+    expect([
+      matches("docs-site", "web/api-gateway · alfa"),
+      matches("docs-site", "docs-site · alfa · beta"),
+    ]).toEqual([false, false]);
+  });
+
+  test("a sentence that names the scope twice is refused, not half-matched", () => {
+    expect(() => projectScopeName((scope) => `${scope} of ${scope}`, "docs-site")).toThrow(
+      "scope.menu",
+    );
+  });
 });
