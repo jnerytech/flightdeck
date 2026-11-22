@@ -15,7 +15,7 @@ import { AlertPicker } from "@/features/workflows/ui.ts";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { AppDialogContent } from "@/shared/feedback/index.ts";
-import { NativeSelect } from "@/shared/layout/index.ts";
+import { Inline, NativeSelect, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { startPersonaOf, startWorkflowOf } from "./domain/card-template.ts";
@@ -168,23 +168,25 @@ export function CardStartDialog(
             <p className="text-muted-foreground text-sm">{t("board.startLoading")}</p>
           )}
           {list === "failed" && !withoutWorkflow && (
-            <div role="alert" className="flex flex-col gap-2 text-sm">
-              <p>{t("board.startWorkflowsFailed")}</p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setList(null);
-                    setAttempt((n) => n + 1);
-                  }}
-                >
-                  {t("board.startRetry")}
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setWithoutWorkflow(true)}>
-                  {t("board.startWithout")}
-                </Button>
-              </div>
+            <div role="alert">
+              <Stack gap={2}>
+                <p className="text-sm">{t("board.startWorkflowsFailed")}</p>
+                <Inline>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setList(null);
+                      setAttempt((n) => n + 1);
+                    }}
+                  >
+                    {t("board.startRetry")}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setWithoutWorkflow(true)}>
+                    {t("board.startWithout")}
+                  </Button>
+                </Inline>
+              </Stack>
             </div>
           )}
         </div>

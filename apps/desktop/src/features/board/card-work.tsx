@@ -170,7 +170,10 @@ export function CardWork(
                 {openedStep.output}
               </pre>
             ) : (
-              <p className="text-muted-foreground text-sm">{t("cardUi.checkNoOutput")}</p>
+              // `null` is a check that has not finished: nothing to say yet; "" is one that printed nothing.
+              openedStep.output === "" && (
+                <p className="text-muted-foreground text-sm">{t("cardUi.checkNoOutput")}</p>
+              )
             )}
           </section>
         </div>

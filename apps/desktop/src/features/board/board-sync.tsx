@@ -100,7 +100,10 @@ export function BoardSyncControl(
   }, [ask, show, store, hostId, projectId]);
 
   useEffect(() => {
-    if (open) void load();
+    if (!open) return;
+    // A refusal from the last time the dialog was open is not this opening's.
+    setError(null);
+    void load();
   }, [open, load]);
 
   const link = async () => {

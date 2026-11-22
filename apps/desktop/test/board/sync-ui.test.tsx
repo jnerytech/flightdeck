@@ -205,9 +205,7 @@ for (const [lang, t] of [
       const gate = new Promise<void>((resolve) => {
         release = resolve;
       });
-      (page.store as unknown as { hostRequest: unknown }).hostRequest = async (
-        ...a: unknown[]
-      ) => {
+      (page.store as unknown as { hostRequest: unknown }).hostRequest = async (...a: unknown[]) => {
         if (a[1] === "boardsync.status") await gate;
         return real(...a);
       };
@@ -224,9 +222,7 @@ for (const [lang, t] of [
       await settle(() => screen.queryByRole("button", { name: t.boardSyncUi.button }) !== null);
       const real = page.store.hostRequest.bind(page.store) as (...a: unknown[]) => Promise<unknown>;
       let failing = true;
-      (page.store as unknown as { hostRequest: unknown }).hostRequest = async (
-        ...a: unknown[]
-      ) => {
+      (page.store as unknown as { hostRequest: unknown }).hostRequest = async (...a: unknown[]) => {
         if (a[1] === "boardsync.status" && failing)
           return { ok: false, code: "internal", message: "no answer" };
         return real(...a);
