@@ -86,7 +86,7 @@ describe("what each Changes state's print does on the page (#4229)", () => {
     expect(wireOf("card-mudancas-desfazer")).toEqual([
       {
         command: "changes.revert",
-        reply: { path: "fake-1.txt", undoUntil: "{in 25s}" },
+        reply: { path: "fake-1.txt", undoUntil: "{in 60s}" },
       },
     ]);
     expect(await calls("card-mudancas-desfazer")).toMatch(/Revert file.*Undo/);
