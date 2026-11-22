@@ -26,6 +26,25 @@ describe("the Teams prints (#4025)", () => {
     expect(DEMO_QUOTA_TEAM).toBe("quota-crew");
   });
 
+  test("the Add worker print presses the footer's own button, which is named by its aria-label and not by its visible text", async () => {
+    const calls: string[] = [];
+    // A page that records each call and answers with itself, so the print's chain can be read.
+    const recorder: unknown = new Proxy(() => recorder, {
+      // `then` stays undefined, or awaiting the recorder would wait for it forever.
+      get: (_target, prop) =>
+        prop === "then"
+          ? undefined
+          : (...args: unknown[]) => {
+              calls.push(`${String(prop)}(${args.map(String).join(",")})`);
+              return recorder;
+            },
+    });
+    const shot = hostShots({} as DemoIds).find((s) => s.name === "times-adicionar");
+    await shot?.prepare?.(recorder as never);
+    expect(calls.some((call) => call.startsWith("locator([data-action='add']"))).toBe(true);
+    expect(calls.some((call) => call.startsWith("click("))).toBe(true);
+  });
+
   test("each new print is re-measured narrow in the dark prints, where the footer wraps", () => {
     for (const name of ["times-rodape", "times-adicionar", "times-pausado", "times-cota"]) {
       expect(narrowSizes("dark", name).map((size) => size.width)).toEqual([1024, 640, 390]);
