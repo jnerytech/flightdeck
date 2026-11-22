@@ -248,7 +248,6 @@ export const PersonasPage = memo(function PersonasPage(props: {
       title={t("personas.title")}
       subtitle={t("personas.subtitle", { host: host?.name ?? "" })}
       actions={
-        hostId &&
         editing === null && (
           <Button data-edit="new" onClick={() => openEditor("new")}>
             {t("personas.newPersona")}
@@ -256,7 +255,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
         )
       }
     >
-      {hostId && editing === "new" && (
+      {editing === "new" && (
         <PersonaEditor
           key="new"
           store={store}
@@ -303,8 +302,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
       {cards && cards.length > 0 && (
         <ul ref={list} aria-label={t("personas.list")} className="flex flex-col gap-2">
           {cards.map((p) => {
-            const inEditor =
-              hostId && editing !== null && editing !== "new" && keyOf(editing) === keyOf(p);
+            const inEditor = editing !== null && editing !== "new" && keyOf(editing) === keyOf(p);
             return (
               // A row puts its actions beside its text; the one being edited is a full-width card (#588).
               <li

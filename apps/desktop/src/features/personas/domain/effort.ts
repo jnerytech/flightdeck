@@ -1,5 +1,5 @@
 /**
- * Whether a model takes an effort. `model` is an alias of `MODELS` or "" (the persona's model);
+ * Whether a model takes an effort. `model` is a model alias or "" (the persona's model);
  * `personaModel` is the persona's own model, a full id such as `claude-opus-5-5`, or null for none.
  */
 export function takesEffort(model: string, personaModel: string | null): boolean {
