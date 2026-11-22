@@ -118,3 +118,82 @@ describe("the Health & dependencies prints (#4325)", () => {
     ).toEqual([3, 3, 3, 3]);
   });
 });
+
+/** The calls a print's `prepare` makes on a page that records them, in order. */
+async function calls(name: string): Promise<string[]> {
+  const made: string[] = [];
+  const text = (arg: unknown): string => {
+    if (arg instanceof RegExp || typeof arg === "string") return String(arg);
+    if (typeof arg === "object" && arg !== null) return Object.values(arg).map(text).join(",");
+    return typeof arg;
+  };
+  const member = (call: string): unknown =>
+    new Proxy(
+      (...args: unknown[]) => {
+        made.push(`${call}(${args.map(text).join(",")})`);
+        return recorder;
+      },
+      { get: (_target, prop) => (recorder as Record<string | symbol, unknown>)[prop] },
+    );
+  // `then` stays undefined, or awaiting the recorder would wait for it forever.
+  const recorder: unknown = new Proxy(() => recorder, {
+    get: (_target, prop) => (prop === "then" ? undefined : member(String(prop))),
+  });
+  await named(name)?.prepare?.(recorder as never);
+  return made;
+}
+
+/** Where each needle first shows in the calls; they must all show, one after the other. */
+function order(made: string[], ...needles: string[]): number[] {
+  return needles.map((needle) => made.findIndex((call) => call.includes(needle)));
+}
+
+describe("what each Health & dependencies print does before the shot", () => {
+  test("a print of a good read waits for the count line before it scrolls to the panel", async () => {
+    for (const name of ["host-saude-falta", "host-saude-correcoes"]) {
+      const at = order(await calls(name), "OK: ", "evaluate(");
+      expect({ name, at: at.every((i) => i > -1) && at[0] < at[1] }).toEqual({ name, at: true });
+    }
+  });
+
+  test("the first-read print waits for Checking, since no row shows", async () => {
+    const at = order(await calls("host-saude-lendo"), "Checking", "evaluate(");
+    expect(at.every((i) => i > -1) && at[0] < at[1]).toBe(true);
+  });
+
+  test("the failed-read print asks again after a good read and waits for the reason", async () => {
+    const at = order(
+      await calls("host-saude-leitura-falhou"),
+      "OK: ",
+      "Check again",
+      "Could not read",
+    );
+    expect(at.every((i) => i > -1) && at[0] < at[1] && at[1] < at[2]).toBe(true);
+  });
+
+  test("the dialogs open from their row, and the boot note waits for the service to be confirmed", async () => {
+    const hooks = order(await calls("host-saude-hooks-dialogo"), "Install hooks", "alertdialog");
+    const service = order(
+      await calls("host-saude-servico-dialogo"),
+      "Turn on start at boot",
+      "alertdialog",
+    );
+    const boot = order(
+      await calls("host-saude-boot"),
+      "Turn on start at boot",
+      "alertdialog",
+      "Turn it on",
+      "Iniciar no boot",
+    );
+    expect(
+      [hooks, service, boot].map(
+        (at) => at.every((i) => i > -1) && at.every((v, i) => i === 0 || v > at[i - 1]),
+      ),
+    ).toEqual([true, true, true]);
+  });
+
+  test("the folded list is opened before the print waits for it", async () => {
+    const at = order(await calls("host-saude-ok-aberto"), "Mostrar", "Funcionando");
+    expect(at.every((i) => i > -1) && at[0] < at[1]).toBe(true);
+  });
+});
