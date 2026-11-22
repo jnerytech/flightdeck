@@ -141,7 +141,7 @@ describe.each(["en", "pt-BR"] as const)("palette status (%s)", (lang) => {
 
   test("a finished history search with no hit says so in the status region", () => {
     open(lang, NO_HIT);
-    expect(status()?.textContent === WORDS[lang].historyNone).toBe(true);
+    expect(status()?.textContent).toBe(WORDS[lang].historyNone);
   });
 
   test("text typed after a history search is judged on its own: no stale history line, and its no-match line shows", async () => {
