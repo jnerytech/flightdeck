@@ -254,7 +254,10 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
                   </p>
                 )}
                 {result && (
-                  <div role="status" className="flex flex-wrap gap-6">
+                  <div // NOSONAR: <output> allows only inline content, and this result holds headings and blocks
+                    role="status" // NOSONAR: same reason
+                    className="flex flex-wrap gap-6"
+                  >
                     {(["tools", "resources"] as const).map((kind) => (
                       <div key={kind}>
                         <h4 className="font-medium text-xs">

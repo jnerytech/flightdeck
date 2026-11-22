@@ -87,15 +87,14 @@ export function TelemetrySection(props: Readonly<{ store: AppStore; hostId: stri
       </p>
     ) : null;
   };
+  const statusKey = info ? LABELS[info.status] : "telemetry.optinAsking";
   return (
     <section aria-label={t("telemetry.optinTitle")}>
       <Panel title={t("telemetry.optinTitle")}>
         <Stack gap={2}>
           <p className="text-muted-foreground text-xs">{t("telemetry.optinHint")}</p>
           {/* Always mounted, so a status that appears later is announced. */}
-          <output className="text-sm">
-            {failed ? "" : t(info ? LABELS[info.status] : "telemetry.optinAsking")}
-          </output>
+          <output className="text-sm">{failed ? "" : t(statusKey)}</output>
           {failed && (
             <ErrorState
               message={t("telemetry.optinFailed")}
