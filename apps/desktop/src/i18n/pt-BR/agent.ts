@@ -54,6 +54,7 @@ export const agent = {
     reload: "Recarregar",
     suggestions: "Sugestões de limpeza",
     noSuggestions: "Nenhuma sugestão: a memória está em ordem.",
+    suggestionsFailed: "Não foi possível ler as sugestões.",
     neverAlone: "Nada é alterado sozinho: você decide o que fazer.",
     suggestion: {
       duplicate: "Duplicadas",

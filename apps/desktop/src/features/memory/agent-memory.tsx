@@ -1,6 +1,6 @@
 import type { MemoryFile, MemorySuggestion } from "@flightdeck/protocol";
 import { Plus } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,10 +43,15 @@ export function AgentMemory(
   const [files, setFiles] = useState<MemoryFile[] | null>(null);
   const [exists, setExists] = useState(true);
   const [suggestions, setSuggestions] = useState<MemorySuggestion[] | null>(null);
+  /** The suggestions could not be read: that is not the same as a memory with none. */
+  const [suggestFailed, setSuggestFailed] = useState(false);
   const [opened, setOpened] = useState<Opened | null>(null);
   const [text, setText] = useState("");
   const [stale, setStale] = useState<{ content: string; hash: string } | null>(null);
   const [justSaved, setJustSaved] = useState(false);
+  /** A write is out: a second one would carry the hash the first one is about to use up. The ref answers two presses in one tick. */
+  const [saving, setSaving] = useState(false);
+  const writing = useRef(false);
   const [creating, setCreating] = useState(false);
   const [typed, setTyped] = useState("");
   const [confirming, setConfirming] = useState<"save" | { remove: MemoryFile } | null>(null);
@@ -64,6 +69,7 @@ export function AgentMemory(
     setFailed(listed === null);
     const suggested = await store.hostCommand(hostId, "memory.suggest", { projectId });
     setSuggestions(suggested ? suggested.suggestions : null);
+    setSuggestFailed(suggested === null);
   }, [store, hostId, projectId]);
 
   useEffect(() => {
@@ -105,7 +111,18 @@ export function AgentMemory(
 
   const save = async () => {
     setConfirming(null);
-    if (!opened) return;
+    if (!opened || writing.current) return;
+    writing.current = true;
+    setSaving(true);
+    try {
+      await write(opened);
+    } finally {
+      writing.current = false;
+      setSaving(false);
+    }
+  };
+
+  const write = async (opened: Opened) => {
     const written = await store.hostCommand(hostId, "memory.write", {
       projectId,
       name: opened.name,
@@ -248,19 +265,24 @@ export function AgentMemory(
               <FieldRow>
                 <ActionButton
                   disabled={!dirty}
+                  pending={saving}
                   disabledReason={t("memoryUi.nothingChanged")}
                   onClick={() => setConfirming("save")}
                 >
                   {t("memoryUi.save")}
                 </ActionButton>
-                {justSaved && !dirty && (
-                  <output className="text-muted-foreground text-sm">{t("memoryUi.saved")}</output>
-                )}
+                {/* Mounted before its text comes: a live region inserted with its text is often not read. */}
+                <output data-slot="memory-saved" className="text-muted-foreground text-sm">
+                  {justSaved && !dirty ? t("memoryUi.saved") : null}
+                </output>
               </FieldRow>
             </Stack>
           )}
           <section aria-label={t("memoryUi.suggestions")}>
             <Panel size="sm" title={t("memoryUi.suggestions")}>
+              {suggestFailed && (
+                <p className="text-muted-foreground text-sm">{t("memoryUi.suggestionsFailed")}</p>
+              )}
               {suggestions?.length === 0 && (
                 <p className="text-muted-foreground text-sm">{t("memoryUi.noSuggestions")}</p>
               )}

@@ -53,6 +53,7 @@ export const agent = {
     reload: "Reload",
     suggestions: "Cleanup suggestions",
     noSuggestions: "No suggestions: the memory is in order.",
+    suggestionsFailed: "Suggestions could not be read.",
     neverAlone: "Nothing changes by itself: you decide what to do.",
     suggestion: {
       duplicate: "Duplicates",
