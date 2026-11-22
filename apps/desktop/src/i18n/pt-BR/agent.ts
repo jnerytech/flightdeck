@@ -22,6 +22,8 @@ export const agent = {
     cutLines:
       "Só as primeiras {limit} linhas do MEMORY.md entram na partida. O resto fica de fora:",
     cutBytes: "Só os primeiros {limit} KB do MEMORY.md entram na partida. O resto fica de fora:",
+    sources: "Fontes do contexto",
+    noSources: "Nada entra no contexto na partida deste projeto.",
     leftOutLines: "Linhas que ficam de fora",
     leftOutFiles: "Arquivos que só essas linhas citam: {files}",
   },
