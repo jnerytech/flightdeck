@@ -44,8 +44,8 @@ function setup(
     features?: string[];
     answer?: Answer;
     list?: typeof LIST;
-    /** The answer of `knowledge.setStatus` arrives only when this promise settles. */
-    hold?: Promise<void>;
+    /** Each answer of `knowledge.setStatus` arrives only when the promise this returns settles. */
+    hold?(): Promise<void> | undefined;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -69,7 +69,7 @@ function setup(
   store.hostRequest = (async (_host: string, type: string, payload: unknown) => {
     sent.push([type, payload]);
     const asked = payload as { file: string; status: KnowledgeEntry["status"] };
-    await options.hold;
+    await options.hold?.();
     if (options.answer === undefined) applied.set(asked.file, asked.status);
     return (
       options.answer ?? { ok: true, data: entry("docs/adr/0003-new.md", { status: "obsolete" }) }
@@ -227,7 +227,7 @@ describe("knowledge-status-ui: changing the status of a document (#76)", () => {
     const hold = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const { view } = setup({ hold });
+    const { view } = setup({ hold: () => hold });
     render(view);
     await listed();
     fireEvent.change(picker("Use the outbox"), { target: { value: "obsolete" } });
@@ -386,5 +386,127 @@ describe("knowledge-status-ui: the status shows once (#1105)", () => {
     render(setup({ features: ["knowledge"] }).view);
     await listed();
     expect(badges("Use the outbox")).toEqual(["Valid"]);
+  });
+});
+
+/** Issue #4234: a warning that is more than metadata, a note that does not outlive its moment, counts of a cut list. */
+describe("knowledge-status-ui: warnings, the last note and the counts (#4234)", () => {
+  const WARNED = {
+    truncated: true,
+    entries: [
+      entry("docs/adr/0003-new.md", {
+        title: "Use the outbox",
+        warnings: ["references_obsolete:docs/adr/0001-old.md"],
+      }),
+      entry("docs/decisions/2026-01-01-x.md", {
+        title: "Old decision",
+        status: "unclassified",
+        problems: ["status_unknown"],
+      }),
+    ],
+  };
+  const changedNote =
+    "Use the outbox is now Obsolete. The file is changed in the project's folder and not committed.";
+  const note = () => within(panel()).queryByText(changedNote);
+  const filterButton = (name: RegExp) => within(panel()).getAllByRole("button", { name })[0];
+
+  test("a warning and a problem each show an icon beside their words, so they are not read as metadata", async () => {
+    render(setup({ list: WARNED }).view);
+    await listed();
+    const flagged = (text: string) => {
+      const line = within(panel()).queryByText(text);
+      return line !== null && line.querySelector("svg") !== null;
+    };
+    expect({
+      warning: flagged("Points at an obsolete document: docs/adr/0001-old.md"),
+      problem: flagged(
+        "The status in the front matter is not valid, so agents are not given this document.",
+      ),
+    }).toEqual({ warning: true, problem: true });
+  });
+
+  test("a note that said what worked goes when the filter changes, and a failure stays until the next action", async () => {
+    const ok = setup({ list: WARNED });
+    render(ok.view);
+    await listed();
+    fireEvent.change(picker("Use the outbox"), { target: { value: "obsolete" } });
+    press("Use the outbox");
+    await waitFor(() => expect(note()).not.toBeNull());
+    fireEvent.click(filterButton(/^Valid \(/) as HTMLElement);
+    const afterFilter = note() === null;
+    cleanup();
+    const refused = setup({
+      list: WARNED,
+      answer: {
+        ok: false,
+        code: "file_conflict",
+        message: "changed",
+        reason: "review_file_changed",
+      },
+    });
+    render(refused.view);
+    await listed();
+    fireEvent.change(picker("Use the outbox"), { target: { value: "obsolete" } });
+    press("Use the outbox");
+    await waitFor(() => expect(within(panel()).queryByRole("alert")).not.toBeNull());
+    fireEvent.click(filterButton(/^Valid \(/) as HTMLElement);
+    expect({ afterFilter, alertStays: within(panel()).queryByRole("alert") !== null }).toEqual({
+      afterFilter: true,
+      alertStays: true,
+    });
+  });
+
+  test("the note of the last action is gone as soon as the next one starts", async () => {
+    let gate: Promise<void> | undefined;
+    let release: () => void = () => {};
+    const { view } = setup({ list: WARNED, hold: () => gate });
+    render(view);
+    await listed();
+    fireEvent.change(picker("Use the outbox"), { target: { value: "obsolete" } });
+    press("Use the outbox");
+    await waitFor(() => expect(note()).not.toBeNull());
+    gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    fireEvent.change(picker("Old decision"), { target: { value: "valid" } });
+    press("Old decision");
+    const goneWhileOut = note() === null;
+    release();
+    expect(goneWhileOut).toBe(true);
+  });
+
+  test.each([
+    [
+      "en",
+      "Project knowledge",
+      "The counts are of the documents loaded, not of the whole library.",
+    ],
+    [
+      "pt-BR",
+      "Conhecimento do projeto",
+      "As contagens são dos documentos carregados, não de toda a biblioteca.",
+    ],
+  ] as const)(
+    "a cut list says its counts are of what was loaded, next to the filters (%s)",
+    async (language, name, words) => {
+      render(setup({ language, list: WARNED }).view);
+      await listed();
+      const region = screen.getByRole("region", { name });
+      const group = within(region).queryAllByRole("group")[0];
+      expect({
+        said: within(region).queryByText(words) !== null,
+        beside: group?.parentElement?.contains(within(region).queryByText(words)) === true,
+      }).toEqual({ said: true, beside: true });
+    },
+  );
+
+  test("a list that was not cut says nothing about its counts", async () => {
+    render(setup({ list: { ...WARNED, truncated: false } }).view);
+    await listed();
+    expect(
+      within(panel()).queryByText(
+        "The counts are of the documents loaded, not of the whole library.",
+      ),
+    ).toBeNull();
   });
 });
