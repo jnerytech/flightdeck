@@ -35,6 +35,22 @@ export function FileExplorer(
   const [root, setRoot] = useState<string | null>(null);
   /** The file open in the viewer, at a line when a content match opened it (#827). */
   const [viewing, setViewing] = useState<{ path: string; line?: number } | null>(null);
+  /** The button that opened the viewer: Close gives the focus back to it (#3850). */
+  const opener = useRef<HTMLElement | null>(null);
+  const region = useRef<HTMLElement>(null);
+  /** How many times a file was opened: the viewer takes the focus on each, even for the same file. */
+  const [opens, setOpens] = useState(0);
+  const openFile = (path: string, line: number | undefined, from: HTMLElement | null) => {
+    opener.current = from;
+    setOpens((n) => n + 1);
+    setViewing(line === undefined ? { path } : { path, line });
+  };
+  const closeFile = () => {
+    setViewing(null);
+    // The button is gone when its folder closed or its search result changed: the region takes it.
+    const back = opener.current?.isConnected ? opener.current : region.current;
+    back?.focus();
+  };
 
   const load = useCallback(
     async (dir: string) => {
@@ -129,7 +145,7 @@ export function FileExplorer(
                 <span data-name="">{entry.name}</span>
               </Button>
             ) : (
-              <FileName entry={entry} onOpen={() => setViewing({ path })} />
+              <FileName entry={entry} onOpen={(from) => openFile(path, undefined, from)} />
             )}
             {entry.secret && <Badge variant="outline">{t("files.hidden")}</Badge>}
             {markText && <Badge variant="outline">{markText}</Badge>}
@@ -171,14 +187,14 @@ export function FileExplorer(
   }
 
   return (
-    <section aria-label={t("files.region")}>
+    <section ref={region} tabIndex={-1} aria-label={t("files.region")}>
       <Stack gap={2}>
         {props.search ? (
           <FileSearch
             store={store}
             hostId={hostId}
             target={target}
-            onOpen={(path, line) => setViewing({ path, line })}
+            onOpen={(path, line, from) => openFile(path, line, from)}
           >
             <Stack as="ul" gap={1}>
               {folder("")}
@@ -209,7 +225,8 @@ export function FileExplorer(
               line={viewing.line}
               diff={changes.find((file) => file.path === viewing.path)}
               full={root === null ? null : `${root}/${viewing.path}`}
-              onClose={() => setViewing(null)}
+              focusToken={opens}
+              onClose={closeFile}
             />
           </Suspense>
         )}
@@ -219,7 +236,7 @@ export function FileExplorer(
 }
 
 /** A file's name: a button that opens it, or plain text for a credential, which never opens. */
-function FileName(props: Readonly<{ entry: FileEntry; onOpen(): void }>) {
+function FileName(props: Readonly<{ entry: FileEntry; onOpen(from: HTMLElement): void }>) {
   const name = (
     <span data-name="" className="font-mono text-xs">
       {props.entry.name}
@@ -227,7 +244,12 @@ function FileName(props: Readonly<{ entry: FileEntry; onOpen(): void }>) {
   );
   if (props.entry.secret) return name;
   return (
-    <Button type="button" variant="ghost" size="sm" onClick={props.onOpen}>
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      onClick={(event) => props.onOpen(event.currentTarget)}
+    >
       {name}
     </Button>
   );
