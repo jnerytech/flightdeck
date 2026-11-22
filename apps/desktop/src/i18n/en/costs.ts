@@ -224,6 +224,8 @@ export const costs = {
     quotaPick: "Pick a host to see its quota",
     from: "From",
     to: "To",
+    rangeEmpty: "Pick both dates to change the range.",
+    rangeReversed: "From must not be after To.",
     model: "Model",
     allModels: "All models",
     origin: "Origin",
