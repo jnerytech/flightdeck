@@ -27,6 +27,21 @@ function dateFormat(lang: string, options: Intl.DateTimeFormatOptions): Intl.Dat
 /** Intl puts a no-break space before some units; plain spaces keep texts comparable. */
 const plain = (text: string) => text.replaceAll(" ", " ");
 
+/**
+ * Text of a clock format. In a 12-hour language the hour is rebuilt from the parts: a browser that
+ * counts the hours from 0 despite `hourCycle: "h12"` (Chrome 157 on the CI runner, #3981) would print
+ * midnight as "00:00 AM".
+ */
+function clockText(format: Intl.DateTimeFormat, iso: string, lang: Lang): string {
+  const parts = format.formatToParts(new Date(iso));
+  const twelveHour = HOUR_CYCLE[lang] === "h12" && parts.some((part) => part.type === "dayPeriod");
+  return parts
+    .map((part) =>
+      twelveHour && part.type === "hour" && Number(part.value) === 0 ? "12" : part.value,
+    )
+    .join("");
+}
+
 /** HH:MM of an instant in local time (or `timeZone`), in the language's style. */
 export function formatTime(iso: string, lang: Lang, timeZone?: string): string {
   const format = dateFormat(lang, {
@@ -35,7 +50,7 @@ export function formatTime(iso: string, lang: Lang, timeZone?: string): string {
     hourCycle: HOUR_CYCLE[lang],
     timeZone,
   });
-  return plain(format.format(new Date(iso)));
+  return plain(clockText(format, iso, lang));
 }
 
 /** Date and time of an instant in local time (or `timeZone`). */
@@ -46,7 +61,7 @@ export function formatDateTime(iso: string, lang: Lang, timeZone?: string): stri
     hourCycle: HOUR_CYCLE[lang],
     timeZone,
   });
-  return plain(format.format(new Date(iso)));
+  return plain(clockText(format, iso, lang));
 }
 
 /** A list's short time: HH:MM today, the day and month before. */

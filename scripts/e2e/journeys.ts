@@ -2377,6 +2377,19 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     if ((await results.getByRole("button", { name: ".env", exact: true }).count()) > 0) {
       throw new Error("um arquivo de credencial devia aparecer como oculto, sem botão para abrir");
     }
+    // The tree: a credential's name starts where its siblings' names do, not left of them (#3971).
+    await names.fill("");
+    const nameBoxes = panel.locator("li [data-name].font-mono");
+    await nameBoxes.first().waitFor({ timeout: WAIT });
+    const lefts = await nameBoxes.evaluateAll((boxes) =>
+      boxes.map((box) => ({ name: box.textContent ?? "", left: box.getBoundingClientRect().left })),
+    );
+    const secret = lefts.find((box) => box.name === ".env");
+    const sibling = lefts.find((box) => box.name !== ".env");
+    if (!secret || !sibling) throw new Error("the tree should list .env and a sibling file");
+    if (Math.abs(secret.left - sibling.left) > 1) {
+      throw new Error(`.env starts at x=${secret.left} and its sibling at x=${sibling.left}`);
+    }
     // By content: the key-shaped line is found, and nothing of the key shows.
     await panel.getByRole("button", { name: c.t("files.byContent"), exact: true }).click();
     const content = panel.getByRole("searchbox", { name: c.t("files.searchContent"), exact: true });

@@ -24,6 +24,7 @@ export const changes = {
     results: "Results",
     hidden: "Hidden",
     changedInside: "has changes",
+    retry: "Try again",
     loading: "Loading…",
     noMatch: "Nothing matches the filter.",
     truncated: "This folder has more entries than are shown here.",

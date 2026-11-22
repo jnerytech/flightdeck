@@ -1,4 +1,5 @@
 import type { DiffFile, FileEntry, FileListing } from "@flightdeck/protocol";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -107,10 +108,14 @@ export function FileExplorer(
 
   const toggle = (path: string) => {
     const next = new Set(open);
-    if (next.has(path)) next.delete(path);
-    else next.add(path);
+    const opening = !next.has(path);
+    if (opening) next.add(path);
+    else next.delete(path);
     setOpen(next);
-    if (!folders[path]) void load(path);
+    if (!opening) return;
+    // A folder is asked for once; one the host refused is asked again each time it opens (#3971).
+    const known = folders[path];
+    if (!known || (typeof known === "object" && "refused" in known)) void load(path);
   };
 
   const status = new Map(changes.map((file) => [file.path, file.status]));
@@ -142,6 +147,11 @@ export function FileExplorer(
                 aria-expanded={open.has(path)}
                 onClick={() => toggle(path)}
               >
+                {open.has(path) ? (
+                  <ChevronDown aria-hidden="true" />
+                ) : (
+                  <ChevronRight aria-hidden="true" />
+                )}
                 <span data-name="">{entry.name}</span>
               </Button>
             ) : (
@@ -167,8 +177,13 @@ export function FileExplorer(
     }
     if ("refused" in known) {
       return (
-        <li role="alert" className="text-destructive text-xs">
-          {known.refused}
+        <li className="text-destructive text-xs">
+          <Inline gap={2}>
+            <span role="alert">{known.refused}</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => void load(dir)}>
+              {t("files.retry")}
+            </Button>
+          </Inline>
         </li>
       );
     }
@@ -242,7 +257,7 @@ function FileName(props: Readonly<{ entry: FileEntry; onOpen(from: HTMLElement):
       {props.entry.name}
     </span>
   );
-  if (props.entry.secret) return name;
+  if (props.entry.secret) return <span className="static-name">{name}</span>;
   return (
     <Button
       type="button"
