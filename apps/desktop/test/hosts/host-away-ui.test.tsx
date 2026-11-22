@@ -71,6 +71,31 @@ for (const [lang, t] of [
       expect(described(button)).toContain(t.hostPage.needsOnline.replace("{host}", "pc"));
     });
 
+    test("New session's reason is a line in the panel, not a box hanging off the button, so it cannot run past the card (issue #3862)", async () => {
+      const store = await awayPage(lang);
+      const seen: Array<{ status: string; hangs: boolean }> = [];
+      for (const [status, reason] of [
+        ["offline", t.hostPage.needsOnline],
+        ["incompatible", t.hostPage.needsUpdate],
+      ] as const) {
+        await asStatus(store, status);
+        const button = screen.getByRole("button", { name: t.hostHome.newSession });
+        const id = button.getAttribute("aria-describedby") ?? "";
+        const line = document.getElementById(id);
+        // `action-reason` is positioned absolute from the button's left edge: past the right column it is cut off.
+        const hangs =
+          line === null ||
+          line.className.includes("action-reason") ||
+          button.parentElement?.className.includes("action-button-box") === true;
+        seen.push({ status, hangs });
+        expect(described(button)).toContain(reason.replace("{host}", "pc"));
+      }
+      expect(seen.map((row) => [row.status, row.hangs])).toEqual([
+        ["offline", false],
+        ["incompatible", false],
+      ]);
+    });
+
     test("an incompatible host's Information panel names the other version, a refused token names the token", async () => {
       const store = await awayPage(lang);
       await asStatus(store, "incompatible");
