@@ -8,6 +8,7 @@ import { needsYou } from "../../lib/app-state.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import {
+  commandCut,
   describeRequest,
   type InboxEntry,
   type InboxRow,
@@ -82,6 +83,7 @@ export function NotificationBell(
     return {
       says: `${item.hostName} · ${describeRequest(item.toolName, item.input, t)}`,
       risk: item.risk,
+      cut: commandCut(item.toolName, item.input),
       ...(item.riskReason ? { reason: item.riskReason } : {}),
       pending: answering.has(`${item.hostId}/${item.requestId}`),
       ...failureOf(refused.get(`${item.hostId}/${item.requestId}`)),
