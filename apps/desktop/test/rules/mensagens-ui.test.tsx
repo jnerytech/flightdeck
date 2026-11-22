@@ -114,6 +114,27 @@ describe("regras-mensagens-ui: who may message whom, retention and paused pairs 
     expect(button?.getAttribute("aria-describedby")).toBe(reason?.id ?? "?");
   });
 
+  test("Salvar retenção is live only for a new whole number of days, and says why when it is not (#3844)", async () => {
+    const { lastSet } = await open();
+    const save = () =>
+      screen.queryByRole("button", { name: "Salvar retenção" }) as HTMLButtonElement | null;
+    const reason = screen.queryByText("Altere o número de dias para salvar.");
+    const states = [
+      save()?.disabled,
+      save()?.getAttribute("aria-describedby") === (reason?.id ?? "?"),
+    ];
+    for (const typed of ["7", "30", "", "0"]) {
+      await change("Retenção (dias)", typed);
+      states.push(save()?.disabled);
+    }
+    await change("Retenção (dias)", "7");
+    await click("Salvar retenção");
+    await settle(() => (lastSet()?.policy as typeof POLICY | undefined)?.retentionDays === 7);
+    await settle(() => save()?.disabled === true);
+    expect(states).toEqual([true, true, false, true, true, true]);
+    expect(save()?.disabled).toBe(true);
+  });
+
   test("removing an exception and saving the retention keep every other field", async () => {
     const { lastSet } = await open();
     await click("Remover a exceção de host pc para projeto app");
