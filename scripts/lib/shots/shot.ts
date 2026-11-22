@@ -34,6 +34,11 @@ export interface Shot {
   ssh?: boolean;
   /** #3943: with `ssh`, an askpass prompt follows the first destinos answer, so the print shows it. */
   askpass?: boolean;
+  /**
+   * #4001: the hosts answer the Maintenance panel with fixed facts, paths and counts (`maintenanceScript`);
+   * `refuseStatus` refuses its first read, `holdClean` never answers the cleanup, so the print shows Clean busy.
+   */
+  maintenance?: { refuseStatus?: boolean; holdClean?: boolean };
   /** Demo switches added to the address (`update=<version>`: the update card shows). */
   query?: Record<string, string>;
   /** After the screen loads: open the palette, scroll a long list to its end… */
