@@ -13,8 +13,15 @@ function issueLine(issue: Issue): string {
   return parts.join("  ");
 }
 
-export function listLines(issues: Issue[]): string[] {
-  return issues.length === 0 ? ["no issues"] : issues.map(issueLine);
+export function listLines(issues: Issue[], truncated?: boolean): string[] {
+  if (issues.length === 0) return ["no issues"];
+  const lines = issues.map(issueLine);
+  if (truncated) {
+    lines.push(
+      "the list was cut: the tracker has more issues than this shows. Narrow it with --query.",
+    );
+  }
+  return lines;
 }
 
 /** One issue: its header, a flag first when it is from outside the team, who and when, its labels and its body under them. */

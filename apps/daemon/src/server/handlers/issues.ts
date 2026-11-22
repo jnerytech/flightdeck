@@ -6,7 +6,7 @@ import type { Handlers } from "../domain/handler.ts";
 export const issuesHandlers = {
   "issues.list": async (payload, { server }) => {
     const { projectId, query } = payload;
-    return { issues: await server.need("issues").list(projectId, query) };
+    return await server.need("issues").listPage(projectId, query);
   },
   "issues.get": async (payload, { server }) => {
     return await server.need("issues").get(payload.projectId, payload.id);
