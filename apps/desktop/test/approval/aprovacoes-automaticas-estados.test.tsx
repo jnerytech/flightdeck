@@ -70,7 +70,7 @@ function fakeStore(
     return answer;
   };
   const store = {
-    hostRequest: next,
+    hostRequest: (_host: string, command: string, payload: unknown) => next(command, payload),
     hostCommand: async (_host: string, command: string, payload: unknown) => {
       const answer = await next(command, payload);
       return answer.ok ? answer.data : null;
