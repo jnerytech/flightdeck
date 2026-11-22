@@ -47,6 +47,7 @@ function fakeStore(answers: Answer[]) {
   const asked: number[] = [];
   let release: (() => void) | null = null;
   let hold = false;
+  let emit: (update: ChangesResult) => void = () => {};
   const store = {
     hostRequest: async () => {
       asked.push(asked.length);
@@ -55,7 +56,10 @@ function fakeStore(answers: Answer[]) {
     },
     hostCommand: async (_host: string, type: string) =>
       type === "review.list" ? { comments: [] } : null,
-    watchChanges: () => () => {},
+    watchChanges: (_host: string, _target: string, onUpdate: (update: ChangesResult) => void) => {
+      emit = onUpdate;
+      return () => {};
+    },
     system: { canOpenPaths: () => false, copyText: async () => {} },
     later: () => () => {},
     now: () => Date.now(),
@@ -64,6 +68,9 @@ function fakeStore(answers: Answer[]) {
   return {
     store: store as never,
     asked,
+    watch: async () => {
+      await act(async () => emit(CHANGES));
+    },
     holdNext: () => {
       hold = true;
     },
@@ -130,5 +137,23 @@ describe("changes-refresh-ui: a refused read says so, and Refresh shows it is wo
     expect(fake.asked.length).toBe(before);
     await fake.answer();
     expect(screen.getByRole("button", { name: "Refresh" }).getAttribute("aria-busy")).toBeNull();
+  });
+
+  test("a change the host sees on disk clears the stale notice", async () => {
+    const fake = await show([ok, refused]);
+    await press("Refresh");
+    expect(alerts().length).toBe(1);
+    await fake.watch();
+    expect(alerts()).toEqual([]);
+  });
+
+  test("a slow Refresh that fails after a newer change arrived does not mark the new diff stale", async () => {
+    const fake = await show([ok, refused]);
+    fake.holdNext();
+    await press("Refresh");
+    await fake.watch();
+    await fake.answer();
+    expect(showsDiff()).toBe(true);
+    expect(alerts()).toEqual([]);
   });
 });
