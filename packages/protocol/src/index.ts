@@ -509,6 +509,7 @@ export * from "./sequence.ts";
 export * from "./snippets.ts";
 export * from "./telemetry.ts";
 export * from "./teleport.ts";
+export * from "./teleport-relay.ts";
 export * from "./terminal.ts";
 export * from "./trace.ts";
 export * from "./trackers.ts";
