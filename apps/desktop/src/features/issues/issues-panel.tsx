@@ -28,10 +28,21 @@ import { filterIssues, issueLabel, issueNumber } from "./domain/issues.ts";
 
 /** The external-author seal: third-party content, so no automatic approval on the card. */
 export function ExternalSeal({ t }: Readonly<{ t: AppStore["i18n"]["t"] }>) {
+  const why = useId();
   return (
-    <Badge variant="outline" className="text-status-needs-you" title={t("issuesUi.externalHint")}>
-      {t("issuesUi.external")}
-    </Badge>
+    <>
+      <Badge
+        variant="outline"
+        className="text-status-needs-you"
+        title={t("issuesUi.externalHint")}
+        aria-describedby={why}
+      >
+        {t("issuesUi.external")}
+      </Badge>
+      <span id={why} className="sr-only">
+        {t("issuesUi.externalHint")}
+      </span>
+    </>
   );
 }
 
@@ -147,7 +158,7 @@ function IssueRow(
     >
       <div className="flex items-start justify-between gap-2">
         <span className="flex min-w-0 flex-col">
-          <strong className="font-medium">{issue.title}</strong>
+          <strong className="break-words font-medium">{issue.title}</strong>
           <span className="flex gap-1 text-muted-foreground text-xs">
             <span>{issueNumber(issue.ref)}</span>
             <span aria-hidden="true">·</span>
