@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Input } from "@/components/ui/input";
 import type { T } from "@/i18n/index";
 import { Inline, Stack } from "@/shared/layout/index.ts";
@@ -20,6 +21,7 @@ export function QuestionForm(
   }>,
 ) {
   const { questions, picks, t } = props;
+  const base = useId();
   return (
     <Stack gap={4}>
       {questions.map((q, index) => {
@@ -30,38 +32,45 @@ export function QuestionForm(
             labels: nextLabels(q.multiSelect, pick.labels, label, on),
           });
         return (
-          <Stack key={q.question} gap={2}>
-            {q.header && (
-              <span className="font-medium text-muted-foreground text-xs uppercase">
-                {q.header}
-              </span>
-            )}
-            <p className="font-medium text-sm">{q.question}</p>
-            {q.options.map((option) => (
-              <label key={option.label} className="cursor-pointer text-sm">
-                <Inline gap={2}>
-                  <input
-                    type={q.multiSelect ? "checkbox" : "radio"}
-                    name={`ask-${index}`}
-                    disabled={props.disabled}
-                    checked={pick.labels.includes(option.label)}
-                    onChange={(e) => toggle(option.label, e.target.checked)}
-                  />
-                  <strong>{option.label}</strong>
-                </Inline>
-                {option.description && (
-                  <span className="block text-muted-foreground text-xs">{option.description}</span>
-                )}
-              </label>
-            ))}
-            <Input
-              aria-label={`${t("approval.question.other")}: ${q.question}`}
-              placeholder={t("approval.question.other")}
-              disabled={props.disabled}
-              value={pick.other}
-              onChange={(e) => props.onChange(q.question, { ...pick, other: e.target.value })}
-            />
-          </Stack>
+          // The group is named by its question, so each option is read with it ("option 1 of 3").
+          <fieldset key={q.question} aria-labelledby={`${base}-${index}`} className="min-w-0">
+            <Stack gap={2}>
+              {q.header && (
+                <span className="font-medium text-muted-foreground text-xs uppercase">
+                  {q.header}
+                </span>
+              )}
+              <p id={`${base}-${index}`} className="font-medium text-sm">
+                {q.question}
+              </p>
+              {q.options.map((option) => (
+                <label key={option.label} className="cursor-pointer text-sm">
+                  <Inline gap={2}>
+                    <input
+                      type={q.multiSelect ? "checkbox" : "radio"}
+                      name={`${base}-${index}`}
+                      disabled={props.disabled}
+                      checked={pick.labels.includes(option.label)}
+                      onChange={(e) => toggle(option.label, e.target.checked)}
+                    />
+                    <strong>{option.label}</strong>
+                  </Inline>
+                  {option.description && (
+                    <span className="block text-muted-foreground text-xs">
+                      {option.description}
+                    </span>
+                  )}
+                </label>
+              ))}
+              <Input
+                aria-label={`${t("approval.question.other")}: ${q.question}`}
+                placeholder={t("approval.question.other")}
+                disabled={props.disabled}
+                value={pick.other}
+                onChange={(e) => props.onChange(q.question, { ...pick, other: e.target.value })}
+              />
+            </Stack>
+          </fieldset>
         );
       })}
     </Stack>

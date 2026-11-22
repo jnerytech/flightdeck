@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
-import { settle } from "../wait.ts";
+import { settle, settleMaybe } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -222,6 +222,32 @@ describe("adding a device: the new device's side (#3478)", () => {
     await press("Check again");
     await ready("This device is enrolled.");
     expect(screen.queryByLabelText("Text for the enrolled device")).toBeNull();
+  });
+
+  test("a check that finds the device still not listed says so, and the text stays", async () => {
+    panel([NEW_HERE, WAITING, WAITING]);
+    await settle(() => screen.queryByLabelText("Name of this device") !== null);
+    type("Name of this device", "Laptop");
+    await press("Show the text");
+    await settle(() => screen.queryByLabelText("Text for the enrolled device") !== null);
+    expect(screen.queryByText("This device is not listed yet.")).toBeNull();
+    await press("Check again");
+    await settleMaybe(() => screen.queryByText("This device is not listed yet.") !== null);
+    expect(screen.queryByText("This device is not listed yet.")).not.toBeNull();
+    expect(screen.queryByLabelText("Text for the enrolled device")).not.toBeNull();
+  });
+
+  test("the not-listed-yet line is Portuguese in Portuguese", async () => {
+    panel([NEW_HERE, WAITING, WAITING], { language: "pt-BR" });
+    await settle(() => screen.queryByLabelText("Nome deste dispositivo") !== null);
+    type("Nome deste dispositivo", "Laptop");
+    await press("Mostrar o texto");
+    await settle(() => screen.queryByLabelText("Texto para o dispositivo já cadastrado") !== null);
+    await press("Verificar de novo");
+    await settleMaybe(
+      () => screen.queryByText("Este dispositivo ainda não está na lista.") !== null,
+    );
+    expect(screen.queryByText("Este dispositivo ainda não está na lista.")).not.toBeNull();
   });
 
   test("cancelling removes this device's key and the text", async () => {

@@ -99,6 +99,7 @@ export function ActivityCardView(
                 label={t("approval.hold")}
                 name={t("activityBoard.holdFor", { title: row.title })}
                 hint={t("approval.holdHint")}
+                clickHint={t("approval.holdClick")}
                 holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
                 onHeld={() => void props.onRespond(pending, "allow", true)}
               />

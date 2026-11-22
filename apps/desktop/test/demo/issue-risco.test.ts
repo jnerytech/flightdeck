@@ -33,7 +33,24 @@ describe("demo-issue-risco: what the issue-and-risk journey needs from the demo"
     );
     expect(result?.issues.map((i) => [i.ref, i.title])).toEqual([
       ["github:Acme/App#7", "Corrigir o login com SSO"],
+      ["github:Acme/App#8", "Limitar a taxa da exportação"],
+      ["github:Acme/App#9", "Aceitar login por SAML"],
     ]);
+  });
+
+  test("the issues panel prints need an issue with a card, one with none and one by an outside author (#4099)", async () => {
+    const list = await alfa.data<{ issues: Array<{ ref: string; external: boolean }> }>(
+      "issues.list",
+      { projectId: seed.ids.project },
+    );
+    expect(list?.issues.filter((i) => i.external).map((i) => i.ref)).toEqual(["github:Acme/App#9"]);
+    const board = await alfa.data<{
+      columns: Array<{ cards: Array<{ issueRef: string | null }> }>;
+    }>("board.get", { projectId: seed.ids.project });
+    const made = (board?.columns ?? [])
+      .flatMap((column) => column.cards.map((card) => card.issueRef))
+      .filter((ref) => ref !== null);
+    expect(made).toEqual(["github:Acme/App#8"]);
   });
 
   test("a terminal session waits for a Bash rm -rf, which is high risk", async () => {

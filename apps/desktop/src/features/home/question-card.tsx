@@ -66,6 +66,7 @@ export function QuestionCard(
           <HoldButton
             label={t("simple.yes")}
             hint={t("simple.holdHint")}
+            clickHint={t("approval.holdClick")}
             holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
             onHeld={() => props.onAnswer("allow", true)}
           />

@@ -22,6 +22,8 @@ export const approval = {
     removeLocal: "Remover a chave deste dispositivo",
     removeLocalHint:
       "O host continua listando o dispositivo até outro dispositivo cadastrado revogá-lo, ou até você zerar no host.",
+    removeLocalAsk:
+      "Depois disso, este dispositivo não pode mais aprovar neste host. O host continua listando o dispositivo até que outro dispositivo cadastrado o revogue, ou até você redefinir no host.",
     removedLocal: "A chave deste dispositivo foi removida.",
     commandsUnchecked:
       "Este host não pede a confirmação de um dispositivo ao fazer merge: atualize-o para proteger os merges.",
@@ -72,6 +74,7 @@ export const approval = {
     requestShow: "Mostrar o texto",
     requestTextLabel: "Texto para o dispositivo já cadastrado",
     requestWaiting: "Aguardando o outro dispositivo adicionar este.",
+    notListed: "Este dispositivo ainda não está na lista.",
     requestCheck: "Verificar de novo",
     addBadText:
       'Isso não é um texto gerado pelo botão "Mostrar o texto" de outro dispositivo. Copie de novo, inteiro.',
