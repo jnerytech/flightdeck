@@ -29,6 +29,7 @@ export const watch = {
     filter: "Filter decisions",
     filterPlaceholder: "Tool or reason",
     loading: "Loading the decisions",
+    retry: "Try again",
     empty: "No automatic decisions yet",
     emptyHint:
       "Decisions show up when a project turns automatic approval on and a session asks for permission.",

@@ -28,6 +28,7 @@ export const watch = {
     filter: "Filtrar decisões",
     filterPlaceholder: "Ferramenta ou motivo",
     loading: "Carregando as decisões",
+    retry: "Tentar de novo",
     empty: "Nenhuma decisão automática ainda",
     emptyHint:
       "As decisões aparecem quando um projeto liga a aprovação automática e uma sessão pede permissão.",

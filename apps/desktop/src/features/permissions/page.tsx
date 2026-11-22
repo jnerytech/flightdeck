@@ -1,12 +1,18 @@
 import type { AutoApprovalRecord, AutoApproveSuspension } from "@flightdeck/protocol";
 import { ShieldCheck } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
-import { EmptyState, LoadingState, NativeSelect, Page, Toolbar } from "@/shared/layout/index.ts";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  NativeSelect,
+  Page,
+  Toolbar,
+} from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
@@ -22,36 +28,73 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
   const [projectId, setProjectId] = useState("");
   const [text, setText] = useState("");
   const [resuming, setResuming] = useState<AutoApproveSuspension | null>(null);
+  const [resumingNow, setResumingNow] = useState<string | null>(null);
+  const [loadRefusal, setLoadRefusal] = useState<string | null>(null);
+  // Bumped by "Try again": the list is read again with the same filter.
+  const [attempt, setAttempt] = useState(0);
+  const suspendedList = useRef<HTMLElement>(null);
+  const resumeButtons = useRef(new Map<string, HTMLButtonElement>());
+  const focusButtonOf = useRef<string | null>(null);
   const projects = store.getState().projects[hostId];
   const loading = useMinLoading(decisions === null);
 
   useEffect(() => {
     if (projects === undefined) void store.projectList.load(hostId);
   }, [store, hostId, projects]);
-  const load = useCallback(async () => {
-    const result = await store.hostCommand(
-      hostId,
-      "autoapprove.list",
-      projectId ? { projectId } : {},
-    );
-    if (!result) return;
-    setDecisions(result.decisions);
-    setSuspended(result.suspended);
-  }, [store, hostId, projectId]);
   useEffect(() => {
-    void load();
-  }, [load]);
+    // `attempt` re-runs this read; a slower answer of an older filter must not land.
+    void attempt;
+    let current = true;
+    setLoadRefusal(null);
+    void store
+      .hostRequest(hostId, "autoapprove.list", projectId ? { projectId } : {})
+      .then((result) => {
+        if (!current) return;
+        if (!result.ok) {
+          setLoadRefusal(result.message);
+          return;
+        }
+        setDecisions(result.data.decisions);
+        setSuspended(result.data.suspended);
+      });
+    return () => {
+      current = false;
+    };
+  }, [store, hostId, projectId, attempt]);
+  // The previous project's rows are not offered as the new one's: they give way to the loading line.
+  const pickProject = (id: string) => {
+    setProjectId(id);
+    setDecisions(null);
+  };
+  // A Resume that did not go through leaves its button: the focus goes back to it once it is on.
+  useEffect(() => {
+    if (resumingNow !== null || focusButtonOf.current === null) return;
+    resumeButtons.current.get(focusButtonOf.current)?.focus();
+    focusButtonOf.current = null;
+  }, [resumingNow]);
 
   const resume = async (item: AutoApproveSuspension) => {
     setResuming(null);
+    setResumingNow(item.sessionKey);
     // A host with a device enrolled wants its signature over the session; a no in the device's dialog sends nothing (#3453).
     try {
       const made = await store.approval.resumePayload(hostId, item.sessionKey);
-      if (made.kind !== "payload") return;
-      const result = await store.hostCommand(hostId, "autoapprove.resume", made.payload);
-      if (result) setSuspended(result.suspended);
+      const result =
+        made.kind === "payload"
+          ? await store.hostCommand(hostId, "autoapprove.resume", made.payload)
+          : null;
+      if (result) {
+        setSuspended(result.suspended);
+        // The row and its button are gone: the focus stays in the list.
+        suspendedList.current?.focus();
+      } else {
+        focusButtonOf.current = item.sessionKey;
+      }
     } catch (error) {
       store.reportError(error instanceof Error ? error.message : String(error));
+      focusButtonOf.current = item.sessionKey;
+    } finally {
+      setResumingNow(null);
     }
   };
 
@@ -74,7 +117,7 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
             compact
             aria-label={t("autoApprovalsUi.project")}
             value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
+            onChange={(e) => pickProject(e.target.value)}
           >
             <option value="">{t("autoApprovalsUi.allProjects")}</option>
             {(projects ?? []).map((p) => (
@@ -94,7 +137,12 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
       }
     >
       <div className="flex max-w-3xl flex-col gap-5">
-        <section className="flex flex-col gap-2">
+        <section
+          ref={suspendedList}
+          tabIndex={-1}
+          aria-label={t("autoApprovalsUi.suspended")}
+          className="flex flex-col gap-2 outline-none"
+        >
           <h2 className="font-medium text-sm">{t("autoApprovalsUi.suspended")}</h2>
           {suspended.length === 0 && (
             <p className="text-muted-foreground text-sm">{t("autoApprovalsUi.noSuspended")}</p>
@@ -108,19 +156,31 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
                 <span className="font-mono text-xs">{s.sessionKey}</span>
                 <span>{s.reason}</span>
               </span>
-              <Button
+              <ActionButton
                 variant="outline"
                 size="sm"
+                ref={(button: HTMLButtonElement | null) => {
+                  if (button) resumeButtons.current.set(s.sessionKey, button);
+                  else resumeButtons.current.delete(s.sessionKey);
+                }}
+                pending={resumingNow === s.sessionKey}
                 aria-label={t("autoApprovalsUi.resume", { session: s.sessionKey })}
                 onClick={() => setResuming(s)}
               >
                 {t("autoApprovalsUi.resumeConfirm")}
-              </Button>
+              </ActionButton>
             </div>
           ))}
         </section>
         <section className="flex flex-col gap-2">
-          {loading && <LoadingState label={t("autoApprovalsUi.loading")} />}
+          {loadRefusal !== null && (
+            <ErrorState
+              message={loadRefusal}
+              retryLabel={t("autoApprovalsUi.retry")}
+              onRetry={() => setAttempt((n) => n + 1)}
+            />
+          )}
+          {loading && loadRefusal === null && <LoadingState label={t("autoApprovalsUi.loading")} />}
           {decisions?.length === 0 && (
             <EmptyState
               icon={ShieldCheck}
@@ -170,6 +230,10 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
           confirmLabel={t("autoApprovalsUi.resumeConfirm")}
           onConfirm={() => void resume(resuming)}
           onCancel={() => setResuming(null)}
+          onRestoreFocus={() => {
+            const key = resuming.sessionKey;
+            (resumeButtons.current.get(key) ?? suspendedList.current)?.focus();
+          }}
         />
       )}
     </Page>
