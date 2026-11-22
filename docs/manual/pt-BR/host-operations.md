@@ -177,7 +177,7 @@ para atualizar, e o `manifestUrl` padrão é `null`.
   marcações das sessões. O índice do histórico segue os transcripts e fica de fora.
 - **Quando:** no boot do daemon e a cada 24 h. À mão, `flightdeckd db prune [--dry-run]` mostra
   a contagem por tabela; no app, a seção **Manutenção** da página do host tem **Simular** e
-  **Limpar** (que pede confirmação). `flightdeckd db status` imprime o que essa seção mostra:
+  **Limpar dados antigos** (que pede confirmação). `flightdeckd db status` imprime o que essa seção mostra:
   o tamanho do banco, as contagens, os backups guardados (o mais novo primeiro) e a última limpeza.
   Eles leem os arquivos da máquina em que você digita, com o daemon rodando ou não, e não aceitam
   `--host`. Com `--json`, `db status` imprime o estado da manutenção como um valor (`dbBytes`,
@@ -195,7 +195,7 @@ para atualizar, e o `manifestUrl` padrão é `null`.
 
 - **Automático:** uma vez por dia, `VACUUM INTO <dataDir>/backups/flightdeck-<AAAAMMDD-HHmmss>.db`
   (horário UTC), mantendo os últimos `keep`. Funciona com o daemon rodando.
-- **À mão:** `flightdeckd backup [--out <arquivo>] [--force]`, ou **Fazer backup agora** na seção
+- **À mão:** `flightdeckd backup [--out <arquivo>] [--force]`, ou **Fazer backup do banco deste host** na seção
   Manutenção. Os arquivos ficam só para o dono (0600 fora do Windows). Com `--json`, imprime
   `{ "path", "at", "bytes" }` no lugar da linha. Um caminho de `--out` já ocupado (arquivo, link ou
   pasta) é recusado com saída 1 e o motivo `target_exists`, e o arquivo continua como estava;

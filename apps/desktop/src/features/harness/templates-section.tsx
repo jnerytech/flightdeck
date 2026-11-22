@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Inline, ListRow, Panel, Stack } from "@/shared/layout/index.ts";
-import { formatBytes } from "@/shared/lib/index.ts";
+import { formatBytes } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
 /**
@@ -54,7 +54,7 @@ export function HarnessTemplatesSection(props: Readonly<{ store: AppStore; hostI
         template.files.length === 1
           ? t("harnessTemplates.filesOne")
           : t("harnessTemplates.filesMany", { n: String(template.files.length) }),
-      size: formatBytes(template.bytes),
+      size: formatBytes(template.bytes, store.i18n.lang),
     });
   return (
     <>
