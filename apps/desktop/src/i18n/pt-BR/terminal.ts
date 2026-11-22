@@ -24,6 +24,12 @@ export const terminal = {
     reopen: "Reabrir",
     close: "Fechar terminal",
     closeFailed: "Não foi possível fechar o terminal, que continua aberto: {reason}",
+    notLive: {
+      detached: "Desanexado: o que você digita não é enviado. Use Reabrir para digitar.",
+      ended: "O processo terminou, então o que você digita não é enviado.",
+    },
+    attachFailed: "Não foi possível abrir o terminal: {reason}",
+    writeFailed: "O host não recebeu o que você digitou: {reason}",
     closeMessage: "Desanexar deixa o processo rodando no host. Encerrar processo o interrompe.",
     pasteTitle: "Colar {n} linhas?",
     pasteMessage:

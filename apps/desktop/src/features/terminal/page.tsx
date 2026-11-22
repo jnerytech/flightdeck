@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { RequestError } from "@/features/hosts/index.ts";
 import { SnippetPicker } from "@/features/snippets/ui.ts";
 import { refusalText } from "@/i18n/errors.ts";
-import { InlineNotice } from "@/shared/feedback/index.ts";
-import { Page } from "@/shared/layout/index.ts";
+import type { T } from "@/i18n/index.ts";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
+import { Page, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { useStoreState } from "../../lib/use-store.ts";
 import { LazyFileViewer } from "../files/ui.ts";
@@ -25,6 +26,14 @@ import {
   type XtermDeps,
   type XtermScreen,
 } from "./xterm-screen.ts";
+
+/** What a person reads of a failure: the host's refusal in their language, or the message of any other. */
+const reasonText = (error: unknown, t: T) =>
+  error instanceof RequestError
+    ? refusalText(error.code, error.message, t, error)
+    : error instanceof Error
+      ? error.message
+      : String(error);
 
 /** A host's terminal in the app: xterm over a `TerminalSession`, with search and close. */
 export function TerminalPage(
@@ -122,7 +131,16 @@ export function TerminalPage(
         terminalId,
         host,
         screen: xterm,
-        onState: (next, exitCode) => setState({ state: next, exitCode }),
+        onState: (next, exitCode) => {
+          setState({ state: next, exitCode });
+          // A refused write is about the live terminal it was typed into: not one that was left or attached again.
+          if (next !== "live") setWriteFailed(null);
+        },
+        onFailure: (kind, error) => {
+          const failure = error === null ? null : { error };
+          if (kind === "attach") setAttachFailed(failure);
+          else setWriteFailed(failure);
+        },
       });
       screen.current = xterm;
       session.current = current;
@@ -200,6 +218,9 @@ export function TerminalPage(
 
   /** Why the host did not close the terminal: the person stays, and Close can be pressed again (#3949). */
   const [closeFailed, setCloseFailed] = useState<string | null>(null);
+  /** What the host refused the last attach or write with (#3950); `null` once the next one is accepted. */
+  const [attachFailed, setAttachFailed] = useState<{ error: unknown } | null>(null);
+  const [writeFailed, setWriteFailed] = useState<{ error: unknown } | null>(null);
   const close = async (kill: boolean) => {
     setClosing(false);
     setCloseFailed(null);
@@ -208,13 +229,7 @@ export function TerminalPage(
     if (refused === null || (refused instanceof RequestError && refused.code === "not_found")) {
       return props.onClosed();
     }
-    setCloseFailed(
-      refused instanceof RequestError
-        ? refusalText(refused.code, refused.message, t, refused)
-        : refused instanceof Error
-          ? refused.message
-          : String(refused),
-    );
+    setCloseFailed(reasonText(refused, t));
   };
   const stopSearch = () => {
     setSearching(false);
@@ -234,10 +249,14 @@ export function TerminalPage(
       subtitle={<output>{status}</output>}
       actions={
         <>
-          {(state.state === "detached" || state.state === "ended") && (
-            <Button size="sm" onClick={() => void session.current?.reopen()}>
+          {state.state !== "live" && (
+            <ActionButton
+              size="sm"
+              pending={state.state === "attaching"}
+              onClick={() => session.current?.reopen()}
+            >
               {t("terminalUi.reopen")}
-            </Button>
+            </ActionButton>
           )}
           {linked && (
             <Button
@@ -280,11 +299,27 @@ export function TerminalPage(
         )
       }
     >
-      {closeFailed && (
-        <InlineNotice tone="error">
-          {t("terminalUi.closeFailed", { reason: closeFailed })}
-        </InlineNotice>
-      )}
+      {/* One block for the notices, so they have air between them and the terminal, and none when there is none. */}
+      <Stack gap={2} className="empty:hidden">
+        {(state.state === "detached" || state.state === "ended") && !attachFailed && (
+          <InlineNotice tone="info">{t(`terminalUi.notLive.${state.state}`)}</InlineNotice>
+        )}
+        {attachFailed && (
+          <InlineNotice tone="error">
+            {t("terminalUi.attachFailed", { reason: reasonText(attachFailed.error, t) })}
+          </InlineNotice>
+        )}
+        {writeFailed && (
+          <InlineNotice tone="error">
+            {t("terminalUi.writeFailed", { reason: reasonText(writeFailed.error, t) })}
+          </InlineNotice>
+        )}
+        {closeFailed && (
+          <InlineNotice tone="error">
+            {t("terminalUi.closeFailed", { reason: closeFailed })}
+          </InlineNotice>
+        )}
+      </Stack>
       <div
         ref={area}
         data-terminal-area

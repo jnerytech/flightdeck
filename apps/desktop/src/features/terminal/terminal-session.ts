@@ -16,6 +16,8 @@ interface TerminalScreen {
   reset(): void;
 }
 
+export type TerminalFailure = "attach" | "write";
+
 export type TerminalState = "attaching" | "live" | "detached" | "ended";
 
 type Schedule = (run: () => void, ms: number) => () => void;
@@ -25,6 +27,8 @@ export interface TerminalSessionOptions {
   host: TerminalHost;
   screen: TerminalScreen;
   onState(state: TerminalState, exitCode: number | null): void;
+  /** What the host refused an attach or a write with, or `null` once the next one is accepted (#3950). */
+  onFailure?(kind: TerminalFailure, error: unknown): void;
   schedule?: Schedule;
 }
 
@@ -69,8 +73,10 @@ export class TerminalSession {
       this.opts.screen.reset();
       this.opts.screen.write(decode(attached.scrollback));
       this.set(attached.exitCode === null ? "live" : "ended", attached.exitCode);
-    } catch {
+      this.opts.onFailure?.("attach", null);
+    } catch (error) {
       this.set("detached", null);
+      this.opts.onFailure?.("attach", error);
     }
   }
 
@@ -104,7 +110,10 @@ export class TerminalSession {
 
   input(data: string): void {
     if (this.state !== "live") return;
-    this.opts.host.write(this.opts.terminalId, data).catch(() => {});
+    this.opts.host.write(this.opts.terminalId, data).then(
+      () => this.opts.onFailure?.("write", null),
+      (error) => this.opts.onFailure?.("write", error),
+    );
   }
 
   resize(cols: number, rows: number): void {
