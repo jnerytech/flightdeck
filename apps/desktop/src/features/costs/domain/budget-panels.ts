@@ -14,13 +14,19 @@ interface BudgetPanels {
 }
 
 /**
- * With several hosts the panels fold: the host being read goes first, open, and takes the focus; with
- * none being read nothing opens and the first heading takes the focus. One host has nothing to choose
- * from, so its panel stays open and the section keeps the focus.
+ * With several hosts and one being read, the panels fold: that host goes first, open, and takes the
+ * focus. With none being read (all hosts at once, or the sidebar) every panel stays open in order and
+ * the section keeps the focus, as before. One host has nothing to choose from either.
  */
 export function budgetPanels(hostIds: readonly string[], wanted: string | undefined): BudgetPanels {
-  if (hostIds.length < 2) return { order: [...hostIds], foldable: false, open: null, focus: null };
   const open = wanted !== undefined && hostIds.includes(wanted) ? wanted : null;
-  const order = open === null ? [...hostIds] : [open, ...hostIds.filter((id) => id !== open)];
-  return { order, foldable: true, open, focus: open ?? hostIds[0] ?? null };
+  if (hostIds.length < 2 || open === null) {
+    return { order: [...hostIds], foldable: false, open: null, focus: null };
+  }
+  return {
+    order: [open, ...hostIds.filter((id) => id !== open)],
+    foldable: true,
+    open,
+    focus: open,
+  };
 }
