@@ -7,7 +7,32 @@ const { act, cleanup, fireEvent, render, screen, within } = await import("@testi
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { NeedsYou } = await import("../../src/features/needs-you/page.tsx");
 
-afterEach(() => cleanup());
+const restores: Array<() => void> = [];
+afterEach(() => {
+  cleanup();
+  for (const restore of restores.splice(0)) restore();
+});
+
+/** happy-dom has no layout: the summary panel reports this content height and visible height. */
+function layout(scrollHeight: number, clientHeight: number) {
+  for (const [name, value] of [
+    ["scrollHeight", scrollHeight],
+    ["clientHeight", clientHeight],
+  ] as const) {
+    const original = Object.getOwnPropertyDescriptor(Element.prototype, name);
+    Object.defineProperty(Element.prototype, name, {
+      configurable: true,
+      get(this: Element) {
+        return this.getAttribute("data-slot") === "while-away" ? value : 0;
+      },
+    });
+    restores.push(() => {
+      if (original) Object.defineProperty(Element.prototype, name, original);
+      else Reflect.deleteProperty(Element.prototype, name);
+    });
+  }
+}
+const cue = () => panel()?.querySelector('[data-slot="away-more"]') ?? null;
 
 const NOW = Date.parse("2026-11-09T08:00:00.000Z");
 const SINCE = "2026-11-09T00:00:00.000Z";
@@ -269,5 +294,48 @@ describe("while-away-ui: the summary at the top of Needs you (#1344)", () => {
   test("in Portuguese the summary speaks Portuguese", () => {
     open({ lang: "pt-BR" });
     expect(screen.queryByRole("region", { name: "Enquanto você esteve fora" })).not.toBeNull();
+  });
+
+  test("a panel cut at its height says more is below, with a cue that screen readers read (#3919)", () => {
+    layout(600, 300);
+    open();
+    expect({
+      cue: cue() !== null,
+      text: cue()?.textContent,
+      focusable: panel()?.getAttribute("tabindex"),
+    }).toEqual({ cue: true, text: "Scroll for more", focusable: "0" });
+  });
+
+  test("a panel that fits shows no cue and takes no tab stop (#3919)", () => {
+    layout(300, 300);
+    open();
+    expect({ cue: cue() !== null, focusable: panel()?.hasAttribute("tabindex") }).toEqual({
+      cue: false,
+      focusable: false,
+    });
+  });
+
+  test("the cue goes once the end of the panel is scrolled to, and comes back when it is left (#3919)", async () => {
+    layout(600, 300);
+    open();
+    const scrollTo = async (top: number) => {
+      await act(async () => {
+        if (!panel()) return;
+        (panel() as HTMLElement).scrollTop = top;
+        fireEvent.scroll(panel() as HTMLElement);
+      });
+    };
+    const seen = [cue() !== null];
+    await scrollTo(300);
+    seen.push(cue() !== null);
+    await scrollTo(100);
+    seen.push(cue() !== null);
+    expect(seen).toEqual([true, false, true]);
+  });
+
+  test("in Portuguese the cue speaks Portuguese (#3919)", () => {
+    layout(600, 300);
+    open({ lang: "pt-BR" });
+    expect(cue()?.textContent).toBe("Role para ver mais");
   });
 });
