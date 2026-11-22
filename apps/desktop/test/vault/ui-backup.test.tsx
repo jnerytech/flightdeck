@@ -418,6 +418,19 @@ describe("cofre-ui: backup, focus, announcements and a failed restore", () => {
     });
   });
 
+  test("a restore that fails halfway still refreshes the secrets list with what got in", async () => {
+    const { store } = await open(await backupText());
+    const restore = store.vault.restore.bind(store.vault);
+    store.vault.restore = async (meta, value) => {
+      await restore(meta, value);
+      throw new Error("disk full");
+    };
+    await fill("Frase-senha do arquivo", PASS);
+    await click("Importar cofre");
+    await click("Aplicar");
+    expect(store.getState().secrets.map((secret) => secret.name)).toEqual(["github"]);
+  });
+
   test("a wrong passphrase is an alert, and editing the field clears it", async () => {
     await open(await backupText());
     await fill("Frase-senha do arquivo", "another passphrase");
