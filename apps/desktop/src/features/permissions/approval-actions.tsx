@@ -38,6 +38,7 @@ export function ApprovalActions(
         <HoldButton
           label={t("approval.hold")}
           hint={t("approval.holdHint")}
+          clickHint={t("approval.holdClick")}
           holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
           disabled={pending}
           onHeld={() => void props.onApprove(true)}
