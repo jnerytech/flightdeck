@@ -254,8 +254,7 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
                   </p>
                 )}
                 {result && (
-                  <div
-                    // NOSONAR: <output> allows only inline content, and this result holds headings and blocks
+                  <div // NOSONAR: <output> allows only inline content, and this result holds headings and blocks
                     role="status" // NOSONAR: same reason
                     className="flex flex-wrap gap-6"
                   >
