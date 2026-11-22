@@ -10,6 +10,7 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import { FileExplorer, SessionFiles } from "@/features/files/ui.ts";
+import { revealTab } from "@/features/tabs/index.ts";
 import { TracePanel } from "@/features/trace/ui.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -124,10 +125,14 @@ export function SessionTabs(
   const root = useRef<HTMLDivElement>(null);
   const tabs = useRef(new Map<SessionView, HTMLButtonElement>());
   // The row of views scrolls sideways in a narrow pane: whichever way the view changed (a click, the
-  // arrow keys, Alt+number, the palette), its tab comes into view (#3821).
+  // arrow keys, Alt+number, the palette), its tab comes into view (#3821). The row scrolls itself,
+  // never `scrollIntoView`, which moves the first Tab's starting point (#1430).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `viewsKey` stands for the `views` list
   useEffect(() => {
-    tabs.current.get(tab)?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
-  }, [tab]);
+    const row = root.current?.querySelector<HTMLElement>('[data-slot="session-views"]');
+    const active = tabs.current.get(tab);
+    if (row && active) revealTab(row, active);
+  }, [tab, viewsKey]);
   // Alt+1 to Alt+7 (Ctrl+1 to 9 are the app's tabs), and Ctrl+` between the Terminal and the Conversation.
   // `true` when the key was one of them and the view changed.
   const viewKeyHandler = useRef<((event: ViewKey & { preventDefault(): void }) => boolean) | null>(

@@ -170,9 +170,9 @@ describe("session-tabs-ui: the views of a session page (issue #107)", () => {
   // arrow keys, Alt+number, the palette) is brought into view, and an edge fade shows tabs are hidden.
   // Not `scrollIntoView` (#1430): it moves the first Tab's starting point; the row scrolls itself.
   test("the view that opens is scrolled into view along the row, never with scrollIntoView (#3821)", async () => {
-    const real = HTMLElement.prototype.scrollIntoView;
+    const real = Element.prototype.scrollIntoView;
     let called = false;
-    HTMLElement.prototype.scrollIntoView = () => {
+    Element.prototype.scrollIntoView = () => {
       called = true;
     };
     try {
@@ -186,7 +186,7 @@ describe("session-tabs-ui: the views of a session page (issue #107)", () => {
       expect(row.scrollLeft).toBe(230);
       expect(called).toBe(false);
     } finally {
-      HTMLElement.prototype.scrollIntoView = real;
+      Element.prototype.scrollIntoView = real;
     }
   });
 
