@@ -28,7 +28,7 @@ export type ShortcutGroup =
 /** One shortcut, for the cheat sheet and for the palette's hints. */
 export interface ShortcutDef {
   id: string;
-  /** The action the app runs; absent for a shortcut a screen handles itself (j, k, A, N). */
+  /** The action the app runs; absent for a shortcut a screen handles itself (j, k, a, n). */
   action?: ShortcutAction;
   /** The keys in order. `Mod` is Ctrl, or ⌘ on a Mac. A chord is a letter then another letter. */
   keys: string[];

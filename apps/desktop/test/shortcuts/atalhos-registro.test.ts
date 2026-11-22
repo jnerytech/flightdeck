@@ -218,14 +218,21 @@ describe("atalhos-registro: the tab keys", () => {
     expect([...new Set(missing)]).toEqual([]);
   });
 
-  test("Ctrl+Tab is told as the next tab and Ctrl+Shift+Tab as the previous one, in both languages", () => {
+  test("Ctrl+Tab is told as the last-used tab or the next tab by the order setting, and Ctrl+Shift+Tab the other way, in both languages", () => {
     const next = SHORTCUTS.find((s) => s.keys.join("+") === "Mod+Tab");
     const previous = SHORTCUTS.find((s) => s.keys.join("+") === "Mod+Shift+Tab");
     const en = translator("en");
     const pt = translator("pt-BR");
-    expect(en(next?.label ?? "shortcuts.title")).toMatch(/next tab/i);
-    expect(pt(next?.label ?? "shortcuts.title")).toMatch(/próxima aba/i);
-    expect(en(previous?.label ?? "shortcuts.title")).toMatch(/previous tab/i);
-    expect(pt(previous?.label ?? "shortcuts.title")).toMatch(/aba anterior/i);
+    // The default order is most recently used; "Tab order" is the next tab (#4117, code review).
+    expect(en(next?.label ?? "shortcuts.title")).toMatch(/last tab you used.*next tab.*Tab order/i);
+    expect(pt(next?.label ?? "shortcuts.title")).toMatch(
+      /última aba usada.*próxima aba.*Ordem das abas/i,
+    );
+    expect(en(previous?.label ?? "shortcuts.title")).toMatch(
+      /used longest ago.*previous tab.*Tab order/i,
+    );
+    expect(pt(previous?.label ?? "shortcuts.title")).toMatch(
+      /usada há mais tempo.*aba anterior.*Ordem das abas/i,
+    );
   });
 });

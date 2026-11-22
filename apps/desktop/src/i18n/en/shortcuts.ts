@@ -28,8 +28,10 @@ export const shortcuts = {
     goSettings: "Go to Settings",
     tabNew: "New tab",
     tabClose: "Close the tab",
-    tabNext: "Go to the next tab (hold Ctrl and press Tab to cycle)",
-    tabPrevious: "Go to the previous tab",
+    tabNext:
+      "Go to the last tab you used, or the next tab when the Ctrl+Tab order setting is Tab order (hold Ctrl and press Tab to cycle)",
+    tabPrevious:
+      "Cycle the other way: the tab used longest ago, or the previous tab when the Ctrl+Tab order setting is Tab order",
     tabReopen: "Reopen the tab you closed",
     tabMoveLeft: "Move the tab to the left",
     tabMoveRight: "Move the tab to the right",
@@ -40,8 +42,7 @@ export const shortcuts = {
     listNext: "Next row",
     listPrevious: "Previous row",
     listOpen: "Open the row",
-    approve:
-      "With the request focused, approve it (a high-risk request is approved by holding the button)",
+    approve: "With the request focused, approve it (high risk: hold the button)",
     deny: "With the request focused, deny it",
     dismiss: "Close the request",
     paletteRecent: "Open one of the recent entries",

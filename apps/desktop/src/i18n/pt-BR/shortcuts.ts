@@ -28,8 +28,10 @@ export const shortcuts = {
     goSettings: "Ir para Configurações",
     tabNew: "Nova aba",
     tabClose: "Fechar a aba",
-    tabNext: "Ir para a próxima aba (segure Ctrl e aperte Tab para percorrer)",
-    tabPrevious: "Ir para a aba anterior",
+    tabNext:
+      "Ir para a última aba usada, ou para a próxima aba quando a ordem do Ctrl+Tab é Ordem das abas (segure Ctrl e aperte Tab para percorrer)",
+    tabPrevious:
+      "Percorrer no sentido contrário: a aba usada há mais tempo, ou a aba anterior quando a ordem do Ctrl+Tab é Ordem das abas",
     tabReopen: "Reabrir a aba que você fechou",
     tabMoveLeft: "Mover a aba para a esquerda",
     tabMoveRight: "Mover a aba para a direita",
@@ -40,8 +42,7 @@ export const shortcuts = {
     listNext: "Próxima linha",
     listPrevious: "Linha anterior",
     listOpen: "Abrir a linha",
-    approve:
-      "Com o pedido em foco, aprová-lo (um pedido de risco alto se aprova segurando o botão)",
+    approve: "Com o pedido em foco, aprová-lo (risco alto: segure o botão)",
     deny: "Com o pedido em foco, negá-lo",
     dismiss: "Fechar o pedido",
     paletteRecent: "Abrir uma das entradas recentes",
