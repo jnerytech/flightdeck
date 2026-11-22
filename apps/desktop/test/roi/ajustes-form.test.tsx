@@ -139,6 +139,21 @@ for (const [lang, t] of [
       expect(said(N.added)).toBe(true);
     });
 
+    test("typing the next person clears the Person added line, and the line is not hidden while empty", async () => {
+      await costsPage(lang);
+      await settle(() => screen.queryByLabelText(S.personName) !== null);
+      await type(S.personName, "Ana");
+      await submitFormOf(S.personName);
+      expect(said(N.added)).toBe(true);
+      await type(S.personName, "Bia");
+      expect(said(N.added)).toBe(false);
+      // An empty status line stays in the accessibility tree (sr-only), so a text put in it is announced.
+      const line = screen
+        .queryAllByRole("status")
+        .find((l) => l.closest("[data-slot='roi-settings']"));
+      expect(line?.className.includes("empty:sr-only")).toBe(true);
+    });
+
     test("a limit that is not a number is refused under its own field", async () => {
       await costsPage(lang);
       await settle(() => screen.queryByLabelText(S.personName) !== null);
