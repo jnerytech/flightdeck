@@ -22,10 +22,14 @@ export interface Target {
 }
 
 /** What rewinding does to each file, from the files' point of view. */
-function PreviewFiles(props: Readonly<{ store: AppStore; preview: RewindPreview }>) {
+function PreviewFiles(
+  props: Readonly<{ store: AppStore; preview: RewindPreview; empty?: string }>,
+) {
   const { t } = props.store.i18n;
   const { preview } = props;
-  if (preview.files.length === 0) return <p className="text-sm">{t("timeline.nothing")}</p>;
+  if (preview.files.length === 0) {
+    return <p className="text-sm">{props.empty ?? t("timeline.nothing")}</p>;
+  }
   return (
     <div className="flex flex-col gap-2">
       <p className="text-muted-foreground text-xs">{t(`timeline.via.${preview.via}`)}</p>
@@ -104,6 +108,74 @@ export function RewindDialog(props: Target & { turn: Turn; onClose(): void; onDo
             onClick={() => apply()}
           >
             {t("timeline.rewindConfirm")}
+          </ActionButton>
+        </DialogFooter>
+      </AppDialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * "Desfazer volta": what the undo would put back, read from the host when the dialog opens (the
+ * files may have changed since the sheet did), and the confirmation that overwrites them (#4036).
+ */
+export function UndoDialog(props: Target & { onClose(): void; onDone(): void }) {
+  const { store, hostId, claudeSessionId } = props;
+  const { t } = store.i18n;
+  const [preview, setPreview] = useState<RewindPreview | null>(null);
+  const [previewFailed, setPreviewFailed] = useState(false);
+  // Why the host refused the undo: the dialog stays open and says it.
+  const [refusal, setRefusal] = useState<string | null>(null);
+
+  useEffect(() => {
+    void store.hostRequest(hostId, "rewind.undoPreview", { claudeSessionId }).then((result) => {
+      if (result.ok) setPreview(result.data);
+      else setPreviewFailed(true);
+    });
+  }, [store, hostId, claudeSessionId]);
+
+  const undo = async () => {
+    setRefusal(null);
+    const result = await store.hostRequest(hostId, "rewind.undo", {
+      claudeSessionId,
+      confirm: true,
+    });
+    if (!result.ok) {
+      setRefusal(result.message);
+      return;
+    }
+    props.onDone();
+    props.onClose();
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && props.onClose()}>
+      <AppDialogContent aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>{t("timeline.undoTitle")}</DialogTitle>
+          <DialogDescription>{t("timeline.undoNote")}</DialogDescription>
+        </DialogHeader>
+        {preview ? (
+          <PreviewFiles store={store} preview={preview} empty={t("timeline.undoNothing")} />
+        ) : (
+          !previewFailed && <LoadingState label={t("timeline.previewing")} />
+        )}
+        {previewFailed && (
+          <InlineNotice tone="error">{t("timeline.undoPreviewFailed")}</InlineNotice>
+        )}
+        {refusal !== null && (
+          <InlineNotice tone="error">{t("timeline.undoFailed", { reason: refusal })}</InlineNotice>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={props.onClose}>
+            {t("common.cancel")}
+          </Button>
+          <ActionButton
+            variant="destructive"
+            disabled={preview === null || preview.files.length === 0}
+            onClick={() => undo()}
+          >
+            {t("timeline.undoConfirm")}
           </ActionButton>
         </DialogFooter>
       </AppDialogContent>

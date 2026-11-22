@@ -169,9 +169,23 @@ describe("shots-wire: the states the table prints (#3982)", () => {
     ]).toEqual(["wt", "rw", "rw", "rw", "rw"]);
   });
 
-  test("the applied rewind is sent as a preview, the refused and the empty read change the list", () => {
+  test("the applied rewind is sent as a preview, and so is the undo preview that offers the Undo (#4036), the refused and the empty read change the list", () => {
     expect(named("linha-do-tempo-desfeito")?.wire).toEqual([
       { command: "rewind.apply", as: "rewind.preview" },
+      // The Undo comes from the host's undo preview, and the demo's host has no rewind to undo.
+      {
+        command: "rewind.undoPreview",
+        as: "snapshots.list",
+        data: {
+          via: "snapshot",
+          files: [
+            { path: "README.md", change: "modified" },
+            { path: "src/cart.ts", change: "deleted" },
+          ],
+          insertions: expect.any(Number),
+          deletions: expect.any(Number),
+        },
+      },
     ]);
     expect(named("linha-do-tempo-falhou")?.wire).toEqual([
       { command: "snapshots.list", refuse: expect.stringContaining("snapshot") },
@@ -179,6 +193,36 @@ describe("shots-wire: the states the table prints (#3982)", () => {
     expect(named("linha-do-tempo-vazia")?.wire).toEqual([
       { command: "snapshots.list", data: { snapshots: [] } },
     ]);
+  });
+
+  test("the applied-rewind print waits for the notice that says the rewind happened before it waits for the Undo, which the undo preview shows from the start (#4036)", async () => {
+    const calls: string[] = [];
+    // An options object reads as its values, so the button's name is in the call.
+    const text = (arg: unknown): string => {
+      if (arg instanceof RegExp || typeof arg === "string") return String(arg);
+      if (typeof arg === "object" && arg !== null) return Object.values(arg).map(text).join(",");
+      return typeof arg;
+    };
+    // A page that records each call and answers with itself, also for `page.mouse.move(...)`.
+    const member = (name: string): unknown =>
+      new Proxy(
+        (...args: unknown[]) => {
+          calls.push(`${name}(${args.map(text).join(",")})`);
+          return recorder;
+        },
+        { get: (_target, prop) => (recorder as Record<string | symbol, unknown>)[prop] },
+      );
+    const recorder: unknown = new Proxy(() => recorder, {
+      // `then` stays undefined, or awaiting the recorder would wait for it forever.
+      get: (_target, prop) => (prop === "then" ? undefined : member(String(prop))),
+    });
+    await named("linha-do-tempo-desfeito")?.prepare?.(recorder as never);
+    const notice = calls.findIndex(
+      (call) => call.startsWith("getByText(") && call.includes("voltados"),
+    );
+    const undo = calls.findIndex((call) => call.includes("Undo rewind"));
+    expect(notice).toBeGreaterThan(-1);
+    expect(undo).toBeGreaterThan(notice);
   });
 
   test("the bell prints with no notifications, and with the list cleared from a full one", () => {
