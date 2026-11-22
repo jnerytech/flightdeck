@@ -37,7 +37,8 @@ export function readAccount(args: CliArgs, reader: ArgReader): void {
   args.action = subAction(reader, ["get", "refresh", "watch"] as const, "invalid account action");
 }
 
-const REPOSITORY = /^[\w.-]+\/[\w.-]+$/;
+// The daemon's own shape: an owner that starts with a letter or digit, so a name that looks like an option is refused here too.
+const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const WHOLE_NUMBER = /^[1-9]\d*$/;
 
 /** A flag typed on a verb that does not take it, or undefined. */

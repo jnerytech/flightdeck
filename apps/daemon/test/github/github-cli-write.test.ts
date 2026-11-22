@@ -62,6 +62,8 @@ describe("the github write arguments (issue #3703)", () => {
     refused(["github", "start", "octocat/hello", "--root", "/w", "--mode", "pr"], "--mode");
     refused(["github", "start", "hello", "--root", "/w", "--mode", "card"], "owner/name");
     refused(["github", "start", "a/b/c", "--root", "/w", "--mode", "card"], "owner/name");
+    refused(["github", "start", "-x/y", "--root", "/w", "--mode", "card"], "owner/name");
+    refused(["github", "start", "a/-b", "--root", "/w", "--mode", "card"], "owner/name");
     refused([...START, "--issue", "seven"], "--issue");
     refused([...START, "--issue", "0"], "--issue");
     refused(["github", "start", "a/b", "c/d", "--root", "/w", "--mode", "card"], "c/d");
