@@ -73,7 +73,7 @@ describe("the approving-devices panel prints (#4154)", () => {
   test("the unchecked notice is a host that lacks the proof of some commands, trimmed from its host.info", () => {
     const rule = byName("aprovacao-nao-checados")?.wire?.find((r) => r.command === "host.info");
     expect(rule && "without" in rule ? Object.keys(rule.without) : []).toEqual(["features"]);
-    expect(rule && "without" in rule ? rule.without.features.length : 0).toBeGreaterThan(0);
+    expect(rule && "without" in rule ? (rule.without.features?.length ?? 0) : 0).toBeGreaterThan(0);
   });
 
   test("the offer and the waiting prints list the host with another device, and a device that is not listed (new) for the waiting one", () => {

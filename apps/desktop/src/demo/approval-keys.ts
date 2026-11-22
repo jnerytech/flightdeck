@@ -19,6 +19,9 @@ export const DEMO_NEW_KEY: DeviceKey = {
   keyId: "b6bfe89972b186f5fc736faae8d1a87351b094b441de3830d4e736f714d8e57d",
 };
 
+/** What `sign` gives: no key signs anything for real here, and the host's answer to it is the print's own. */
+const DEMO_SIGNATURE = "ZGVtbw==";
+
 /**
  * A stand-in for the desktop's key store, for the prints: the web build has none, so the approving-devices
  * panel would never show. `enrolled` holds `DEMO_THIS_KEY` from the start; `empty` holds none until the page
@@ -26,13 +29,24 @@ export const DEMO_NEW_KEY: DeviceKey = {
  * `daemonSeen` hears each host id the page asks about.
  */
 export function demoApprovalKeys(
-  _mode: "enrolled" | "empty",
-  _daemonSeen: (daemonId: string) => void,
+  mode: "enrolled" | "empty",
+  daemonSeen: (daemonId: string) => void,
 ): NonNullable<Platform["approvalKeys"]> {
+  let held: DeviceKey | null = mode === "enrolled" ? DEMO_THIS_KEY : null;
   return {
-    get: () => Promise.resolve(null),
-    create: () => Promise.resolve(DEMO_NEW_KEY),
-    delete: () => Promise.resolve(),
-    sign: () => Promise.resolve(""),
+    get: (daemonId) => {
+      daemonSeen(daemonId);
+      return Promise.resolve(held);
+    },
+    create: (daemonId) => {
+      daemonSeen(daemonId);
+      held = mode === "enrolled" ? DEMO_THIS_KEY : DEMO_NEW_KEY;
+      return Promise.resolve(held);
+    },
+    delete: () => {
+      held = null;
+      return Promise.resolve();
+    },
+    sign: () => Promise.resolve(DEMO_SIGNATURE),
   };
 }
