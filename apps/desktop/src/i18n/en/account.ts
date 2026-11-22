@@ -63,9 +63,14 @@ export const account = {
       labelFor: "New cards wait from, on {host}",
       off: "Never",
       hint: "Sessions already running are never stopped.",
+      failed: "Could not change the guard. Try again.",
       readOnly:
         "New cards wait from {pct}%. This host cannot change it from the app: update flightdeckd.",
       readOnlyOff: "The guard is off. This host cannot change it from the app: update flightdeckd.",
+      readOnlyFor:
+        "{host}: New cards wait from {pct}%. This host cannot change it from the app: update flightdeckd.",
+      readOnlyOffFor:
+        "{host}: The guard is off. This host cannot change it from the app: update flightdeckd.",
     },
     popover: {
       label: "Plan quota of the hosts",

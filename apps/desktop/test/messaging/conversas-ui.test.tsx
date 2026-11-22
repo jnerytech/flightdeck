@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
-import { settle } from "../wait.ts";
+import { settle, settleMaybe } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -82,6 +82,24 @@ describe("conversas-ui: the messages between sessions", () => {
     expect(oldest).toContain("pode revisar o login?");
     expect(oldest).toContain("Entregue");
     expect(oldest).toContain("alfa");
+  });
+
+  test("a host that refuses the list is named with a retry, and the page does not read as empty (#4293)", async () => {
+    const { daemon, list } = await open();
+    daemon.refuse.set("messages.list", "unavailable");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
+    });
+    const named = await settleMaybe(() => screen.queryByText(/Sem resposta de alfa/) !== null);
+    expect(named).toBe(true);
+    expect(screen.queryByText("Nenhuma mensagem")).toBeNull();
+    daemon.refuse.delete("messages.list");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
+    });
+    const listed = await settleMaybe(() => (list()?.children.length ?? 0) === 2);
+    expect(listed).toBe(true);
+    expect(screen.queryByText(/Sem resposta de alfa/)).toBeNull();
   });
 
   test("with no messages, the screen says where they come from and links to Times", async () => {
@@ -217,6 +235,87 @@ describe("conversas-ui: the timeline's states (#588)", () => {
   });
 });
 
+describe("conversas-ui: a cut list says so (#4292)", () => {
+  /** Opens Conversas on a host that answers `count` messages. */
+  async function openWith(count: number) {
+    const opened = await open(["messaging"], false);
+    opened.daemon.messaging.messages = Array.from({ length: count }, (_, i) =>
+      message({
+        id: `m${i}`,
+        createdAt: `2026-10-30T12:${String(i % 60).padStart(2, "0")}:00.000Z`,
+      }),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
+    });
+    await settle(() => (opened.list()?.children.length ?? 0) === count);
+    return opened;
+  }
+  const cutText =
+    "Mostrando 200 mensagens. Um host pode ter mais: cada host lista as 200 mais recentes, dos últimos 30 dias.";
+
+  test("a host that answers as many messages as the limit asked makes the page say the list is cut", async () => {
+    await openWith(200);
+    expect(screen.queryByText(cutText) !== null).toBe(true);
+  });
+
+  test("a host that answers fewer than the limit leaves the page without the notice", async () => {
+    await openWith(2);
+    expect(screen.queryByText(/Um host pode ter mais/) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+  });
+
+  test("the page asks each host for an explicit limit and window, and says the window under its title", async () => {
+    const { daemon } = await openWith(2);
+    const asked = daemon.commands.find((c) => c.type === "messages.list");
+    expect(asked?.payload).toEqual({ days: 30, limit: 200 });
+    expect(
+      screen.queryByText("Mensagens entre sessões, em todos os hosts, dos últimos 30 dias") !==
+        null,
+    ).toBe(true);
+  });
+});
+
+describe("conversas-ui: the filter counts and can be cleared (#4295)", () => {
+  async function openOnConversas() {
+    const opened = await open();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
+    });
+    await settle(() => (opened.list()?.children.length ?? 0) === 2);
+    return opened;
+  }
+  const filterField = () => screen.getByLabelText("Filtrar mensagens") as HTMLInputElement;
+
+  test("no filter, no count; a filter that narrows says how many of how many, and follows the filter", async () => {
+    await openOnConversas();
+    expect(screen.queryByText(/ de 2 mensagens/) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    await act(async () => {
+      fireEvent.change(filterField(), { target: { value: "t1" } });
+    });
+    expect(screen.queryByText("1 de 2 mensagens") !== null).toBe(true);
+    await act(async () => {
+      fireEvent.change(filterField(), { target: { value: "" } });
+    });
+    expect(screen.queryByText(/ de 2 mensagens/) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+  });
+
+  test("a filter that matches nothing offers Limpar filtro, which resets the text and the state and focuses the field", async () => {
+    const { list } = await openOnConversas();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Estado"), { target: { value: "refused" } });
+      fireEvent.change(filterField(), { target: { value: "zzz" } });
+    });
+    expect(screen.queryByRole("button", { name: "Limpar filtro" }) !== null).toBe(true);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Limpar filtro" }));
+    });
+    expect(list()?.children.length).toBe(2);
+    expect(filterField().value).toBe("");
+    expect((screen.getByLabelText("Estado") as HTMLSelectElement).value).toBe("");
+    expect(document.activeElement === filterField()).toBe(true);
+  });
+});
+
 describe("conversas-ui: the open button names its recipient (#4084)", () => {
   const goToList = async (list: () => HTMLElement | null, count: number) => {
     await act(async () => {
@@ -250,6 +349,64 @@ describe("conversas-ui: the open button names its recipient (#4084)", () => {
       fireEvent.click(button as HTMLElement);
     });
     expect(JSON.stringify(store.router.current)).toBe(before);
+  });
+});
+
+describe("conversas-ui: a row names its sessions (#4294)", () => {
+  const managed = (id: string, name: string) => ({
+    id,
+    name,
+    cwd: `/r/${id}`,
+    status: "idle",
+    permissionMode: "default",
+    model: null,
+    claudeSessionId: null,
+    lastSeq: 0,
+    createdAt: "2026-10-30T10:00:00.000Z",
+    updatedAt: "2026-10-30T11:00:00.000Z",
+  });
+  const goToList = async (list: () => HTMLElement | null, count: number) => {
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
+    });
+    await settle(() => (list()?.children.length ?? 0) === count);
+  };
+
+  test("both sides show the session's name where the hub knows it, with the address in a title", async () => {
+    const { daemon, list } = await open();
+    daemon.hub.managed = [managed("s1", "revisor"), managed("s2", "autor")];
+    daemon.messaging.messages = [message({ id: "m1" })];
+    await goToList(list, 1);
+    const row = list()?.children[0] as HTMLElement;
+    await settleMaybe(() => (row.textContent ?? "").includes("revisor"));
+    expect(row.textContent).toContain("revisor");
+    expect(row.textContent).toContain("autor");
+    expect(row.querySelector('[title="h/s1"]') !== null).toBe(true);
+    expect(row.querySelector('[title="h/s2"]') !== null).toBe(true);
+  });
+
+  test("two ends with the same name keep their addresses visible, so the row still tells them apart", async () => {
+    const { daemon, list } = await open();
+    daemon.hub.managed = [managed("s1", "api"), managed("s2", "api")];
+    daemon.messaging.messages = [message({ id: "m1" })];
+    await goToList(list, 1);
+    const row = list()?.children[0] as HTMLElement;
+    await settleMaybe(() => (row.textContent ?? "").includes("api"));
+    expect(row.textContent).toContain("api");
+    expect(row.textContent).toContain("h/s1");
+    expect(row.textContent).toContain("h/s2");
+  });
+
+  test("a session the hub does not know keeps its address, and the Open button's name is unchanged", async () => {
+    const { daemon, list } = await open();
+    daemon.hub.managed = [managed("s1", "revisor")];
+    daemon.messaging.messages = [message({ id: "m1" })];
+    await goToList(list, 1);
+    const row = list()?.children[0] as HTMLElement;
+    await settleMaybe(() => (row.textContent ?? "").includes("revisor"));
+    expect(row.textContent).toContain("revisor");
+    expect(row.textContent).toContain("h/s2");
+    expect(screen.queryByRole("button", { name: "Abrir a sessão de h/s2" }) !== null).toBe(true);
   });
 });
 

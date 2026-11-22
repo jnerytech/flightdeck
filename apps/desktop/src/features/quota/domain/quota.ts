@@ -35,6 +35,31 @@ export function onSubscription(
   return (quota?.windows.length ?? 0) > 0 || account?.status === "signed_in";
 }
 
+/**
+ * Why a host has no plan quota to show, in words: its account is an API key, a third-party
+ * provider or not signed in (#4302). `null` when it has a reading, is on a subscription, or its
+ * account is not read yet, so "no reading yet" stays for a reading that can still come.
+ */
+export function noPlanReason(
+  quota: QuotaState | undefined,
+  account: Pick<AccountState, "status" | "provider" | "readAt" | "error"> | undefined,
+  t: T,
+): string | null {
+  if (!account || onSubscription(quota, account)) return null;
+  switch (account.status) {
+    case "api_key":
+      return t("account.apiKey");
+    case "third_party":
+      return t("account.provider", { provider: account.provider ?? "" });
+    case "signed_out":
+      return t("account.signedOut.title");
+    default:
+      // `unknown` before the first read is not an answer yet; after a failed read it says so.
+      if (account.readAt === null && !account.error) return null;
+      return account.error ? t("account.unavailable") : t("account.unknownSignIn");
+  }
+}
+
 /** The two windows the app shows for every host, in order. */
 export const SHOWN = ["five_hour", "seven_day"];
 

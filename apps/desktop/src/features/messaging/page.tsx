@@ -1,7 +1,7 @@
 import type { MessageInfo, MessageStatus } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import { MessagesSquare } from "lucide-react";
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,9 @@ import { hostsWith } from "../../lib/version.ts";
 import { RulesLink } from "./rules-link.tsx";
 import { inPausedPair, loopPairKey } from "./store.ts";
 
+/** What the page asks each host for; the daemon's own defaults, said out loud so the page can tell a cut list (#4292). */
+const MESSAGE_LIMIT = 200;
+const MESSAGE_DAYS = 30;
 const STATUSES: MessageStatus[] = ["delivered", "queued", "refused", "expired", "pending"];
 const TONE: Record<MessageStatus, string> = {
   delivered: "text-status-idle",
@@ -68,17 +71,32 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   const { t } = store.i18n;
   /** Null until the hosts first answer. */
   const [rows, setRows] = useState<Row[] | null>(null);
+  /** The hosts that did not answer the last load: their messages are missing, which is not "no messages" (#4293). */
+  const [silent, setSilent] = useState<string[]>([]);
+  // Only the latest load may show its answer: an older one resolving last would show stale rows and hosts.
+  const latestLoad = useRef(0);
   const [status, setStatus] = useState<"" | MessageStatus>("");
   const [text, setText] = useState("");
+  const filterField = useRef<HTMLInputElement>(null);
+  /** True when a host answered as many messages as it was asked for: older ones exist. */
+  const [cut, setCut] = useState(false);
   const hosts = hostsWith(state.hosts, "messaging");
   const hostKey = hosts.map((h) => h.id).join("|");
 
   const load = useCallback(async () => {
+    const mine = ++latestLoad.current;
     const found = new Map<string, Row>();
+    let anyCut = false;
     const ids = new Set(hostKey.split("|"));
+    const unanswered: string[] = [];
     await inSequence(store.getState().hosts, async (host) => {
       if (!ids.has(host.id)) return;
-      const result = await store.hostCommand(host.id, "messages.list", {});
+      const result = await store.hostCommand(host.id, "messages.list", {
+        days: MESSAGE_DAYS,
+        limit: MESSAGE_LIMIT,
+      });
+      if (!result) unanswered.push(host.name);
+      if ((result?.messages.length ?? 0) >= MESSAGE_LIMIT) anyCut = true;
       for (const message of result?.messages ?? []) {
         // A relayed message is on both daemons: the recipient's copy has the final state.
         const seen = found.get(message.id);
@@ -87,6 +105,9 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
         }
       }
     });
+    if (mine !== latestLoad.current) return;
+    setCut(anyCut);
+    setSilent(unanswered);
     setRows(
       [...found.values()].sort((a, b) => b.message.createdAt.localeCompare(a.message.createdAt)),
     );
@@ -101,6 +122,12 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   const scope = store.clientScope.get();
   const hubs = hubRows(store.getState(), t);
   const projectOf = sessionProjectKeys(hubs);
+  const filtering = needle !== "" || status !== "";
+  const clearFilter = () => {
+    setText("");
+    setStatus("");
+    filterField.current?.focus();
+  };
   const shown = (rows ?? []).filter(({ message: m, hostName }) => {
     const ends = [projectOf.get(m.fromSession) ?? null, projectOf.get(m.toSession) ?? null];
     if (!scope.includesAny(state.clientSelection, ends)) return false;
@@ -115,15 +142,33 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   /** The host a message's recipient lives on, when the app has it. */
   const hostOf = (message: MessageInfo) =>
     state.hosts.find((h) => h.hostInfo?.hostName === message.toHost) ?? null;
-  /** The recipient's name where the hub knows the session, else its address. */
-  const recipientName = (message: MessageInfo) => {
-    const host = hostOf(message);
-    const known = hubs.find(
-      (r) =>
-        r.hostId === host?.id &&
-        (r.sessionId === message.toSession || r.claudeSessionId === message.toSession),
+  /** A session's name where the hub knows it on that host, else null. */
+  const knownName = (hostName: string, sessionId: string) => {
+    const host = state.hosts.find((h) => h.hostInfo?.hostName === hostName);
+    return (
+      hubs.find(
+        (r) =>
+          r.hostId === host?.id && (r.sessionId === sessionId || r.claudeSessionId === sessionId),
+      )?.title || null
     );
-    return known?.title ?? `${message.toHost}/${message.toSession}`;
+  };
+  /** The recipient's name where the hub knows the session, else its address. */
+  const recipientName = (message: MessageInfo) =>
+    knownName(message.toHost, message.toSession) ?? `${message.toHost}/${message.toSession}`;
+  /**
+   * One end of a row: the session's name with its address as a title, or the address alone. When both
+   * ends read the same name (two sessions of one folder), the address stays on screen too.
+   */
+  const endOf = (hostName: string, sessionId: string, showAddress: boolean) => {
+    const address = `${hostName}/${sessionId}`;
+    const name = knownName(hostName, sessionId);
+    if (name === null) return <span className="font-mono">{address}</span>;
+    return (
+      <span title={address}>
+        {name}
+        {showAddress && <span className="font-mono text-muted-foreground">{` ${address}`}</span>}
+      </span>
+    );
   };
   // The pairs a host paused for a loop, on the hosts this page lists (#4086).
   const paused = state.loopAlerts.filter((a) => hosts.some((h) => h.id === a.hostId));
@@ -142,10 +187,11 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   return (
     <Page
       title={t("conversationsUi.title")}
-      subtitle={t("conversationsUi.subtitle")}
+      subtitle={t("conversationsUi.subtitle", { days: MESSAGE_DAYS })}
       toolbar={
         <Toolbar label={t("conversationsUi.list")}>
           <Input
+            ref={filterField}
             aria-label={t("conversationsUi.filter")}
             placeholder={t("conversationsUi.filter")}
             value={text}
@@ -169,13 +215,37 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
         </Toolbar>
       }
     >
+      {/* Always mounted: a live region that appears already filled is not announced. */}
+      <output className="text-muted-foreground text-xs empty:sr-only">
+        {filtering &&
+          rows &&
+          rows.length > 0 &&
+          t("conversationsUi.countOf", { shown: shown.length, n: rows.length })}
+      </output>
+      {cut && (
+        <InlineNotice>
+          {t("conversationsUi.cut", {
+            n: rows?.length ?? 0,
+            limit: MESSAGE_LIMIT,
+            days: MESSAGE_DAYS,
+          })}
+        </InlineNotice>
+      )}
       {paused.map((alert) => (
         <InlineNotice key={`${alert.hostId}/${loopPairKey(alert)}`}>
           {t("conversationsUi.paused", { a: alert.from, b: alert.to })} <RulesLink store={store} />
         </InlineNotice>
       ))}
+      {silent.length > 0 && (
+        <InlineNotice tone={rows?.length === 0 ? "error" : "warn"}>
+          {t("conversationsUi.silent", { hosts: silent.join(", ") })}{" "}
+          <ActionButton variant="outline" size="sm" onClick={load}>
+            {t("conversationsUi.retry")}
+          </ActionButton>
+        </InlineNotice>
+      )}
       {rows === null && <LoadingState label={t("conversationsUi.loading")} />}
-      {rows?.length === 0 && (
+      {rows?.length === 0 && silent.length === 0 && (
         <EmptyState
           icon={MessagesSquare}
           title={t("conversationsUi.empty")}
@@ -190,21 +260,33 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
         />
       )}
       {(rows?.length ?? 0) > 0 && shown.length === 0 && (
-        <EmptyState icon={MessagesSquare} title={t("conversationsUi.noMatch")} />
+        <EmptyState
+          icon={MessagesSquare}
+          title={t("conversationsUi.noMatch")}
+          action={
+            filtering ? (
+              <Button variant="outline" size="sm" onClick={clearFilter}>
+                {t("conversationsUi.clearFilter")}
+              </Button>
+            ) : undefined
+          }
+        />
       )}
       {shown.length > 0 && (
         <Stack as="ul" label={t("conversationsUi.list")} gap={2} className="max-w-3xl">
           {shown.map((row) => {
             const m = row.message;
+            const fromName = knownName(m.fromHost, m.fromSession);
+            const twins = fromName !== null && fromName === knownName(m.toHost, m.toSession);
             return (
               <li key={m.id} data-slot="message-row" className="message-row">
                 <div data-slot="message-meta" className="message-meta">
                   <time dateTime={m.createdAt} className="text-muted-foreground tabular-nums">
                     {store.formatDateTime(m.createdAt)}
                   </time>
-                  <span className="font-mono">{`${m.fromHost}/${m.fromSession}`}</span>
+                  {endOf(m.fromHost, m.fromSession, twins)}
                   <span className="text-muted-foreground">{t("conversationsUi.to")}</span>
-                  <span className="font-mono">{`${m.toHost}/${m.toSession}`}</span>
+                  {endOf(m.toHost, m.toSession, twins)}
                   <Badge variant="outline">{row.hostName}</Badge>
                   {m.teamId && <Badge variant="outline">{m.teamId}</Badge>}
                   <strong className={TONE[m.status]}>
