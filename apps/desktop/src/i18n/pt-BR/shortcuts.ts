@@ -40,8 +40,9 @@ export const shortcuts = {
     listNext: "Próxima linha",
     listPrevious: "Linha anterior",
     listOpen: "Abrir a linha",
-    approve: "Aprovar o pedido",
-    deny: "Negar o pedido",
+    approve:
+      "Com o pedido em foco, aprová-lo (um pedido de risco alto se aprova segurando o botão)",
+    deny: "Com o pedido em foco, negá-lo",
     dismiss: "Fechar o pedido",
     paletteRecent: "Abrir uma das entradas recentes",
     paletteActions: "Mostrar as ações da entrada escolhida",

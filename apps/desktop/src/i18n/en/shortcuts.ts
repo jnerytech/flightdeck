@@ -40,8 +40,9 @@ export const shortcuts = {
     listNext: "Next row",
     listPrevious: "Previous row",
     listOpen: "Open the row",
-    approve: "Approve the request",
-    deny: "Deny the request",
+    approve:
+      "With the request focused, approve it (a high-risk request is approved by holding the button)",
+    deny: "With the request focused, deny it",
     dismiss: "Close the request",
     paletteRecent: "Open one of the recent entries",
     paletteActions: "Show the chosen entry's actions",
