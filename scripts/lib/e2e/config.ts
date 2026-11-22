@@ -49,7 +49,7 @@ export function runnerSettings(
   };
 }
 
-const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+export const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 
 /**
  * The `--grep` for `E2E_ONLY=a,b`: test titles end in the journey name, after the language; a

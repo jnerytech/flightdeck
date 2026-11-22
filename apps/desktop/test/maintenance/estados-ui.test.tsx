@@ -96,13 +96,24 @@ describe.each(["en", "pt-BR"] as const)("the Maintenance panel (%s)", (lang) => 
       type === "maintenance.status" ? (refuse ? null : STATUS) : null,
     );
     expect(alertText().includes(w.failed)).toBe(true);
-    expect(screen.queryByRole("button", { name: w.retry }) !== null).toBe(true);
+    expect(screen.queryByRole("button", { name: w.retry })).not.toBeNull();
     // The panel has its own Try again: the toast offers none.
     expect(asked[0]).toEqual({ type: "maintenance.status", options: { retry: false } });
     refuse = false;
     await click(w.retry);
     await settle(() => screen.queryByText(w.sessions) !== null);
     expect(alertText()).toBe("");
+  });
+
+  test("the outcome line is an output element that is empty and out of the way until a result arrives", async () => {
+    await section(lang, (type) => (type === "maintenance.status" ? STATUS : null));
+    await settle(() => screen.queryByText(w.sessions) !== null);
+    const line = screen.queryByRole("status");
+    expect({
+      tag: line?.tagName,
+      empty: line?.textContent,
+      collapses: line?.className.includes("empty:sr-only"),
+    }).toEqual({ tag: "OUTPUT", empty: "", collapses: true });
   });
 
   test("the result of a backup is announced as a status", async () => {
@@ -127,7 +138,7 @@ describe.each(["en", "pt-BR"] as const)("the Maintenance panel (%s)", (lang) => 
     refuse = true;
     await click(w.backup);
     await act(async () => {});
-    expect(screen.queryByText(/backup-1\.db/) === null).toBe(true);
+    expect(screen.queryByText(/backup-1\.db/)).toBeNull();
   });
 
   test("Clean is busy while the prune runs, and a second click starts no second prune", async () => {
@@ -154,7 +165,7 @@ describe.each(["en", "pt-BR"] as const)("the Maintenance panel (%s)", (lang) => 
     });
     // A busy Clean opens no second confirmation.
     await stays(() => screen.queryByRole("alertdialog") === null, 300);
-    expect(asked.filter((a) => a.type === "maintenance.prune").length).toBe(1);
+    expect(asked.filter((a) => a.type === "maintenance.prune")).toHaveLength(1);
     await act(async () => {
       release({ events: 3 });
       await pending;

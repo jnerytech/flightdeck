@@ -66,6 +66,12 @@ async function wouldBe(path: string): Promise<string | null> {
   return above && join(above, basename(path));
 }
 
+/** A regular file that has another hard link: writing it in place changes that name's content too. */
+export async function sharesContent({ real }: Located): Promise<boolean> {
+  const info = real === null ? null : await lstat(real).catch(() => null);
+  return info !== null && info.isFile() && info.nlink > 1;
+}
+
 /** A file of the repository and where it really is: refused when a link takes it out of the repository. */
 export async function located(root: string, realRoot: string, path: string): Promise<Located> {
   const full = fileInRoot(root, path);

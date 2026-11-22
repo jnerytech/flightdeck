@@ -5,6 +5,7 @@
  */
 export { AsyncQueue } from "./async-queue.ts";
 export { writeFileAtomic } from "./atomic-write.ts";
+export { isClaudeConfig } from "./claude-config.ts";
 export {
   type CommandResult,
   killTree,

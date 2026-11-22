@@ -114,6 +114,34 @@ describe("regras-mensagens-ui: who may message whom, retention and paused pairs 
     expect(button?.getAttribute("aria-describedby")).toBe(reason?.id ?? "?");
   });
 
+  test("Salvar retenção is live only for a new whole number of days, and says why when it is not (#3844)", async () => {
+    const { lastSet } = await open();
+    const save = () =>
+      screen.queryByRole("button", { name: "Salvar retenção" }) as HTMLButtonElement | null;
+    const why = () =>
+      document.getElementById(save()?.getAttribute("aria-describedby") ?? "")?.textContent;
+    const seen: Array<[string, boolean | undefined, string | undefined]> = [];
+    seen.push(["30", save()?.disabled, why()]);
+    for (const typed of ["7", "30", "", "0"]) {
+      await change("Retenção (dias)", typed);
+      seen.push([typed, save()?.disabled, save()?.disabled ? why() : undefined]);
+    }
+    const same = "Altere o número de dias para salvar.";
+    const bad = "Informe um número inteiro de dias, de 1 em diante.";
+    expect(seen).toEqual([
+      ["30", true, same],
+      ["7", false, undefined],
+      ["30", true, same],
+      ["", true, bad],
+      ["0", true, bad],
+    ]);
+    await change("Retenção (dias)", "7");
+    await click("Salvar retenção");
+    await settle(() => (lastSet()?.policy as typeof POLICY | undefined)?.retentionDays === 7);
+    await settle(() => save()?.disabled === true);
+    expect(save()?.disabled).toBe(true);
+  });
+
   test("removing an exception and saving the retention keep every other field", async () => {
     const { lastSet } = await open();
     await click("Remover a exceção de host pc para projeto app");

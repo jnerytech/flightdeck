@@ -2,7 +2,7 @@ import type { SessionRecap } from "@flightdeck/protocol";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { AdrDraftDialog, useTight } from "@/features/sessions/ui.ts";
+import { AdrDraftDialog, useTightBands } from "@/features/sessions/ui.ts";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { Inline, Panel, Stack } from "@/shared/layout/index.ts";
@@ -90,9 +90,10 @@ export function RecapPanel(
   const seenKey = `${hostId}/${claudeSessionId}`;
   const [firstSeen] = useState(() => !SEEN.has(seenKey));
   // In a short area (a 720x480 window) it starts folded even then: the conversation needs the
-  // room (#232). Once the person opens or folds it, their choice holds.
+  // room (#232), and in an area under 700 px (a 640x800 window's is about 642 px) too (#3835).
+  // Once the person opens or folds it, their choice holds.
   // So while a request waits for the person (#488): the request card needs the room.
-  const short = useTight();
+  const short = useTightBands();
   const [chosen, setChosen] = useState<boolean | null>(null);
   const open = chosen ?? (firstSeen && !short);
   useEffect(() => {

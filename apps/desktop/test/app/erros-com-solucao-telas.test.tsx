@@ -51,6 +51,12 @@ describe("erros-com-solucao: refusals shown by forms", () => {
     } as unknown as AppStore;
     const view = render(<MessagingRulesSection store={store} hostId="h" hostName="alfa" />);
     await uiIdle();
+    // Saving the same 30 days is not offered (#3844): a new number is what reaches the host.
+    const days = view.container.querySelector("input[type=number]") as HTMLInputElement | null;
+    expect(days).not.toBeNull();
+    await act(async () => {
+      fireEvent.change(days as HTMLElement, { target: { value: "7" } });
+    });
     await press(view, "Salvar retenção");
     expect(view.container.textContent).toContain(`${TEXT} sessão em uso`);
   });

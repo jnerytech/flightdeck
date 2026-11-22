@@ -50,6 +50,8 @@ então as edições feitas desde aquele rewind se perdem. O daemon recusa com sa
 turno, e quando não há nada para desfazer. Se a conexão cair depois de o pedido sair, o comando diz que os arquivos
 podem ou não ter sido devolvidos e sai com `2`: olhe os arquivos com `preview` e `snapshots list` antes de tentar de novo.
 
+Um rewind que mudaria um arquivo que o Claude Code lê como configuração (qualquer coisa numa pasta `.claude`, um `CLAUDE.md`, um `CLAUDE.local.md` ou um `.mcp.json`) ou um arquivo que tem outro hard link exige uma conexão próxima (este computador ou a Tailscale): por uma distante o daemon recusa com `transport_refused` antes de escrever qualquer coisa. O mesmo vale para uma bifurcação que volta os arquivos antes (`session.fork` com um turno de volta). Qualquer outro rewind funciona de qualquer lugar.
+
 O shell de uma sessão não roda `rewind apply` nem `rewind undo` sem a pessoa aprovar no app.
 
 ## fd trace

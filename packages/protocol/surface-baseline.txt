@@ -1554,6 +1554,7 @@ Command[type=approval.challenge].payload|3.command="project.harness.apply"
 Command[type=approval.challenge].payload|3.command="project.trust.set"
 Command[type=approval.challenge].payload|3.command="roots.add"
 Command[type=approval.challenge].payload|3.command="snippets.trust"
+Command[type=approval.challenge].payload|3.command="vault.rules.set"
 Command[type=approval.challenge].payload|3.purpose
 Command[type=approval.challenge].payload|3.purpose=="command"
 Command[type=approval.challenge].type
@@ -4308,6 +4309,10 @@ Command[type=vault.rules.preview].type
 Command[type=vault.rules.preview].type=="vault.rules.preview"
 Command[type=vault.rules.set].id
 Command[type=vault.rules.set].payload
+Command[type=vault.rules.set].payload.proof.keyId
+Command[type=vault.rules.set].payload.proof.nonce
+Command[type=vault.rules.set].payload.proof.signature
+Command[type=vault.rules.set].payload.proof?
 Command[type=vault.rules.set].payload.rules
 Command[type=vault.rules.set].payload.secretId
 Command[type=vault.rules.set].payload.tags?

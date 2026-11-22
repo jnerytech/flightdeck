@@ -21,6 +21,7 @@ import {
 import { git, must } from "../git/index.ts";
 import {
   FlightdeckError,
+  isClaudeConfig,
   isInside,
   readRegularSized,
   refArg,
@@ -29,8 +30,14 @@ import {
 } from "../kernel/index.ts";
 import { credential } from "../permissions/index.ts";
 import type { Changes } from "./changes.ts";
-import { isClaudeConfig } from "./domain/claude-config.ts";
-import { firstStep, isGitDir, type Located, located, refuseCredential } from "./paths.ts";
+import {
+  firstStep,
+  isGitDir,
+  type Located,
+  located,
+  refuseCredential,
+  sharesContent,
+} from "./paths.ts";
 import { type SearchOptions, searchRepository } from "./search.ts";
 
 /** What a path that cannot be looked at reads as. */
@@ -193,19 +200,30 @@ export class ReviewFiles {
     return searchRepository(real, search, { ...this.opts.search, ...(signal ? { signal } : {}) });
   }
 
-  /** Runs `guard` when the file shapes Claude Code's sessions: by its path, or (a file not there yet too) by where its links lead. */
-  private guardClaudeConfig(
-    where: { realRoot: string; landing: string },
+  /**
+   * Runs `guard` when the file shapes Claude Code's sessions: by its path or by where its links lead
+   * (a file not there yet too). `inPlace` is for a write that keeps the file's inode: another hard
+   * link then shares the content, so the file may be a settings file under another name.
+   */
+  private async guardClaudeConfig(
+    where: Located,
     path: string,
     guard?: () => void,
-  ): void {
-    if (isClaudeConfig(path) || isClaudeConfig(relative(where.realRoot, where.landing))) guard?.();
+    inPlace = false,
+  ): Promise<void> {
+    if (
+      isClaudeConfig(path) ||
+      isClaudeConfig(relative(where.realRoot, where.landing)) ||
+      (inPlace && (await sharesContent(where)))
+    )
+      guard?.();
   }
 
   /**
    * Writes only when the file still has `expectedHash`; otherwise `file_conflict`. `guard` runs
-   * when the file shapes Claude Code's sessions (`isClaudeConfig`), by the path asked for or by where its links
-   * lead (or would lead, for a file not there yet), before anything is read or changed: it throws to refuse.
+   * when the file shapes Claude Code's sessions (`isClaudeConfig`), by the path asked for, by where its links
+   * lead (or would lead, for a file not there yet) or because another hard link shares its content,
+   * before anything is read or changed: it throws to refuse.
    */
   async write(
     target: string,
@@ -216,7 +234,7 @@ export class ReviewFiles {
   ): Promise<Omit<FileContent, "text">> {
     const where = await this.writable(target, path);
     refuseCredential(where, path);
-    this.guardClaudeConfig(where, path, guard);
+    await this.guardClaudeConfig(where, path, guard, true);
     const { full } = where;
     const bytes = Buffer.from(text, "utf8");
     if (bytes.length > MAX_BYTES) {
@@ -254,7 +272,7 @@ export class ReviewFiles {
     }
     const { root, base } = await this.opts.changes.resolve(target);
     const where = await this.writable(target, path);
-    this.guardClaudeConfig(where, path, guard);
+    await this.guardClaudeConfig(where, path, guard);
     const { full } = where;
     await this.pruneTrash();
     let copy: string | null = null;
@@ -316,7 +334,7 @@ export class ReviewFiles {
       );
     }
     const where = await this.writable(target, path);
-    this.guardClaudeConfig(where, path, guard);
+    await this.guardClaudeConfig(where, path, guard, true);
     const { full } = where;
     if (undo.copy) {
       await mkdir(dirname(full), { recursive: true });

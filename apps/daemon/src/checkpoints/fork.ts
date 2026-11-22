@@ -45,7 +45,11 @@ export class Forker {
     },
   ) {}
 
-  async fork(request: ForkRequest): Promise<ForkResult> {
+  /**
+   * `guard` is handed to the rewind that `rewindTurn` asks for, so a fork puts back Claude Code's
+   * settings only where `rewind.apply` would (#3825).
+   */
+  async fork(request: ForkRequest, guard?: () => void): Promise<ForkResult> {
     const fork = this.opts.runtime.forkSession;
     if (!fork)
       throw new FlightdeckError(
@@ -70,7 +74,7 @@ export class Forker {
     const cwd = await resolveAllowedCwd(request.cwd, this.opts.allowedRoots);
     if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     if (request.rewindTurn !== undefined) {
-      await this.opts.rewinder?.apply(request.claudeSessionId, request.rewindTurn, true);
+      await this.opts.rewinder?.apply(request.claudeSessionId, request.rewindTurn, true, guard);
     }
     const { sessionId: claudeSessionId } = await fork.call(
       this.opts.runtime,

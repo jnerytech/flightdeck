@@ -29,6 +29,7 @@ import {
   REACH_VIEWPORTS,
 } from "../lib/e2e/journeys.ts";
 import { ensureOnline } from "../lib/e2e/online.ts";
+import { projectScopeName } from "../lib/e2e/scope-name.ts";
 import {
   BARS,
   confirmGaps,
@@ -2447,9 +2448,12 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await open_.first().waitFor({ timeout: WAIT });
     const label = (await open_.first().textContent())?.trim() ?? "";
     await open_.first().click();
-    // One project, one label (#881): Costs' Data from menu names it as Home does (#126 slice 4).
+    // One project, one label (#881): Costs' Data from menu names it as Home does (#126 slice 4). A host
+    // that reports after Home was read adds its name to the label, so the menu may say more, never less.
     await c.page
-      .getByRole("button", { name: c.t("scope.menu", { scope: label }), exact: true })
+      .getByRole("button", {
+        name: projectScopeName((scope) => c.t("scope.menu", { scope }), label),
+      })
       .waitFor({ timeout: WAIT });
   },
 

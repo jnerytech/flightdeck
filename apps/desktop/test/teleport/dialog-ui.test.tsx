@@ -503,13 +503,13 @@ describe("teleport-dialog-ui: the dialog says why it cannot go on (#3725)", () =
     test(`${lang}: with no host to move to, the dialog says so and offers no select or Continue`, async () => {
       const { calls } = open(lang, SUMMARY, false, []);
       expect(await shows(why.none)).toBe(true);
-      expect(screen.queryByRole("combobox", { name: t.host }) === null).toBe(true);
-      expect(screen.queryByRole("button", { name: t.next }) === null).toBe(true);
+      expect(screen.queryByRole("combobox", { name: t.host })).toBeNull();
+      expect(screen.queryByRole("button", { name: t.next })).toBeNull();
       // The dialog's own X has the same name: the form's button is the one that submits.
       const close = screen
         .queryAllByRole("button", { name: lang === "en" ? "Close" : "Fechar" })
         .find((b) => b.getAttribute("type") === "submit");
-      expect(close !== undefined).toBe(true);
+      expect(close).toBeDefined();
       await act(async () => {
         fireEvent.click(close as HTMLElement);
       });

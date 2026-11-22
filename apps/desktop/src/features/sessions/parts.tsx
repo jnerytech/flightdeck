@@ -17,6 +17,17 @@ const NARROW_HEADER = 560;
 const SHORT_AREA = 600;
 
 /**
+ * Below this height of the session's area the two bands over the conversation, the not-trusted
+ * notice and the summary, start tight: the notice is one line and the summary folded. A 640x800
+ * window's area is about 642 px, and with both bands in full the conversation had about 210 px
+ * (#3835). The header and the composer keep their roomy form up to `SHORT_AREA`.
+ */
+const BAND_AREA = 700;
+
+/** The area is under `BAND_AREA` high: the bands over the conversation start tight. */
+const LowArea = createContext(false);
+
+/**
  * Whether the conversation needs the room: the area is short, or a request waits for the person
  * (issue #488). The header, the not-trusted notice and the summary then take one line each, so the
  * request card stays whole.
@@ -24,10 +35,17 @@ const SHORT_AREA = 600;
 const TightArea = createContext(false);
 
 /** The area is short or a request waits: what the bands over the conversation read. */
-export function useTight(): boolean {
+function useTight(): boolean {
   const short = useContext(ShortArea);
   const tight = useContext(TightArea);
   return short || tight;
+}
+
+/** What the notice and the summary read: the area is low (under `BAND_AREA`), short, or a request waits. */
+export function useTightBands(): boolean {
+  const low = useContext(LowArea);
+  const tight = useTight();
+  return low || tight;
 }
 
 /** A session's title, its gray line and its controls, over the timeline. */
@@ -259,12 +277,15 @@ export function SessionPane(
   const box = useRef<HTMLElement>(null);
   const height = useHeight(box);
   const short = height > 0 && height < SHORT_AREA;
+  const low = height > 0 && height < BAND_AREA;
   return (
     <section ref={box} className="flex h-full min-h-0 flex-col">
       <ShortArea.Provider value={short}>
-        <TightArea.Provider value={short || props.waiting === true}>
-          {props.children}
-        </TightArea.Provider>
+        <LowArea.Provider value={low}>
+          <TightArea.Provider value={short || props.waiting === true}>
+            {props.children}
+          </TightArea.Provider>
+        </LowArea.Provider>
       </ShortArea.Provider>
     </section>
   );
