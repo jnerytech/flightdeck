@@ -378,12 +378,38 @@ describe("approval devices panel: the enrolled devices (#3439)", () => {
     expect(screen.queryByRole("button", { name: "Revoke Laptop" })).toBeNull();
   });
 
-  test("dropping this device's key is offered when it has one, and the list is read again", async () => {
+  test("dropping this device's key asks first, saying what it costs, and nothing is removed before the answer", async () => {
     const { calls } = panel([HERE, { ...HERE, thisKeyId: null }]);
     await settleMaybe(
       () => screen.queryByRole("button", { name: "Remove this device's key" }) !== null,
     );
     await press("Remove this device's key");
+    const dialog = screen.queryByRole("alertdialog");
+    expect(dialog).not.toBeNull();
+    expect(dialog?.textContent).toContain("can no longer approve");
+    expect(dialog?.textContent).toContain("until another enrolled device revokes it");
+    expect(calls).toEqual([]);
+    await act(async () => {
+      fireEvent.click(within(dialog as HTMLElement).getByRole("button", { name: "Cancel" }));
+    });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(calls).toEqual([]);
+    expect(screen.queryByRole("button", { name: "Remove this device's key" })).not.toBeNull();
+  });
+
+  test("confirming the question drops this device's key and the list is read again", async () => {
+    const { calls } = panel([HERE, { ...HERE, thisKeyId: null }]);
+    await settleMaybe(
+      () => screen.queryByRole("button", { name: "Remove this device's key" }) !== null,
+    );
+    await press("Remove this device's key");
+    const dialog = screen.queryByRole("alertdialog");
+    expect(dialog).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(
+        within(dialog as HTMLElement).getByRole("button", { name: "Remove this device's key" }),
+      );
+    });
     await settleMaybe(() => screen.queryByText("This device's key was removed.") !== null);
     expect(calls).toEqual(["removeLocal:"]);
     expect(screen.queryByRole("button", { name: "Remove this device's key" })).toBeNull();
