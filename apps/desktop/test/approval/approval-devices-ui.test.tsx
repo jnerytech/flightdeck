@@ -559,3 +559,73 @@ describe("approval devices panel: a change the host announced (#3477)", () => {
     expect(listening()).toBe(false);
   });
 });
+
+describe("approval devices panel: a result sits by its section and the focus stays in the panel (#4156)", () => {
+  /** True when `first` comes before `second` in the page. */
+  const before = (first: HTMLElement | null, second: HTMLElement | null) =>
+    first !== null && second !== null && (first.compareDocumentPosition(second) & 4) !== 0; // 4 = FOLLOWING
+  const focusAndPress = async (name: string) => {
+    (screen.queryByRole("button", { name }) as HTMLButtonElement).focus();
+    await press(name);
+  };
+
+  test("a revoke is said next to the list, above the add-device section, and the focus is kept in the panel", async () => {
+    const gone: Status = { ...HERE, keys: [{ ...KEY, keyId: "k1" }] };
+    panel([HERE, gone]);
+    await settleMaybe(() => screen.queryByRole("button", { name: "Revoke Laptop" }) !== null);
+    await focusAndPress("Revoke Laptop");
+    await settleMaybe(() => screen.queryByText("Device revoked.") !== null);
+    const said = screen.queryByText("Device revoked.");
+    expect(before(said, screen.queryByText("Add another device"))).toBe(true);
+    expect(before(screen.queryByLabelText("Enrolled devices"), said)).toBe(true);
+    const held = document.activeElement as HTMLElement;
+    expect(held !== document.body && held.contains(said)).toBe(true); // NOSONAR: a failed not.toBe(body) prints the whole DOM node
+  });
+
+  test("a refused revoke is an alert next to the list and its button can be pressed again", async () => {
+    panel([HERE], "en", [new Error("The host refused.")]);
+    await settleMaybe(() => screen.queryByRole("button", { name: "Revoke Laptop" }) !== null);
+    await focusAndPress("Revoke Laptop");
+    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    const alert = screen.queryByRole("alert");
+    expect(alert?.textContent).toContain("The host refused.");
+    expect(before(alert, screen.queryByText("Add another device"))).toBe(true);
+    expect(
+      (screen.queryByRole("button", { name: "Revoke Laptop" }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
+
+  test("dropping this device's key keeps the focus on its result, the button having left", async () => {
+    panel([HERE, { ...HERE, thisKeyId: null }]);
+    await settleMaybe(
+      () => screen.queryByRole("button", { name: "Remove this device's key" }) !== null,
+    );
+    await focusAndPress("Remove this device's key");
+    const dialog = screen.queryByRole("alertdialog");
+    expect(dialog).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(
+        within(dialog as HTMLElement).getByRole("button", { name: "Remove this device's key" }),
+      );
+    });
+    await settleMaybe(() => screen.queryByText("This device's key was removed.") !== null);
+    const held = document.activeElement as HTMLElement;
+    expect(
+      held !== document.body && held.contains(screen.queryByText("This device's key was removed.")),
+    ).toBe(true); // NOSONAR: a failed not.toBe(body) prints the whole DOM node
+  });
+
+  test("enrolling says it where the form was, above the add-device section, and keeps the focus there", async () => {
+    panel([OFF, HERE]);
+    await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
+    type("Name of this device", "phone");
+    type("One-time code", "abc");
+    (screen.queryByLabelText("One-time code") as HTMLElement).focus();
+    await press("Enroll");
+    await settleMaybe(() => screen.queryByText("This device is enrolled.") !== null);
+    const said = screen.queryByText("This device is enrolled.");
+    expect(before(said, screen.queryByText("Add another device"))).toBe(true);
+    const held = document.activeElement as HTMLElement;
+    expect(held !== document.body && held.contains(said)).toBe(true); // NOSONAR: a failed not.toBe(body) prints the whole DOM node
+  });
+});
