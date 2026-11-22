@@ -89,7 +89,11 @@ export function NewSecretForm(
             setShown(false);
             // A one-line input drops the line breaks of what it shows but not of what we keep:
             // carrying a pasted key into it would save a different secret than the one on screen.
-            if (MASKED.has(next) && /[\r\n]/.test(value)) setValue("");
+            // A break at the very end is a paste accident, so it goes; one inside empties the box.
+            if (MASKED.has(next)) {
+              const oneLine = value.replace(/[\r\n]+$/, "");
+              setValue(/[\r\n]/.test(oneLine) ? "" : oneLine);
+            }
           }}
         >
           {TYPES.map((option) => (
