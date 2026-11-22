@@ -68,6 +68,8 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   const { t } = store.i18n;
   /** Null until the hosts first answer. */
   const [rows, setRows] = useState<Row[] | null>(null);
+  /** The hosts that did not answer the last load: their messages are missing, which is not "no messages" (#4293). */
+  const [silent, setSilent] = useState<string[]>([]);
   const [status, setStatus] = useState<"" | MessageStatus>("");
   const [text, setText] = useState("");
   const hosts = hostsWith(state.hosts, "messaging");
@@ -76,9 +78,11 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   const load = useCallback(async () => {
     const found = new Map<string, Row>();
     const ids = new Set(hostKey.split("|"));
+    const unanswered: string[] = [];
     await inSequence(store.getState().hosts, async (host) => {
       if (!ids.has(host.id)) return;
       const result = await store.hostCommand(host.id, "messages.list", {});
+      if (!result) unanswered.push(host.name);
       for (const message of result?.messages ?? []) {
         // A relayed message is on both daemons: the recipient's copy has the final state.
         const seen = found.get(message.id);
@@ -87,6 +91,7 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
         }
       }
     });
+    setSilent(unanswered);
     setRows(
       [...found.values()].sort((a, b) => b.message.createdAt.localeCompare(a.message.createdAt)),
     );
@@ -174,8 +179,16 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
           {t("conversationsUi.paused", { a: alert.from, b: alert.to })} <RulesLink store={store} />
         </InlineNotice>
       ))}
+      {silent.length > 0 && (
+        <InlineNotice tone={rows?.length === 0 ? "error" : "warn"}>
+          {t("conversationsUi.silent", { hosts: silent.join(", ") })}{" "}
+          <ActionButton variant="outline" size="sm" onClick={load}>
+            {t("conversationsUi.retry")}
+          </ActionButton>
+        </InlineNotice>
+      )}
       {rows === null && <LoadingState label={t("conversationsUi.loading")} />}
-      {rows?.length === 0 && (
+      {rows?.length === 0 && silent.length === 0 && (
         <EmptyState
           icon={MessagesSquare}
           title={t("conversationsUi.empty")}

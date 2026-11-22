@@ -339,6 +339,8 @@ export const en: Dictionary = {
     to: "to",
     open: "Open the session",
     openNamed: "Open the session of {name}",
+    silent: "{hosts} did not answer, so its messages are not listed.",
+    retry: "Try again",
     hostGone: "That host is not connected.",
     paused: "These sessions are paused for a message loop: {a} and {b}.",
     statuses: {
