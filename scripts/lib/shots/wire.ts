@@ -19,7 +19,8 @@ export type WireRule =
   | { command: string; hold: true }
   | { command: string; reject: string }
   | { command: string; stall: true }
-  | { command: string; without: Record<string, string[]> };
+  | { command: string; without: Record<string, string[]> }
+  | { command: string; with: Record<string, string[]> };
 
 /**
  * A rewriter that applies `rules` to the commands the app asks. It goes into the page as its source
