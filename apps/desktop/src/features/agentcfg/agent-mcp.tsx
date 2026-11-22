@@ -1,12 +1,13 @@
 import type { McpLiveStatus, McpServerView } from "@flightdeck/protocol";
 import { Plus } from "lucide-react";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { refusalText } from "@/i18n/errors.ts";
 import { AppDialogContent, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { useBusy } from "@/shared/hooks/index.ts";
 import {
@@ -19,7 +20,7 @@ import {
   NativeSelect,
 } from "@/shared/layout/index.ts";
 import { isInside } from "@/shared/lib/index.ts";
-import type { AppStore } from "../../lib/app-store.ts";
+import type { AppStore, HostResult } from "../../lib/app-store.ts";
 import {
   commandLine,
   draftFromServer,
@@ -35,6 +36,11 @@ const LIVE_SESSION = new Set(["starting", "running", "awaiting_permission", "idl
 
 const TRANSPORTS: McpDraft["transport"][] = ["stdio", "http", "sse"];
 
+/** The fields of the form the person has left: a missing value is told only after that. */
+type Left = Record<"name" | "command" | "url", boolean>;
+const NONE_LEFT: Left = { name: false, command: false, url: false };
+const ALL_LEFT: Left = { name: true, command: true, url: true };
+
 interface TestResult {
   tools: string[];
   resources: string[];
@@ -47,6 +53,13 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
   const [servers, setServers] = useState<McpServerView[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [draft, setDraft] = useState<McpDraft | null>(null);
+  const [left, setLeft] = useState<Left>(NONE_LEFT);
+  const [formRefused, setFormRefused] = useState<string | null>(null);
+  const [refused, setRefused] = useState<Record<string, string>>({});
+  // After a removal, the server whose row takes the focus (null: the Add server button).
+  const [focusAfter, setFocusAfter] = useState<{ name: string | null } | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const addRef = useRef<HTMLButtonElement>(null);
   const saving = useBusy();
   const [removing, setRemoving] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<{ name: string; line: string; url: boolean } | null>(
@@ -92,59 +105,105 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
     void load();
   }, [load]);
 
+  // A removed row leaves the focus on nothing: it goes to the next row, else the one before, else Add server.
+  useEffect(() => {
+    if (!focusAfter) return;
+    const row = [...(listRef.current?.children ?? [])].find(
+      (li) => li.getAttribute("aria-label") === focusAfter.name,
+    );
+    const control = row?.querySelector<HTMLElement>(
+      'button:not([disabled]), [role="switch"]:not([disabled])',
+    );
+    (control ?? addRef.current)?.focus();
+    setFocusAfter(null);
+  }, [focusAfter]);
+
+  /** A refusal stays in the row it came from until the next try starts. */
+  const refuse = (name: string, result: Exclude<HostResult<unknown>, { ok: true }>) =>
+    setRefused((all) => ({ ...all, [name]: refusalText(result.code, result.message, t, result) }));
+  const clearRefusal = (name: string) => setRefused(({ [name]: _gone, ...rest }) => rest);
+
   const toggle = async (name: string, enabled: boolean) => {
-    const result = await store.hostCommand(hostId, "mcp.toggle", {
+    clearRefusal(name);
+    const result = await store.hostRequest(hostId, "mcp.toggle", {
       projectId,
       name,
       enabled,
       confirm: true,
       ...(liveSessionId ? { sessionId: liveSessionId } : {}),
     });
-    if (result) setServers(result.servers);
+    if (result.ok) setServers(result.data.servers);
+    else refuse(name, result);
     await loadLive();
+  };
+
+  const openForm = (next: McpDraft) => {
+    setLeft(NONE_LEFT);
+    setFormRefused(null);
+    setDraft(next);
   };
 
   const save = async () => {
     if (!draft) return;
-    const result = await store.hostCommand(hostId, "mcp.save", {
+    setFormRefused(null);
+    const result = await store.hostRequest(hostId, "mcp.save", {
       projectId,
       server: serverFromDraft(draft),
       confirm: true,
     });
-    if (result) {
-      setServers(result.servers);
+    if (result.ok) {
+      setServers(result.data.servers);
       setDraft(null);
+    } else {
+      setFormRefused(refusalText(result.code, result.message, t, result));
     }
   };
 
   const remove = async (name: string) => {
     setRemoving(null);
-    const result = await store.hostCommand(hostId, "mcp.remove", {
+    clearRefusal(name);
+    const at = servers?.findIndex((server) => server.name === name) ?? -1;
+    const neighbour = servers?.[at + 1] ?? servers?.[at - 1];
+    const result = await store.hostRequest(hostId, "mcp.remove", {
       projectId,
       name,
       confirm: true,
     });
-    if (result) setServers(result.servers);
+    if (result.ok) {
+      setServers(result.data.servers);
+      setFocusAfter({ name: neighbour?.name ?? null });
+    } else {
+      refuse(name, result);
+    }
   };
 
   /** Step one: only what would run. Nothing starts until the user confirms it. */
   const askToTest = async (name: string) => {
-    const result = await store.hostCommand(hostId, "mcp.test", { projectId, name });
-    if (result && "preview" in result) {
-      setConfirming({ name, line: commandLine(result.preview), url: !!result.preview.url });
+    clearRefusal(name);
+    const result = await store.hostRequest(hostId, "mcp.test", { projectId, name });
+    if (!result.ok) return refuse(name, result);
+    if ("preview" in result.data) {
+      setConfirming({
+        name,
+        line: commandLine(result.data.preview),
+        url: !!result.data.preview.url,
+      });
     }
   };
 
   const runTest = async (name: string) => {
     setConfirming(null);
     setTesting(name);
-    const result = await store.hostCommand(hostId, "mcp.test", {
+    clearRefusal(name);
+    const result = await store.hostRequest(hostId, "mcp.test", {
       projectId,
       name,
       confirm: true,
     });
     setTesting(null);
-    if (result && "tools" in result) setResults((all) => ({ ...all, [name]: result }));
+    if (!result.ok) return refuse(name, result);
+    const tested = result.data;
+    if ("tools" in tested) setResults((all) => ({ ...all, [name]: tested }));
   };
 
   const origin = (server: McpServerView) => {
@@ -164,7 +223,13 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
     value: draft?.[key] ?? "",
     onChange: (e: { target: { value: string } }) =>
       setDraft((d) => (d ? { ...d, [key]: e.target.value } : d)),
+    onBlur: () => setLeft((all) => ({ ...all, [key]: true })),
   });
+  // What is missing is told once its field was left or a save was tried; until then Save's reason says it quietly.
+  const missing = (key: keyof Left, need: "needName" | "needCommand" | "needUrl") =>
+    left[key] && problem === need ? t(`agent.mcp.${need}`) : undefined;
+  const missingText =
+    missing("name", "needName") ?? missing("command", "needCommand") ?? missing("url", "needUrl");
   const area = (key: "args" | "env" | "headers") => ({
     value: draft?.[key] ?? "",
     rows: 3,
@@ -181,14 +246,14 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
         </p>
       )}
       <div>
-        <Button variant="outline" size="sm" onClick={() => setDraft(emptyDraft())}>
+        <Button ref={addRef} variant="outline" size="sm" onClick={() => openForm(emptyDraft())}>
           <Plus aria-hidden="true" />
           {t("agent.mcp.add")}
         </Button>
       </div>
       {servers.length === 0 && <EmptyState title={t("agent.mcp.empty")} />}
       {servers.length > 0 && (
-        <ul aria-label={t("agent.mcp.list")} className="flex flex-col gap-2">
+        <ul ref={listRef} aria-label={t("agent.mcp.list")} className="flex flex-col gap-2">
           {servers.map((server) => {
             const result = results[server.name];
             const status = live.find((entry) => entry.name === server.name);
@@ -235,7 +300,7 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setDraft(draftFromServer(server))}
+                        onClick={() => openForm(draftFromServer(server))}
                       >
                         {t("agent.mcp.edit", { name: server.name })}
                       </Button>
@@ -251,6 +316,11 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
                 {status?.status === "failed" && status.error && (
                   <p role="alert" className="text-destructive text-xs">
                     {status.error}
+                  </p>
+                )}
+                {refused[server.name] && (
+                  <p role="alert" className="text-destructive text-xs">
+                    {refused[server.name]}
                   </p>
                 )}
                 {result && (
@@ -307,9 +377,15 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
                 : t("agent.mcp.formNew")}
             </DialogTitle>
           </DialogHeader>
-          <Form variant="dialog" onSubmit={() => saving.run(save)}>
+          <Form
+            variant="dialog"
+            onSubmit={() => {
+              setLeft(ALL_LEFT);
+              if (problem === null) saving.run(save);
+            }}
+          >
             <InlineNotice>{t("agent.mcp.versioned")}</InlineNotice>
-            <Field label={t("agent.mcp.name")}>
+            <Field label={t("agent.mcp.name")} error={missing("name", "needName")}>
               {(control) => <Input {...control} disabled={draft?.editing} {...field("name")} />}
             </Field>
             <Field label={t("agent.mcp.transport")}>
@@ -333,7 +409,7 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
             </Field>
             {draft?.transport === "stdio" ? (
               <>
-                <Field label={t("agent.mcp.command")}>
+                <Field label={t("agent.mcp.command")} error={missing("command", "needCommand")}>
                   {(control) => <Input {...control} {...field("command")} />}
                 </Field>
                 <Field label={t("agent.mcp.args")}>
@@ -345,7 +421,7 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
               </>
             ) : (
               <>
-                <Field label={t("agent.mcp.url")}>
+                <Field label={t("agent.mcp.url")} error={missing("url", "needUrl")}>
                   {(control) => <Input {...control} {...field("url")} />}
                 </Field>
                 <Field label={t("agent.mcp.headers")}>
@@ -353,15 +429,17 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
                 </Field>
               </>
             )}
-            {problem && (
-              <InlineNotice tone={problem === "retype" ? "warn" : "error"}>
-                {t(`agent.mcp.${problem}`)}
-              </InlineNotice>
-            )}
+            {problem === "retype" && <InlineNotice>{t("agent.mcp.retype")}</InlineNotice>}
+            {formRefused && <InlineNotice tone="error">{formRefused}</InlineNotice>}
             <FormActions
               submit={t("agent.mcp.save")}
               busy={saving.busy}
               disabled={problem !== null}
+              disabledReason={
+                problem && problem !== "retype" && !missingText
+                  ? t(`agent.mcp.${problem}`)
+                  : undefined
+              }
               cancel={t("common.cancel")}
               onCancel={() => setDraft(null)}
             />

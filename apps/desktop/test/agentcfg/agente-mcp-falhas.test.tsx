@@ -201,12 +201,16 @@ describe.each(["en", "pt-BR"] as const)("the MCP tab, forms and refusals (%s)", 
     await press(w.run);
     const said = within(row("eco")).queryByRole("alert")?.textContent ?? "";
     await press(w.test("eco"));
+    // The confirm dialog of the next try hides the row from role queries: look in the DOM.
+    const listed = [...document.querySelectorAll("li")].find(
+      (li) => li.getAttribute("aria-label") === "eco",
+    );
     expect({
       said: said.includes("cannot-run"),
-      next: within(row("eco")).queryByRole("alert"),
+      next: listed?.querySelector("[role=alert]") === null,
     }).toEqual({
       said: true,
-      next: null,
+      next: true,
     });
   });
 
