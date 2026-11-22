@@ -235,7 +235,7 @@ describe.skipIf(me === null)("flightdeckd session teleport (issue #3704)", () =>
     expect(run.err.join("\n")).toContain("no repo at /srv/api");
     expect(text).not.toContain(TARGET_TOKEN);
     expect(text).not.toContain(LOCAL_TOKEN);
-    expect(text.includes("\u001b")).toBe(false);
+    expect(text).not.toContain("\u001b");
     expect(asked(dst).slice(-1)).toEqual([["teleport.abort", { id: "recv-1" }]]);
     expect(types(src)).toContain("teleport.cancel");
     expect(types(src)).not.toContain("session.meta.set");
