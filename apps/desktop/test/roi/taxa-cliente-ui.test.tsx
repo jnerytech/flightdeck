@@ -95,6 +95,49 @@ for (const [lang, t] of [
       expect(rateForm().queryByText(t.roiUi.clientRate.cleared)).not.toBeNull();
     });
 
+    test("a rate saved elsewhere can still be cleared, and the same number typed another way is no change (#3875)", async () => {
+      const { store, clientId } = await clientsPage(lang, { roi: true });
+      await settle(() => screen.queryByLabelText(t.roiUi.clientRate.label) !== null);
+      const save = () =>
+        screen.getByRole("button", { name: t.roiUi.clientRate.save }) as HTMLButtonElement;
+      const type = async (value: string) => {
+        await act(async () => {
+          fireEvent.change(screen.getByLabelText(t.roiUi.clientRate.label), {
+            target: { value },
+          });
+        });
+      };
+      await act(async () => {
+        store.roi.setClientRate(clientId, 35);
+      });
+      await type("1");
+      await type("");
+      expect(save().disabled).toBe(false);
+      await type("35");
+      expect(save().disabled).toBe(true);
+      await type("35.0");
+      expect(save().disabled).toBe(true);
+    });
+
+    test("the refusal of a bad rate goes away with the next edit (#3875)", async () => {
+      await clientsPage(lang, { roi: true });
+      await settle(() => screen.queryByLabelText(t.roiUi.clientRate.label) !== null);
+      const type = async (value: string) => {
+        await act(async () => {
+          fireEvent.change(screen.getByLabelText(t.roiUi.clientRate.label), {
+            target: { value },
+          });
+        });
+      };
+      await type("abc");
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: t.roiUi.clientRate.save }));
+      });
+      expect(screen.queryByText(t.roiUi.clientRate.invalid)).not.toBeNull();
+      await type("3");
+      expect(screen.queryByText(t.roiUi.clientRate.invalid)).toBeNull();
+    });
+
     test("a text that is not a number is refused and nothing is saved", async () => {
       const { store, clientId } = await clientsPage(lang, { roi: true });
       await settle(() => screen.queryByLabelText(t.roiUi.clientRate.label) !== null);
