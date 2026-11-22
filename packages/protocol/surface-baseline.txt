@@ -500,7 +500,11 @@ AutomationAction[type=start_workflow].type=="start_workflow"
 AutomationAction[type=start_workflow].workflow
 AutomationRun.automationId
 AutomationRun.cause
+AutomationRun.causeCode?
+AutomationRun.causeParams?
 AutomationRun.detail
+AutomationRun.detailCode?
+AutomationRun.detailParams?
 AutomationRun.firedAt
 AutomationRun.id
 AutomationRun.status
