@@ -150,7 +150,7 @@
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
-  align-items: center;
+  align-items: start;
   padding: 0.25rem 0;
   border-top: 1px solid var(--border);
   & svg {
@@ -172,6 +172,10 @@
 @utility dep-compact-found {
   min-width: 0;
   overflow-wrap: anywhere;
+  /* The column the name and the word leave is nearly empty here: the text takes its own line. */
+  @media (max-width: 640px) {
+    grid-column: 2 / -1;
+  }
   color: var(--muted-foreground);
   font-size: 0.75rem;
 }
