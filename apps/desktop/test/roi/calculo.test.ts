@@ -206,7 +206,11 @@ describe("roi-calculo: the arithmetic and where each number comes from", () => {
       billed: "US$ 0.00",
       value: "US$ 360.00",
     });
-    expect(by("roiUi.derive.roi")).toEqual({ value: "US$ 360.00", cost: "US$ 12.00", roi: "29.0" });
+    expect(by("roiUi.derive.roi")).toEqual({
+      value: "US$ 360.00",
+      cost: "US$ 12.00",
+      roi: "29.0×",
+    });
   });
 
   test("without a rate the derivation stops at the cost per unit and says nothing about value", () => {

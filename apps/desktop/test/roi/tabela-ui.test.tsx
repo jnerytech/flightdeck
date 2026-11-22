@@ -100,6 +100,12 @@ for (const [lang, t] of [
       expect(byName.blog?.[2]).toBe("0");
       expect(byName.blog?.[4]).toBe("—");
       expect(byName.blog?.[7]).toBe("—");
+      // No estimated hours is an empty figure like any other, one dash (#3900).
+      expect([byName.shop?.[6], byName.blog?.[6], cellsOf(rows.at(-1) as HTMLElement)[6]]).toEqual([
+        "—",
+        "—",
+        "—",
+      ]);
       const footer = rows.at(-1);
       expect(cellsOf(footer as HTMLElement)[0]).toBe(t.roiUi.table.total);
       expect(cellsOf(footer as HTMLElement)[1]).toContain(lang === "en" ? "15.00" : "15,00");
