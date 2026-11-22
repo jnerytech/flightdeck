@@ -39,8 +39,6 @@ export interface Shot {
    * `refuseStatus` refuses its first read, `holdClean` never answers the cleanup, so the print shows Clean busy.
    */
   maintenance?: { refuseStatus?: boolean; holdClean?: boolean };
-  /** #4001: the print is of a screen busy on purpose (a task held in progress): it does not wait for the busy region to clear. */
-  busy?: boolean;
   /** Demo switches added to the address (`update=<version>`: the update card shows). */
   query?: Record<string, string>;
   /** After the screen loads: open the palette, scroll a long list to its end… */
