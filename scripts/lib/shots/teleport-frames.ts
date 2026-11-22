@@ -70,7 +70,7 @@ export function teleportRewriter(refuses = false): FrameRewriter {
     "session.meta.set": () => ({}),
   };
   return {
-    fromApp() {},
+    fromApp: (frame) => frame,
     fromHost: (frame) => frame,
     answer(frame) {
       const message = parse(frame);

@@ -124,7 +124,7 @@ describe("shots-holds: the page's WebSocket", () => {
     const answered = ack("r1", { written: 1 });
     const target = { WebSocket: FakeSocket as unknown as typeof WebSocket };
     installHolds(target, () => ({
-      fromApp() {},
+      fromApp: (frame) => frame,
       fromHost: (frame) => frame,
       answer: (frame) => (frame.includes('"r1"') ? answered : undefined),
     }));
