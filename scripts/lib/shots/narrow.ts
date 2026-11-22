@@ -38,6 +38,10 @@ export const NARROW_SHOTS: readonly string[] = [
   "times-adicionar",
   "times-pausado",
   "times-cota",
+  // #4308: the Quota card's guard row and buttons, with one host and with a shared account.
+  "cota-cartao-quente",
+  "cota-cartao-trava-leitura",
+  "cota-cartao-conta-compartilhada",
   // #1244: Merge PR's confirmation on a card with an open PR.
   "card-merge-pr",
   "workflows-modelos",
