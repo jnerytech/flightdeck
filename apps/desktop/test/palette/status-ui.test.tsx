@@ -32,8 +32,12 @@ const WORDS = {
   },
 } as const;
 
-/** The palette with one online host that has one session; `waiting` puts a history search in flight. */
-function open(lang: "en" | "pt-BR", waiting: boolean | "done" = false) {
+/** The palette with one online host that has one session; `history` puts a history search in the state. */
+type Search = { query: string; hits: unknown[]; waiting: string[]; silent: string[] };
+const SEARCHING: Search = { query: "x", hits: [], waiting: ["h1"], silent: [] };
+const NO_HIT: Search = { query: "x", hits: [], waiting: [], silent: [] };
+
+function open(lang: "en" | "pt-BR", history?: Search) {
   const store = new AppStore(memoryPlatform(false, lang).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   store.palette.load = (async () => {}) as never;
@@ -65,9 +69,7 @@ function open(lang: "en" | "pt-BR", waiting: boolean | "done" = false) {
       },
     ],
     projects: {},
-    search: waiting
-      ? { query: "x", hits: [], waiting: waiting === "done" ? [] : ["h1"], silent: [] }
-      : base.search,
+    search: history ?? base.search,
   } as never as ReturnType<typeof store.getState>;
   render(
     <GlobalSearch
@@ -138,12 +140,39 @@ describe.each(["en", "pt-BR"] as const)("palette status (%s)", (lang) => {
   });
 
   test("a finished history search with no hit says so in the status region", () => {
-    open(lang, "done");
+    open(lang, NO_HIT);
     expect(status()?.textContent === WORDS[lang].historyNone).toBe(true);
   });
 
+  test("text typed after a history search is judged on its own: no stale history line, and its no-match line shows", async () => {
+    open(lang, NO_HIT);
+    await type(lang, "zzzz");
+    expect({
+      says: status()?.textContent === WORDS[lang].none,
+      seen: status() !== null && !status()?.classList.contains("sr-only"),
+    }).toEqual({ says: true, seen: true });
+  });
+
+  test("a history search that found nothing says it in sight, and not while a host stayed silent", async () => {
+    const said = WORDS[lang].historyNone.replace("“x”", "“alfa”");
+    open(lang, { ...NO_HIT, query: "alfa" });
+    await type(lang, "alfa");
+    const first = {
+      says: status()?.textContent === said,
+      seen: status() !== null && !status()?.classList.contains("sr-only"),
+    };
+    cleanup();
+    open(lang, { ...NO_HIT, query: "alfa", silent: ["h1"] });
+    await type(lang, "alfa");
+    expect({ ...first, notWhenSilent: status()?.textContent !== said }).toEqual({
+      says: true,
+      seen: true,
+      notWhenSilent: true,
+    });
+  });
+
   test("the host still searching the history is said in a status region of its own", () => {
-    open(lang, true);
+    open(lang, SEARCHING);
     expect(screen.queryByText(WORDS[lang].searching)?.closest("output") != null).toBe(true);
   });
 });
