@@ -1,4 +1,4 @@
-import type { ChangesResult, DiffFile, ReviewComment } from "@flightdeck/protocol";
+import type { ChangesResult, DiffFile, PrComment, ReviewComment } from "@flightdeck/protocol";
 import { reviewMessage } from "@flightdeck/protocol";
 import { Pencil, RotateCcw } from "lucide-react";
 import {
@@ -22,7 +22,7 @@ import { Stack } from "@/shared/layout/index.ts";
 import { formatBytes } from "@/shared/lib/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { DiffView } from "./diff-view.tsx";
-import { type Selection, select } from "./domain/review.ts";
+import { prCommentsByPath, type Selection, select } from "./domain/review.ts";
 import { FileSessions } from "./file-sessions.tsx";
 import { ReviewList } from "./review-list.tsx";
 
@@ -32,10 +32,11 @@ const FileEditor = lazy(() => import("./file-editor.tsx").then((m) => ({ default
 /** How long the status line about a comment stays: 6 s, by the store's clock. */
 const NOTICE_MS = 6000;
 
-/** What the host offers to take back a revert: the file and when the offer ends. */
+/** What the host offers to take back a revert: the file, when the offer ends and how long it lasts. */
 interface Undo {
   path: string;
   until: number;
+  seconds: number;
 }
 
 /**
@@ -61,6 +62,8 @@ export function ChangesPanel(
     ) => ReactNode;
     /** Where the collected review can be put to be edited and sent (a session's message box). */
     onCompose?: (text: string) => void;
+    /** The PR's comments (a card's): the files that have some show how many, and lead to the first (#4228). */
+    prComments?: readonly PrComment[];
   }>,
 ) {
   const t = useT();
@@ -108,6 +111,15 @@ export function ChangesPanel(
   const refocus = useRef(false);
   const [reverting, setReverting] = useState<string | null>(null);
   const [undo, setUndo] = useState<Undo | null>(null);
+  /** The Revert button that opened the dialog, to give the focus back when it is cancelled or refused. */
+  const opener = useRef<HTMLElement | null>(null);
+  const undoRegion = useRef<HTMLDivElement>(null);
+  const undoButton = useRef<HTMLButtonElement>(null);
+  /** The offer goes: a focus inside it moves to the panel, so it is not lost to the page. */
+  const dropUndo = useCallback(() => {
+    if (undoRegion.current?.contains(document.activeElement)) panel.current?.focus();
+    setUndo(null);
+  }, []);
   const [editing, setEditing] = useState<string | null>(null);
 
   const loadComments = useCallback(async () => {
@@ -153,8 +165,24 @@ export function ChangesPanel(
   const until = undo?.until ?? null;
   useEffect(() => {
     if (until === null) return;
-    return store.later(() => setUndo(null), Math.max(0, until - store.now()));
-  }, [store, until]);
+    return store.later(dropUndo, Math.max(0, until - store.now()));
+  }, [store, until, dropUndo]);
+  // The confirmation leaves the focus where the reverted file's row is going away: the offer takes it.
+  useEffect(() => {
+    if (until === null) return;
+    const now = document.activeElement;
+    // A dialog still on its way out holds the focus too: the offer takes it from there.
+    if (
+      !now ||
+      now === document.body ||
+      now === panel.current ||
+      now === opener.current ||
+      now.closest("[role=alertdialog]")
+    ) {
+      undoButton.current?.focus();
+    }
+    opener.current = null;
+  }, [until]);
 
   const onPick = (path: string, side: ReviewComment["side"], line: number, extend: boolean) => {
     if (!selection && document.activeElement instanceof HTMLElement) {
@@ -212,7 +240,8 @@ export function ChangesPanel(
     setReverting(null);
     const done = await store.hostCommand(hostId, "changes.revert", { target, path, confirm: true });
     if (!done) return;
-    setUndo({ path, until: Date.parse(done.undoUntil) });
+    const until = Date.parse(done.undoUntil);
+    setUndo({ path, until, seconds: Math.max(1, Math.round((until - store.now()) / 1000)) });
     await refresh();
   };
 
@@ -222,7 +251,7 @@ export function ChangesPanel(
       path,
       confirm: true,
     });
-    setUndo(null);
+    dropUndo();
     if (!done) return;
     store.success(t("changes.undone", { path }));
     await refresh();
@@ -319,7 +348,10 @@ export function ChangesPanel(
           variant="ghost"
           size="sm"
           aria-label={t("changes.revert", { path: file.path })}
-          onClick={() => setReverting(file.path)}
+          onClick={(event) => {
+            opener.current = event.currentTarget;
+            setReverting(file.path);
+          }}
         >
           <RotateCcw aria-hidden="true" className="size-4" />
         </Button>
@@ -390,14 +422,26 @@ export function ChangesPanel(
           {t("diff.split")}
         </Button>
       </div>
-      {undo && (
-        <output className="flex items-center gap-2 text-sm">
-          <span>{t("changes.reverted", { path: undo.path })}</span>
-          <Button variant="outline" size="sm" onClick={() => void undoRevert(undo.path)}>
+      {/* The words sit in a status line that is in the page before they arrive; the button stays out of it. */}
+      <div
+        ref={undoRegion}
+        className={cn("flex items-center gap-2 text-sm", undo === null && "sr-only")}
+      >
+        <output>
+          {undo &&
+            `${t("changes.reverted", { path: undo.path })} ${t("changes.undoFor", { n: undo.seconds })}`}
+        </output>
+        {undo && (
+          <Button
+            ref={undoButton}
+            variant="outline"
+            size="sm"
+            onClick={() => void undoRevert(undo.path)}
+          >
             {t("changes.undo")}
           </Button>
-        </output>
-      )}
+        )}
+      </div>
       {changes.files.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("changes.empty")}</p>
       ) : (
@@ -411,6 +455,7 @@ export function ChangesPanel(
             selection={selection}
             onPick={onPick}
             composer={composer}
+            prComments={prCommentsByPath(props.prComments ?? [])}
             {...folder}
           />
         </>
@@ -447,6 +492,13 @@ export function ChangesPanel(
           }`}
           confirmLabel={t("changes.revertConfirm")}
           destructive
+          // The row that opened the dialog goes with a revert: keep the focus where it is until the
+          // offer to undo takes it; a cancel or a refusal puts it back on the button.
+          onRestoreFocus={() => {
+            // The offer to undo may hold the focus already: the row this came from is going away.
+            if (undoRegion.current?.contains(document.activeElement)) return;
+            (opener.current?.isConnected ? opener.current : panel.current)?.focus();
+          }}
           onConfirm={() => void revert(reverting)}
           onCancel={() => setReverting(null)}
         />

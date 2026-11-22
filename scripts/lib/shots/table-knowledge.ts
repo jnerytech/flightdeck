@@ -129,7 +129,7 @@ export function knowledgeShots(ids: DemoIds): Shot[] {
       wire: [
         {
           command: "knowledge.create",
-          deny: "A document with this title already exists in docs/adr.",
+          reject: "A document with this title already exists in docs/adr.",
         },
       ],
       prepare: async (page) => {
@@ -218,7 +218,7 @@ export function knowledgeShots(ids: DemoIds): Shot[] {
       // Change with the host not yet answering: the button is busy and the picker stays.
       name: "projeto-conhecimento-ocupado",
       route,
-      wire: [{ command: "knowledge.setStatus", pending: true }],
+      wire: [{ command: "knowledge.setStatus", stall: true }],
       prepare: async (page) => {
         const panel = await listed(page);
         await panel
@@ -341,7 +341,7 @@ export function memoryShots(ids: DemoIds): Shot[] {
       name: "agente-memoria-desatualizado",
       route,
       wire: [
-        { command: "memory.write", deny: "The file changed on disk." },
+        { command: "memory.write", reject: "The file changed on disk." },
         {
           command: "memory.read",
           data: {

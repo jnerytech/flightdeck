@@ -10,7 +10,7 @@ export interface FrameRewriter {
   followUp?(frame: string): string[];
   /** The host's answer to a frame the app sends, when the print answers for it: the frame then never leaves the page (#3987). */
   answer?(frame: string): string | undefined;
-  /** A frame the app sends that the print swallows with no answer at all: it never leaves the page and nothing comes back (#4236). */
+  /** A frame the app sends that never leaves the page and is never answered: the command stays pending (#4203). */
   swallows?(frame: string): boolean;
 }
 
@@ -115,7 +115,6 @@ export function installHolds(
     override send(data: Parameters<WebSocket["send"]>[0]): void {
       const sent = typeof data === "string" ? this.rewriter.fromApp(data) : data;
       if (typeof sent === "string") {
-        if (this.rewriter.swallows?.(sent)) return;
         const answer = this.rewriter.answer?.(sent);
         if (answer !== undefined) {
           // Never sent: the host would do what the print only shows (#3987).
@@ -125,6 +124,7 @@ export function installHolds(
           return;
         }
       }
+      if (typeof sent === "string" && this.rewriter.swallows?.(sent)) return;
       super.send(sent);
     }
     override addEventListener(

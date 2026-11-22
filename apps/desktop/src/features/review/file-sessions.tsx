@@ -1,9 +1,10 @@
 import type { FileSession } from "@flightdeck/protocol";
 import { History } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/i18n/context";
+import { ErrorState, LoadingState } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
 /** "Sessões que mexeram aqui": which sessions wrote a file, from the transcripts the host indexed. */
@@ -18,22 +19,39 @@ export function FileSessions(
   const t = useT();
   const { store } = props;
   const [sessions, setSessions] = useState<FileSession[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  // An answer that comes after a newer read started (a retry, a reopened popover) is dropped.
+  const read = useRef(0);
   const label = t("changes.sessionsHere", { path: props.path });
-  const load = (open: boolean) => {
-    if (!open) return;
+  const load = () => {
+    const mine = ++read.current;
     setSessions(null);
+    setFailed(false);
     void store
       .hostCommand(props.hostId, "files.sessions", { path: `${props.root}/${props.path}` })
-      .then((result) => setSessions(result?.sessions ?? []));
+      .then((result) => {
+        if (mine !== read.current) return;
+        // A refusal is `null`: it is a failed read, not a file no session edited.
+        if (result === null) setFailed(true);
+        else setSessions(result.sessions);
+      });
   };
   return (
-    <Popover onOpenChange={load}>
+    <Popover onOpenChange={(open) => open && load()}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" aria-label={label} title={label}>
           <History aria-hidden="true" className="size-4" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80">
+        {sessions === null && !failed && <LoadingState label={t("changes.sessionsLoading")} />}
+        {failed && (
+          <ErrorState
+            message={t("changes.sessionsFailed")}
+            retryLabel={t("changes.retry")}
+            onRetry={load}
+          />
+        )}
         {sessions !== null && sessions.length === 0 && (
           <p className="text-muted-foreground text-sm">{t("changes.sessionsNone")}</p>
         )}

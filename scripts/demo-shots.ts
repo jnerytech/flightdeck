@@ -263,7 +263,13 @@ function storageSeed(shot: Shot, lang: string, ids: DemoIds): StorageSeed {
   return {
     clients: shot.clients ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" } : null,
     roi: shot.roi ? DEMO_ROI : null,
-    inbox: shot.inbox ? demoInbox(lang, { hostId: ALFA, requestId: ids.waitingRequest }) : null,
+    inbox: shot.inbox
+      ? demoInbox(
+          lang,
+          { hostId: ALFA, requestId: ids.waitingRequest },
+          shot.inbox === "danger" ? { hostId: ALFA, requestId: ids.dangerRequest } : undefined,
+        )
+      : null,
     finished: shot.finished
       ? demoFinished(
           { hostId: ALFA, sessionId: ids.idleSession, name: "Revisão do PR 128" },

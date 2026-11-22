@@ -157,6 +157,51 @@ describe("shots-wire: a held, a replied, a sequenced and a trimmed command (#415
     ]);
   });
 
+  test("a rejected command is answered in the page with a refusal that carries the rule's text, and a stalled one is held back (#4203)", () => {
+    const wire = wireRewriter([
+      { command: "permission.respond", reject: "not open here" },
+      { command: "session.interrupt", stall: true },
+    ]);
+    const respond = ask("r1", "permission.respond");
+    const interrupt = ask("r2", "session.interrupt");
+    expect([
+      wire.answer?.(respond),
+      wire.answer?.(interrupt),
+      wire.swallows?.(interrupt),
+      wire.swallows?.(respond),
+      wire.swallows?.(ask("r3", "approval.list")),
+    ]).toEqual([
+      JSON.stringify({
+        type: "ack",
+        id: "r1",
+        ok: false,
+        error: { code: "unavailable", message: "not open here" },
+      }),
+      undefined,
+      true,
+      false,
+      false,
+    ]);
+  });
+
+  test("the page's socket sends neither a rejected nor a stalled command, and only the rejected one is answered (#4203)", async () => {
+    const page = { WebSocket: FakeSocket as unknown as typeof WebSocket };
+    new Function(
+      "window",
+      wireScript([
+        { command: "permission.respond", reject: "no" },
+        { command: "session.interrupt", stall: true },
+      ]),
+    )(page);
+    const socket = new page.WebSocket("ws://x") as unknown as FakeSocket;
+    const got: unknown[] = [];
+    socket.addEventListener("message", (event) => got.push(event.data));
+    socket.send(ask("r1", "permission.respond"));
+    socket.send(ask("r2", "session.interrupt"));
+    await Promise.resolve();
+    expect([socket.sent, got.length]).toEqual([[], 1]);
+  });
+
   test("a rule with after answers the first read with its data and every later one with after", () => {
     const wire = wireRewriter([
       { command: "approval.list", data: { keys: ["a"] }, after: { keys: [] } },
@@ -191,55 +236,6 @@ describe("shots-wire: a held, a replied, a sequenced and a trimmed command (#415
   });
 });
 
-describe("shots-wire: a denied and a pending command never reach the host (#4236)", () => {
-  test("a denied command is answered in the page with a refusal and the text, and any other frame is left to the host", () => {
-    const wire = wireRewriter([{ command: "knowledge.create", deny: "Already there." }]);
-    const create = ask("r1", "knowledge.create", { title: "x" });
-    expect([
-      wire.fromApp(create),
-      wire.answer?.(create),
-      wire.answer?.(ask("r2", "knowledge.list")),
-    ]).toEqual([
-      create,
-      JSON.stringify({
-        type: "ack",
-        id: "r1",
-        ok: false,
-        error: { code: "unavailable", message: "Already there." },
-      }),
-      undefined,
-    ]);
-  });
-
-  test("a pending command is swallowed with no answer at all, and any other frame is left to the host", () => {
-    const wire = wireRewriter([{ command: "knowledge.setStatus", pending: true }]);
-    const status = ask("r1", "knowledge.setStatus", { status: "obsolete" });
-    const list = ask("r2", "knowledge.list");
-    expect([
-      wire.swallows?.(status),
-      wire.answer?.(status),
-      wire.swallows?.(list),
-      wire.swallows?.("{"),
-    ]).toEqual([true, undefined, false, false]);
-  });
-
-  test("the page's socket sends neither a denied nor a pending command: the app hears the refusal of the first and nothing of the second", async () => {
-    const page = { WebSocket: FakeSocket as unknown as typeof WebSocket };
-    const rules: WireRule[] = [
-      { command: "knowledge.create", deny: "Already there." },
-      { command: "knowledge.setStatus", pending: true },
-    ];
-    new Function("window", wireScript(rules))(page);
-    const socket = new page.WebSocket("ws://x") as unknown as FakeSocket;
-    const got: unknown[] = [];
-    socket.addEventListener("message", (event) => got.push(event.data));
-    socket.send(ask("r1", "knowledge.create"));
-    socket.send(ask("r2", "knowledge.setStatus"));
-    await Promise.resolve();
-    expect([socket.sent, got.map((frame) => read(String(frame)).id)]).toEqual([[], ["r1"]]);
-  });
-});
-
 describe("shots-wire: the states the table prints (#3982)", () => {
   const IDS = { rewindSession: "rw", waitingSession: "wt" } as DemoIds;
   const shots = () =>
@@ -264,6 +260,9 @@ describe("shots-wire: the states the table prints (#3982)", () => {
       "sino-painel",
       "sino-vazio",
       "sino-limpo",
+      "sino-recusa",
+      "sino-alto-risco",
+      "sino-respondendo",
     ]);
   });
 
@@ -339,5 +338,22 @@ describe("shots-wire: the states the table prints (#3982)", () => {
 
   test("the bell prints with no notifications, and with the list cleared from a full one", () => {
     expect([named("sino-vazio")?.inbox, named("sino-limpo")?.inbox]).toEqual([undefined, true]);
+  });
+
+  test("the bell prints a refused answer and an answer on its way from the host's answer to Approve (#4203)", () => {
+    expect(named("sino-recusa")?.inbox).toBe(true);
+    expect(named("sino-recusa")?.wire?.map((rule) => rule.command)).toEqual(["permission.respond"]);
+    expect(named("sino-recusa")?.wire?.some((rule) => "reject" in rule && rule.reject !== "")).toBe(
+      true,
+    );
+    expect(named("sino-respondendo")?.inbox).toBe(true);
+    expect(named("sino-respondendo")?.wire).toEqual([
+      { command: "permission.respond", stall: true },
+    ]);
+  });
+
+  test("the bell prints a high-risk request from the dangerous command's row, which the other bell prints leave out (#4203)", () => {
+    expect(named("sino-alto-risco")?.inbox).toBe("danger");
+    expect(named("sino-painel")?.inbox).toBe(true);
   });
 });

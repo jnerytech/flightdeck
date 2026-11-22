@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/context";
 import { ActionButton } from "@/shared/feedback/index.ts";
-import { ErrorState } from "@/shared/layout/index.ts";
+import { ErrorState, LoadingState } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { isExternalAuthor } from "./domain/review.ts";
 
@@ -25,6 +25,8 @@ export function PrComments(
     cardId: string;
     /** Changes whenever the card did (its PR is polled): the comments are read again. */
     moment: string;
+    /** Told the comments each time they are read, so the diff can mark the files that have some. */
+    onRead?: (comments: PrComment[]) => void;
   }>,
 ) {
   const t = useT();
@@ -43,11 +45,17 @@ export function PrComments(
       // A refusal is `null`: it is a failed read, not a PR with no comments.
       setFailed(result === null);
       if (result) setComments(result.comments);
+      // A failed read leaves no marks: the diff must not count comments the list no longer shows.
+      props.onRead?.(result ? result.comments : []);
     });
     return () => {
       current = false;
     };
   }, [store, hostId, cardId, props.moment, attempt]);
+
+  // Gone from the screen (another tab): the diff marks nothing.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only on unmount
+  useEffect(() => () => props.onRead?.([]), []);
 
   if (failed) {
     return (
@@ -63,7 +71,7 @@ export function PrComments(
       />
     );
   }
-  if (comments === null) return null;
+  if (comments === null) return <LoadingState label={t("cardReview.prLoading")} />;
   // Until the user picks by hand, the open comments are the chosen ones.
   const chosen = picked ?? new Set(comments.filter((c) => !c.resolved).map((c) => c.id));
   const toggle = (id: string) => {
@@ -90,7 +98,10 @@ export function PrComments(
               return (
                 <li
                   key={comment.id}
-                  className="flex items-start gap-2 rounded-md border p-3 text-sm"
+                  // The diff's count on a file leads here (#4228).
+                  id={`prc:${comment.id}`}
+                  tabIndex={-1}
+                  className="flex items-start gap-2 rounded-md border p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring"
                 >
                   <input
                     type="checkbox"

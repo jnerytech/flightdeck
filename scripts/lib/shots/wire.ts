@@ -6,9 +6,9 @@ import { type FrameRewriter, installHolds } from "./holds.ts";
  * the host as another command (`as`: its answer comes back as it is, or with the `data` the rule
  * also gives). #4154: `after` is the data of every answer after the first; `hold` leaves the answer
  * unheard, so the panel stays loading; `reply` answers in the page and never sends the command (a
- * change the host would really make); `without` takes entries out of an array of the answer (a
- * feature the host announces). #4236: `deny` answers a refusal in the page and `pending` answers nothing, and
- * neither sends the command (a change the host would really make, shown refused or still in flight). The demo's hosts are never left in the state the print shows.
+ * change the host would really make); `reject` answers in the page with a refusal and `stall` leaves
+ * the command unanswered, both without sending it (an answer to a request the host would really
+ * take, #4203); `without` takes entries out of an array of the answer (a feature the host announces). The demo's hosts are never left in the state the print shows.
  */
 export type WireRule =
   | { command: string; refuse: string }
@@ -16,8 +16,8 @@ export type WireRule =
   | { command: string; as: string; data?: unknown }
   | { command: string; reply: unknown }
   | { command: string; hold: true }
-  | { command: string; deny: string }
-  | { command: string; pending: true }
+  | { command: string; reject: string }
+  | { command: string; stall: true }
   | { command: string; without: Record<string, string[]> };
 
 /**
@@ -91,20 +91,20 @@ export function wireRewriter(rules: WireRule[]): FrameRewriter {
       const rule = ruleOf(frame);
       return rule !== undefined && "hold" in rule;
     },
-    swallows(frame) {
-      const message = parse(frame);
-      return rules.some((r) => r.command === message?.type && "pending" in r);
-    },
     answer(frame) {
       const message = parse(frame);
       const rule = rules.find((r) => r.command === message?.type);
       if (!message || !rule || typeof message.id !== "string") return undefined;
-      if ("deny" in rule) {
-        const error = { code: "unavailable", message: rule.deny };
+      if ("reject" in rule) {
+        const error = { code: "unavailable", message: rule.reject };
         return JSON.stringify({ type: "ack", id: message.id, ok: false, error });
       }
       if (!("reply" in rule)) return undefined;
       return JSON.stringify({ type: "ack", id: message.id, ok: true, data: rule.reply });
+    },
+    swallows(frame) {
+      const message = parse(frame);
+      return rules.some((r) => "stall" in r && r.command === message?.type);
     },
   };
 }

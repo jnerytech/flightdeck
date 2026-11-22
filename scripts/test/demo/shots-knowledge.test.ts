@@ -157,7 +157,7 @@ describe("the prints never let a command that writes reach the host (#4236)", ()
   /** The commands that change the demo's hosts: a print that shows them must answer in the page, or a pass would write. */
   const WRITES = ["knowledge.create", "knowledge.setStatus", "memory.write", "memory.delete"];
 
-  test("a rule on a command that writes is a denial, a pending answer or a reply: never a rewritten answer of the host", () => {
+  test("a rule on a command that writes is a rejection, a stall or a reply: never a rewritten answer of the host", () => {
     const rules = [...KNOWLEDGE(), ...MEMORY()].flatMap((shot) =>
       (shot.wire ?? [])
         .filter((rule) => WRITES.includes(rule.command))
@@ -166,7 +166,7 @@ describe("the prints never let a command that writes reach the host (#4236)", ()
           kind: Object.keys(rule).filter((k) => k !== "command")[0],
         })),
     );
-    expect(rules.filter((rule) => !["deny", "pending", "reply"].includes(rule.kind ?? ""))).toEqual(
+    expect(rules.filter((rule) => !["reject", "stall", "reply"].includes(rule.kind ?? ""))).toEqual(
       [],
     );
     expect(rules.map((rule) => rule.print).sort()).toEqual([
@@ -176,13 +176,13 @@ describe("the prints never let a command that writes reach the host (#4236)", ()
     ]);
   });
 
-  test("the create print denies the title with its reason, and the busy print leaves the status change pending", () => {
+  test("the create print rejects the title with its reason, and the busy print stalls the status change", () => {
     expect([
       wire(KNOWLEDGE(), "projeto-conhecimento-criar-erro"),
       wire(KNOWLEDGE(), "projeto-conhecimento-ocupado"),
     ]).toEqual([
-      [{ command: "knowledge.create", deny: expect.stringContaining("already exists") }],
-      [{ command: "knowledge.setStatus", pending: true }],
+      [{ command: "knowledge.create", reject: expect.stringContaining("already exists") }],
+      [{ command: "knowledge.setStatus", stall: true }],
     ]);
   });
 });

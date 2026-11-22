@@ -21,6 +21,20 @@ describe("demoInbox (#1168)", () => {
     }
   });
 
+  test("the risk row links to the dangerous command's request, in both languages, and only when it is given (#4203)", () => {
+    const request = { hostId: "demo-alfa", requestId: "req-9" };
+    const danger = { hostId: "demo-alfa", requestId: "ext-rm-1" };
+    for (const lang of ["en", "pt-BR"]) {
+      const linked = JSON.parse(demoInbox(lang, request, danger)) as Entry[];
+      const ids = linked
+        .map((row) => parseRequestLink(row.link ?? "")?.requestId)
+        .filter((id) => id !== undefined);
+      expect(ids).toEqual(["req-9", "ext-rm-1"]);
+      expect(linked.some((row) => row.ask?.includes("rm -rf build"))).toBe(true);
+      expect(inbox(lang, request).some((row) => row.ask?.includes("rm -rf build"))).toBe(false);
+    }
+  });
+
   test("with no live request no row carries a link", () => {
     expect(inbox("en").some((row) => row.link !== undefined)).toBe(false);
   });
