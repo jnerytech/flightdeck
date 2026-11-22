@@ -28,6 +28,7 @@ export {
 } from "./lock.ts";
 export type { Logger } from "./logger.ts";
 export { DEFAULT_ALLOWED_NETWORKS, ipInNetworks, parseCidr } from "./networks.ts";
+export { isClaudeConfig } from "./claude-config.ts";
 export { ntfsName } from "./ntfs-name.ts";
 export { assistantDir, isInside, resolveAllowedCwd, rootNames, samePath } from "./paths.ts";
 export { present } from "./present.ts";

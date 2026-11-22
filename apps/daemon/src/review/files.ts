@@ -21,6 +21,7 @@ import {
 import { git, must } from "../git/index.ts";
 import {
   FlightdeckError,
+  isClaudeConfig,
   isInside,
   readRegularSized,
   refArg,
@@ -29,7 +30,6 @@ import {
 } from "../kernel/index.ts";
 import { credential } from "../permissions/index.ts";
 import type { Changes } from "./changes.ts";
-import { isClaudeConfig } from "./domain/claude-config.ts";
 import { firstStep, isGitDir, type Located, located, refuseCredential } from "./paths.ts";
 import { type SearchOptions, searchRepository } from "./search.ts";
 

@@ -1,4 +1,4 @@
-import { ntfsName } from "../../kernel/index.ts";
+import { ntfsName } from "./ntfs-name.ts";
 
 /**
  * Whether a path of a repository is something that shapes every session that runs in it, as Claude
@@ -18,7 +18,8 @@ export function isClaudeConfig(path: string): boolean {
     steps.slice(0, -1).includes(".claude") ||
     name === "claude.md" ||
     name === "claude.local.md" ||
-    // The 8.3 short name of `CLAUDE.local.md`, which Windows opens as the file itself.
+    // The 8.3 short name of `CLAUDE.local.md`, which Windows opens as the file itself. A short name
+    // made of a hash (`CLAB3F2~1.MD`, once many names collide) is not told apart.
     /^claude~\d+\.md$/.test(name ?? "")
   );
 }
