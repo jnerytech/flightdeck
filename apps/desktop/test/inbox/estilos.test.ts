@@ -25,3 +25,11 @@ describe("the notification panel's row controls (#4031)", () => {
     expect(ruleOf("&:hover .inbox-mark").includes("opacity: 1")).toBe(true);
   });
 });
+
+describe("the mark control on a pointer that cannot hover (#4202)", () => {
+  test("it is always visible and leaves the corner it shares with the time", () => {
+    const body = ruleOf("@media (hover: none)");
+    expect(body.includes("opacity: 1")).toBe(true);
+    expect(body.includes("position: static")).toBe(true);
+  });
+});

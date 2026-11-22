@@ -32,6 +32,8 @@ export const inbox = {
     markUnread: "Mark {title} as unread",
     count: "Happened {n} times",
     gone: "What this was about is gone.",
+    goneClick:
+      "Nothing to open: this request no longer waits for an answer. Dismiss it to clear it.",
     dismiss: "Dismiss",
     dismissRow: "Dismiss {title}",
     markedRead: "Marked as read: {title}",

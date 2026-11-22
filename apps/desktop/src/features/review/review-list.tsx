@@ -83,7 +83,11 @@ export function ReviewList(
                 )}
                 {comment.severity && <FindingSeverity severity={comment.severity} />}
                 {comment.outdated && (
-                  <Badge variant="outline" className="text-status-needs-you">
+                  <Badge
+                    variant="outline"
+                    title={t("changes.outdatedHint")}
+                    className="text-status-needs-you"
+                  >
                     {t("changes.outdated")}
                   </Badge>
                 )}

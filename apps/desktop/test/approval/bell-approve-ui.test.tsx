@@ -180,6 +180,25 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
     expect(answered.map(([, , decision]) => decision)).toEqual(["deny"]);
   });
 
+  test("a click on a request row that no longer waits keeps the panel open, marks nothing and says why (en, #4200)", async () => {
+    const { store } = await setup({ pending: [] });
+    await open();
+    const row = within(screen.getByRole("dialog")).queryAllByRole("listitem")[0] as HTMLElement;
+    expect(within(row).queryByText("What this was about is gone.") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    // The row has a live region of its own, outside its button, quiet until the click.
+    expect(within(row).queryByRole("status")?.textContent).toBe("");
+    expect(within(row).queryByRole("status")?.closest("button") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    await act(async () => {
+      fireEvent.click(panelButton(/Backend tests/) as HTMLElement);
+    });
+    expect(screen.queryByRole("dialog") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(store.getState().inbox.map((e) => e.read)).toEqual([false]);
+    const why =
+      "Nothing to open: this request no longer waits for an answer. Dismiss it to clear it.";
+    expect(within(row).queryByRole("status")?.textContent).toBe(why);
+    expect(within(row).queryByText(why) === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+  });
+
   test.each([
     ["en", "Approve", "Shown in part: open it to see the whole command."],
     ["pt-BR", "Aprovar", "Mostrado em parte: abra para ver o comando inteiro."],
