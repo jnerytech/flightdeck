@@ -194,7 +194,9 @@ export function NotificationCenter(
   const [cleared, setCleared] = useState<InboxEntry[] | null>(null);
   const { open } = props;
   useEffect(() => {
-    if (!open) setCleared(null);
+    if (open) return;
+    setCleared(null);
+    setSaid("");
   }, [open]);
   /** Says what a head button did and moves the focus off it (it is disabled now), to the heading. */
   const announce = (words: string) => {
@@ -268,7 +270,7 @@ export function NotificationCenter(
             size="sm"
             disabled={props.entries.length === 0}
             onClick={() => {
-              setCleared(props.entries);
+              setCleared((before) => [...props.entries, ...(before ?? [])]);
               props.onClear();
               announce(t("inbox.cleared"));
             }}
