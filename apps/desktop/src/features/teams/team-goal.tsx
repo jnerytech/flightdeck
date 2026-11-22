@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { T } from "@/i18n/index";
+import { cn } from "@/lib/utils";
 import { Stack } from "@/shared/layout/index.ts";
 
 /**
@@ -35,7 +36,10 @@ export function TeamGoal(props: Readonly<{ t: T; name: string; goal: string }>) 
           ref={text}
           id={textId}
           data-slot="team-goal-text"
-          className={`text-muted-foreground whitespace-pre-wrap [overflow-wrap:anywhere]${expanded ? "" : " line-clamp-3"}`}
+          className={cn(
+            "text-muted-foreground whitespace-pre-wrap [overflow-wrap:anywhere]",
+            !expanded && "line-clamp-3",
+          )}
         >
           {goal}
         </p>
