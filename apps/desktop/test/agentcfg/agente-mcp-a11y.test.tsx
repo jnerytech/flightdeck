@@ -116,6 +116,7 @@ describe.each(["en", "pt-BR"] as const)("the MCP tab, accessibility (%s)", (lang
     );
     await act(async () => release({ tools: ["eco"], resources: [] }));
     await settle(() => screen.queryByText(w.tools) !== null);
-    expect(screen.queryByRole("status")?.textContent ?? "").toContain(w.tools);
+    const row = screen.queryByRole("listitem", { name: "eco" }) as HTMLElement;
+    expect(within(row).queryByRole("status")?.textContent ?? "").toContain(w.tools);
   });
 });
