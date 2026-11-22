@@ -1,6 +1,6 @@
 import type { Card, Issue, IssuesConfig, Project } from "@flightdeck/protocol";
 import { ExternalLink, RefreshCw, Settings } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
-import { InlineNotice } from "@/shared/feedback/index.ts";
+import { refusalText } from "@/i18n/errors";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
 import { EmptyState, ErrorState, LoadingState, NativeSelect } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -32,7 +33,9 @@ function ConfigForm(
   props: Readonly<{
     store: AppStore;
     current: IssuesConfig | null;
-    onSave(config: IssuesConfig): void;
+    /** The refusal of the last save, shown here with the person's values still in the form. */
+    error: string | null;
+    onSave(config: IssuesConfig): Promise<void>;
   }>,
 ) {
   const { t } = props.store.i18n;
@@ -43,7 +46,7 @@ function ConfigForm(
   const [commentOnPr, setCommentOnPr] = useState(props.current?.commentOnPr ?? false);
   const save = () => {
     const text = query.trim();
-    props.onSave({ provider, ...(text ? { query: text } : {}), commentOnPr });
+    return props.onSave({ provider, ...(text ? { query: text } : {}), commentOnPr });
   };
   return (
     <div className="flex flex-col gap-3">
@@ -73,10 +76,11 @@ function ConfigForm(
           onCheckedChange={setCommentOnPr}
         />
       </div>
+      {props.error && <InlineNotice tone="error">{props.error}</InlineNotice>}
       <div>
-        <Button onClick={save}>
+        <ActionButton onClick={save}>
           {t(props.current ? "issuesUi.save" : "issuesUi.connectButton")}
-        </Button>
+        </ActionButton>
       </div>
     </div>
   );
@@ -162,31 +166,63 @@ export function IssuesPanel(
   const { store, hostId, project } = props;
   const { t } = store.i18n;
   const [issues, setIssues] = useState<Issue[] | null>(null);
-  const [failed, setFailed] = useState(false);
+  /** Why the list could not be had, in the person's language; null while it can. */
+  const [failure, setFailure] = useState<string | null>(null);
+  /** Why the last save was refused: the form stays open with it. */
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [configuring, setConfiguring] = useState(false);
+  /** A save just closed the form: the focus goes back to the button that opened it. */
+  const [refocus, setRefocus] = useState(false);
+  const configure = useRef<HTMLButtonElement>(null);
+  /** The latest list request: an older answer, such as the previous project's, is dropped. */
+  const latest = useRef(0);
   const configured = project.issues !== null;
-  const loading = useMinLoading(configured && issues === null && !failed);
+  const loading = useMinLoading(configured && issues === null && failure === null);
 
   const load = useCallback(async () => {
-    setFailed(false);
-    const result = await store.hostCommand(hostId, "issues.list", { projectId: project.id });
-    if (result) setIssues(result.issues);
-    else setFailed(true);
-  }, [store, hostId, project.id]);
+    const mine = ++latest.current;
+    setFailure(null);
+    const result = await store.hostRequest(hostId, "issues.list", { projectId: project.id });
+    if (mine !== latest.current) return;
+    if (result.ok) {
+      setFailure(null);
+      setIssues(result.data.issues);
+    } else {
+      // A failed list is shown alone: the old one would pass for the current one.
+      setIssues(null);
+      setFailure(
+        t("issuesUi.failed", { why: refusalText(result.code, result.message, t, result) }),
+      );
+    }
+  }, [store, hostId, project.id, t]);
   useEffect(() => {
+    setIssues(null);
+    setFailure(null);
     if (configured) void load();
   }, [configured, load]);
+  useEffect(() => {
+    if (!refocus || !configure.current) return;
+    configure.current.focus();
+    setRefocus(false);
+  }, [refocus]);
 
   const save = async (config: IssuesConfig) => {
-    const updated = await store.hostCommand(hostId, "project.update", {
+    setSaveError(null);
+    const result = await store.hostRequest(hostId, "project.update", {
       projectId: project.id,
       issues: config,
     });
-    if (!updated) return;
-    props.onProject(updated);
+    if (!result.ok) {
+      setSaveError(refusalText(result.code, result.message, t, result));
+      return;
+    }
+    props.onProject(result.data);
     setConfiguring(false);
+    setRefocus(true);
     setIssues(null);
+    // A project that was not connected loads in the effect above, as its `configured` turns on.
+    if (configured) void load();
   };
   const create = (issue: Issue) =>
     void store.hostCommand(hostId, "issues.createCard", {
@@ -208,11 +244,20 @@ export function IssuesPanel(
           <div className="flex items-center gap-2">
             {configured && (
               <>
-                <Button variant="outline" size="sm" onClick={() => void load()}>
+                <ActionButton variant="outline" size="sm" onClick={load}>
                   <RefreshCw aria-hidden="true" />
                   {t("issuesUi.reload")}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setConfiguring(!configuring)}>
+                </ActionButton>
+                <Button
+                  ref={configure}
+                  variant="ghost"
+                  size="sm"
+                  aria-expanded={configuring}
+                  onClick={() => {
+                    setSaveError(null);
+                    setConfiguring(!configuring);
+                  }}
+                >
                   <Settings aria-hidden="true" />
                   {t("issuesUi.configure")}
                 </Button>
@@ -225,7 +270,7 @@ export function IssuesPanel(
             </SheetClose>
           </div>
           {(!configured || configuring) && (
-            <ConfigForm store={store} current={project.issues} onSave={(c) => void save(c)} />
+            <ConfigForm store={store} current={project.issues} error={saveError} onSave={save} />
           )}
           {configured && !configuring && (
             <>
@@ -236,9 +281,9 @@ export function IssuesPanel(
                 onChange={(e) => setFilter(e.target.value)}
               />
               {loading && <LoadingState label={t("issuesUi.loading")} />}
-              {failed && (
+              {failure && (
                 <ErrorState
-                  message={t("issuesUi.failed")}
+                  message={failure}
                   retryLabel={t("issuesUi.retry")}
                   onRetry={() => void load()}
                 />

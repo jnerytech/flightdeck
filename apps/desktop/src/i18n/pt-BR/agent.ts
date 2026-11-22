@@ -96,7 +96,6 @@ export const agent = {
       list: "Servidores MCP",
       empty: "Nenhum servidor MCP neste projeto.",
       add: "Adicionar servidor",
-      switch: "Ligar {name}",
       test: "Testar {name}",
       edit: "Editar {name}",
       remove: "Remover {name}",

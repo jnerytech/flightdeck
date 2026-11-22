@@ -89,7 +89,7 @@
   "src/features/knowledge/knowledge-feed-switch.tsx": 2,
   "src/features/knowledge/knowledge-panel.tsx": 14,
   "src/features/maintenance/maintenance-section.tsx": 2,
-  "src/features/messaging/page.tsx": 5,
+  "src/features/messaging/page.tsx": 3,
   "src/features/messaging/rules-section.tsx": 14,
   "src/features/messaging/session-messages.tsx": 14,
   "src/features/needs-you/details.tsx": 4,

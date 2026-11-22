@@ -22,6 +22,19 @@ export interface LoopAlert {
 export const loopPairKey = (alert: Pick<LoopAlert, "from" | "to">): string =>
   [alert.from, alert.to].sort(byCodeUnit).join("|");
 
+/** Whether a refused message ran between two sessions a host paused for a loop (#4086). */
+export const inPausedPair = (
+  alerts: readonly LoopAlert[],
+  m: Pick<MessageInfo, "status" | "fromHost" | "fromSession" | "toHost" | "toSession">,
+): boolean => {
+  if (m.status !== "refused") return false;
+  const key = loopPairKey({
+    from: `${m.fromHost}/${m.fromSession}`,
+    to: `${m.toHost}/${m.toSession}`,
+  });
+  return alerts.some((alert) => loopPairKey(alert) === key);
+};
+
 /** The messaging's part of the app's state (#1596): for now, the loops a host paused. */
 export interface MessagingSliceState {
   /** Phase 21: the pairs a host paused for a loop, waiting in "Precisa de você" to be freed. */

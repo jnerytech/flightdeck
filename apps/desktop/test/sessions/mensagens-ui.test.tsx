@@ -178,3 +178,52 @@ describe("sessao-mensagens-ui: the Mensagens tab of a session", () => {
     expect(screen.queryByLabelText("Texto da mensagem")).toBeNull();
   });
 });
+
+describe("sessao-mensagens-ui: a paused pair (#4086)", () => {
+  const refused = (id: string, toSession: string, text: string) => ({
+    ...({
+      fromSession: "c1",
+      fromHost: "h",
+      toHost: "h",
+      status: "refused",
+      reason: "o par está pausado",
+      createdAt: "2026-10-30T12:05:00.000Z",
+      deliveredAt: null,
+      teamId: null,
+      kind: "session",
+    } as const),
+    id,
+    toSession,
+    text,
+  });
+  const RULES = "Abrir as regras de mensagens";
+
+  test("a refused message of a paused pair links to the messages rules; another refusal does not", async () => {
+    const { store, daemon } = await open();
+    daemon.messaging.messages = [refused("m5", "s9", "de novo"), refused("m6", "s8", "outra")];
+    await click("Mensagens");
+    const list = () => screen.queryByRole("list", { name: "Mensagens desta sessão" });
+    await settle(() => (list()?.children.length ?? 0) === 2);
+    await act(async () => {
+      daemon.push({
+        type: "messaging.alert",
+        kind: "loop",
+        from: "h/c1",
+        to: "h/s9",
+        message: "laço entre h/c1 e h/s9: o par foi pausado",
+        at: "2026-10-30T12:06:00.000Z",
+      });
+    });
+    await settle(() => store.getState().loopAlerts.length === 1);
+    const rows = [...(list()?.children ?? [])] as HTMLElement[];
+    const paused = rows.find((li) => li.textContent?.includes("de novo")) as HTMLElement;
+    const other = rows.find((li) => li.textContent?.includes("outra")) as HTMLElement;
+    expect(within(other).queryAllByRole("button", { name: RULES }).length).toBe(0);
+    const link = within(paused).queryByRole("button", { name: RULES });
+    expect(link).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(link as HTMLElement);
+    });
+    expect(store.router.current).toEqual({ name: "settings", section: "messaging" });
+  });
+});
