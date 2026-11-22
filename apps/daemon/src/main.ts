@@ -126,6 +126,8 @@ type StartOptions = {
   memoryReading?: NonNullable<MemoryGateDeps["reading"]>;
   /** How the project key asks git; the process itself when absent (tests hold it). */
   projectGit?: AsyncGitRunner;
+  /** This daemon's own command line, as the helpers it spawns call it back (#3989); the process's own when absent. */
+  self?: string[];
   /** The command line of this daemon, for `service.install` (#1200); its own when absent. */
   serviceSelf?: string[];
   /** Whether a port is free, for the cards' blocks; the real loopback probe when absent. */
