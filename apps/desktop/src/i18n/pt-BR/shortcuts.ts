@@ -89,6 +89,8 @@ export const shortcuts = {
     searching: "{host}: buscando…",
     silent: "{host}: sem resposta",
     results: "Resultados da busca",
+    noMatch: "Nada corresponde a “{query}”. Pressione Enter para buscar no histórico.",
+    found: "Resultados: {n}",
   },
   folderPicker: {
     title: "Escolher pasta",

@@ -89,6 +89,8 @@ export const shortcuts = {
     searching: "{host}: searching…",
     silent: "{host}: no answer",
     results: "Search results",
+    noMatch: "Nothing matches “{query}”. Press Enter to search the history.",
+    found: "Results: {n}",
   },
   folderPicker: {
     title: "Choose folder",

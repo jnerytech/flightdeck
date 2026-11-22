@@ -113,8 +113,8 @@ describe.each(["en", "pt-BR"] as const)("palette status (%s)", (lang) => {
     });
   });
 
-  test("the host still searching the history is said in the same region", () => {
+  test("the host still searching the history is said in a status region of its own", () => {
     open(lang, true);
-    expect(status()?.textContent?.includes(WORDS[lang].searching)).toBe(true);
+    expect(screen.queryByText(WORDS[lang].searching)?.closest("output") != null).toBe(true);
   });
 });

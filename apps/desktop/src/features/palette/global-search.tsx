@@ -190,6 +190,16 @@ export function GlobalSearch(
     setActionsOf(null);
     setActiveId(null);
   };
+  /**
+   * What a screen reader hears as the list changes: how many rows the text left, or, when it left
+   * none and no history search was asked for, that nothing matches and what Enter does then.
+   */
+  const rowCount = stops.filter((stop) => stop.kind === "item").length;
+  const typed = query.trim() !== "" && !actionsOf;
+  const noMatch = typed && rowCount === 0 && !search;
+  let status = "";
+  if (noMatch) status = t("searchUi.noMatch", { query: query.trim() });
+  else if (typed) status = t("searchUi.found", { n: rowCount });
 
   /** Opens an entry and remembers it for the Recent section (an action of the Tab list is not one). */
   const choose = (item: PaletteItem) => {
@@ -305,6 +315,12 @@ export function GlobalSearch(
           }}
         />
       </form>
+      <output
+        data-slot="palette-status"
+        className={noMatch ? "px-2 py-1 text-muted-foreground text-sm" : "sr-only"}
+      >
+        {status}
+      </output>
       <PaletteScopeChips
         chips={chips}
         t={t}
@@ -332,14 +348,14 @@ export function GlobalSearch(
           <h3 className="px-2 font-medium text-muted-foreground text-xs">
             {t("searchUi.history")}
           </h3>
-          <ul className="flex flex-col px-2 text-muted-foreground text-xs">
+          <output className="flex flex-col px-2 text-muted-foreground text-xs">
             {search.waiting.map((id) => (
-              <li key={id}>{t("searchUi.searching", { host: name(id) })}</li>
+              <span key={id}>{t("searchUi.searching", { host: name(id) })}</span>
             ))}
             {search.silent.map((id) => (
-              <li key={id}>{t("searchUi.silent", { host: name(id) })}</li>
+              <span key={id}>{t("searchUi.silent", { host: name(id) })}</span>
             ))}
-          </ul>
+          </output>
           <ul id={`${uid}-hits`} aria-label={t("searchUi.results")} className="flex flex-col">
             {search.hits.map((hit) => {
               const when = props.store.formatDateTime(hit.ts ?? "");
