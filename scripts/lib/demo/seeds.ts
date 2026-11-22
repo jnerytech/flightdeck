@@ -10,7 +10,7 @@ import type { Finish } from "../../../apps/desktop/src/features/sessions/domain/
 export function demoInbox(
   lang: string,
   request?: { hostId: string; requestId: string },
-  _danger?: { hostId: string; requestId: string },
+  danger?: { hostId: string; requestId: string },
 ): string {
   const pt = lang.startsWith("pt");
   const dayStart = new Date().setUTCHours(0, 0, 0, 0);
@@ -53,6 +53,18 @@ export function demoInbox(
       // A link to an open request is what makes the row answerable from the bell (#1131).
       ...(request ? { link: requestLink(request.hostId, request.requestId) } : {}),
     }),
+    // #4203: the terminal session that asks to remove the build folder, a high-risk request.
+    ...(danger
+      ? [
+          entry("8", today(90), {
+            subject: "build · limpeza",
+            host: "alfa",
+            ask: pt ? "Quer executar: rm -rf build" : "Wants to run: rm -rf build",
+            group: "alfa/build",
+            link: requestLink(danger.hostId, danger.requestId),
+          }),
+        ]
+      : []),
     entry("5", today(60), {
       title: pt ? "Card desbloqueado" : "Card unblocked",
       subject: "Card B",
