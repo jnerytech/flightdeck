@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { type Turn, turnsOf } from "@/features/sessions/index.ts";
 import { ActionButton, IconActionButton, InlineNotice } from "@/shared/feedback/index.ts";
-import { EmptyState, ErrorState, LoadingState } from "@/shared/layout/index.ts";
+import { EmptyState, ErrorState, Inline, LoadingState } from "@/shared/layout/index.ts";
 import { formatDateTime } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { ForkDialog, RewindDialog, type Target } from "./checkpoint-dialogs.tsx";
@@ -256,16 +256,13 @@ export function CheckpointsButton(props: Target & { busy: boolean }) {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent showCloseButton={false} className="sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle>{t("timeline.title")}</SheetTitle>
+            <Inline className="justify-between">
+              <SheetTitle className="text-lg">{t("timeline.title")}</SheetTitle>
+              <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
+                {t("common.close")}
+              </Button>
+            </Inline>
             <SheetDescription>{t("timeline.description")}</SheetDescription>
-            <Button
-              variant="outline"
-              size="sm"
-              className="self-start"
-              onClick={() => setOpen(false)}
-            >
-              {t("common.close")}
-            </Button>
           </SheetHeader>
           <TimelinePanel
             {...props}
