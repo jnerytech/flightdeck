@@ -66,7 +66,6 @@ const notFound = () =>
   new FlightdeckError("not_found", "destination not found", "ssh_target_not_found");
 const validPort = (port: number) => Number.isInteger(port) && port >= 1 && port <= 65_535;
 
-/** The ssh destinos registered on this host (phase 15): only references to secrets, never secrets. */
 /** Whether a save points the target at another place: the agent forwarded to it would go elsewhere. */
 function movedFrom(
   previous: Row | null,
@@ -82,6 +81,7 @@ function movedFrom(
   );
 }
 
+/** The ssh destinos registered on this host (phase 15): only references to secrets, never secrets. */
 export class SshTargets {
   private readonly now: () => number;
 
