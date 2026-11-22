@@ -35,7 +35,7 @@ describe.each(["en", "pt-BR"] as const)("the guard while the host answers (%s)",
       fireEvent.change(select(), { target: { value } });
     });
   };
-  const failed = () => screen.queryByText(t("quota.guard.failed" as never));
+  const failed = () => screen.queryByText(t("quota.guard.failed"));
 
   /** A `setPause` whose answer the test gives when it likes. */
   function held() {

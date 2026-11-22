@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
 import { hasFeature } from "@/lib/version";
@@ -26,6 +26,9 @@ export function QuotaGuard(
   const { store, host, pauseAt } = props;
   const t = useT();
   const id = useId();
+  // The value asked for while the host answers (`undefined`: no change on its way), and a refusal (#4305).
+  const [asked, setAsked] = useState<number | null | undefined>(undefined);
+  const [refused, setRefused] = useState(false);
   if (!hasFeature(host.hostInfo?.features, "quotaPause", false)) {
     return (
       <p className="text-muted-foreground text-xs">
@@ -40,6 +43,16 @@ export function QuotaGuard(
       </p>
     );
   }
+  const busy = asked !== undefined;
+  const shown = busy ? asked : pauseAt;
+  const change = async (next: number | null) => {
+    if (busy) return;
+    setAsked(next);
+    setRefused(false);
+    const took = await store.quota.setPause(host.id, next);
+    setAsked(undefined);
+    setRefused(!took);
+  };
   const choices =
     pauseAt === null || CHOICES.includes(pauseAt)
       ? CHOICES
@@ -54,12 +67,11 @@ export function QuotaGuard(
           id={id}
           inline
           aria-label={t("quota.guard.labelFor", { host: host.name })}
-          value={pauseAt === null ? OFF : String(pauseAt)}
+          value={shown === null ? OFF : String(shown)}
+          disabled={busy}
+          aria-busy={busy}
           onChange={(event) =>
-            void store.quota.setPause(
-              host.id,
-              event.target.value === OFF ? null : Number(event.target.value),
-            )
+            void change(event.target.value === OFF ? null : Number(event.target.value))
           }
         >
           {choices.map((value) => (
@@ -70,6 +82,11 @@ export function QuotaGuard(
           <option value={OFF}>{t("quota.guard.off")}</option>
         </NativeSelect>
       </Inline>
+      {refused && (
+        <p role="alert" className="text-status-needs-you text-xs">
+          {t("quota.guard.failed")}
+        </p>
+      )}
       <p className="text-muted-foreground text-xs">{t("quota.guard.hint")}</p>
     </Stack>
   );
