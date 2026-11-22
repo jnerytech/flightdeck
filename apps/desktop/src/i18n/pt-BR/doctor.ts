@@ -53,6 +53,7 @@ export const doctor = {
     label: "Dormir sessões ociosas após",
     hint: "Uma sessão ociosa devolve a memória depois desse tempo. Uma mensagem a acorda de onde estava. Sessões fixadas, de cards e as que você tem abertas ficam acordadas.",
     off: "Desligado",
+    saved: "Ajuste de sono salvo em {host}.",
     minutes: "{n} minutos",
     hour: "1 hora",
     hours: "{n} horas",

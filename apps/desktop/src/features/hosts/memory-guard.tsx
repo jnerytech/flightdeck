@@ -33,7 +33,10 @@ export function MemoryGuard(
   const set = async (next: number | null) => {
     // A refusal goes to the banner and leaves the hold as it was.
     const answer = await store.hostCommand(host.id, "resources.setPauseAt", { pauseAt: next });
-    if (answer) onChange(answer.pauseAt);
+    if (answer) {
+      onChange(answer.pauseAt);
+      store.success(t("resources.guard.saved", { host: host.name }));
+    }
   };
   return (
     <Stack gap={1}>

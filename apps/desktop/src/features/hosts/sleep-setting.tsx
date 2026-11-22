@@ -1,5 +1,5 @@
 import { useT } from "@/i18n/context";
-import { Panel } from "@/shared/layout/index.ts";
+import { NativeSelect, Panel } from "@/shared/layout/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 
 /** The delays the select offers, in minutes; 0 is off. A delay the config holds outside these is added. */
@@ -26,13 +26,18 @@ export function SleepSetting(props: Readonly<{ store: AppStore; host: HostView }
       <p className="text-muted-foreground text-xs">{t("sleep.hint")}</p>
       <label className="flex items-center gap-2 text-sm">
         {t("sleep.label")}
-        <select
+        <NativeSelect
+          inline
           aria-label={t("sleep.label")}
           value={current}
-          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
           onChange={async (e) => {
-            await store.hostCommand(host.id, "host.sleep", { minutes: Number(e.target.value) });
+            // A refusal goes to the banner: nothing is read back and the select keeps the host's value.
+            const answer = await store.hostCommand(host.id, "host.sleep", {
+              minutes: Number(e.target.value),
+            });
+            if (!answer) return;
             await store.reloadHostInfo(host.id);
+            store.success(t("sleep.saved", { host: host.name }));
           }}
         >
           {choices.map((minutes) => (
@@ -40,7 +45,7 @@ export function SleepSetting(props: Readonly<{ store: AppStore; host: HostView }
               {label(minutes)}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </label>
     </Panel>
   );
