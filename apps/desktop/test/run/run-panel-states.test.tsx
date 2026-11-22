@@ -131,6 +131,20 @@ describe("the run panel tells what happened to each process and what was pressed
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  test("the run status is an output element, so it reads as a status without a role attribute", async () => {
+    await panel("en", run({ status: "running" }));
+    const line = screen.queryByRole("status");
+    expect({
+      tag: line?.tagName,
+      role: line?.getAttribute("role"),
+      text: line?.textContent,
+    }).toEqual({
+      tag: "OUTPUT",
+      role: null,
+      text: "Running",
+    });
+  });
+
   test("when the host reports the run before it answers, the other button starts fresh, not busy", async () => {
     const { store } = await panel("en", run({}));
     await click("Run");

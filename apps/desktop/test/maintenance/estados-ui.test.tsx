@@ -105,6 +105,17 @@ describe.each(["en", "pt-BR"] as const)("the Maintenance panel (%s)", (lang) => 
     expect(alertText()).toBe("");
   });
 
+  test("the outcome line is an output element that is empty and out of the way until a result arrives", async () => {
+    await section(lang, (type) => (type === "maintenance.status" ? STATUS : null));
+    await settle(() => screen.queryByText(w.sessions) !== null);
+    const line = screen.queryByRole("status");
+    expect({
+      tag: line?.tagName,
+      empty: line?.textContent,
+      collapses: line?.className.includes("empty:sr-only"),
+    }).toEqual({ tag: "OUTPUT", empty: "", collapses: true });
+  });
+
   test("the result of a backup is announced as a status", async () => {
     const { asked } = await section(lang, (type) =>
       type === "maintenance.status" ? STATUS : { path: "/data/backup-1.db" },
