@@ -85,6 +85,11 @@ export const NARROW_SHOTS: readonly string[] = [
   "sessao-aprovacao-risco-alto",
   "projeto-regras",
   "aprovacoes-automaticas",
+  // #4194: Costs with no cost and after a refused read, and the settings panel with its error.
+  "custos-vazio",
+  "custos-recusado",
+  "roi-ajustes",
+  "roi-ajustes-numero-ruim",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */
