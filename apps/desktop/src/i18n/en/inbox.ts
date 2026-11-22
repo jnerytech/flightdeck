@@ -41,7 +41,7 @@ export const inbox = {
     asks: "Asks: {question}",
     keys: "A approves · N denies",
     keysHigh: "Hold the button to approve · N denies",
-    keysCut: "N denies",
+    keysCut: "Shown in part: open the row to see the whole command · N denies",
     cut: "Shown in part: open it to see the whole command.",
     runs: "Wants to run: {command}",
     edits: "Wants to change {file}",
