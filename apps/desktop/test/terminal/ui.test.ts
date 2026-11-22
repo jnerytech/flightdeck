@@ -133,6 +133,17 @@ describe("terminal-ui: the session of one terminal", () => {
     ]);
   });
 
+  test("close gives back what the host refused with, and nothing when it answered", async () => {
+    const { session } = setup();
+    await session.start();
+    expect(await session.close(true)).toBeNull();
+    const refusal = new Error("No room left");
+    session.opts.host.close = async () => {
+      throw refusal;
+    };
+    expect(await session.close(true)).toBe(refusal);
+  });
+
   test("dispose cancels a pending resize", async () => {
     const { session, timers } = setup();
     await session.start();
