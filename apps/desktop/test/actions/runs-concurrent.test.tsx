@@ -105,22 +105,23 @@ describe("runs-concurrent", () => {
       });
     }
 
-    test(`${language}: a run's output is a named group that a keyboard can scroll`, async () => {
+    test(`${language}: a run's output is a named region that a keyboard can scroll`, async () => {
       const page = await openActions(language);
       await click(button(language, "build"));
       await act(async () => {
         page.answers.build?.();
       });
       await settleMaybe(() => shows("output of build"), 3000);
-      const output = screen.queryByRole("group", {
+      const output = screen.queryByRole("region", {
         name: (language === "en" ? en : ptBR).actionsUi.runOutput.replace(
           "{time}",
-          language === "en" ? "Nov 13, 2026, 10:00 AM" : "13 de nov. de 2026, 10:00",
+          language === "en" ? "Nov 13, 2026, 10:00 AM" : "13/11/2026, 10:00",
         ),
       });
       expect(output).not.toBeNull();
-      expect(output?.getAttribute("tabindex")).toBe("0");
-      expect(output?.textContent).toContain("output of build");
+      const text = output?.querySelector("pre");
+      expect(text?.getAttribute("tabindex")).toBe("0");
+      expect(text?.textContent).toContain("output of build");
     });
   }
 });
