@@ -10,6 +10,7 @@ import type { FileCliArgs } from "../../files/index.ts";
 import { type ArgReader, invalid, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
+import { readUiMode } from "./ui-args.ts";
 import { USAGE } from "./usage.ts";
 
 const FILE_ACTIONS = ["list", "read", "write", "search", "dirs", "files"] as const;
@@ -39,6 +40,7 @@ export function readFile(args: CliArgs, reader: ArgReader): void {
 /** The flags only `file` verbs take, for the parser's table of flags. */
 export const FILE_FLAGS: Record<string, Handler> = {
   "--mode": setValue((args, value) => {
+    if (args.command === "ui") return readUiMode(args, value);
     if (value !== "name" && value !== "content")
       throw new Error(`--mode: name or content, got ${value}\n${USAGE}`);
     args.fileMode = value;
