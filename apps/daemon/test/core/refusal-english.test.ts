@@ -54,7 +54,6 @@ const PORTUGUESE =
 const SHOWN_TO_THE_PERSON: Array<{ file: string; fragment: string }> = [
   { file: "plugins/inventory.ts", fragment: ": caminho fora do plugin: " },
   { file: "runenv/domain/run-config.ts", fragment: "precisa ser uma lista de textos" },
-  { file: "runenv/manager.ts", fragment: "o setup falhou (código " },
 ];
 
 /** The quoted strings on the code lines of a file (comment lines left out); templates only on request. */

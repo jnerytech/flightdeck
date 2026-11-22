@@ -31,6 +31,9 @@ export interface RunState {
   processes: RunProcessState[];
   /** Why the run failed (the setup's exit code, a refusal), `null` otherwise. */
   error: string | null;
+  /** The reason of `error` for the app to translate, with its parameters; absent when there is no error. */
+  errorKey?: string;
+  errorParams?: Record<string, string | number>;
 }
 
 /** What the manager asks of the system to run something. The real one opens a terminal. */

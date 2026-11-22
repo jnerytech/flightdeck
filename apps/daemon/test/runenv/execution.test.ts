@@ -90,7 +90,11 @@ describe("run-execucao: o setup", () => {
     await s.manager.start("card-a");
     await until(() => s.status("card-a") === "failed");
     const state = s.manager.state("card-a");
-    expect(state.error).toBe("could not start api: limit of 10 terminals per host");
+    expect([state.error, state.errorKey, state.errorParams]).toEqual([
+      "could not start api: limit of 10 terminals per host",
+      "run_process_start_failed",
+      { name: "api", cause: "limit of 10 terminals per host" },
+    ]);
     expect(s.of("serve")[0]?.killed).toBe(true);
     expect(state.processes.map((p) => p.status)).toEqual(["exited"]);
     s.refused.delete("api");
@@ -103,9 +107,12 @@ describe("run-execucao: o setup", () => {
     s.refused.set("prepare", "the terminal is off on this host");
     await s.manager.start("card-a");
     await until(() => s.status("card-a") === "failed");
-    expect(s.manager.state("card-a").error).toBe(
+    const state = s.manager.state("card-a");
+    expect([state.error, state.errorKey, state.errorParams]).toEqual([
       "could not start the setup: the terminal is off on this host",
-    );
+      "run_setup_start_failed",
+      { cause: "the terminal is off on this host" },
+    ]);
     expect(s.manager.state("card-a").setup).toBe("failed");
   });
 
@@ -126,13 +133,18 @@ describe("run-execucao: o setup", () => {
     await until(() => s.status("card-a") === "failed");
     const state = s.manager.state("card-a");
     expect(state.setup).toBe("failed");
-    expect(state.error).toBe("o setup falhou (código 3)");
+    expect([state.error, state.errorKey, state.errorParams]).toEqual([
+      "the setup failed (code 3)",
+      "run_setup_failed",
+      { code: 3 },
+    ]);
     expect(s.of("serve")).toHaveLength(0);
     await s.manager.start("card-a");
     expect(s.of("prepare")).toHaveLength(2);
     s.finish("term-2", 0);
     await until(() => s.status("card-a") === "running");
     expect(s.manager.state("card-a").error).toBeNull();
+    expect(s.manager.state("card-a").errorKey).toBeUndefined();
   });
 
   test("sem setup no arquivo, os processos sobem direto", async () => {
