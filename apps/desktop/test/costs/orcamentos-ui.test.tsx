@@ -398,8 +398,12 @@ describe("orcamentos-ui", () => {
     await sidebar.queueItem("alfa · orçamento do host (dia): 90% de US$ 10,00");
     await settle(() => section() !== null);
     expect(section()).not.toBeNull();
-    // The alert opens Settings on the budgets, not at the top (issue #190, J7).
-    expect(store.router.current).toEqual({ name: "settings", section: "budgets" });
+    // The alert opens Settings on the budgets, not at the top (issue #190, J7), on the host whose budget crossed (#3912).
+    expect(store.router.current).toEqual({
+      name: "settings",
+      section: "budgets",
+      host: store.getState().hosts[0]?.id,
+    });
     await settle(() => document.activeElement?.id === "settings-budgets");
     expect(document.activeElement?.id).toBe("settings-budgets");
   });

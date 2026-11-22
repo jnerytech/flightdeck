@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { seedDemoHosts } from "../../src/demo/boot.ts";
 import { liveScreen, registerDom } from "../dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { daemon as makeDaemon, memoryPlatform, seedHosts, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
 import { settle, settleMaybe } from "../wait.ts";
 
@@ -11,6 +11,8 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/app/App.tsx");
+const { BudgetsSection } = await import("../../src/features/costs/ui.ts");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
@@ -130,5 +132,23 @@ describe("budgets by host (#3912)", () => {
     await settle(() => panels().length === 1);
     expect(formOf("alfa")).not.toBeNull();
     expect(heading("alfa")).toBeNull();
+  });
+
+  test("an open panel stays open when a second host makes the panels fold", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 600_000 });
+    seedHosts(store, [{ id: "h1", name: "alfa", online: true, features: ["costs"] }]);
+    const section = (fold: { open: boolean } | null) => (
+      <TContext.Provider value={store.i18n.t}>
+        <BudgetsSection store={store} hostId="h1" hostName="alfa" budgets={[]} fold={fold} />
+      </TContext.Provider>
+    );
+    const view = render(section(null));
+    expect(formOf("alfa")).not.toBeNull();
+    view.rerender(section({ open: false }));
+    expect(formOf("alfa")).not.toBeNull();
+    // Navigating to another host's panel is a choice: this one folds.
+    view.rerender(section({ open: true }));
+    view.rerender(section({ open: false }));
+    expect(formOf("alfa")).toBeNull();
   });
 });
