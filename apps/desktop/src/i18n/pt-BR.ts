@@ -320,6 +320,8 @@ export const ptBR = {
     loading: "Carregando mensagens",
     to: "para",
     open: "Abrir a sessão",
+    openNamed: "Abrir a sessão de {name}",
+    hostGone: "Esse host não está conectado.",
     statuses: {
       pending: "Pendente",
       delivered: "Entregue",

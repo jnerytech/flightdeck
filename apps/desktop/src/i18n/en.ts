@@ -320,6 +320,8 @@ export const en: Dictionary = {
     loading: "Loading messages",
     to: "to",
     open: "Open the session",
+    openNamed: "Open the session of {name}",
+    hostGone: "That host is not connected.",
     statuses: {
       pending: "Pending",
       delivered: "Delivered",
