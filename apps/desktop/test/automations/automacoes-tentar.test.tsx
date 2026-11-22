@@ -93,3 +93,58 @@ describe.each(["en", "pt-BR"] as const)("the Automations page, a refused load (%
     expect(screen.queryByRole("listitem", { name: w.row }) !== null).toBe(true);
   });
 });
+
+/** Issue #3856: each row's buttons name their automation, and History says whether its list is open. */
+const BUTTONS = {
+  en: {
+    edit: (n: string) => `Edit ${n}`,
+    remove: (n: string) => `Delete ${n}`,
+    history: (n: string) => `History of ${n}`,
+    hide: (n: string) => `Hide history of ${n}`,
+  },
+  "pt-BR": {
+    edit: (n: string) => `Editar ${n}`,
+    remove: (n: string) => `Excluir ${n}`,
+    history: (n: string) => `Histórico de ${n}`,
+    hide: (n: string) => `Esconder histórico de ${n}`,
+  },
+} as const;
+
+describe.each(["en", "pt-BR"] as const)("the Automations rows, their buttons (%s)", (lang) => {
+  const b = BUTTONS[lang];
+  const second = { ...AUTOMATION, id: "a2", name: "weekly" };
+  const names = () =>
+    screen.queryAllByRole("button").map((button) => button.getAttribute("aria-label") ?? "");
+
+  test("Edit, History and Delete name the automation they act on, one set per row", async () => {
+    await page(lang, (type) =>
+      type === "automation.list" ? { automations: [AUTOMATION, second] } : { workflows: [] },
+    );
+    await settle(() => screen.queryByRole("listitem", { name: WORDS[lang].row }) !== null);
+    const found = ["nightly", "weekly"].flatMap((n) => [b.edit(n), b.history(n), b.remove(n)]);
+    expect(found.every((name) => screen.queryByRole("button", { name }) !== null)).toBe(true);
+    expect(new Set(names().filter((name) => name !== "")).size).toBe(
+      names().filter(Boolean).length,
+    );
+  });
+
+  test("History is expanded while its firings show, and collapsed after", async () => {
+    await page(lang, (type) => {
+      if (type === "automation.list") return { automations: [AUTOMATION, second] };
+      return type === "automation.runs" ? { runs: [] } : { workflows: [] };
+    });
+    const state = (name: string) =>
+      screen.queryByRole("button", { name })?.getAttribute("aria-expanded");
+    expect(state(b.history("nightly"))).toBe("false");
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("button", { name: b.history("nightly") }) as HTMLElement);
+    });
+    await settle(() => screen.queryByRole("button", { name: b.hide("nightly") }) !== null);
+    expect(state(b.hide("nightly"))).toBe("true");
+    expect(state(b.history("weekly"))).toBe("false");
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("button", { name: b.hide("nightly") }) as HTMLElement);
+    });
+    expect(state(b.history("nightly"))).toBe("false");
+  });
+});
