@@ -46,13 +46,45 @@ describe("a DOM node in a test failure (#3854)", () => {
         return String((error as Error).message);
       }
     })();
-    expect({ failed: message !== "", short: short(message) }).toEqual({
+    expect({
+      failed: message !== "",
+      short: short(message),
+      names: message.includes("<div>"),
+    }).toEqual({
       failed: true,
       short: true,
+      names: true,
     });
   });
 
-  test("the whole document prints short too", () => {
-    expect(short(printed(document.body))).toBe(true);
+  test("the document and its body print as short names", () => {
+    expect([printed(document), printed(document.body)]).toEqual(["#document", "<body>"]);
+  });
+
+  test("a fragment and a comment print as what they are, not as an empty tag", () => {
+    expect([
+      printed(document.createDocumentFragment()),
+      printed(document.createComment("note")),
+    ]).toEqual(["#document-fragment", "<!-- note -->"]);
+  });
+
+  test("a text with a line break or a quote stays on one line and keeps its meaning", () => {
+    expect(printed(document.createTextNode('say "hi"\nthen go'))).toBe(
+      '#text "say \\"hi\\"\\nthen go"',
+    );
+  });
+
+  test("a class with a quote does not break the tag", () => {
+    const el = document.createElement("p");
+    el.className = 'a"b';
+    expect(printed(el)).toBe('<p class="a\\"b">');
+  });
+
+  test("a cut never splits an emoji", () => {
+    const out = printed(document.createTextNode(`${"x".repeat(39)}🙂🙂`));
+    expect({ whole: out.isWellFormed(), cut: out.endsWith('🙂…"') }).toEqual({
+      whole: true,
+      cut: true,
+    });
   });
 });
