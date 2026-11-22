@@ -76,8 +76,8 @@ async function costsPage(lang: "en" | "pt-BR", options: Parameters<typeof makeDa
   return { d, store, hostId, mem };
 }
 
-const dataRows = () =>
-  within(screen.getByRole("table", { name: /.+/ }))
+const dataRows = (title: string) =>
+  within(screen.getByRole("table", { name: title }))
     .getAllByRole("row")
     .slice(1);
 const cellsOf = (row: HTMLElement) => [...row.querySelectorAll("th,td")].map((c) => c.textContent);
@@ -91,7 +91,7 @@ for (const [lang, t] of [
       await costsPage(lang);
       await settle(() => screen.queryByRole("table", { name: t.roiUi.tableTitle }) !== null);
       await settle(() => screen.queryAllByRole("row").length >= 4);
-      const rows = dataRows();
+      const rows = dataRows(t.roiUi.tableTitle);
       expect(rows).toHaveLength(3);
       const byName = Object.fromEntries(rows.map((r) => [cellsOf(r)[0], cellsOf(r)] as const));
       expect(byName.shop?.[2]).toBe("3");
@@ -116,10 +116,13 @@ for (const [lang, t] of [
       await costsPage(lang);
       await settle(() => screen.queryByRole("table", { name: t.roiUi.tableTitle }) !== null);
       const names = () =>
-        dataRows()
+        dataRows(t.roiUi.tableTitle)
           .slice(0, -1)
           .map((r) => cellsOf(r)[0]);
-      const header = (name: string) => screen.getByRole("columnheader", { name });
+      const header = (name: string) =>
+        within(screen.getByRole("table", { name: t.roiUi.tableTitle })).getByRole("columnheader", {
+          name,
+        });
       await act(async () => {
         fireEvent.click(within(header(t.roiUi.table.cost)).getByRole("button"));
       });
@@ -140,7 +143,10 @@ for (const [lang, t] of [
     test("the table is sorted by cost at first and the sorted header shows its direction", async () => {
       await costsPage(lang);
       await settle(() => screen.queryByRole("table", { name: t.roiUi.tableTitle }) !== null);
-      const header = (name: string) => screen.getByRole("columnheader", { name });
+      const header = (name: string) =>
+        within(screen.getByRole("table", { name: t.roiUi.tableTitle })).getByRole("columnheader", {
+          name,
+        });
       const arrow = (name: string) => header(name).querySelector("svg") !== null;
       expect(header(t.roiUi.table.cost).getAttribute("aria-sort")).toBe("descending");
       expect(arrow(t.roiUi.table.cost)).toBe(true);
