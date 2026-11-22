@@ -66,7 +66,9 @@ async function openHit() {
     fireEvent.submit(input);
   });
   await settle(() => screen.queryAllByText(/agulha/).length > 0);
-  const hit = screen.queryByRole("listbox", { name: "Resultados da busca" })?.querySelector("[role=option]");
+  const hit = screen
+    .queryByRole("listbox", { name: "Resultados da busca" })
+    ?.querySelector("[role=option]");
   expect(hit).not.toBeNull();
   await act(async () => {
     fireEvent.click(hit as HTMLElement);

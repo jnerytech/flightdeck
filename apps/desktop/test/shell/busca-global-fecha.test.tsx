@@ -111,7 +111,9 @@ describe("busca-global-fecha: the global search leaves when the person asks it t
 
   test("a long row truncates with an ellipsis and keeps its full text in a title, so the list never scrolls sideways", () => {
     mount(true);
-    const row = within(screen.queryByRole("listbox", { name: "Resultados da busca" }) as HTMLElement)
+    const row = within(
+      screen.queryByRole("listbox", { name: "Resultados da busca" }) as HTMLElement,
+    )
       .queryAllByRole("option")
       .at(0) as HTMLElement;
     expect(row).not.toBeUndefined();

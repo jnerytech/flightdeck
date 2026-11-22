@@ -93,7 +93,9 @@ async function openReader(external: boolean, tail: "plan" | "answered" | null = 
     fireEvent.submit(input);
   });
   const results = () =>
-    screen.queryByRole("listbox", { name: "Resultados da busca" })?.querySelector("[role=option]") ?? null;
+    screen
+      .queryByRole("listbox", { name: "Resultados da busca" })
+      ?.querySelector("[role=option]") ?? null;
   await settle(() => results() !== null);
   await act(async () => {
     fireEvent.click(results() as HTMLElement);
