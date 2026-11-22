@@ -90,7 +90,68 @@ export function agentShots(ids: DemoIds): Shot[] {
         await page.waitForTimeout(600);
       },
     },
+    // #3956: the Plugins page, the Installed tab and then each screen where a person lets code run.
     { name: "plugins", route: { name: "plugins" } },
+    {
+      name: "plugins-disponiveis",
+      route: { name: "plugins" },
+      prepare: async (page) => {
+        await page.getByRole("tab", { name: /^(Disponíveis|Available)$/ }).click();
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      name: "plugins-marketplaces",
+      route: { name: "plugins" },
+      prepare: async (page) => {
+        await page.getByRole("tab", { name: "Marketplaces" }).click();
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      name: "plugins-conteudo",
+      route: { name: "plugins" },
+      prepare: async (page) => {
+        await page
+          .getByRole("button", {
+            name: /^(See what deploy-tools installs|Ver o que instala deploy-tools)$/,
+          })
+          .click();
+        await page.waitForTimeout(600);
+      },
+    },
+    {
+      name: "plugins-instalar",
+      route: { name: "plugins" },
+      prepare: async (page) => {
+        await page.getByRole("tab", { name: /^(Disponíveis|Available)$/ }).click();
+        await page
+          .getByRole("button", { name: /^(Install lint-rules|Instalar lint-rules)$/ })
+          .click();
+        await page.waitForTimeout(800);
+      },
+    },
+    {
+      name: "plugins-atualizar",
+      route: { name: "plugins" },
+      prepare: async (page) => {
+        await page
+          .getByRole("button", { name: /^(Update deploy-tools|Atualizar deploy-tools)$/ })
+          .click();
+        await page.waitForTimeout(800);
+      },
+    },
+    {
+      name: "plugins-pasta-recusada",
+      route: { name: "plugins" },
+      prepare: async (page) => {
+        await page
+          .getByLabel(/^(Folder of a local plugin|Pasta de um plugin local)/)
+          .fill(ids.refusedPluginFolder);
+        await page.getByRole("button", { name: /^(Preview the folder|Prévia da pasta)$/ }).click();
+        await page.waitForTimeout(1000);
+      },
+    },
     // Phase 20: the persona library (the pack in the app's language) and the editor's preview.
     { name: "personas", route: { name: "personas" } },
     {

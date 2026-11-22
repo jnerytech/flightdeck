@@ -70,6 +70,8 @@ export const NARROW_SHOTS: readonly string[] = [
   // #3858: the Automations list and the Workflows page.
   "automacoes-lista",
   "workflows",
+  // #3956: the Installed tab, a long-named plugin with its chips, badge and four buttons in one row.
+  "plugins",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */
