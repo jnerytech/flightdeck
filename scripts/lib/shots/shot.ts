@@ -2,9 +2,11 @@
  * What the print table is made of: the `Shot` type, and the helpers and fixtures its
  * tables and the print machinery of scripts/demo-shots.ts share.
  */
+
 import type { Page } from "playwright-core";
 import type { Route } from "../../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../../demo-seed.ts";
+import type { WireRule } from "./wire.ts";
 
 export interface Shot {
   name: string;
@@ -30,6 +32,8 @@ export interface Shot {
   secrets?: boolean;
   /** #3602: the vault's usage log kept in the page's storage before it loads. */
   vaultUsage?: boolean;
+  /** #3982: what the page's sockets do to a command (a host's answer refused or replaced, a request sent as another), for a state the demo's hosts cannot be left in. */
+  wire?: WireRule[];
   /** #3943: the hosts answer Connections with fake destinos, config names and an askpass prompt (`sshScript`). */
   ssh?: boolean;
   /** #3943: with `ssh`, an askpass prompt follows the first destinos answer, so the print shows it. */
@@ -101,7 +105,20 @@ export const agentRoute = (ids: DemoIds): Route => ({
 
 /** The session's timeline sheet, open with its turns loaded. */
 export async function openTimeline(page: Page): Promise<void> {
-  await page.getByRole("button", { name: /^(Linha do tempo|Timeline)$/ }).click();
+  const button = page.getByRole("button", { name: /^(Linha do tempo|Timeline)$/ });
+  const more = page.getByRole("button", { name: /^(Mais ações|More actions)$/ });
+  // A narrow session header keeps its actions in the More actions popover, and it measures its width
+  // after the first paint: each round clicks the button where it is, or opens the popover first.
+  for (let round = 1; ; round++) {
+    try {
+      await button.or(more).first().waitFor({ timeout: 10_000 });
+      if ((await button.count()) === 0) await more.click({ timeout: 5000 });
+      await button.click({ timeout: 5000 });
+      break;
+    } catch (error) {
+      if (round === 4) throw error;
+    }
+  }
   await page.waitForTimeout(1000);
 }
 

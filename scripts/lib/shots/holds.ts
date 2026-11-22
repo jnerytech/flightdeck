@@ -1,7 +1,7 @@
 /** What a print's socket wrapper does with each frame (#1414). */
 export interface FrameRewriter {
-  /** A frame the app sends: a `resources.get` or `budget.list` request is noted by its id. */
-  fromApp(frame: string): void;
+  /** A frame the app sends: a `resources.get` or `budget.list` request is noted by its id. The frame that goes to the host comes back (#3982: a rewriter may send another). */
+  fromApp(frame: string): string;
   /** A frame the host sends: the answer to a noted request comes back rewritten. */
   fromHost(frame: string): string;
   /** Frames the host seems to send right after `frame`, which the app hears once it heard `frame` (#3943). */
@@ -70,6 +70,7 @@ export function holdsRewriter(used = 0.95, pauseAt = 0.9): FrameRewriter {
       if (typeof type === "string" && type in rewrite && typeof message?.id === "string") {
         asked.set(message.id, type);
       }
+      return frame;
     },
     fromHost(frame) {
       const message = parse(frame);
@@ -108,9 +109,9 @@ export function installHolds(
     /** What the app's message listeners hear, to give them an answer the print makes in the host's place. */
     readonly hear: Array<(data: string) => void> = [];
     override send(data: Parameters<WebSocket["send"]>[0]): void {
-      if (typeof data === "string") {
-        this.rewriter.fromApp(data);
-        const answer = this.rewriter.answer?.(data);
+      const sent = typeof data === "string" ? this.rewriter.fromApp(data) : data;
+      if (typeof sent === "string") {
+        const answer = this.rewriter.answer?.(sent);
         if (answer !== undefined) {
           // Never sent: the host would do what the print only shows (#3987).
           queueMicrotask(() => {
@@ -119,7 +120,7 @@ export function installHolds(
           return;
         }
       }
-      super.send(data);
+      super.send(sent);
     }
     override addEventListener(
       type: string,

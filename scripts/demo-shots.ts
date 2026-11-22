@@ -34,6 +34,7 @@ import { snippetShots } from "./lib/shots/table-snippets.ts";
 import { teleportShots } from "./lib/shots/table-teleport.ts";
 import { teleportScript } from "./lib/shots/teleport-frames.ts";
 import { pickVariants } from "./lib/shots/variants.ts";
+import { wireScript } from "./lib/shots/wire.ts";
 import {
   type Finding,
   GAP_BOXES,
@@ -263,6 +264,7 @@ async function printShot(
     // Playwright's routeWebSocket never saw the app's sockets under Bun: the page's own WebSocket is
     // wrapped instead.
     if (shot.holds) await page.addInitScript({ content: holdsScript() });
+    if (shot.wire) await page.addInitScript({ content: wireScript(shot.wire) });
     if (shot.ssh) await page.addInitScript({ content: sshScript(shot.askpass === true) });
     if (shot.teleport) {
       await page.addInitScript({ content: teleportScript(shot.teleport === "refuses") });
