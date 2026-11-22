@@ -88,9 +88,9 @@ export class Maintenance {
     return counts;
   }
 
-  /** A backup now (into `out`, or the backups folder keeping the last `backup.keep`). */
-  async backupNow(out?: string): Promise<BackupInfo> {
-    const info = await backupNow(this.opts.db, this.backupsDir, this.now(), out);
+  /** A backup now (into `out`, replacing what is there only with `force`, or the backups folder keeping the last `backup.keep`). */
+  async backupNow(out?: string, force?: boolean): Promise<BackupInfo> {
+    const info = await backupNow(this.opts.db, this.backupsDir, this.now(), out, force);
     if (!out) await keepLast(this.backupsDir, this.opts.backup?.keep ?? DEFAULT_KEEP);
     return info;
   }

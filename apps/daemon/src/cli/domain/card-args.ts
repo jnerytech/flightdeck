@@ -15,8 +15,8 @@ function isAnotherCommandsFlag(flag: string, args: CliArgs): boolean {
   // `--language` is also `review send`'s, which checks its own flags.
   if (flag === "--language" && (args.command === "review" || args.command === "template"))
     return true;
-  // `--force` is also `history resume`'s, which checks its own flags.
-  if (flag === "--force" && args.command === "history") return true;
+  // `--force` is also `history resume`'s, which checks its own flags, and `backup --out`'s (#3809).
+  if (flag === "--force" && (args.command === "history" || args.command === "backup")) return true;
   // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s, `plugins`', `runenv trust|start`'s, `project harness-apply`'s, `boardsync set-push --on`'s, `agentcfg write`'s `snippet`'s and `message rules-set`'s writes, which check their own flags below.
   return flag === "--confirm" && CONFIRM_OWNERS.includes(args.command);
 }

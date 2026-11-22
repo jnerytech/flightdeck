@@ -6,7 +6,7 @@
 import { join } from "node:path";
 import { loadConfig } from "../config.ts";
 import type { Logger } from "../kernel/index.ts";
-import { Maintenance, restoreBackup, statusLines } from "../maintenance/index.ts";
+import { Maintenance, restoreBackup, statusLines, TargetExists } from "../maintenance/index.ts";
 import { EventStore } from "../store/index.ts";
 import { configPath } from "./config-path.ts";
 import type { CliArgs } from "./domain/args.ts";
@@ -41,14 +41,29 @@ async function withMaintenance<T>(
   }
 }
 
-/** `flightdeckd backup [--out <file>] [--json]`: a backup now, with the daemon running or not. */
-export async function runBackup(args: CliArgs, deps: MaintenanceCommandDeps): Promise<void> {
-  const info = await withMaintenance(args, deps, (m) => m.backupNow(args.out));
-  deps.log.log(
-    args.json
-      ? JSON.stringify(info, null, 2)
-      : `backup created: ${info.path} (${info.bytes} bytes)`,
-  );
+/**
+ * `flightdeckd backup [--out <file>] [--force] [--json]`: a backup now, with the daemon running or not. A path that
+ * is taken is a refusal (exit 1, reason `target_exists`), and `--force` replaces a file there (#3809).
+ */
+export async function runBackup(args: CliArgs, deps: MaintenanceCommandDeps): Promise<number> {
+  try {
+    const info = await withMaintenance(args, deps, (m) => m.backupNow(args.out, args.force));
+    deps.log.log(
+      args.json
+        ? JSON.stringify(info, null, 2)
+        : `backup created: ${info.path} (${info.bytes} bytes)`,
+    );
+    return 0;
+  } catch (error) {
+    if (!(error instanceof TargetExists)) throw error;
+    // The refusal a script reads as one JSON line with its stable reason, as `reported` prints a remote one (#3429).
+    deps.log.error(
+      args.json
+        ? JSON.stringify({ error: error.message, reason: error.code })
+        : `flightdeckd: ${error.message}`,
+    );
+    return 1;
+  }
 }
 
 /** `flightdeckd restore <file>`: only with the daemon stopped. */
