@@ -96,10 +96,13 @@ export function TeamMemberRow(
           {member.model && <Badge variant="outline">{member.model}</Badge>}
         </div>
         <div data-slot="member-end" className="member-end">
-          {member.sessionState && (
+          {member.sessionState ? (
             <span className="text-muted-foreground">
               {t(`teamsUi.sessionStates.${member.sessionState}`)}
             </span>
+          ) : (
+            member.role === "worker" &&
+            !sessionId && <span className="text-muted-foreground">{t("teamsUi.noSessionYet")}</span>
           )}
           {sessionId && (
             <Tooltip>

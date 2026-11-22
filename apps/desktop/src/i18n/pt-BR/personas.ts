@@ -164,6 +164,7 @@ export const personas = {
       idle: "Ociosa",
       ended: "Encerrada",
     },
+    noSessionYet: "Aguardando uma sessão",
     coordinator: "coordenadora",
     worker: "executora",
     lastReport: "Último relato",
