@@ -11,7 +11,7 @@ unblocked. A badge on the bell counts the unread ones.
 - An unread row has a dot, a bold title and the word "unread" for a screen reader; a read row has
   none of them. The badge counts the dots. Each row names the session, card or team and the host,
   and says what it asks in words ("Asks: which DB to use?"), not the tool's name. A session's
-  repeated requests become one row with a count ("3 times"). A row whose card or request is gone
+  repeated requests become one row with a count ("Happened 3 times"). A row whose card or request is gone
   says so and has **Dismiss**.
 - A request that still waits is answered from its row: its risk chip, then **Approve** and **Deny**
   (with the row focused, **A** approves and **N** denies, as in Needs you). A high-risk request is
@@ -33,6 +33,9 @@ unblocked. A badge on the bell counts the unread ones.
   focus to the panel's title. After **Clear** an **Undo** line puts the entries back, read or unread
   as they were, for as long as the panel stays open. The list is kept on this computer (the newest
   500) and survives a restart. Esc closes the panel.
+- An empty panel says "No notifications.", lists what lands here (the events Settings, Notifications
+  offers) and has **Notification settings**, which closes the panel and opens that section. A row's time
+  carries its exact date and time (as a tooltip, and for a screen reader).
 - A read row has **Mark as unread** (named for its row; hover or focus it) to come back to it later.
 - The OS notifications are sent as before unless you tune them (below). The center only keeps a
   copy, so one that is never sent (the window had focus) is not in it either.
