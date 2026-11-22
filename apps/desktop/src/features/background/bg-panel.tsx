@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
@@ -38,6 +38,7 @@ export const BgPanel = memo(function BgPanel(props: {
   const [acting, setActing] = useState<"stop" | "respawn" | null>(null);
   const [failed, setFailed] = useState<"stop" | "respawn" | null>(null);
   const [asking, setAsking] = useState(false);
+  const region = useRef<HTMLElement>(null);
   if (!session) return null;
   const name = session.name || basename(session.cwd);
   const act = async (kind: "stop" | "respawn") => {
@@ -54,7 +55,7 @@ export const BgPanel = memo(function BgPanel(props: {
     if (await store.background.message(hostId, session.id, text.trim())) setText("");
   };
   return (
-    <section aria-label={t("bg.region", { name })}>
+    <section ref={region} tabIndex={-1} aria-label={t("bg.region", { name })}>
       <Panel size="sm">
         <Stack gap={2}>
           <output className="text-sm">
@@ -121,6 +122,8 @@ export const BgPanel = memo(function BgPanel(props: {
           message={t("bg.stopConfirm", { name })}
           confirmLabel={t("bg.stopTitle")}
           destructive
+          // Stop turns its own button off: the focus goes to the panel, not to a disabled control.
+          onRestoreFocus={() => region.current?.focus()}
           onCancel={() => setAsking(false)}
           onConfirm={() => {
             setAsking(false);
