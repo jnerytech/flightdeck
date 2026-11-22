@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/shared/lib/index.ts";
-import { type DiffRow, diffRows, type Selection, selected } from "./domain/review.ts";
+import {
+  type DiffRow,
+  diffRows,
+  type PrCommentsByPath,
+  type Selection,
+  selected,
+} from "./domain/review.ts";
 
 type LineRow = Extract<DiffRow, { kind: "line" }>;
 
@@ -239,6 +245,8 @@ export function DiffView(
     composer: ReactNode;
     /** Shows a file in the system's file manager; absent where the app cannot (a browser, a remote host). */
     onShowInFolder?: (file: DiffFile) => void;
+    /** The PR's comments by file (a card's): a file that has some shows how many, and leads to the first. */
+    prComments?: PrCommentsByPath;
   }>,
 ) {
   const t = useT();

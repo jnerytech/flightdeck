@@ -25,6 +25,8 @@ export function PrComments(
     cardId: string;
     /** Changes whenever the card did (its PR is polled): the comments are read again. */
     moment: string;
+    /** Told the comments each time they are read, so the diff can mark the files that have some. */
+    onRead?: (comments: PrComment[]) => void;
   }>,
 ) {
   const t = useT();

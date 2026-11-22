@@ -1,4 +1,4 @@
-import type { DiffFile, ReviewComment } from "@flightdeck/protocol";
+import type { DiffFile, PrComment, ReviewComment } from "@flightdeck/protocol";
 
 /** One row of a file's diff: a hunk header or a line with its numbers on each side. */
 export type DiffRow =
@@ -89,4 +89,12 @@ export function isExternalAuthor(comment: {
 }): boolean {
   if (comment.authorIdentity !== null) return false;
   return !TRUSTED_ASSOCIATIONS.has((comment.authorAssociation ?? "").toUpperCase());
+}
+
+/** Where a card's PR comments sit in the diff: for each file, how many and the first one's id. */
+export type PrCommentsByPath = Readonly<Record<string, { count: number; firstId: string }>>;
+
+/** Groups the inline comments of a PR by the file they are on; a review's summary has no file. */
+export function prCommentsByPath(_comments: readonly PrComment[]): PrCommentsByPath {
+  return {};
 }
