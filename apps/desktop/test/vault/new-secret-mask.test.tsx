@@ -175,4 +175,12 @@ describe("cofre-ui: the New secret Value hides what is typed for a password or a
       stored: "one-line-token",
     });
   });
+
+  test("a value with only a trailing line break keeps its text when it moves into a masked box", async () => {
+    const { words } = await openForm();
+    await change(words.type, "env");
+    await change(words.value, "ghp_token\n");
+    await change(words.type, "token");
+    expect(field(words.value).value).toBe("ghp_token");
+  });
 });
