@@ -164,6 +164,22 @@ describe("rastro-estados (#3706)", () => {
     });
   }
 
+  // A screen reader speaks only text that changes inside a region that was already polite, so the
+  // region has to stay polite while it plays and merely hold no text.
+  test("the spoken step lives in one polite region that is empty while playing and filled when the person steps out of it", async () => {
+    await panel("en", [TRACE]);
+    await click("Replay");
+    await click("Play");
+    const spoken = document.querySelector("[aria-live=polite]");
+    expect(spoken).not.toBeNull();
+    expect(spoken?.textContent).toBe("");
+    await click("Next");
+    expect(document.querySelector("[aria-live=polite]") === spoken).toBe(true);
+    expect(spoken?.textContent?.includes("Step 2") || spoken?.textContent?.includes("a.ts")).toBe(
+      true,
+    );
+  });
+
   test("a playback that reaches the last step stops by itself", async () => {
     await panel("en", [TRACE]);
     await click("Replay");
