@@ -2386,9 +2386,9 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     );
     const secret = lefts.find((box) => box.name === ".env");
     const sibling = lefts.find((box) => box.name !== ".env");
-    if (!secret || !sibling) throw new Error("a árvore devia listar .env e um arquivo irmão");
+    if (!secret || !sibling) throw new Error("the tree should list .env and a sibling file");
     if (Math.abs(secret.left - sibling.left) > 1) {
-      throw new Error(`o .env começa em x=${secret.left} e o irmão em x=${sibling.left}`);
+      throw new Error(`.env starts at x=${secret.left} and its sibling at x=${sibling.left}`);
     }
     // By content: the key-shaped line is found, and nothing of the key shows.
     await panel.getByRole("button", { name: c.t("files.byContent"), exact: true }).click();
