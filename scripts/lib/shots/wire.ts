@@ -8,8 +8,11 @@ import { type FrameRewriter, installHolds } from "./holds.ts";
  */
 export type WireRule =
   | { command: string; refuse: string }
-  | { command: string; data: unknown }
-  | { command: string; as: string; data?: unknown };
+  | { command: string; data: unknown; after?: unknown }
+  | { command: string; as: string; data?: unknown }
+  | { command: string; reply: unknown }
+  | { command: string; hold: true }
+  | { command: string; without: Record<string, string[]> };
 
 /**
  * A rewriter that applies `rules` to the commands the app asks. It goes into the page as its source
@@ -55,6 +58,12 @@ export function wireRewriter(rules: WireRule[]): FrameRewriter {
         return JSON.stringify(refused);
       }
       return "data" in rule ? JSON.stringify({ ...message, data: rule.data }) : frame;
+    },
+    drops() {
+      return false;
+    },
+    answer() {
+      return undefined;
     },
   };
 }
