@@ -182,15 +182,24 @@ describe("shots-wire: the states the table prints (#3982)", () => {
 
   test("the applied-rewind print waits for the notice that says the rewind happened before it waits for the Undo, which the undo preview shows from the start (#4036)", async () => {
     const calls: string[] = [];
-    // A page that records each call and answers with itself.
+    // An options object reads as its values, so the button's name is in the call.
+    const text = (arg: unknown): string => {
+      if (arg instanceof RegExp || typeof arg === "string") return String(arg);
+      if (typeof arg === "object" && arg !== null) return Object.values(arg).map(text).join(",");
+      return typeof arg;
+    };
+    // A page that records each call and answers with itself, also for `page.mouse.move(...)`.
+    const member = (name: string): unknown =>
+      new Proxy(
+        (...args: unknown[]) => {
+          calls.push(`${name}(${args.map(text).join(",")})`);
+          return recorder;
+        },
+        { get: (_target, prop) => (recorder as Record<string | symbol, unknown>)[prop] },
+      );
     const recorder: unknown = new Proxy(() => recorder, {
-      get: (_target, prop) =>
-        prop === "then"
-          ? undefined
-          : (...args: unknown[]) => {
-              calls.push(`${String(prop)}(${args.map(String).join(",")})`);
-              return recorder;
-            },
+      // `then` stays undefined, or awaiting the recorder would wait for it forever.
+      get: (_target, prop) => (prop === "then" ? undefined : member(String(prop))),
     });
     await named("linha-do-tempo-desfeito")?.prepare?.(recorder as never);
     const notice = calls.findIndex(

@@ -232,6 +232,10 @@ export function agentShots(ids: DemoIds): Shot[] {
         await page
           .getByRole("button", { name: /^(Voltar arquivos|Rewind files)$/ })
           .click({ timeout: 8000 });
+        // The Undo shows from the start (the undo preview is wired), so the notice is what says the rewind happened.
+        await page
+          .getByText(/^(Arquivos voltados ao turno|Files rewound to turn)/)
+          .waitFor({ timeout: 8000 });
         await page
           .getByRole("button", { name: /^(Desfazer volta|Undo rewind)$/ })
           .waitFor({ timeout: 8000 });
