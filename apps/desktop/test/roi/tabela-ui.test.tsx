@@ -222,6 +222,38 @@ for (const [lang, t] of [
       });
       await act(async () => {});
       expect(mem.saved).toEqual([]);
+      expect(screen.queryByText(/roi-2026-10-08_2026-10-14\.csv/)).toBeNull();
+    });
+
+    // Issue #3897: a press is answered with the file that was saved.
+    test("a saved file is named in a status line next to the button", async () => {
+      const { mem } = await costsPage(lang);
+      await settle(() => screen.queryByRole("table", { name: t.roiUi.tableTitle }) !== null);
+      await act(async () => {
+        fireEvent.click(exportButton());
+      });
+      await settle(() => mem.saved.length === 1);
+      const said = t.roiUi.table.saved.replace("{file}", "roi-2026-10-08_2026-10-14.csv");
+      await settle(() => screen.queryByText(said) !== null);
+      expect(screen.queryByText(said)).not.toBeNull();
+    });
+
+    test("a later cancel clears the line that named the earlier file", async () => {
+      const { mem } = await costsPage(lang);
+      await settle(() => screen.queryByRole("table", { name: t.roiUi.tableTitle }) !== null);
+      await act(async () => {
+        fireEvent.click(exportButton());
+      });
+      const said = t.roiUi.table.saved.replace("{file}", "roi-2026-10-08_2026-10-14.csv");
+      await settle(() => screen.queryByText(said) !== null);
+      mem.save.cancel = true;
+      await act(async () => {
+        fireEvent.click(exportButton());
+      });
+      // The fake dialog resets the flag when it is asked: the cancel has been answered.
+      await settle(() => !mem.save.cancel);
+      await act(async () => {});
+      expect(screen.queryByText(said)).toBeNull();
     });
   });
 }

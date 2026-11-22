@@ -160,7 +160,7 @@ Dollars follow the app's language everywhere a cost shows: `US$ 1,234.50` in Eng
   - the most expensive sessions, and clicking one opens it;
   - the estimated cost also shows in the session list, the open session, the card and the
     workflow run.
-- **Export CSV:** saves, through the system dialog, one row per day, project, model and origin.
+- **Export CSV:** saves, through the system dialog, one row per day, project, model and origin. A line under the title then says which file was saved. Across several hosts, it also names a host that gave no file and was left out; when no host gave a file, it says nothing was saved. Closing the dialog says nothing.
 - **Warnings:**
   - models with no price show as "no price", with the name;
   - for managed sessions, the daemon compares the computed cost with what Claude Code itself

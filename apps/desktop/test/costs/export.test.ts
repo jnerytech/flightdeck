@@ -8,7 +8,7 @@ const FILTER: CostsFilter = { from: "2026-10-01", to: "2026-10-07" };
 type File = { filename: string; csv: string } | null;
 
 /** A store whose hosts answer `costs.export` as told (a function throws to model a host that fails). */
-function fake(answers: Record<string, File | (() => File)>) {
+function fake(answers: Record<string, File | (() => File)>, cancel = false) {
   const asked: Array<{ id: string; filter: unknown }> = [];
   const saved: Array<{ name: string; text: string }> = [];
   const store = {
@@ -20,7 +20,7 @@ function fake(answers: Record<string, File | (() => File)>) {
     system: {
       async saveFile(name: string, text: string) {
         saved.push({ name, text });
-        return true;
+        return !cancel;
       },
     },
   };
@@ -118,5 +118,85 @@ describe("costs-export: every host becomes one file with the host as its first c
     const { store, saved } = fake({ a: boom, b: boom });
     await exportCosts(store, { acrossHosts: true, hostId: "__all__", hosts: HOSTS }, FILTER);
     expect(saved).toEqual([]);
+  });
+});
+
+// Issue #3897: the export says how it ended, so a screen can answer the press.
+describe("costs-export: the result says what happened", () => {
+  const one = { acrossHosts: false, hostId: "a", hosts: HOSTS };
+  const all = { acrossHosts: true, hostId: "__all__", hosts: HOSTS };
+
+  test("a file saved names the file and leaves no host out", async () => {
+    const { store } = fake({ a: fileOf("costs-a.csv", "2026-10-01,1") });
+    expect(await exportCosts(store, one, FILTER)).toEqual({
+      kind: "saved",
+      filename: "costs-a.csv",
+      left: [],
+    });
+  });
+
+  test("the person closing the save dialog is a cancel, not a failure", async () => {
+    const { store } = fake({ a: fileOf("costs-a.csv", "2026-10-01,1") }, true);
+    expect(await exportCosts(store, one, FILTER)).toEqual({ kind: "cancelled" });
+  });
+
+  test("one host that gives no file: nothing, naming that host", async () => {
+    const { store } = fake({ a: null });
+    expect(await exportCosts(store, one, FILTER)).toEqual({ kind: "nothing", left: ["alfa"] });
+  });
+
+  test("several hosts, one fails: the file is saved and the host left out is named", async () => {
+    const { store } = fake({
+      a: () => {
+        throw new Error("offline");
+      },
+      b: fileOf("costs-b.csv", "2026-10-01,2"),
+    });
+    expect(await exportCosts(store, all, FILTER)).toEqual({
+      kind: "saved",
+      filename: "costs-b.csv",
+      left: ["alfa"],
+    });
+  });
+
+  test("several hosts, none gives a file: nothing, naming every host", async () => {
+    const { store } = fake({ a: null, b: null });
+    expect(await exportCosts(store, all, FILTER)).toEqual({
+      kind: "nothing",
+      left: ["alfa", "beta"],
+    });
+  });
+
+  test("two hosts with the same name: the one that failed is still named", async () => {
+    const { store } = fake({ a: fileOf("costs-a.csv", "2026-10-01,1"), b: null });
+    const twins = [
+      { id: "a", name: "build" },
+      { id: "b", name: "build" },
+    ];
+    expect(await exportCosts(store, { ...all, hosts: twins }, FILTER)).toEqual({
+      kind: "saved",
+      filename: "costs-a.csv",
+      left: ["build"],
+    });
+  });
+
+  test("a host that answers with an empty file is left out, not counted as given", async () => {
+    const { store } = fake({
+      a: { filename: "a.csv", csv: "" },
+      b: fileOf("costs-b.csv", "2026-10-01,2"),
+    });
+    expect(await exportCosts(store, all, FILTER)).toEqual({
+      kind: "saved",
+      filename: "costs-b.csv",
+      left: ["alfa"],
+    });
+  });
+
+  test("no host to ask: nothing, and no host to name", async () => {
+    const { store } = fake({});
+    expect(await exportCosts(store, { ...all, hosts: [] }, FILTER)).toEqual({
+      kind: "nothing",
+      left: [],
+    });
   });
 });
