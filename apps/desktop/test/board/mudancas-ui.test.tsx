@@ -264,7 +264,7 @@ describe("mudancas-ui", () => {
     expect(await settleMaybe(() => active() === revertButton())).toBe(true);
 
     // The live region is in the page before the words arrive.
-    const listening = new Set(document.querySelectorAll("output"));
+    const listening = new Set<Element>(document.querySelectorAll("output"));
     await click("Reverter novo.txt");
     await click("Reverter arquivo");
     await settle(() => screen.queryByRole("button", { name: "Desfazer" }) !== null);

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
-import { InlineNotice } from "@/shared/feedback/index.ts";
+import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
 type Phase =
@@ -37,8 +37,17 @@ export function FileEditor(
   const [phase, setPhase] = useState<Phase>({ name: "opening" });
   const parent = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
-  /** The text the editor opens with: what `file.read` gave before it was mounted. */
+  /** The text the editor opens with, and then the last one read or saved: what "unsaved" is measured from. */
   const initial = useRef("");
+  /** The name of the editing surface, read when the editor is mounted (a language change must not rebuild it). */
+  const label = useRef("");
+  label.current = t("changes.editorField", { path });
+  const [discarding, setDiscarding] = useState(false);
+  /** A close with edits that were not saved asks first; with none (or no editor yet) it closes at once. */
+  const requestClose = () => {
+    if (view.current && view.current.state.doc.toString() !== initial.current) setDiscarding(true);
+    else props.onClose();
+  };
 
   const read = useCallback(async () => {
     const result = await store.hostRequest(hostId, "file.read", { target, path });
@@ -55,6 +64,7 @@ export function FileEditor(
     if (!file) return;
     const editor = view.current;
     editor?.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: file.text } });
+    initial.current = file.text;
     setPhase({ name: "ready", hash: file.hash, conflict: false });
     return file;
   }, [read]);
@@ -83,6 +93,7 @@ export function FileEditor(
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           EditorView.lineWrapping,
+          EditorView.contentAttributes.of({ "aria-label": label.current }),
         ],
       }),
     });
@@ -96,13 +107,15 @@ export function FileEditor(
   const write = async (expectedHash: string) => {
     const editor = view.current;
     if (!editor) return;
+    const text = editor.state.doc.toString();
     const result = await store.hostRequest(hostId, "file.write", {
       target,
       path,
-      text: editor.state.doc.toString(),
+      text,
       expectedHash,
     });
     if (result.ok) {
+      initial.current = text;
       setPhase({ name: "ready", hash: result.data.hash, conflict: false });
       store.success(t("changes.saved", { path }));
       props.onSaved();
@@ -120,7 +133,7 @@ export function FileEditor(
   };
 
   return (
-    <Dialog open onOpenChange={(open) => !open && props.onClose()}>
+    <Dialog open onOpenChange={(open) => !open && requestClose()}>
       <DialogContent aria-describedby={undefined} showCloseButton={false} className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="font-mono text-sm">
@@ -130,7 +143,7 @@ export function FileEditor(
         {phase.name === "opening" && (
           <p className="text-muted-foreground text-sm">{t("changes.editorOpening")}</p>
         )}
-        {phase.name === "refused" && <InlineNotice>{phase.message}</InlineNotice>}
+        {phase.name === "refused" && <InlineNotice tone="error">{phase.message}</InlineNotice>}
         {phase.name === "ready" && (
           <>
             {phase.conflict && (
@@ -156,11 +169,25 @@ export function FileEditor(
           {phase.name === "ready" && (
             <Button onClick={() => void write(phase.hash)}>{t("changes.save")}</Button>
           )}
-          <Button variant="outline" onClick={props.onClose}>
+          <Button variant="outline" onClick={requestClose}>
             {t("changes.close")}
           </Button>
         </DialogFooter>
       </DialogContent>
+      {discarding && (
+        <ConfirmDialog
+          message={t("changes.discardMessage", { path })}
+          confirmLabel={t("changes.discardConfirm")}
+          destructive
+          // Keep editing: the focus goes back into the text.
+          onRestoreFocus={() => view.current?.focus()}
+          onConfirm={() => {
+            setDiscarding(false);
+            props.onClose();
+          }}
+          onCancel={() => setDiscarding(false)}
+        />
+      )}
     </Dialog>
   );
 }
