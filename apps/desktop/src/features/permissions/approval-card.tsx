@@ -130,6 +130,9 @@ export function ApprovalCard(
   // The buttons that had the focus went with the answer, and the browser left it on the page body: it
   // goes to the next request waiting, or, with none, to this one, which says what was decided.
   const answered = Boolean(resolution);
+  // A card that was waiting when it showed is news once answered; one that shows already answered
+  // (a list loaded after the answer) is only text (#4162).
+  const [wasWaiting] = useState(!answered);
   useEffect(() => {
     if (!answered || !hadFocus.current) return;
     hadFocus.current = false;
@@ -233,9 +236,16 @@ export function ApprovalCard(
       ) : (
         <PlanOrBody plan={plan} body={props.body} view={view} t={t} onCopyPath={props.onCopyPath} />
       )}
-      {resolution ? (
+      {resolution && !wasWaiting && (
         <p className="text-muted-foreground text-sm">{resolutionLine(resolution, t)}</p>
-      ) : (
+      )}
+      {/* Always in the page, empty while waiting: the text arrives in a live region that exists. */}
+      {wasWaiting && (
+        <output className="text-muted-foreground text-sm empty:sr-only">
+          {resolution ? resolutionLine(resolution, t) : ""}
+        </output>
+      )}
+      {!resolution && (
         <>
           <div className="flex flex-wrap items-center gap-2">
             <AnswerButtons

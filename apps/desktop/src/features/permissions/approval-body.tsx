@@ -158,7 +158,12 @@ export function AnswerButtons(
   if (props.asks) {
     return (
       <>
-        <ActionButton pending={pending} disabled={!props.answers} onClick={props.onSendAnswers}>
+        <ActionButton
+          pending={pending}
+          disabled={!props.answers}
+          disabledReason={t("approval.question.pick")}
+          onClick={props.onSendAnswers}
+        >
           {t("approval.question.send")}
         </ActionButton>
         <Button variant="outline" disabled={pending} onClick={() => props.onDenying(true)}>
