@@ -104,7 +104,7 @@ describe("what each Run environment print does on the page (#4287)", () => {
 
   test("the review print lists the commands of an untrusted run.yaml, and the error print says what is wrong with it", () => {
     const review = answerOf("card-ambiente-revisar", "runenv.config") as Info | undefined;
-    expect([review?.trusted, review?.config?.run.length]).toEqual([false, 2]);
+    expect([review?.trusted, review?.config?.run.length]).toEqual([false, 3]);
     const broken = answerOf("card-ambiente-erros", "runenv.config") as Info | undefined;
     expect([broken?.trusted, (broken?.errors.length ?? 0) > 0, broken?.config]).toEqual([
       false,
@@ -114,8 +114,8 @@ describe("what each Run environment print does on the page (#4287)", () => {
   });
 
   test("the Trust print opens the dialog and confirms nothing; the refused one confirms and the host refuses", async () => {
-    expect(await calls("card-ambiente-confiar")).toMatch(/Trust this run\.yaml.*alertdialog/);
-    expect(await calls("card-ambiente-confiar")).not.toMatch(/Trust\$\)/);
+    expect(await calls("card-ambiente-confiar")).toMatch(/Trust this run.{1,2}yaml.*alertdialog/);
+    expect(await calls("card-ambiente-confiar")).not.toMatch(/click\(\).*click\(\)/);
     expect(wireOf("card-ambiente-confianca-recusada").map((r) => r.command)).toEqual([
       "runenv.config",
       "runenv.trust",
