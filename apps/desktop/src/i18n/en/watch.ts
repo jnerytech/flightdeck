@@ -214,5 +214,7 @@ export const watch = {
     pair: "{a} and {b}",
     release: "Free the pair {pair}",
     releaseShort: "Free",
+    releaseFailed: "The pair {pair} could not be freed.",
+    removeFailed: "The exception could not be removed.",
   },
 };

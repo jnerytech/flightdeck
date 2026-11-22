@@ -15,6 +15,15 @@ import type { AppStore } from "../../src/lib/app-store.ts";
 
 afterEach(cleanup);
 
+const NO_SESSIONS = {
+  hosts: [],
+  hub: {},
+  meta: {},
+  externals: {},
+  names: {},
+  background: {},
+  personas: {},
+};
 const REFUSED = { ok: false, code: "invalid_state", message: "sessão em uso" };
 const TEXT = "Não dá para fazer isso agora.";
 
@@ -48,6 +57,9 @@ describe("erros-com-solucao: refusals shown by forms", () => {
           ? { ok: true, data: { policy: { exceptions: [], retentionDays: 30 }, paused: [] } }
           : REFUSED,
       i18n: { t: (key: string) => key },
+      // The section reads the sessions' names from the store's state (#4085): none here.
+      subscribe: () => () => {},
+      getState: () => NO_SESSIONS,
     } as unknown as AppStore;
     const view = render(<MessagingRulesSection store={store} hostId="h" hostName="alfa" />);
     await uiIdle();

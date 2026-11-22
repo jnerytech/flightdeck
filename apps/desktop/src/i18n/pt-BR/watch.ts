@@ -212,5 +212,7 @@ export const watch = {
     pair: "{a} e {b}",
     release: "Soltar o par {pair}",
     releaseShort: "Soltar",
+    releaseFailed: "Não foi possível soltar o par {pair}.",
+    removeFailed: "A exceção não pôde ser removida.",
   },
 } as const;
