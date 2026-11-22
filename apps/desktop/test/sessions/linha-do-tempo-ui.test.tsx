@@ -182,6 +182,16 @@ describe("linha-do-tempo-ui", () => {
     ).toBe(true);
 
     await click("Desfazer volta");
+    // Looking is not doing: the dialog lists the files and the undo waits for its confirmation.
+    await settle(() => screen.queryByRole("dialog", { name: "Desfazer a volta" }) !== null);
+    expect(screen.queryByRole("dialog", { name: "Desfazer a volta" })).not.toBeNull();
+    expect(existsSync(join(repo, "novo.txt"))).toBe(false);
+    await settle(
+      () =>
+        screen.queryByRole("button", { name: "Restaurar arquivos" })?.hasAttribute("disabled") ===
+        false,
+    );
+    await click("Restaurar arquivos");
     await settle(() => existsSync(join(repo, "novo.txt")));
     expect(text(join(repo, "README.md"))).toBe("v2\n");
     expect(text(join(repo, "novo.txt"))).toBe("x\n");
