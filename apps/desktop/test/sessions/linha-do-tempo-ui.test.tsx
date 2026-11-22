@@ -364,6 +364,91 @@ describe("linha-do-tempo-ui", () => {
     expect(screen.queryByRole("dialog", { name: "Linha do tempo" })).toBeNull();
   });
 
+  // #4037: the notices stay in view while the turns scroll, and the list opens at the newest turn.
+  const scroller = () =>
+    sheet().queryByRole("list", { name: "Turnos" })?.closest("[data-slot='timeline-scroll']") ??
+    null;
+
+  test("o aviso de turno em andamento fica fora da rolagem, e a lista abre no turno mais novo (#4037)", async () => {
+    const heights = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollHeight");
+    // Layout does not exist under happy-dom: the list says it is 480 px tall.
+    Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+      configurable: true,
+      get: () => 480,
+    });
+    try {
+      const { manager, sessionId } = await setup();
+      manager.send(sessionId, "[tool] escreva");
+      await poll(() => manager.get(sessionId).status === "awaiting_permission");
+      await openTimeline();
+      const busy = screen.queryByText("A sessão está num turno: pare-a antes de voltar arquivos.");
+      expect(busy).not.toBeNull();
+      const area = scroller() as HTMLElement;
+      expect(area).not.toBeNull();
+      expect(area.contains(busy)).toBe(false);
+      expect(area.scrollTop).toBe(480);
+    } finally {
+      if (heights) Object.defineProperty(HTMLElement.prototype, "scrollHeight", heights);
+      else Reflect.deleteProperty(HTMLElement.prototype, "scrollHeight");
+    }
+  });
+
+  test("o aviso da volta fica fora da rolagem, com o Desfazer junto (#4037)", async () => {
+    await setup();
+    await openTimeline();
+    await click("Voltar arquivos até aqui (turno 2)");
+    await settle(
+      () =>
+        screen.queryByRole("button", { name: "Voltar arquivos" })?.hasAttribute("disabled") ===
+        false,
+    );
+    await click("Voltar arquivos");
+    await settle(() => screen.queryByText("Arquivos voltados ao turno 2.") !== null);
+    const notice = screen.queryByText("Arquivos voltados ao turno 2.") as HTMLElement;
+    const area = scroller() as HTMLElement;
+    expect(area).not.toBeNull();
+    expect(area.contains(notice)).toBe(false);
+    expect(area.contains(screen.queryByRole("button", { name: "Desfazer volta" }))).toBe(false);
+  });
+
+  // #4038: a long prompt can be read whole, and a turn without one says so.
+  const LONG = "primeira linha\nsegunda linha\nterceira linha\nquarta linha\nquinta linha";
+
+  test("um prompt longo abre e fecha com Mostrar mais e Mostrar menos; um curto não tem o botão (#4038)", async () => {
+    const { snapshots, repo, claudeSessionId } = await setup();
+    const take = (kind: "before" | "after", prompt?: string) =>
+      snapshots?.take({ cwd: repo, claudeSessionId, kind, ...(prompt ? { prompt } : {}) });
+    await take("before", LONG);
+    await take("after");
+    await openTimeline();
+    // The text is split into lines: match the first and read the paragraph around it.
+    const row = sheet()
+      .queryByText(/primeira linha/)
+      ?.closest("li") as HTMLElement;
+    const prompt = within(row).queryByText(/primeira linha/) as HTMLElement;
+    const more = within(row).queryByRole("button", { name: "Mostrar mais" });
+    expect(more?.getAttribute("aria-expanded")).toBe("false");
+    expect(prompt.className).toContain("line-clamp-3");
+    expect(more?.getAttribute("aria-controls")).toBe(prompt.id);
+    await click("Mostrar mais");
+    const less = within(row).queryByRole("button", { name: "Mostrar menos" });
+    expect(less?.getAttribute("aria-expanded")).toBe("true");
+    expect(prompt.className).not.toContain("line-clamp-3");
+    await click("Mostrar menos");
+    expect(within(row).queryByRole("button", { name: "Mostrar mais" })).not.toBeNull();
+    expect(prompt.className).toContain("line-clamp-3");
+    // A short prompt is shown whole: nothing to expand.
+    expect(within(turn("arrume o README")).queryByRole("button", { name: /Mostrar/ })).toBeNull();
+  });
+
+  test("um turno sem prompt registrado diz isso, em vez de uma linha vazia (#4038)", async () => {
+    const { snapshots, repo, claudeSessionId } = await setup();
+    await snapshots?.take({ cwd: repo, claudeSessionId, kind: "before" });
+    await snapshots?.take({ cwd: repo, claudeSessionId, kind: "after" });
+    await openTimeline();
+    expect(sheet().queryByText("(sem prompt registrado)")).not.toBeNull();
+  });
+
   test("os turnos: sem fim registrado, o último está em andamento e os outros sem registro; os de segurança não contam", () => {
     const row = (n: number, kind: string, tree: string): SnapshotInfo => ({
       claudeSessionId: "s",
