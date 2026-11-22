@@ -15,11 +15,12 @@ import {
   ConfirmDialog,
   InlineNotice,
 } from "@/shared/feedback/index.ts";
-import { ErrorState, LoadingState } from "@/shared/layout/index.ts";
+import { ErrorState, Inline, LoadingState } from "@/shared/layout/index.ts";
 import { refusalText } from "../../i18n/errors.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { HostResult } from "../../lib/kernel.ts";
 import { TerminalButton } from "../terminal/ui.ts";
+import { TurnContext } from "./turn-prompt.tsx";
 
 export interface Target {
   store: AppStore;
@@ -145,6 +146,7 @@ export function RewindDialog(
           <DialogTitle>{t("timeline.rewindTitle", { n: turn.ordinal })}</DialogTitle>
           <DialogDescription>{t("timeline.rewindNote")}</DialogDescription>
         </DialogHeader>
+        <TurnContext store={store} turn={turn} />
         <PreviewState
           store={store}
           preview={preview}
@@ -305,17 +307,21 @@ export function ForkDialog(
           <DialogTitle>{t("timeline.forkTitle", { n: turn.ordinal })}</DialogTitle>
           <DialogDescription>{t("timeline.forkDescription")}</DialogDescription>
         </DialogHeader>
+        <TurnContext store={store} turn={turn} />
         {forked ? (
           <div className="flex flex-col gap-2 text-sm">
             <p>{t("timeline.forkCommand")}</p>
             <code className="break-all rounded-md bg-muted p-2">{forked.command}</code>
-            <div>
+            <Inline>
+              <Button variant="outline" onClick={() => void store.system.copyText(forked.command)}>
+                {t("timeline.forkCopy")}
+              </Button>
               <TerminalButton
                 store={store}
                 hostId={hostId}
                 target={{ cwd, claudeSessionId: forked.claudeSessionId }}
               />
-            </div>
+            </Inline>
           </div>
         ) : (
           <div className="flex flex-col gap-3 text-sm">

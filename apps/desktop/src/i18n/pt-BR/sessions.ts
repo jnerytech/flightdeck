@@ -675,5 +675,6 @@ export const sessions = {
     forkNeedsPreview:
       "Bifurcar precisa antes da lista de arquivos acima. Desmarque “Voltar os arquivos também” para bifurcar sem ela.",
     forkCommand: "Conversa bifurcada. Para abrir no terminal, rode:",
+    forkCopy: "Copiar o comando",
   },
 } as const;

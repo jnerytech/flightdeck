@@ -671,5 +671,6 @@ export const sessions = {
     forkNeedsPreview:
       "Fork needs the list of files above first. Untick “Also rewind the files” to fork without it.",
     forkCommand: "Conversation forked. To open it in the terminal, run:",
+    forkCopy: "Copy the command",
   },
 };
