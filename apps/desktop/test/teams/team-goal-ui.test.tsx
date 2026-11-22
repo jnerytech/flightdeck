@@ -119,8 +119,18 @@ function open(lang: "en" | "pt-BR", goal: string) {
 }
 
 const WORDS = {
-  en: { goal: "Goal", outcome: "Outcome", more: "Show more", less: "Show less" },
-  "pt-BR": { goal: "Objetivo", outcome: "Resultado", more: "Mostrar mais", less: "Mostrar menos" },
+  en: {
+    goal: "Goal of login",
+    outcome: "Outcome",
+    more: "Show more of the goal of login",
+    less: "Show less of the goal of login",
+  },
+  "pt-BR": {
+    goal: "Objetivo de login",
+    outcome: "Resultado",
+    more: "Mostrar mais do objetivo de login",
+    less: "Mostrar menos do objetivo de login",
+  },
 } as const;
 
 describe("team-goal-ui: the team's goal (#4023)", () => {

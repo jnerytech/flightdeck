@@ -136,10 +136,7 @@ describe("times-ui: the buttons of a team are named from their visible text (#26
     await click("Novo time");
     const buttons = [
       ...(row("nomes") as HTMLElement).querySelectorAll("button"),
-      ...(screen
-        .queryByRole("textbox", { name: "Objetivo" })
-        ?.closest("form")
-        ?.querySelectorAll("button") ?? []),
+      ...(screen.queryByLabelText("Objetivo")?.closest("form")?.querySelectorAll("button") ?? []),
     ];
     // The team row has Pause, Add worker and Close, and its members' buttons.
     expect(buttons.length).toBeGreaterThan(6);
