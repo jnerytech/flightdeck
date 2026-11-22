@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { chmodSync, writeFileSync } from "node:fs";
+import { chmodSync, readdirSync, writeFileSync } from "node:fs";
 import { delimiter, dirname, join } from "node:path";
 import { DEMO_SSH_PASSWORD, demoSshHost, installDemoSsh } from "../../lib/demo/fake-ssh.ts";
 import { realTempDir } from "../temp-dir.ts";
@@ -97,6 +97,13 @@ describe("demo-ssh-tools: the fake ssh the demo's SSH journey connects with", ()
       rest: ["/usr/bin"],
       after: "/usr/bin",
     });
+  });
+
+  test("only ssh and ssh-keyscan are put on the PATH: the demo's other ssh tools stay the machine's", () => {
+    const { ssh } = fake();
+    expect(readdirSync(dirname(ssh.ssh)).sort()).toEqual(
+      process.platform === "win32" ? ["ssh-keyscan.cmd", "ssh.cmd"] : ["ssh", "ssh-keyscan"],
+    );
   });
 
   test("what the fake answers with is not put in the environment it was given", () => {
