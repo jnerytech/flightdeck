@@ -30,6 +30,9 @@ afterEach(async () => {
 
 interface SavedTarget {
   name: string;
+  host?: string;
+  port?: number;
+  user?: string;
   options?: { forwardAgent?: boolean };
 }
 
@@ -228,28 +231,38 @@ describe("saving an ssh target with ForwardAgent needs a near connection (#3815)
     const forwarding = (
       (await far.data("ssh.list", {})) as { targets: Array<SavedTarget & { id: string }> }
     ).targets.find((t) => t.name === "vps2");
-    // An edit that leaves ForwardAgent on, as the app and the CLI send it, is no turning it on.
-    const farKeep = await reasonOf(
-      far.request("ssh.save", {
-        ...target,
-        name: "vps2",
-        id: forwarding?.id,
-        port: 2222,
-        options: { forwardAgent: true },
-      }),
+    // An edit that leaves ForwardAgent on and the server as it was, as the app and the CLI send it,
+    // is no turning it on.
+    const keep = { ...target, id: forwarding?.id, options: { forwardAgent: true } };
+    const farKeep = await reasonOf(far.request("ssh.save", { ...keep, name: "vps2" }));
+    // Pointing a target that forwards the agent somewhere else hands the agent to that place.
+    const farHost = await reasonOf(
+      far.request("ssh.save", { ...keep, name: "vps2", host: "attacker.example.com" }),
     );
-    expect([farOn, farPlain, farOff, nearOn, farKeep]).toEqual([
+    const farPort = await reasonOf(far.request("ssh.save", { ...keep, name: "vps2", port: 2222 }));
+    const farUser = await reasonOf(
+      far.request("ssh.save", { ...keep, name: "vps2", user: "root" }),
+    );
+    expect([farOn, farPlain, farOff, nearOn, farKeep, farHost, farPort, farUser]).toEqual([
       "transport_refused",
       null,
       null,
       null,
       null,
+      "transport_refused",
+      "transport_refused",
+      "transport_refused",
     ]);
     const saved = ((await far.data("ssh.list", {})) as { targets: SavedTarget[] }).targets;
     expect(saved.filter((t) => t.options?.forwardAgent === true).map((t) => t.name)).toEqual([
       "vps2",
     ]);
     expect(saved).toHaveLength(3);
+    expect(saved.find((t) => t.name === "vps2")).toMatchObject({
+      host: "vps.example.com",
+      port: 22,
+      user: "deploy",
+    });
   });
 });
 
