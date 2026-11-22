@@ -17,7 +17,9 @@ export function ProjectCardTile(
         onClick={props.onOpen}
       >
         <span className="row-spread">
-          <span className="truncate font-medium">{card.name}</span>
+          <span className="truncate font-medium" title={card.name}>
+            {card.name}
+          </span>
           <span className="text-muted-foreground text-xs">{card.hostName}</span>
         </span>
         <span className="text-muted-foreground text-xs">{card.branch}</span>
