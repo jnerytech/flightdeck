@@ -151,7 +151,7 @@ export const ptBR = {
     deny: "Negar",
     open: "Abrir",
     more: "e mais {n}…",
-    show: "Abrir",
+    show: "Abrir o Flightdeck",
     quit: "Sair",
     idle: "Flightdeck: nada esperando você",
     waiting: {
@@ -161,6 +161,10 @@ export const ptBR = {
     plainWaiting: {
       one: "Flightdeck: {n} tarefa esperando a sua resposta ({hosts})",
       other: "Flightdeck: {n} tarefas esperando a sua resposta ({hosts})",
+    },
+    moreHosts: {
+      one: "e mais {n} host",
+      other: "e mais {n} hosts",
     },
     autoApproved: {
       one: "{n} aprovação automática",
