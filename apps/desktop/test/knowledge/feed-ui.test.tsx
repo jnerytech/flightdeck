@@ -206,6 +206,28 @@ describe("knowledge-feed-ui: whether agents are given the index (#76)", () => {
     expect(during).toEqual({ asked: 1, busy: "true" });
   });
 
+  test("the focus stays on the switch button after the host has answered", async () => {
+    let release: (state: KnowledgeFeedState | null) => void = () => {};
+    const hold = new Promise<KnowledgeFeedState | null>((resolve) => {
+      release = resolve;
+    });
+    const { view } = setup({ hold });
+    render(view);
+    await waitFor(() =>
+      expect(within(panel()).queryByRole("button", { name: "Turn off" })).not.toBeNull(),
+    );
+    const turnOff = within(panel()).getByRole("button", { name: "Turn off" });
+    turnOff.focus();
+    fireEvent.click(turnOff);
+    release(OFF);
+    await waitFor(() =>
+      expect(within(panel()).queryByRole("button", { name: "Turn on" })).not.toBeNull(),
+    );
+    const turnOn = within(panel()).getByRole("button", { name: "Turn on" });
+    await waitFor(() => expect(turnOn.hasAttribute("aria-busy")).toBe(false));
+    expect(document.activeElement === turnOn).toBe(true);
+  });
+
   test("a first read that fails shows Try again, and pressing it reads again and shows the switch", async () => {
     const { view, sent } = setup({ reads: [null, ON] });
     render(view);

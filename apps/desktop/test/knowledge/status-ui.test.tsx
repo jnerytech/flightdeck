@@ -261,6 +261,23 @@ describe("knowledge-status-ui: changing the status of a document (#76)", () => {
     ]);
   });
 
+  test("after a refused change the focus is on the picker, not lost with the busy button", async () => {
+    const { view } = setup({
+      answer: {
+        ok: false,
+        code: "file_conflict",
+        message: "changed",
+        reason: "review_file_changed",
+      },
+    });
+    render(view);
+    await listed();
+    fireEvent.change(picker("Use the outbox"), { target: { value: "transitional" } });
+    press("Use the outbox");
+    await waitFor(() => expect(within(panel()).queryByRole("alert")).not.toBeNull());
+    await waitFor(() => expect(document.activeElement === picker("Use the outbox")).toBe(true));
+  });
+
   test("the button says Change in words, in both languages", async () => {
     render(setup().view);
     await listed();
@@ -472,6 +489,8 @@ describe("knowledge-status-ui: warnings, the last note and the counts (#4234)", 
     press("Old decision");
     const goneWhileOut = note() === null;
     release();
+    await waitFor(() => expect(picker("Old decision").value).toBe("valid"));
+    await waitFor(() => expect(canApply("Old decision")).toBe(false));
     expect(goneWhileOut).toBe(true);
   });
 
