@@ -227,6 +227,8 @@ export function NotificationCenter(
     since: number;
     stays: boolean;
     decision?: "allow" | "deny";
+    /** The answer was typed on the row (A or N): the focus returns there, not to a button. */
+    keyed: boolean;
   } | null>(null);
   const settle = (
     row: InboxRow,
@@ -242,6 +244,7 @@ export function NotificationCenter(
       words,
       since: Date.now(),
       stays: options.stays ?? false,
+      keyed: document.activeElement?.classList.contains("inbox-pick") ?? false,
       ...(options.decision ? { decision: options.decision } : {}),
     };
     run();
@@ -263,7 +266,8 @@ export function NotificationCenter(
     if (failed) {
       settling.current = null;
       const buttons = [...(row?.querySelectorAll<HTMLElement>("fieldset button") ?? [])];
-      (waiting.decision === "deny" ? buttons.at(-1) : buttons[0])?.focus();
+      const pressed = waiting.decision === "deny" ? buttons.at(-1) : buttons[0];
+      (waiting.keyed ? row?.querySelector<HTMLElement>(".inbox-pick") : pressed)?.focus();
       return;
     }
     if (row && !waiting.stays) return;
