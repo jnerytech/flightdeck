@@ -68,7 +68,10 @@ const MISSING: DepsResult = healthy(
     minVersion: "2.0.0",
     path: CLAUDE_PATH,
     breaks: ["sessions"],
-    fix: fixes("npm install -g @anthropic-ai/claude-code", "https://docs.claude.com/claude-code"),
+    fix: fixes(
+      "npm install -g @anthropic-ai/claude-code",
+      "https://docs.anthropic.com/en/docs/claude-code/setup",
+    ),
   }),
   dep("git", "required", "missing", {
     breaks: ["projects", "worktrees"],
@@ -86,13 +89,20 @@ const FIXABLE: DepsResult = healthy(
   dep("folders", "required", "missing", { breaks: ["projects"] }),
   dep("service", "required", "missing", {
     breaks: ["autostart"],
-    fix: fixes(SERVICE_COMMAND, "https://flightdeck.dev/docs/service"),
+    fix: (["linux", "darwin", "win32"] as const).map((os) => ({ os, command: SERVICE_COMMAND })),
   }),
 );
 
 /** A path longer than a narrow row, as a global install under a package manager's store can be. */
 const LONG_PATH =
   "/home/demo/.local/share/pnpm/global/5/.pnpm/@anthropic-ai+claude-code@2.1.4/node_modules/@anthropic-ai/claude-code/cli.js";
+/** `FIXABLE` once the service is on. */
+const serviceOn: DepsResult = {
+  items: FIXABLE.items.map((item) =>
+    item.id === "service" ? dep("service", "required", "ok") : item,
+  ),
+};
+
 const ALL_OK: DepsResult = healthy(
   dep("claude", "required", "ok", { version: "2.1.4", path: LONG_PATH }),
 );
@@ -179,13 +189,17 @@ export function healthShots(_ids: DemoIds): Shot[] {
       name: "host-saude-boot",
       route: { name: "host", host: ALFA },
       wire: [
-        ...answers(FIXABLE),
+        // The re-read after the service is on finds it working, so the headline and the row agree with the note.
+        { command: "deps.check", data: FIXABLE, after: serviceOn },
+        { command: "doctor.run", data: DOCTOR },
         { command: "service.install", reply: { startsAt: "boot", lingerOff: true, user: "demo" } },
       ],
       prepare: async (page) => {
         await openService(page);
         await page.getByRole("alertdialog").getByRole("button", { name: TURN_ON }).click();
         await panel(page).getByRole("status", { name: BOOT_NOTE }).waitFor();
+        // The re-read is in: the service row no longer offers to turn it on.
+        await panel(page).getByRole("button", { name: TURN_ON_ROW }).waitFor({ state: "detached" });
         await showHealth(page);
       },
     },

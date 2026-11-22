@@ -158,57 +158,46 @@ async function calls(name: string): Promise<string[]> {
   return made;
 }
 
-/** Where each needle first shows in the calls; they must all show, one after the other. */
-function order(made: string[], ...needles: string[]): number[] {
-  return needles.map((needle) => made.findIndex((call) => call.includes(needle)));
+/** True when every needle shows in the calls and the first show of each comes after the one before. */
+function inOrder(made: string[], ...needles: string[]): boolean {
+  const at = needles.map((needle) => made.findIndex((call) => call.includes(needle)));
+  return at.every((index, n) => index > -1 && index > (at[n - 1] ?? -1));
 }
 
 describe("what each Health & dependencies print does before the shot", () => {
   test("a print of a good read waits for the count line before it scrolls to the panel", async () => {
-    for (const name of ["host-saude-falta", "host-saude-correcoes"]) {
-      const at = order(await calls(name), "OK: ", "evaluate(");
-      expect({ name, at: at.every((i) => i > -1) && at[0] < at[1] }).toEqual({ name, at: true });
-    }
+    expect([
+      inOrder(await calls("host-saude-falta"), "OK: ", "evaluate("),
+      inOrder(await calls("host-saude-correcoes"), "OK: ", "evaluate("),
+    ]).toEqual([true, true]);
   });
 
   test("the first-read print waits for Checking, since no row shows", async () => {
-    const at = order(await calls("host-saude-lendo"), "Checking", "evaluate(");
-    expect(at.every((i) => i > -1) && at[0] < at[1]).toBe(true);
+    expect(inOrder(await calls("host-saude-lendo"), "Checking", "evaluate(")).toBe(true);
   });
 
   test("the failed-read print asks again after a good read and waits for the reason", async () => {
-    const at = order(
-      await calls("host-saude-leitura-falhou"),
-      "OK: ",
-      "Check again",
-      "Could not read",
-    );
-    expect(at.every((i) => i > -1) && at[0] < at[1] && at[1] < at[2]).toBe(true);
+    expect(
+      inOrder(await calls("host-saude-leitura-falhou"), "OK: ", "Check again", "Could not read"),
+    ).toBe(true);
   });
 
-  test("the dialogs open from their row, and the boot note waits for the service to be confirmed", async () => {
-    const hooks = order(await calls("host-saude-hooks-dialogo"), "Install hooks", "alertdialog");
-    const service = order(
-      await calls("host-saude-servico-dialogo"),
-      "Turn on start at boot",
-      "alertdialog",
-    );
-    const boot = order(
-      await calls("host-saude-boot"),
-      "Turn on start at boot",
-      "alertdialog",
-      "Turn it on",
-      "Iniciar no boot",
-    );
-    expect(
-      [hooks, service, boot].map(
-        (at) => at.every((i) => i > -1) && at.every((v, i) => i === 0 || v > at[i - 1]),
+  test("the dialogs open from their row, and the boot note waits for the service to be confirmed and re-read", async () => {
+    expect([
+      inOrder(await calls("host-saude-hooks-dialogo"), "Install hooks", "alertdialog"),
+      inOrder(await calls("host-saude-servico-dialogo"), "Turn on start at boot", "alertdialog"),
+      inOrder(
+        await calls("host-saude-boot"),
+        "Turn on start at boot",
+        "alertdialog",
+        "Turn it on",
+        "Iniciar no boot",
+        "detached",
       ),
-    ).toEqual([true, true, true]);
+    ]).toEqual([true, true, true]);
   });
 
   test("the folded list is opened before the print waits for it", async () => {
-    const at = order(await calls("host-saude-ok-aberto"), "Mostrar", "Funcionando");
-    expect(at.every((i) => i > -1) && at[0] < at[1]).toBe(true);
+    expect(inOrder(await calls("host-saude-ok-aberto"), "Mostrar", "Funcionando")).toBe(true);
   });
 });
