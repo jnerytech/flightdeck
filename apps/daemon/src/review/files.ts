@@ -267,6 +267,9 @@ export class ReviewFiles {
     const gitPath = path.replaceAll("\\", "/");
     const inSource = await git(root, "cat-file", "-e", `${refArg(source)}:${gitPath}`);
     if (inSource.code === 0) {
+      // A folder put back may hold Claude Code's settings, which its name does not say.
+      const kind = await git(root, "cat-file", "-t", `${refArg(source)}:${gitPath}`);
+      if (kind.stdout.trim() !== "blob") guard?.();
       must(
         await git(
           root,

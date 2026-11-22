@@ -106,7 +106,7 @@ export class SshTargets {
    * `guard` runs when the save turns ForwardAgent on (it was off, or the target is new) or leaves it on
    * while the host, port, user, jump or route changes (the agent would go to another place), once the
    * request is valid and before anything changes: it throws to refuse. It also runs when a LocalForward
-   * listens on an address other than loopback and was not there before, or the server it reaches moved.
+   * listens on an address other than loopback and was not there before.
    */
   save(input: SshTargetInput, guard?: () => void): SshTarget {
     const previous = input.id ? this.row(input.id) : null;
@@ -139,7 +139,7 @@ export class SshTargets {
         previous.via_host !== viaHost);
     if (options.forwardAgent === true && (!wasOn || moved)) guard?.();
     const opensPort = (options.localForward ?? []).some(
-      (forward) => bindsBeyondLoopback(forward) && (moved || !was.localForward.includes(forward)),
+      (forward) => bindsBeyondLoopback(forward) && !was.localForward.includes(forward),
     );
     if (opensPort) guard?.();
     if (options.forwardAgent === true && !wasOn && input.confirm !== true) {
