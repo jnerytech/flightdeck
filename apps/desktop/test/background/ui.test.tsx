@@ -246,6 +246,15 @@ describe("bg-ui: the actions of a session", () => {
     expect(asked().map((c) => c.payload)).toEqual([{ id: "7c5dcf5d" }]);
   });
 
+  test("after a confirmed Parar the focus is on the panel, not lost with the disabled button (#4169)", async () => {
+    const { daemon } = await openPanel();
+    await click("Parar");
+    await click("Parar a sessão");
+    await settle(() => daemon.commands.some((c) => c.type === "bg.stop"));
+    await settle(() => document.activeElement === panel());
+    expect(document.activeElement === panel()).toBe(true);
+  });
+
   test("two presses of Reiniciar in a row send one request (#4169)", async () => {
     const { daemon } = await openPanel();
     const button = screen.queryByRole("button", { name: "Reiniciar" }) as HTMLElement;
