@@ -358,7 +358,8 @@ describe("Trust keeps the panel when the host refuses and hands the focus to Run
     await click(store.i18n.t("runEnv.trustConfirm"));
   };
   const trustedInfo = { exists: true, hash: "h", errors: [], ...untrusted, trusted: true };
-  const flush = () => act(async () => new Promise<void>((resolve) => setTimeout(resolve, 20)));
+  // The host's answer and the panel's follow-up reads are promises: act drains them, no timer.
+  const flush = () => act(async () => {});
   const onRun = () => (document.activeElement as HTMLElement | null)?.dataset.action === "run";
 
   test.each(["en", "pt-BR"] as const)(
@@ -386,6 +387,17 @@ describe("Trust keeps the panel when the host refuses and hands the focus to Run
     await confirmTrust(store);
     await flush();
     expect(REFUSED.en.test(document.body.textContent ?? "")).toBe(false);
+  });
+
+  test("an answer that is not trusted counts as a refusal: the line shows and the focus stays off Run", async () => {
+    const { store } = await panel("en", run({}), [], untrusted);
+    store.runEnv.trust = (async () => ({
+      ...trustedInfo,
+      trusted: false,
+    })) as unknown as typeof store.runEnv.trust;
+    await confirmTrust(store);
+    await flush();
+    expect(REFUSED.en.test(screen.queryByRole("alert")?.textContent ?? "")).toBe(true);
   });
 
   test("an accepted Trust puts the focus on Run, not on the page body", async () => {
