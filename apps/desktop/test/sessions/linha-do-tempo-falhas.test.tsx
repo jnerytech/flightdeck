@@ -9,6 +9,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { CheckpointsButton } = await import("../../src/features/checkpoints/ui.ts");
 const { TContext } = await import("../../src/i18n/context.tsx");
+const { formatDateTime } = await import("../../src/i18n/format.ts");
 
 setDefaultTimeout(20_000);
 const cleanups: Array<() => unknown> = [];
@@ -137,8 +138,8 @@ const click = async (name: string | RegExp) => {
   });
 };
 
-const tick = async (name: string) => {
-  const box = screen.queryByRole("checkbox", { name });
+const tick = async (name: string, role = "checkbox") => {
+  const box = screen.queryByRole(role, { name });
   expect(box).not.toBeNull();
   await act(async () => {
     fireEvent.click(box as HTMLElement);
@@ -406,7 +407,9 @@ describe("linha-do-tempo-falhas", () => {
       "rewind.undoPreview": async () => (++tries === 1 ? PREVIEW : null),
     });
     await click("Undo rewind");
-    expect(alerts()).toContain("Could not work out what the undo changes.");
+    expect(alerts()).toContain(
+      "Could not work out what the undo changes: The host reported an error the app does not know. Try again; if it repeats, check the daemon's log. the host said noTry again",
+    );
     expect(screen.queryByText("Working out what changes…")).toBeNull();
     expect(isDisabled("Restore files")).toBe(true);
   });
@@ -458,7 +461,9 @@ describe("linha-do-tempo-falhas", () => {
     await click("Undo rewind");
     await click("Restore files");
     expect(screen.queryByRole("dialog", { name: "Undo the rewind" })).not.toBeNull();
-    expect(alerts()).toContain("Could not undo the rewind: the host said no");
+    expect(alerts()).toContain(
+      "Could not undo the rewind: The host reported an error the app does not know. Try again; if it repeats, check the daemon's log. the host said no",
+    );
   });
 
   test("the undo dialog reads the same in Portuguese", async () => {
@@ -483,7 +488,9 @@ describe("linha-do-tempo-falhas", () => {
     await click(names.rewind);
     await click("Rewind files");
     expect(screen.queryByRole("dialog", { name: "Rewind files to turn 1" })).not.toBeNull();
-    expect(alerts()).toContain("Could not rewind the files: the host said no");
+    expect(alerts()).toContain(
+      "Could not rewind the files: The host reported an error the app does not know. Try again; if it repeats, check the daemon's log. the host said no",
+    );
     expect(isBusy("Rewind files")).toBe(false);
     expect(isDisabled("Rewind files")).toBe(false);
     await click("Rewind files");
@@ -517,10 +524,90 @@ describe("linha-do-tempo-falhas", () => {
     });
     await click(names.rewind);
     expect(screen.queryByRole("dialog", { name: "Rewind files to turn 1" })).not.toBeNull();
-    expect(alerts()).toEqual([`Could not work out what the rewind changes: ${TURN_RUNNING_TEXT}`]);
+    expect(alerts()).toEqual([
+      `Could not work out what the rewind changes: ${TURN_RUNNING_TEXT}Try again`,
+    ]);
     expect(screen.queryByText("Working out what changes…")).toBeNull();
     expect(isDisabled("Rewind files")).toBe(true);
     expect(banner).not.toContain("rewind.preview");
+  });
+
+  // #4249: Rewind and Undo tell a refusal as Fork does, by its code in the app's language, and a refused preview can be asked again.
+  test("a refused Rewind preview can be asked again, and then lists the files", async () => {
+    let tries = 0;
+    const { names } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "rewind.preview": async () => (++tries === 1 ? TURN_RUNNING : PREVIEW),
+    });
+    await click(names.rewind);
+    await click("Try again");
+    expect(alerts()).toEqual([]);
+    expect(screen.queryByText("README.md")).not.toBeNull();
+    expect(isDisabled("Rewind files")).toBe(false);
+  });
+
+  test("a refused Rewind gives the reason in the app's language", async () => {
+    const { names } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "rewind.preview": async () => PREVIEW,
+      "rewind.apply": async () => TURN_RUNNING,
+    });
+    await click(names.rewind);
+    await click("Rewind files");
+    expect(alerts()).toEqual([`Could not rewind the files: ${TURN_RUNNING_TEXT}`]);
+  });
+
+  test("a refused Rewind gives the reason in Portuguese", async () => {
+    const { names } = await timeline("pt-BR", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "rewind.preview": async () => PREVIEW,
+      "rewind.apply": async () => TURN_RUNNING,
+    });
+    await click(names.rewind);
+    await click("Voltar arquivos");
+    expect(alerts()).toEqual([
+      "Não deu para voltar os arquivos: A sessão está num turno: pare-a antes de voltar.",
+    ]);
+  });
+
+  test("a refused Undo gives the reason in the app's language", async () => {
+    await timeline("en", {
+      "snapshots.list": async () => SAFETY,
+      "rewind.undoPreview": async () => PREVIEW,
+      "rewind.undo": async () => TURN_RUNNING,
+    });
+    await click("Undo rewind");
+    await click("Restore files");
+    expect(alerts()).toEqual([`Could not undo the rewind: ${TURN_RUNNING_TEXT}`]);
+  });
+
+  test("a refused Undo preview gives its reason, and Try again lists the files", async () => {
+    let tries = 0;
+    await timeline("en", {
+      "snapshots.list": async () => SAFETY,
+      "rewind.undoPreview": async () =>
+        ++tries === 1 ? PREVIEW : tries === 2 ? TURN_RUNNING : PREVIEW,
+    });
+    await click("Undo rewind");
+    expect(alerts()).toEqual([
+      `Could not work out what the undo changes: ${TURN_RUNNING_TEXT}Try again`,
+    ]);
+    await click("Try again");
+    expect(alerts()).toEqual([]);
+    expect(screen.queryByText("README.md")).not.toBeNull();
+    expect(isDisabled("Restore files")).toBe(false);
+  });
+
+  test("a refused Undo preview gives its reason in Portuguese", async () => {
+    let tries = 0;
+    await timeline("pt-BR", {
+      "snapshots.list": async () => SAFETY,
+      "rewind.undoPreview": async () => (++tries === 1 ? PREVIEW : TURN_RUNNING),
+    });
+    await click("Desfazer volta");
+    expect(alerts()).toEqual([
+      "Não deu para saber o que o desfazer muda: A sessão está num turno: pare-a antes de voltar.Tentar de novo",
+    ]);
   });
 
   test("a refused Fork file preview gives its reason once and does not use the banner", async () => {
@@ -662,5 +749,90 @@ describe("linha-do-tempo-falhas", () => {
     await act(async () => older.settle(TURN_RUNNING));
     expect(alerts()).toEqual([]);
     expect(screen.queryByText("fix the README")).not.toBeNull();
+  });
+  // #4250: a dialog says which turn it acts on, and the forked command can be copied.
+  const LONG_PROMPT = `${"explain the whole design ".repeat(12)}and then fix the README`;
+  const withPrompt = (prompt: string | null) => ({
+    snapshots: SNAPSHOTS.snapshots.map((row) => (row.n === 1 ? { ...row, prompt } : row)),
+  });
+  const dialogOf = (name: string) => within(screen.queryByRole("dialog", { name }) as HTMLElement);
+
+  test("the Rewind and Fork dialogs show the turn's time and prompt", async () => {
+    const { names, store } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "rewind.preview": async () => PREVIEW,
+    });
+    await click(names.rewind);
+    const rewind = dialogOf("Rewind files to turn 1");
+    expect(rewind.queryByText("fix the README")).not.toBeNull();
+    expect(
+      rewind.queryByText(formatDateTime("2026-11-21T10:00:00.000Z", store.i18n.lang)),
+    ).not.toBeNull();
+    await click("Cancel");
+    await click(names.fork);
+    const fork = dialogOf("Fork from turn 1");
+    expect(fork.queryByText("fix the README")).not.toBeNull();
+    expect(
+      fork.queryByText(formatDateTime("2026-11-21T10:00:00.000Z", store.i18n.lang)),
+    ).not.toBeNull();
+  });
+
+  test("a long prompt is clamped in the dialog, with Show more", async () => {
+    const { names } = await timeline("en", {
+      "snapshots.list": async () => withPrompt(LONG_PROMPT),
+      "rewind.preview": async () => PREVIEW,
+    });
+    await click(names.fork);
+    const fork = dialogOf("Fork from turn 1");
+    const more = fork.queryByRole("button", { name: "Show more" });
+    expect(more?.getAttribute("aria-expanded")).toBe("false");
+    await act(async () => {
+      fireEvent.click(more as HTMLElement);
+    });
+    expect(fork.queryByRole("button", { name: "Show less" })?.getAttribute("aria-expanded")).toBe(
+      "true",
+    );
+  });
+
+  test("a turn with no prompt says so in the dialog", async () => {
+    const { names } = await timeline("en", {
+      "snapshots.list": async () => withPrompt(null),
+      "rewind.preview": async () => PREVIEW,
+    });
+    await click(names.rewind);
+    expect(dialogOf("Rewind files to turn 1").queryByText("(no prompt recorded)")).not.toBeNull();
+  });
+
+  test("the forked command can be copied", async () => {
+    const { names, store } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "session.fork": async () => ({ claudeSessionId: "c2", command: "claude --resume c2" }),
+    });
+    const copied: string[] = [];
+    store.system.copyText = (async (text: string) => {
+      copied.push(text);
+      return true;
+    }) as never;
+    await click(names.fork);
+    await tick("Open in the terminal", "radio");
+    await click("Fork");
+    await click("Copy the command");
+    expect(copied).toEqual(["claude --resume c2"]);
+  });
+
+  test("the dialog's time and the copy button read in Portuguese", async () => {
+    const { names, store } = await timeline("pt-BR", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "session.fork": async () => ({ claudeSessionId: "c2", command: "claude --resume c2" }),
+    });
+    await click(names.fork);
+    expect(
+      dialogOf("Bifurcar a partir do turno 1").queryByText(
+        formatDateTime("2026-11-21T10:00:00.000Z", store.i18n.lang),
+      ),
+    ).not.toBeNull();
+    await tick("Abrir no terminal", "radio");
+    await click("Bifurcar");
+    expect(screen.queryByRole("button", { name: "Copiar o comando" })).not.toBeNull();
   });
 });
