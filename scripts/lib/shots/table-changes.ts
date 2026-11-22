@@ -151,9 +151,12 @@ export function changesShots(ids: DemoIds): Shot[] {
     data: changes(target, files, ahead),
   });
   const reviews: WireRule = { command: "review.list", data: { comments: REVIEW } };
+  // The PR card has no worktree and the demo's gh no comments: a host answer would be a refusal the
+  // rewriter leaves alone, so both answers are the page's own.
+  const prDiff: WireRule = { command: "changes.get", reply: changes(`card:${ids.prCard}`, [], 0) };
   const prList = (list: PrComment[]): WireRule[] => [
-    { command: "pr.comments", data: { comments: list } },
-    read([], 0),
+    { command: "pr.comments", reply: { comments: list } },
+    prDiff,
   ];
   return [
     {
@@ -231,6 +234,17 @@ export function changesShots(ids: DemoIds): Shot[] {
       },
     },
     {
+      // The dialog as it opens: a merge commit (--no-ff). Nothing is confirmed.
+      name: "card-mesclar-merge",
+      route: card,
+      wire: [read([CART], 2)],
+      prepare: async (page) => {
+        await openChanges(page, CART.path);
+        await page.getByRole("button", { name: MERGE }).click();
+        await page.getByRole("alertdialog").waitFor();
+      },
+    },
+    {
       // The merge dialog on a card with no PR: squash picked, with a commit message written.
       name: "card-mesclar",
       route: card,
@@ -284,7 +298,7 @@ export function changesShots(ids: DemoIds): Shot[] {
     {
       name: "card-pr-comentarios-falhou",
       route: prCard,
-      wire: [{ command: "pr.comments", refuse: "The host could not reach GitHub." }, read([], 0)],
+      wire: [{ command: "pr.comments", reject: "The host could not reach GitHub." }, prDiff],
       prepare: async (page) => {
         await page.getByRole("button", { name: CHANGES_TAB }).click();
         await page
