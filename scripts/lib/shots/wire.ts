@@ -6,7 +6,7 @@ import { type FrameRewriter, installHolds } from "./holds.ts";
  * the host as another command (`as`: its answer comes back as it is, or with the `data` the rule
  * also gives). #4154: `after` is the data of every answer after the first; `hold` leaves the answer
  * unheard, so the panel stays loading; `reply` answers in the page and never sends the command (a
- * change the host would really make); `reject` answers in the page with a refusal and `stall` leaves
+ * change the host would really make; a `"{in 30s}"` in it is the time 30 s from the answer, #4229); `reject` answers in the page with a refusal and `stall` leaves
  * the command unanswered, both without sending it (an answer to a request the host would really
  * take, #4203); `without` takes entries out of an array of the answer (a feature the host announces). The demo's hosts are never left in the state the print shows.
  */
@@ -100,7 +100,11 @@ export function wireRewriter(rules: WireRule[]): FrameRewriter {
         return JSON.stringify({ type: "ack", id: message.id, ok: false, error });
       }
       if (!("reply" in rule)) return undefined;
-      return JSON.stringify({ type: "ack", id: message.id, ok: true, data: rule.reply });
+      // `"{in 25s}"` is the time 25 s from now: an offer that expires shows its real length.
+      const data = JSON.stringify(rule.reply).replace(/"\{in (\d+)s\}"/g, (_, seconds: string) =>
+        JSON.stringify(new Date(Date.now() + Number(seconds) * 1000).toISOString()),
+      );
+      return `{"type":"ack","id":${JSON.stringify(message.id)},"ok":true,"data":${data}}`;
     },
     swallows(frame) {
       const message = parse(frame);
