@@ -36,8 +36,8 @@ import {
   type XtermScreen,
 } from "./xterm-screen.ts";
 
-/** What a person reads of a failure: the host's refusal in their language, or the message of any other. */
 const plainReason = (error: unknown) => (error instanceof Error ? error.message : String(error));
+/** What a person reads of a failure: the host's refusal in their language, or the message of any other. */
 const reasonText = (error: unknown, t: T) =>
   error instanceof RequestError
     ? refusalText(error.code, error.message, t, error)

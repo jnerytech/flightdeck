@@ -21,14 +21,20 @@ function validKeep(text: string): number | null {
 const MIN_PASSPHRASE = 12;
 
 type Scheduler = AppStore["backupScheduler"];
+type Busy = ReturnType<typeof useBusy>;
 
 /** Where the backup goes when the target is Drive: the sign-in state and its button. */
 function DriveTarget(
-  props: Readonly<{ scheduler: Scheduler; refused: boolean; setRefused(refused: boolean): void }>,
+  props: Readonly<{
+    scheduler: Scheduler;
+    /** Held by the panel, so a sign-in on its way outlives a switch of the target. */
+    signing: Busy;
+    refused: boolean;
+    setRefused(refused: boolean): void;
+  }>,
 ) {
-  const { scheduler, refused, setRefused } = props;
+  const { scheduler, signing, refused, setRefused } = props;
   const t = useT();
-  const signing = useBusy();
   const toggleSignIn = async () => {
     if (scheduler.driveSignedIn) {
       setRefused(false);
@@ -63,10 +69,9 @@ function DriveTarget(
 }
 
 /** Where the backup goes when the target is a folder: its path and the button that chooses it. */
-function FolderTarget(props: Readonly<{ scheduler: Scheduler }>) {
-  const { scheduler } = props;
+function FolderTarget(props: Readonly<{ scheduler: Scheduler; choosing: Busy }>) {
+  const { scheduler, choosing } = props;
   const t = useT();
-  const choosing = useBusy();
   return (
     <Stack gap={1}>
       <p className="[overflow-wrap:anywhere]">
@@ -130,6 +135,8 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
   const [passphrase, setPassphrase] = useState("");
   const [keepText, setKeepText] = useState(String(scheduler.schedule().keep));
   const using = useBusy();
+  const signing = useBusy();
+  const choosing = useBusy();
   const [refused, setRefused] = useState(false);
   // #2654: the form is waiting for the passphrase, or the passphrase was just set and the form left.
   const cadenceOn = scheduler.supported && scheduler.schedule().cadence !== "off";
@@ -206,9 +213,14 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
           </fieldset>
         )}
         {onDrive ? (
-          <DriveTarget scheduler={scheduler} refused={refused} setRefused={setRefused} />
+          <DriveTarget
+            scheduler={scheduler}
+            signing={signing}
+            refused={refused}
+            setRefused={setRefused}
+          />
         ) : (
-          <FolderTarget scheduler={scheduler} />
+          <FolderTarget scheduler={scheduler} choosing={choosing} />
         )}
         <Form variant="inline" onSubmit={() => {}}>
           <Field
