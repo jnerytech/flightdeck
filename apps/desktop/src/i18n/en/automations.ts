@@ -75,6 +75,10 @@ export const automations = {
     externalAuthors: "Accepts outside authors",
     history: "History",
     hideHistory: "Hide history",
+    historyOf: "History of {name}",
+    hideHistoryOf: "Hide history of {name}",
+    editOf: "Edit {name}",
+    removeOf: "Delete {name}",
     runs: "Firings of {name}",
     noRuns: "No firings yet",
     runStatus: {

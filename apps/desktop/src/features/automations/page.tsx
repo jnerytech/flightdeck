@@ -198,17 +198,38 @@ export function AutomationsPage(
                   </Badge>
                 )}
                 <span className="ml-auto flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => void toggleHistory(automation)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-expanded={history[automation.id] !== undefined}
+                    aria-label={t(
+                      history[automation.id]
+                        ? "automationsUi.hideHistoryOf"
+                        : "automationsUi.historyOf",
+                      { name: automation.name },
+                    )}
+                    onClick={() => void toggleHistory(automation)}
+                  >
                     {t(
                       history[automation.id]
                         ? "automationsUi.hideHistory"
                         : "automationsUi.history",
                     )}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setEditing(automation)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t("automationsUi.editOf", { name: automation.name })}
+                    onClick={() => setEditing(automation)}
+                  >
                     {t("automationsUi.edit")}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setRemoving(automation)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t("automationsUi.removeOf", { name: automation.name })}
+                    onClick={() => setRemoving(automation)}
+                  >
                     {t("automationsUi.remove")}
                   </Button>
                 </span>
