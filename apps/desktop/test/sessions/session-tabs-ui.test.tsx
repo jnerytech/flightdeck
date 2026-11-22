@@ -183,7 +183,8 @@ describe("session-tabs-ui: the views of a session page (issue #107)", () => {
       const fifth = tabs()[4] as HTMLElement;
       fifth.getBoundingClientRect = () => ({ left: 250, right: 330 }) as DOMRect;
       await clickTab(4);
-      expect(row.scrollLeft).toBe(230);
+      // The tab ends 16 px (the row's padding, where the edge fade ends) inside the row's right edge.
+      expect(row.scrollLeft).toBe(246);
       expect(called).toBe(false);
     } finally {
       Element.prototype.scrollIntoView = real;
@@ -196,6 +197,8 @@ describe("session-tabs-ui: the views of a session page (issue #107)", () => {
     const rule = css.slice(start, css.indexOf("\n}\n", start));
     expect(rule.includes("overflow-x: auto;")).toBe(true);
     expect(rule.includes("mask-image: linear-gradient(")).toBe(true);
+    // The row's 1px bottom border stays out of the fade: a second, solid layer covers it.
+    expect(rule.includes("mask-size: 100% calc(100% - 1px), 100% 1px;")).toBe(true);
   });
 
   test("a key the tab bar does not use is left alone: no view changes and the browser keeps it", async () => {
