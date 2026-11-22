@@ -56,7 +56,8 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
   // #4000: when the next run is due, or what it waits for, by the rules the run itself follows.
   const now = Date.now();
   const next = nextBackup(
-    schedule,
+    // The scheduler falls back to the folder when the build has no Google client.
+    { ...schedule, target: onDrive ? "drive" : "folder" },
     {
       hasFolder: scheduler.folder !== null,
       hasPassphrase: scheduler.hasPassphrase,
