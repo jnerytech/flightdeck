@@ -30,7 +30,7 @@ export function ImportPanel(
       {props.entries.length === 0 ? (
         <p>{t("connections.import.empty")}</p>
       ) : (
-        <ul className="flex flex-col gap-1">
+        <ul className="flex flex-col gap-2">
           {props.entries.map((entry) => (
             <li key={entry.alias} className="flex flex-wrap items-center gap-2 text-sm">
               <label className="flex items-center gap-2">
