@@ -44,6 +44,8 @@ function setup(
     features?: string[];
     answer?: Answer;
     list?: typeof LIST;
+    /** The answer of `knowledge.setStatus` arrives only when this promise settles. */
+    hold?: Promise<void>;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -67,6 +69,7 @@ function setup(
   store.hostRequest = (async (_host: string, type: string, payload: unknown) => {
     sent.push([type, payload]);
     const asked = payload as { file: string; status: KnowledgeEntry["status"] };
+    await options.hold;
     if (options.answer === undefined) applied.set(asked.file, asked.status);
     return (
       options.answer ?? { ok: true, data: entry("docs/adr/0003-new.md", { status: "obsolete" }) }
@@ -211,6 +214,31 @@ describe("knowledge-status-ui: changing the status of a document (#76)", () => {
     // The list read again says Obsolete, so there is nothing left to change.
     await waitFor(() => expect(picker("Use the outbox").value).toBe("obsolete"));
     expect(canApply("Use the outbox")).toBe(false);
+  });
+
+  test("the status picker is the shared select, which shows a focus ring", async () => {
+    render(setup().view);
+    await listed();
+    expect(picker("Use the outbox").getAttribute("data-slot")).toBe("native-select");
+  });
+
+  test("while the host has not answered, Change is busy for that document only, and usable again once the list shows the result", async () => {
+    let release: () => void = () => {};
+    const hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { view } = setup({ hold });
+    render(view);
+    await listed();
+    fireEvent.change(picker("Use the outbox"), { target: { value: "obsolete" } });
+    fireEvent.change(picker("Old decision"), { target: { value: "valid" } });
+    press("Use the outbox");
+    const busy = (title: string) => apply(title)?.getAttribute("aria-busy");
+    const during = { outbox: busy("Use the outbox"), other: busy("Old decision") };
+    release();
+    await waitFor(() => expect(picker("Use the outbox").value).toBe("obsolete"));
+    await waitFor(() => expect(busy("Use the outbox")).toBeNull());
+    expect(during).toEqual({ outbox: "true", other: null });
   });
 
   test("a refused change keeps the choice, so Change can be pressed again", async () => {
