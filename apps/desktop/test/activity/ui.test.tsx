@@ -25,15 +25,22 @@ type Specs = Parameters<typeof activityState>[0];
 /** Puts the fixture's hosts, hub and unread marks in the store, as a daemon's answers would. */
 function feed(store: InstanceType<typeof AppStore>, specs: Specs, hostsAre: HostsAre = "online") {
   const { hosts, hub, unread } = activityState(specs, store.getState());
-  const shown =
-    hostsAre === "none"
-      ? []
-      : hosts.map((h) => (hostsAre === "online" ? h : { ...h, status: hostsAre }));
-  (store as unknown as { update(patch: object): void }).update({ hosts: shown, hub, unread });
+  let shown = hosts;
+  if (hostsAre === "none" || hostsAre === "unloaded") shown = [];
+  else if (hostsAre === "connecting") shown = hosts.map((h) => ({ ...h, status: "connecting" }));
+  else if (hostsAre === "one-offline") {
+    shown = hosts.map((h, i) => ({ ...h, status: i === 0 ? "offline" : "connecting" }));
+  }
+  (store as unknown as { update(patch: object): void }).update({
+    hosts: shown,
+    hostsLoaded: hostsAre !== "unloaded",
+    hub,
+    unread,
+  });
 }
 
 /** What the roster holds: no host, hosts being reached, or hosts that answered. */
-type HostsAre = "none" | "connecting" | "online";
+type HostsAre = "none" | "unloaded" | "connecting" | "one-offline" | "online";
 
 function setup(
   _specs: Specs,
@@ -688,6 +695,52 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     render(setup(SPECS).view(SPECS));
     expect(columnNames().length).toBe(3);
     expect(has(screen.queryByText("Reaching your hosts…"))).toBe(false);
+  });
+
+  test("before the saved hosts are read it is loading, not No host yet (#4241)", () => {
+    const w = setup(SPECS, { hosts: "unloaded" });
+    render(w.view([]));
+    expect(has(screen.queryByText("Reaching your hosts…"))).toBe(true);
+    expect(has(screen.queryByText("No host yet. Add one to see its sessions here."))).toBe(false);
+  });
+
+  test("one host offline and another still being reached is still loading (#4241)", () => {
+    const w = setup(SPECS, { hosts: "one-offline" });
+    render(w.view([]));
+    expect(has(screen.queryByText("Reaching your hosts…"))).toBe(true);
+  });
+
+  test("an answer that failed does not announce, or take the focus, when the request later leaves (#4240)", async () => {
+    const w = setup(SPECS);
+    w.answers.next = SEND_FAILED;
+    const view = render(w.view(SPECS));
+    await act(async () => {
+      fireEvent.click(control(column("Needs you"), "Approve Fix login"));
+    });
+    expect(await settleMaybe(() => alerts().length === 1)).toBe(true);
+    await act(async () => {
+      view.rerender(w.view(TAKEN));
+    });
+    expect(said().some((text) => text?.includes("Approved"))).toBe(false);
+  });
+
+  test("when the browser drops the focus of the button that was disabled while sending, a failed answer puts it back (#4240)", async () => {
+    const w = setup(SPECS);
+    w.answers.next = SEND_FAILED;
+    const send = w.store.respondTo;
+    w.store.respondTo = (async (...args: Parameters<typeof send>) => {
+      // What Chromium does to a focused button that becomes disabled: the focus falls to the page.
+      (document.activeElement as HTMLElement | null)?.blur();
+      return send(...args);
+    }) as never;
+    render(w.view(SPECS));
+    const deny = control(column("Needs you"), "Deny Fix login");
+    deny.focus();
+    await act(async () => {
+      fireEvent.click(deny);
+    });
+    expect(await settleMaybe(() => alerts().length === 1)).toBe(true);
+    expect(document.activeElement?.textContent).toBe("Deny");
   });
 
   test("the no-host and loading states read in Portuguese (#4241)", () => {
