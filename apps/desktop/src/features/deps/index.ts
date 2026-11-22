@@ -3,6 +3,7 @@
  * to install them, and the summary of a host's checks. The cards that show them are in ui.ts
  * (#2451). Another domain imports from here, never a file inside.
  */
+export { depBreaksText, depName } from "./domain/dep-text.ts";
 export {
   type DepLook,
   depLook,

@@ -312,16 +312,20 @@ describe("setup-ui: a missing tool gets a quiet card on Start (issue #164)", () 
   test("it names the tool and the host, links the fix and can be dismissed for good", async () => {
     const w = make({}, "pt-BR");
     start(w);
-    const card = screen.getByRole("note", { name: /gh não está em h1/ });
+    const card = screen.getByRole("note", { name: /GitHub CLI \(gh\) não está em h1/ });
     expect(within(card).getByText("Alguns recursos precisam dele.")).toBeTruthy();
-    expect(within(card).getByRole("link", { name: "Como instalar" }).getAttribute("href")).toBe(
-      "https://cli.github.com",
-    );
+    expect(
+      within(card)
+        .getByRole("link", { name: "Como instalar GitHub CLI (gh) em h1" })
+        .getAttribute("href"),
+    ).toBe("https://cli.github.com");
     const opened: string[] = [];
     w.store.openLink = ((url: string) => void opened.push(url)) as never;
-    await click(within(card).getByRole("link", { name: "Como instalar" }));
+    await click(within(card).getByRole("link", { name: "Como instalar GitHub CLI (gh) em h1" }));
     expect(opened).toEqual(["https://cli.github.com"]);
-    await click(within(card).getByRole("button", { name: "Dispensar o aviso sobre gh em h1" }));
+    await click(
+      within(card).getByRole("button", { name: "Dispensar o aviso sobre GitHub CLI (gh) em h1" }),
+    );
     expect(screen.queryByRole("note")).toBeNull();
     expect(w.store.setup.dismissedTools()).toEqual(["gh@h1"]);
     cleanup();

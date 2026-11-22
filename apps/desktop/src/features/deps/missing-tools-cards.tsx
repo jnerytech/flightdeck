@@ -1,10 +1,11 @@
 import { Info } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
-import { missingTools } from "@/features/setup/index.ts";
+import { missingTools, toolNoteId } from "@/features/setup/index.ts";
 import { useT } from "@/i18n/context";
 import { Inline } from "@/shared/layout/index.ts";
 import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
+import { depBreaksText, depName } from "./index.ts";
 
 /** One card or the Undo that took its place: the one the focus was handed to takes it on mount. */
 function useFocusOnMount(wanted: boolean, done: () => void) {
@@ -22,7 +23,11 @@ interface Card {
   tool: string;
   host: string;
   title: string;
+  /** What the tool limits, and the version it needs, in the person's words. */
+  text: string;
   fix: string | undefined;
+  /** The install link's text: it names the tool and the host, so a list of links tells them apart. */
+  fixText: string;
 }
 
 function ToolCard(
@@ -46,7 +51,7 @@ function ToolCard(
       <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p className="font-medium text-[13px]">{card.title}</p>
-        <p className="text-muted-foreground text-xs">{t("setup.tools.text")}</p>
+        <p className="text-muted-foreground text-xs">{card.text}</p>
         {card.fix && (
           <a
             href={card.fix}
@@ -56,7 +61,7 @@ function ToolCard(
               if (card.fix) props.onFix(card.fix);
             }}
           >
-            {t("setup.tools.fix")}
+            {card.fixText}
           </a>
         )}
       </div>
@@ -129,15 +134,30 @@ export function MissingToolsCards(
   const all: Card[] = props.hosts
     .filter((host) => host.status === "online")
     .flatMap((host) =>
-      missingTools(props.deps[host.id]).map((tool) => ({
-        id: `${tool.id}@${host.id}`,
-        tool: tool.id,
-        host: host.name,
-        title: t("setup.tools.title", { tool: tool.id, host: host.name }),
-        fix: tool.fix.find((entry) => entry.url)?.url,
-      })),
+      missingTools(props.deps[host.id]).map((tool) => {
+        const name = depName(tool.id, t);
+        const outdated = tool.state === "outdated";
+        const named = { tool: name, host: host.name };
+        const text = [
+          outdated && tool.minVersion
+            ? t("setup.tools.needsVersion", { version: tool.minVersion })
+            : null,
+          depBreaksText(tool, t),
+        ].filter((part) => part !== null);
+        return {
+          id: toolNoteId(tool, host.id),
+          tool: name,
+          host: host.name,
+          title: t(outdated ? "setup.tools.titleOutdated" : "setup.tools.title", named),
+          text: text.length > 0 ? text.join(" ") : t("setup.tools.text"),
+          fix: tool.fix.find((entry) => entry.url)?.url,
+          fixText: t(outdated ? "setup.tools.updateNamed" : "setup.tools.installNamed", named),
+        };
+      }),
     );
   const cards = all.filter((card) => !dismissed.has(card.id) || undoable.has(card.id));
+  /** The notes dismissed before this screen was shown, whose tool still lacks: there is no card or Undo for them. */
+  const hidden = all.filter((card) => dismissed.has(card.id) && !undoable.has(card.id));
   /** The cards on show, one `id<TAB>title` line each: it changes when one arrives or goes. */
   const onShow = all
     .filter((card) => !dismissed.has(card.id))
@@ -166,6 +186,10 @@ export function MissingToolsCards(
     setFocus(card.id);
     store.setup.restoreTool(card.id);
   };
+  const showAgain = () => {
+    if (hidden[0]) setFocus(hidden[0].id);
+    store.setup.restoreTools(hidden.map((card) => card.id));
+  };
   return (
     <>
       <output className="sr-only">{said}</output>
@@ -188,6 +212,21 @@ export function MissingToolsCards(
             onDismiss={() => dismiss(card)}
           />
         ),
+      )}
+      {hidden.length > 0 && (
+        <Inline gap={3} className="justify-between">
+          <p className="text-muted-foreground text-xs">
+            {t("setup.tools.dismissedCount", { n: hidden.length })}
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={t("setup.tools.showAgainNamed", { n: hidden.length })}
+            onClick={showAgain}
+          >
+            {t("setup.tools.showAgain")}
+          </Button>
+        </Inline>
       )}
     </>
   );

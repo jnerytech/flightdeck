@@ -37,6 +37,8 @@ export interface HealthCore {
   /** The doctor of a host, run for this app's version. */
   doctor(hostId: string): Promise<HealthAnswer<DoctorResult>>;
   now(): number;
+  /** What `deps.check` found on each host, after a good read has been kept. */
+  onDeps?(deps: Record<string, DepsResult>): void;
 }
 
 /** What each host's dependencies and doctor say (#1596: a slice of the store). */
@@ -106,5 +108,6 @@ export class HealthSlice {
       healthError:
         failures.length > 0 ? { ...rest, [hostId]: [...new Set(failures)].join("; ") } : rest,
     });
+    if (got) this.core.onDeps?.(this.core.state().deps);
   }
 }

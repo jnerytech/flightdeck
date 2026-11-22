@@ -6,5 +6,6 @@ export {
   SetupSettings,
   setupProgress,
   setupSteps,
+  toolNoteId,
 } from "./domain/setup-steps.ts";
 export { SetupProbes } from "./probes.ts";
