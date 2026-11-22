@@ -24,6 +24,7 @@ export function BackupPanel(props: Readonly<{ store: AppStore }>) {
   const [replacing, setReplacing] = useState(false);
   const exporting = useBusy();
   const importing = useBusy();
+  const applying = useBusy();
   const importField = useRef<HTMLInputElement>(null);
   const previewBox = useRef<HTMLElement>(null);
 
@@ -167,7 +168,7 @@ export function BackupPanel(props: Readonly<{ store: AppStore }>) {
                 onSubmit={() =>
                   preview.conflicting.length > 0 && choice === "overwrite"
                     ? setReplacing(true)
-                    : void doApply()
+                    : applying.run(doApply)
                 }
               >
                 <Stack gap={1}>
@@ -211,7 +212,7 @@ export function BackupPanel(props: Readonly<{ store: AppStore }>) {
                     </Stack>
                   </fieldset>
                 )}
-                <FormActions submit={t("vault.backup.apply")} />
+                <FormActions submit={t("vault.backup.apply")} busy={applying.busy} />
               </Form>
             </section>
           )}
@@ -227,7 +228,7 @@ export function BackupPanel(props: Readonly<{ store: AppStore }>) {
           destructive
           onConfirm={() => {
             setReplacing(false);
-            void doApply();
+            applying.run(doApply);
           }}
           onCancel={() => setReplacing(false)}
         />
