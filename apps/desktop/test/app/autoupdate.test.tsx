@@ -266,7 +266,7 @@ for (const [lang, dict] of [
         fireEvent.click(dismiss() as HTMLElement);
       });
       expect(screen.queryByRole("alert") === null).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
-      expect(install() !== null).toBe(true);
+      expect(install()).not.toBeNull();
       await act(async () => {
         fireEvent.click(install() as HTMLElement);
       });
@@ -308,7 +308,7 @@ for (const [lang, dict] of [
       const live = () => within(card() as HTMLElement).queryByRole("status");
       expect(await seen(() => (live()?.textContent ?? "").includes("9.9.0"))).toBe(true);
       expect(live()?.textContent ?? "").toContain(words.title);
-      expect(document.activeElement === before).toBe(true);
+      expect(document.activeElement === before).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
       const close = within(card() as HTMLElement).queryByRole("button", { name: words.close });
       await act(async () => {
         fireEvent.click(close as HTMLElement);
@@ -325,7 +325,7 @@ for (const [lang, dict] of [
       expect(await seen(() => screen.queryByRole("region", { name: words.title }) !== null)).toBe(
         true,
       );
-      expect(screen.queryAllByRole("button", { name: words.update }).length).toBe(1);
+      expect(screen.queryAllByRole("button", { name: words.update })).toHaveLength(1);
     });
 
     test("Settings has Update automatically, on by default, and turning it off is kept", async () => {
