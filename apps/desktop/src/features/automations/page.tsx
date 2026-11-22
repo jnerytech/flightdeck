@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
-import { EmptyState, ErrorState, LoadingState, Page } from "@/shared/layout/index.ts";
+import { EmptyState, ErrorState, LoadingState, Page, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { AutomationForm } from "./automation-form.tsx";
@@ -34,12 +34,13 @@ function Runs(props: Readonly<{ store: AppStore; automation: Automation; runs: A
     return <p className="text-muted-foreground text-xs">{t("automationsUi.noRuns")}</p>;
   }
   return (
-    <ul
-      aria-label={t("automationsUi.runs", { name: automation.name })}
-      // A long history scrolls inside its row; the list takes the keyboard focus so it can be scrolled.
-      // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region has to be focusable (axe scrollable-region-focusable)
-      tabIndex={0}
-      className="flex max-h-64 flex-col gap-1 overflow-y-auto text-xs"
+    // A long history scrolls inside its row; the list takes the keyboard focus so it can be scrolled.
+    <Stack
+      as="ul"
+      gap={1}
+      scrolls
+      label={t("automationsUi.runs", { name: automation.name })}
+      className="max-h-64 overflow-y-auto text-xs"
     >
       {props.runs.map((run) => (
         <li key={run.id} className="flex flex-wrap items-baseline gap-x-2">
@@ -53,7 +54,7 @@ function Runs(props: Readonly<{ store: AppStore; automation: Automation; runs: A
           {run.detail && <span className="text-muted-foreground">{detailText(t, run)}</span>}
         </li>
       ))}
-    </ul>
+    </Stack>
   );
 }
 
