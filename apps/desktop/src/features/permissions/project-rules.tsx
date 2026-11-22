@@ -18,6 +18,14 @@ export function RulesSection(
   const [removingNow, setRemovingNow] = useState<string | null>(null);
   const [removeRefusal, setRemoveRefusal] = useState<string | null>(null);
   const section = useRef<HTMLElement>(null);
+  const buttons = useRef(new Map<string, HTMLButtonElement>());
+  // A remove that was refused leaves its button: the focus goes back once the button is on again.
+  const refocus = useRef<string | null>(null);
+  useEffect(() => {
+    if (removingNow !== null || refocus.current === null) return;
+    buttons.current.get(refocus.current)?.focus();
+    refocus.current = null;
+  }, [removingNow]);
 
   const load = useCallback(() => {
     setLoadRefusal(null);
@@ -40,6 +48,7 @@ export function RulesSection(
     setRemovingNow(null);
     if (!result.ok) {
       setRemoveRefusal(result.message);
+      refocus.current = rule;
       return;
     }
     setRules(result.data.rules);
@@ -49,7 +58,17 @@ export function RulesSection(
 
   const body = () => {
     if (loadRefusal !== null) {
-      return <ErrorState message={loadRefusal} retryLabel={t("rulesUi.retry")} onRetry={load} />;
+      return (
+        <ErrorState
+          message={loadRefusal}
+          retryLabel={t("rulesUi.retry")}
+          onRetry={() => {
+            // The button that was pressed goes away with the error: the focus moves to the section first.
+            section.current?.focus();
+            load();
+          }}
+        />
+      );
     }
     if (rules === null) return <LoadingState label={t("rulesUi.loading")} />;
     if (rules.length === 0) {
@@ -68,6 +87,10 @@ export function RulesSection(
             <Button
               variant="outline"
               size="sm"
+              ref={(button: HTMLButtonElement | null) => {
+                if (button) buttons.current.set(rule, button);
+                else buttons.current.delete(rule);
+              }}
               disabled={removingNow !== null}
               onClick={() => setRemoving(rule)}
             >
@@ -85,7 +108,7 @@ export function RulesSection(
         ref={section}
         tabIndex={-1}
         aria-label={t("rulesUi.title")}
-        className="flex flex-col gap-2 outline-none"
+        className="flex flex-col gap-2 outline-none focus-visible:outline-2 focus-visible:outline-ring"
       >
         <p className="text-muted-foreground text-xs">{t("rulesUi.note")}</p>
         {removeRefusal && <InlineNotice tone="error">{removeRefusal}</InlineNotice>}
@@ -98,7 +121,7 @@ export function RulesSection(
           destructive
           onConfirm={() => void remove(removing)}
           onCancel={() => setRemoving(null)}
-          onRestoreFocus={() => section.current?.focus()}
+          onRestoreFocus={() => (buttons.current.get(removing) ?? section.current)?.focus()}
         />
       )}
     </Panel>

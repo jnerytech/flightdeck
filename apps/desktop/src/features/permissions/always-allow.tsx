@@ -53,6 +53,11 @@ export function AlwaysAllow(
               ref={field}
               value={rule}
               onChange={(e) => setRule(e.target.value)}
+              onKeyDown={(e) => {
+                // The focus lands here as the opener's Enter goes down: a held key must not repeat into a submit
+                // of the suggested rule the person has not seen.
+                if (e.key === "Enter" && e.repeat) e.preventDefault();
+              }}
               className="h-8 font-mono text-xs"
             />
           )}

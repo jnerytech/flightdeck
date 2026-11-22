@@ -24,7 +24,7 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
   const { store, hostId } = props;
   const { t } = store.i18n;
   const [decisions, setDecisions] = useState<AutoApprovalRecord[] | null>(null);
-  const [suspended, setSuspended] = useState<AutoApproveSuspension[]>([]);
+  const [suspended, setSuspended] = useState<AutoApproveSuspension[] | null>(null);
   const [projectId, setProjectId] = useState("");
   const [text, setText] = useState("");
   const [resuming, setResuming] = useState<AutoApproveSuspension | null>(null);
@@ -33,6 +33,7 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
   // Bumped by "Try again": the list is read again with the same filter.
   const [attempt, setAttempt] = useState(0);
   const suspendedList = useRef<HTMLElement>(null);
+  const decisionsList = useRef<HTMLElement>(null);
   const resumeButtons = useRef(new Map<string, HTMLButtonElement>());
   const focusButtonOf = useRef<string | null>(null);
   const projects = store.getState().projects[hostId];
@@ -141,13 +142,13 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
           ref={suspendedList}
           tabIndex={-1}
           aria-label={t("autoApprovalsUi.suspended")}
-          className="flex flex-col gap-2 outline-none"
+          className="flex flex-col gap-2 outline-none focus-visible:outline-2 focus-visible:outline-ring"
         >
           <h2 className="font-medium text-sm">{t("autoApprovalsUi.suspended")}</h2>
-          {suspended.length === 0 && (
+          {suspended?.length === 0 && (
             <p className="text-muted-foreground text-sm">{t("autoApprovalsUi.noSuspended")}</p>
           )}
-          {suspended.map((s) => (
+          {(suspended ?? []).map((s) => (
             <div
               key={s.sessionKey}
               className="flex items-center justify-between gap-3 rounded-md border p-3 text-sm"
@@ -164,6 +165,8 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
                   else resumeButtons.current.delete(s.sessionKey);
                 }}
                 pending={resumingNow === s.sessionKey}
+                // One proof at a time: another row waits, so none is sent twice or its state overwritten.
+                disabled={resumingNow !== null && resumingNow !== s.sessionKey}
                 aria-label={t("autoApprovalsUi.resume", { session: s.sessionKey })}
                 onClick={() => setResuming(s)}
               >
@@ -172,12 +175,20 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
             </div>
           ))}
         </section>
-        <section className="flex flex-col gap-2">
+        <section
+          ref={decisionsList}
+          tabIndex={-1}
+          className="flex flex-col gap-2 outline-none focus-visible:outline-2 focus-visible:outline-ring"
+        >
           {loadRefusal !== null && (
             <ErrorState
               message={loadRefusal}
               retryLabel={t("autoApprovalsUi.retry")}
-              onRetry={() => setAttempt((n) => n + 1)}
+              onRetry={() => {
+                // The pressed button goes away with the error: the focus moves to its section first.
+                decisionsList.current?.focus();
+                setAttempt((n) => n + 1);
+              }}
             />
           )}
           {loading && loadRefusal === null && <LoadingState label={t("autoApprovalsUi.loading")} />}
