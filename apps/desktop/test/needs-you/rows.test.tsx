@@ -16,7 +16,12 @@ afterEach(() => cleanup());
 /** Needs you with one open gate of a workflow run, on the card "Ship the cart". */
 async function withGate(
   lang: "en" | "pt-BR",
-  risk: { risk?: "low" | "medium" | "high"; riskReason?: string } = {},
+  risk: {
+    risk?: "low" | "medium" | "high";
+    riskReason?: string;
+    toolName?: string;
+    input?: object;
+  } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, lang).platform);
   render(<App store={store} />);
@@ -151,6 +156,7 @@ for (const [lang, t] of [
       });
     });
 
+    // weaker: happy-dom has no layout, so the classes are all a test can read; the 390 px print checks the result
     test("the seal keeps its width on a narrow row: it neither shrinks nor wraps", async () => {
       await withGate(lang, { risk: "medium" });
       const holder = document.querySelector(
@@ -159,6 +165,19 @@ for (const [lang, t] of [
       expect(holder?.className.split(" ")).toEqual(
         expect.arrayContaining(["shrink-0", "whitespace-nowrap"]),
       );
+    });
+
+    test("a question or a plan shows no seal on its row, as its card shows none", async () => {
+      await withGate(lang, {
+        risk: "medium",
+        toolName: "ExitPlanMode",
+        input: { plan: "Ship it" },
+      });
+      const row = document.querySelector(`button[aria-label*="Backend tests"]`) as HTMLElement;
+      expect({
+        seal: row.querySelector("[data-risk]") !== null,
+        riskInName: (row.getAttribute("aria-label") ?? "").includes(t.approval.risk.medium),
+      }).toEqual({ seal: false, riskInName: false });
     });
 
     test("a request with no risk has no seal and keeps its name", async () => {
