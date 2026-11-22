@@ -99,15 +99,15 @@ describe("budgets by host (#3912)", () => {
     expect(document.activeElement === heading("beta")).toBe(true); // NOSONAR: a DOM node in a failed toBe would print the page
   });
 
-  test("with no host the panels are in order, all folded, and the first heading is focused", async () => {
+  test("with no host the panels are in order and all open, as before (#3912)", async () => {
     const { store } = await setup(["costs", "costs"]);
     await act(async () => store.router.push({ name: "settings", section: "budgets" }));
     await settle(() => panels().length === 2);
     expect(panels()).toEqual(["Orçamentos de alfa", "Orçamentos de beta"]);
-    expect(heading("alfa")?.getAttribute("aria-expanded")).toBe("false");
-    expect(heading("beta")?.getAttribute("aria-expanded")).toBe("false");
-    await settleMaybe(() => document.activeElement === heading("alfa"));
-    expect(document.activeElement === heading("alfa")).toBe(true); // NOSONAR: a DOM node in a failed toBe would print the page
+    expect([heading("alfa"), heading("beta")]).toEqual([null, null]);
+    expect(
+      [...document.querySelectorAll("form")].map((form) => form.getAttribute("aria-label")),
+    ).toEqual(["Novo orçamento em alfa", "Novo orçamento em beta"]);
   });
 
   test("pressing a folded heading opens its panel, and each form's name carries its host", async () => {

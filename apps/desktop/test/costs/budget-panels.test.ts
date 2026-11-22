@@ -12,21 +12,21 @@ describe("budgetPanels", () => {
     });
   });
 
-  test("with no host being read every panel is folded and the first heading takes the focus", () => {
+  test("with no host being read every panel stays open, in order, and the section takes the focus", () => {
     expect(budgetPanels(["a", "b"], undefined)).toEqual({
       order: ["a", "b"],
-      foldable: true,
+      foldable: false,
       open: null,
-      focus: "a",
+      focus: null,
     });
   });
 
   test("a host that cannot hold budgets is no host being read", () => {
     expect(budgetPanels(["a", "b"], "zz")).toEqual({
       order: ["a", "b"],
-      foldable: true,
+      foldable: false,
       open: null,
-      focus: "a",
+      focus: null,
     });
   });
 
