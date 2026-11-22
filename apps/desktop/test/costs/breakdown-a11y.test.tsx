@@ -88,7 +88,7 @@ for (const [lang, dict] of [
         </TContext.Provider>,
       );
       const row = screen.getByRole("button", { name: /Fix the cart/ });
-      expect(row.querySelector("svg") !== null).toBe(true);
+      expect(row.querySelector("svg")).not.toBeNull();
       const described = (row.getAttribute("aria-describedby") ?? "")
         .split(" ")
         .map((id) => document.getElementById(id)?.textContent);
