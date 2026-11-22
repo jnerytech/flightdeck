@@ -30,7 +30,9 @@ The commands behind the Agent setup screen: a project's `CLAUDE.md` files, agent
   `agentcfg_changed` when the file changed since, so you never overwrite a change you have not seen. The CLI
   never reads the hash for you. To create a file that must not exist yet, pass `--new` instead of the hash;
   an existing file is then refused with `agentcfg_exists`. It prints the new hash; with `--json`, `kind`,
-  `path` and `hash`.
+  `path` and `hash`. A write needs a near connection: an agent or a skill can declare hooks that run a command, and a
+  `CLAUDE.md` steers every session of the project, so over a far connection (not this computer or Tailscale) the
+  daemon refuses it with `transport_refused`. Reading answers anywhere.
 
 The daemon keeps every rule: a path outside the project or outside the folders of that kind, a missing or
 invalid frontmatter, and the read-only files of `~/.claude` are refused with its own words, and the CLI exits
