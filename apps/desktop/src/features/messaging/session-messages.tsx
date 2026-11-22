@@ -57,7 +57,8 @@ export function SessionMessages(
     moved.current = true;
     setWriting(true);
     const list = await loadTargets();
-    setTo(list[0]?.address ?? "");
+    // A choice made while the list was reloading stays, when that session is still on it.
+    setTo((chosen) => (list.some((s) => s.address === chosen) ? chosen : (list[0]?.address ?? "")));
   };
   const closeForm = () => {
     moved.current = true;
