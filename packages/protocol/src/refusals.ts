@@ -432,6 +432,8 @@ export const DAEMON_REASONS = [
   "automation_tz_unknown",
   "automation_send_needs_card",
   "automation_create_needs_label",
+  "automation_workflow_missing",
+  "automation_label_missing",
   "automation_name_required",
   "automation_max_runs",
   "automation_not_found",
