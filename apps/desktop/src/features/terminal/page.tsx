@@ -1,4 +1,12 @@
-import { Suspense, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import {
+  Suspense,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { RequestError } from "@/features/hosts/index.ts";
 import { SnippetPicker } from "@/features/snippets/ui.ts";
@@ -8,6 +16,7 @@ import { Page } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { useStoreState } from "../../lib/use-store.ts";
 import { LazyFileViewer } from "../files/ui.ts";
+import { clampMenu } from "./domain/menu-placement.ts";
 import {
   type FindFlags,
   isWindowsHost,
@@ -183,6 +192,14 @@ export function TerminalPage(
       window.removeEventListener("click", close);
       document.removeEventListener("keydown", onEsc, true);
     };
+  }, [menu]);
+  // The menu opens at the click point; once it has its size it moves back inside the window (#3953).
+  // The clamped point is a fixed point of clampMenu, so this settles after one more render.
+  useLayoutEffect(() => {
+    const box = menuRef.current?.getBoundingClientRect();
+    if (!menu || !box) return;
+    const at = clampMenu(menu, box, { width: window.innerWidth, height: window.innerHeight });
+    if (at.x !== menu.x || at.y !== menu.y) setMenu({ ...menu, ...at });
   }, [menu]);
   // The menu takes the focus, on the first thing it can do.
   useEffect(() => {
