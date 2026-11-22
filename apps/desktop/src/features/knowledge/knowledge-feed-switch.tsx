@@ -2,6 +2,7 @@ import type { KnowledgeFeedState } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { AppStore } from "@/lib/app-store";
+import { ActionButton } from "@/shared/feedback/action-button.tsx";
 
 /**
  * Whether the sessions Flightdeck starts in a project are given the index of its valid documents
@@ -21,6 +22,9 @@ export function KnowledgeFeedSwitch(
     if (result) setState(result);
   }, []);
 
+  // Bumped by Try again: the read runs again.
+  const [reads, setReads] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `reads` only asks for another read.
   useEffect(() => {
     let live = true;
     void store.hostCommand(hostId, "knowledge.feed", { path }).then((result) => {
@@ -29,18 +33,28 @@ export function KnowledgeFeedSwitch(
     return () => {
       live = false;
     };
-  }, [store, hostId, path, received]);
+  }, [store, hostId, path, received, reads]);
 
   const problem = failed && (
     <p role="alert" className="text-sm">
       {t("projectPage.knowledge.feed.failed")}
     </p>
   );
-  if (state === null) return problem || null;
+  // No state to show yet: the alert, and a way to read again.
+  if (state === null) {
+    if (!failed) return null;
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        {problem}
+        <Button type="button" size="sm" variant="outline" onClick={() => setReads((n) => n + 1)}>
+          {t("projectPage.knowledge.retry")}
+        </Button>
+      </div>
+    );
+  }
   const own = state.own;
-  const change = (enabled: boolean) => {
-    void store.hostCommand(hostId, "knowledge.setFeed", { path, enabled }).then(received);
-  };
+  const change = (enabled: boolean) =>
+    store.hostCommand(hostId, "knowledge.setFeed", { path, enabled }).then(received);
   let words = t("projectPage.knowledge.feed.on");
   if (!state.on) {
     words = own
@@ -54,9 +68,10 @@ export function KnowledgeFeedSwitch(
       {/* A live region: a later change of the words (the index on or off) is read out. */}
       <output className="block text-sm">{words}</output>
       {(state.on || own) && (
-        <Button type="button" size="sm" variant="outline" onClick={() => change(!state.on)}>
+        // The answer is awaited: a second press while it is out is ignored, and the button is busy.
+        <ActionButton type="button" size="sm" variant="outline" onClick={() => change(!state.on)}>
           {t(state.on ? "projectPage.knowledge.feed.turnOff" : "projectPage.knowledge.feed.turnOn")}
-        </Button>
+        </ActionButton>
       )}
       {problem}
     </div>
