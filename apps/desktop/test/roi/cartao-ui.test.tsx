@@ -136,9 +136,6 @@ for (const [lang, t] of [
   ["en", en],
   ["pt-BR", ptBR],
 ] as const) {
-  /** A cost as a bare number in this language's marks: the ROI lines print it without the unit. */
-  const dec = (n: number) =>
-    new Intl.NumberFormat(lang, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
   describe(`roi-cartao-ui (${lang}): the ROI card of a project`, () => {
     test("a host without roi shows no card", async () => {
       await roiPage(lang, { usage: USAGE, done: SHOP }, {});
@@ -182,7 +179,7 @@ for (const [lang, t] of [
         .replace("{n}", "3")
         .replace("{planned}", "2")
         .replace("{unplanned}", "1")
-        .replace("{cost}", dec(12))
+        .replace("{cost}", usd(12, lang))
         .replace("{previous}", "2")
         .replace("{movedText}", t.roiUi.moved.lower);
       await settle(() => screen.queryByText(sentence) !== null);
@@ -231,7 +228,7 @@ for (const [lang, t] of [
     test("nothing delivered still shows the cost", async () /* NOSONAR: settle() is the assertion: it throws, naming what never showed */ => {
       await roiPage(lang, { usage: [["2026-10-12", 6, 10]] });
       await settle(
-        () => screen.queryByText(t.roiUi.headline.none.replace("{cost}", dec(6))) !== null,
+        () => screen.queryByText(t.roiUi.headline.none.replace("{cost}", usd(6, lang))) !== null,
       );
     });
 
@@ -277,9 +274,9 @@ for (const [lang, t] of [
           screen.queryByText(
             t.roiUi.derive.value
               .replace("{hours}", "6")
-              .replace("{rate}", dec(60))
-              .replace("{billed}", dec(0))
-              .replace("{value}", dec(360)),
+              .replace("{rate}", usd(60, lang))
+              .replace("{billed}", usd(0, lang))
+              .replace("{value}", usd(360, lang)),
           ) !== null,
       );
       expect(screen.queryByText(t.roiUi.caveat)).not.toBeNull();
