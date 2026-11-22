@@ -19,15 +19,17 @@ async function previewOf(home: string, path: string) {
 }
 
 describe("demo-ssh-config: the fake config the demo's import reads", () => {
-  test("the file is written inside the home it is given, and only the owner can read it", () => {
-    const home = realTempDir("fd-ssh-config-");
-    const path = writeDemoSshConfig(home);
-    expect([path, existsSync(path), existsSync(path) ? statSync(path).mode & 0o077 : -1]).toEqual([
-      join(home, ".ssh", "config"),
-      true,
-      0,
-    ]);
-  });
+  // Windows keeps no POSIX mode bits, so the owner-only check has no meaning there.
+  test.skipIf(process.platform === "win32")(
+    "the file is written inside the home it is given, and only the owner can read it",
+    () => {
+      const home = realTempDir("fd-ssh-config-");
+      const path = writeDemoSshConfig(home);
+      expect([path, existsSync(path), existsSync(path) ? statSync(path).mode & 0o077 : -1]).toEqual(
+        [join(home, ".ssh", "config"), true, 0],
+      );
+    },
+  );
 
   test("the import lists one name per language run, so the two runs never import the same one", async () => {
     const home = realTempDir("fd-ssh-config-");
