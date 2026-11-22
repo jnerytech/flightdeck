@@ -7,6 +7,7 @@ import { useT } from "@/i18n/context";
 import { reasonText } from "@/i18n/errors";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 import { useBusy } from "@/shared/hooks/index.ts";
+import { Inline } from "@/shared/layout/index.ts";
 import { Meter } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import { usd } from "../costs/index.ts";
@@ -53,7 +54,7 @@ export function GateCard(
         value={note}
         onChange={(e) => setNote(e.target.value)}
       />
-      <div className="flex gap-2">
+      <Inline>
         {/* Issue #182: a gate is answered with the same Approve and Deny as a request. */}
         <ApprovalActions
           size="sm"
@@ -63,7 +64,7 @@ export function GateCard(
           onApprove={() => run(() => props.onRespond(step, "approve", note))}
           onDeny={() => run(() => props.onRespond(step, "reject", note))}
         />
-      </div>
+      </Inline>
     </section>
   );
 }
