@@ -37,6 +37,7 @@ export const en: Dictionary = {
   scope: {
     menu: "Data from {scope}",
     all: "All hosts",
+    hosts: "Hosts",
     projects: "Projects",
     showing: "Showing {scope}",
     offline: "{host} is offline. Its numbers come back when it reconnects.",

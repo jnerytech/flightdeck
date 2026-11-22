@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ScopeMenu } from "@/features/shell/ui.ts";
 import type { T } from "@/i18n/index";
 import { InlineNotice } from "@/shared/feedback/index.ts";
+import { Inline } from "@/shared/layout/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { ALL_SCOPE, awayKey, type DataScope } from "../costs/index.ts";
 
@@ -16,13 +17,16 @@ export function HomeScopeMenu(
   }>,
 ) {
   if (!props.loaded || (props.hosts.length <= 1 && props.projects.length === 0)) return null;
+  // In a row of its own: straight in the page header's column the trigger stretched to its width (#3847).
   return (
-    <ScopeMenu
-      store={props.store}
-      hosts={props.hosts}
-      projects={props.projects}
-      scope={props.scope}
-    />
+    <Inline>
+      <ScopeMenu
+        store={props.store}
+        hosts={props.hosts}
+        projects={props.projects}
+        scope={props.scope}
+      />
+    </Inline>
   );
 }
 
