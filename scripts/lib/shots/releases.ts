@@ -59,7 +59,9 @@ export function releasesRewriter(mode: ReleasesMode): FrameRewriter {
       const message = parse(frame);
       const type = message?.type;
       const id = message?.id;
-      const noted = mode === "none" ? "host.info" : mode === "loading" ? "releases.list" : "";
+      let noted = "";
+      if (mode === "none") noted = "host.info";
+      else if (mode === "loading") noted = "releases.list";
       if (typeof id === "string" && type === noted) asked.set(id, noted);
       return frame;
     },

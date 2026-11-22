@@ -6,7 +6,8 @@ const TOOLS = resolve(import.meta.dirname, "../../test/fake-ssh-tools.ts");
 const WIN = process.platform === "win32";
 
 /** A word `sh` reads back as it is. */
-const shQuote = (word: string) => `'${word.replaceAll("'", String.raw`'\''`)}'`;
+const SH_QUOTE_ESCAPE = String.raw`'\''`;
+const shQuote = (word: string) => `'${word.replaceAll("'", SH_QUOTE_ESCAPE)}'`;
 
 /** The text of a Windows wrapper: `set` lines for `entries`, then `call` with the arguments passed on. */
 export function cmdWrapper(call: string, entries: Array<[string, string]>): string {

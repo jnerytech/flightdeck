@@ -282,7 +282,7 @@ async function move(source: Host, target: Host, sessionId: string) {
     target: request(target),
     sessionId,
     repo: target.repo,
-    confirm: async () => true,
+    confirm: () => Promise.resolve(true),
   });
   if (outcome.kind !== "moved") throw new Error(`the move ended as ${outcome.kind}`);
   return outcome;

@@ -14,14 +14,17 @@ export interface SaveWindow {
 
 /** Self-contained: Playwright sends its source to the page, so it names nothing outside itself. */
 export function keepSaves(win: SaveWindow): void {
-  win.showSaveFilePicker = async (options: { suggestedName: string }) => ({
-    createWritable: async () => ({
-      write: async (text: string) => {
-        win.__saved = { name: options.suggestedName, text };
-      },
-      close: async () => {},
-    }),
-  });
+  win.showSaveFilePicker = (options: { suggestedName: string }) =>
+    Promise.resolve({
+      createWritable: () =>
+        Promise.resolve({
+          write: (text: string) => {
+            win.__saved = { name: options.suggestedName, text };
+            return Promise.resolve();
+          },
+          close: () => Promise.resolve(),
+        }),
+    });
 }
 
 /** The part of the page the file offer touches. */
@@ -52,7 +55,7 @@ export function offerBackup(win: OfferWindow): void {
       Object.defineProperty(element, "files", {
         configurable: true,
         value: kept
-          ? [{ name: kept.name, size: kept.text.length, text: async () => kept.text }]
+          ? [{ name: kept.name, size: kept.text.length, text: () => Promise.resolve(kept.text) }]
           : null,
       });
       element.dispatchEvent(new Event(kept ? "change" : "cancel"));
