@@ -26,4 +26,13 @@ describe("the found text of a dependency in the Working list", () => {
       top: /align-items:\s*start/.test(row),
     }).toEqual({ ownLine: true, top: true });
   });
+
+  // Chromium before 117 has no subgrid: its fixed columns were wider than a 390 px row, so the found column was 0 wide.
+  test("the row without subgrid narrows to three columns in a narrow window", () => {
+    expect(
+      /@supports not[\s\S]*?@media \(max-width: 640px\) \{[^}]*grid-template-columns:\s*1rem minmax\(0, 1fr\) auto/.test(
+        row,
+      ),
+    ).toBe(true);
+  });
 });
