@@ -2,7 +2,7 @@ import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 /** The one program that plays every fake OpenSSH tool (`scripts/test/fake-ssh-tools.ts`). */
-const TOOLS = resolve(import.meta.dir, "../../test/fake-ssh-tools.ts");
+const TOOLS = resolve(import.meta.dirname, "../../test/fake-ssh-tools.ts");
 const WIN = process.platform === "win32";
 
 /** A word `sh` reads back as it is. */
