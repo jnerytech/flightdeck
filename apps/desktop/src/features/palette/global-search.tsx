@@ -190,6 +190,24 @@ export function GlobalSearch(
     setActionsOf(null);
     setActiveId(null);
   };
+  /**
+   * What a screen reader hears as the list changes, and what a sighted person reads when it holds
+   * nothing: how many rows and history hits are listed; that the text matches nothing and Enter
+   * searches the history; or that the history search for this very text found nothing. A search
+   * for other text is not this text's answer, so it only adds its hits to the count.
+   */
+  const rowCount = stops.filter((stop) => stop.kind === "item").length;
+  const hitCount = search?.hits.length ?? 0;
+  const typed = query.trim() !== "" && !actionsOf;
+  const current = search !== null && search.query.trim() === query.trim();
+  const searching = current && search.waiting.length > 0;
+  const noMatch = typed && rowCount + hitCount === 0 && !current;
+  const historyNone =
+    typed && current && !searching && hitCount === 0 && search.silent.length === 0;
+  let status = "";
+  if (historyNone) status = t("searchUi.historyNone", { query: query.trim() });
+  else if (noMatch) status = t("searchUi.noMatch", { query: query.trim() });
+  else if (typed && !searching) status = t("searchUi.found", { n: rowCount + hitCount });
 
   /** Opens an entry and remembers it for the Recent section (an action of the Tab list is not one). */
   const choose = (item: PaletteItem) => {
@@ -296,6 +314,7 @@ export function GlobalSearch(
           aria-controls={listIds.length > 0 ? listIds.join(" ") : undefined}
           aria-activedescendant={activeDomId}
           aria-label={t("searchUi.input")}
+          aria-describedby={`${uid}-hint`}
           placeholder={t("searchUi.placeholder")}
           value={query}
           onKeyDown={onKeyDown}
@@ -304,7 +323,16 @@ export function GlobalSearch(
             back();
           }}
         />
+        <small id={`${uid}-hint`} className="text-muted-foreground text-xs">
+          {t("searchUi.hint")}
+        </small>
       </form>
+      <output
+        data-slot="palette-status"
+        className={noMatch || historyNone ? "text-muted-foreground text-sm" : "sr-only"}
+      >
+        {status}
+      </output>
       <PaletteScopeChips
         chips={chips}
         t={t}
@@ -332,14 +360,14 @@ export function GlobalSearch(
           <h3 className="px-2 font-medium text-muted-foreground text-xs">
             {t("searchUi.history")}
           </h3>
-          <ul className="flex flex-col px-2 text-muted-foreground text-xs">
+          <output className="flex flex-col px-2 text-muted-foreground text-xs">
             {search.waiting.map((id) => (
-              <li key={id}>{t("searchUi.searching", { host: name(id) })}</li>
+              <span key={id}>{t("searchUi.searching", { host: name(id) })}</span>
             ))}
             {search.silent.map((id) => (
-              <li key={id}>{t("searchUi.silent", { host: name(id) })}</li>
+              <span key={id}>{t("searchUi.silent", { host: name(id) })}</span>
             ))}
-          </ul>
+          </output>
           <ul id={`${uid}-hits`} aria-label={t("searchUi.results")} className="flex flex-col">
             {search.hits.map((hit) => {
               const when = props.store.formatDateTime(hit.ts ?? "");
