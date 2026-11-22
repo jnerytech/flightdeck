@@ -7,8 +7,6 @@ import { Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 
 const LIVE = new Set(["setup", "running"]);
-/** How long after a press the host may take to turn it into a change of the run. */
-const HAND_OFF_MS = 10_000;
 
 /** How a process is doing, in words: a process that ended with no exit code (a signal) says so. */
 function processState(process: RunProcessState, t: ReturnType<typeof useT>): string {
@@ -42,19 +40,29 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
   const section = useRef<HTMLElement>(null);
   // Run and Stop swap in one place, so the pressed one unmounts: when the person pressed it with the
   // focus on it, its replacement takes the focus (#4063). A change the person did not cause moves
-  // nothing: the press names the run state it asked for and expires, so a refused press leaves no claim.
-  const handOff = useRef<{ toLive: boolean; at: number } | null>(null);
-  const pressed = (event: MouseEvent<HTMLButtonElement>, toLive: boolean) => {
-    handOff.current =
-      document.activeElement === event.currentTarget ? { toLive, at: Date.now() } : null;
+  // nothing: the press names the run state it asked for and keeps that claim while its request is in
+  // flight, however slow the host is; once the request ends and no change came with it, it was refused
+  // and the claim is dropped.
+  const handOff = useRef<boolean | null>(null);
+  const press = (
+    event: MouseEvent<HTMLButtonElement>,
+    toLive: boolean,
+    work: () => Promise<void>,
+  ) => {
+    const claim = document.activeElement === event.currentTarget ? toLive : null;
+    handOff.current = claim;
+    return work().finally(() =>
+      setTimeout(() => {
+        if (handOff.current === claim) handOff.current = null;
+      }, 0),
+    );
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: it runs when the run starts or ends, not on every render
   useEffect(() => {
     const claim = handOff.current;
     handOff.current = null;
     const active = document.activeElement;
-    const wanted = claim?.toLive === live && Date.now() - claim.at < HAND_OFF_MS;
-    if (!wanted || (active && active !== document.body)) return;
+    if (claim !== live || (active && active !== document.body)) return;
     section.current
       ?.querySelector<HTMLElement>(`[data-action="${live ? "stop" : "run"}"]`)
       ?.focus();
@@ -123,9 +131,8 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
                   size="sm"
                   variant="outline"
                   onClick={(event) => {
-                    pressed(event, false);
                     setStoppedByPerson(true);
-                    return store.runEnv.stop(hostId, card.id);
+                    return press(event, false, () => store.runEnv.stop(hostId, card.id));
                   }}
                 >
                   {t("runEnv.stop")}
@@ -136,9 +143,8 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
                   data-action="run"
                   size="sm"
                   onClick={(event) => {
-                    pressed(event, true);
                     setStoppedByPerson(false);
-                    return store.runEnv.start(hostId, card.id);
+                    return press(event, true, () => store.runEnv.start(hostId, card.id));
                   }}
                 >
                   {t("runEnv.run")}
