@@ -70,6 +70,16 @@ describe("flightdeckd issues list (issue #3702)", () => {
     expect(printed(run.out)).toEqual({ issues: ISSUES });
   });
 
+  test("a cut list says so after the lines, and --json carries the field (#4255)", async () => {
+    const daemon = fakeDaemon(base({ "issues.list": () => ({ issues: ISSUES, truncated: true }) }));
+    const human = await flightdeckd(["issues", "list", "api"], daemon.port);
+    expect(human.out.at(-1)).toBe(
+      "the list was cut: the tracker has more issues than this shows. Narrow it with --query.",
+    );
+    const run = await flightdeckd(["issues", "list", "api", "--json"], daemon.port);
+    expect(printed(run.out)).toEqual({ issues: ISSUES, truncated: true });
+  });
+
   test("no issue says so", async () => {
     const daemon = fakeDaemon(base({ "issues.list": () => ({ issues: [] }) }));
     const run = await flightdeckd(["issues", "list", "api"], daemon.port);

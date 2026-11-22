@@ -54,7 +54,7 @@ async function mount(lang: Lang, servers: unknown[], status: unknown[] = []) {
   hidden.state = { ...hidden.state, projects: { h1: [{ id: "p1", path: "/repo", name: "repo" }] } };
   const sent: Array<{ type: string; confirm: unknown }> = [];
   let release: (value: unknown) => void = () => {};
-  s.hostCommand = ((_host: string, type: string, args: { confirm?: boolean }) => {
+  const answer = (type: string, args: { confirm?: boolean }) => {
     sent.push({ type, confirm: args?.confirm });
     if (type === "mcp.list") return Promise.resolve({ servers });
     if (type === "mcp.status") return Promise.resolve({ servers: status });
@@ -62,7 +62,14 @@ async function mount(lang: Lang, servers: unknown[], status: unknown[] = []) {
       return Promise.resolve({ preview: { command: "node", args: ["eco.js"] } });
     if (type === "mcp.test") return new Promise((resolve) => (release = resolve));
     return Promise.resolve(null);
-  }) as never;
+  };
+  s.hostCommand = ((_host: string, type: string, args: { confirm?: boolean }) =>
+    answer(type, args)) as never;
+  // The test and the writes come back as a result, so a refusal can be told in the panel (#4267).
+  s.hostRequest = (async (_host: string, type: string, args: { confirm?: boolean }) => ({
+    ok: true,
+    data: await answer(type, args),
+  })) as never;
   render(
     <TContext.Provider value={s.i18n.t}>
       <AgentMcp store={s} hostId="h1" projectId="p1" />

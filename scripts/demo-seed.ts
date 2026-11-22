@@ -98,6 +98,8 @@ export interface DemoIds {
   project: string;
   emptyProject: string;
   diffCard: string;
+  /** The In review card whose PR is open (the fake gh): its Changes tab reads the PR's comments (#4229). */
+  prCard: string;
   /** A card whose workflow run waits at an open gate. */
   gateCard: string;
   /** The project's name, as the Agente screen is opened with it. */
@@ -1024,6 +1026,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       project: project.id,
       emptyProject: empty.id,
       diffCard: diff.id,
+      prCard: inReview.id,
       gateCard: gated.id,
       projectName: "flightdeck-web",
       rewindSession: rewind.sessionId,

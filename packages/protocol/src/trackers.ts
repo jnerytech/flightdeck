@@ -178,7 +178,8 @@ export const trackersCommands = [
 
 /** The `data` of each trackers command's ack; `CommandResults` extends it. */
 export interface TrackersResults {
-  "issues.list": { issues: Issue[] };
+  /** `truncated` is set when the tracker holds more issues than the list shows (an older host never sets it). */
+  "issues.list": { issues: Issue[]; truncated?: boolean };
   "issues.get": Issue;
   "issues.createCard": Card;
   "alert.list": { alerts: RepoAlert[]; unavailable: AlertsUnavailable[] };

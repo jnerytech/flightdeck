@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { HubRow } from "@/features/sessions/index.ts";
 import { useStoreSlice } from "@/lib/use-store";
-import { EmptyState, NativeSelect, Page } from "@/shared/layout/index.ts";
+import { Spinner } from "@/shared/feedback/index.ts";
+import { EmptyState, Inline, NativeSelect, Page } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore, PendingItem } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
@@ -16,6 +17,7 @@ import {
   type ActivityFilter,
   activityBoard,
   activityOptions,
+  activityStage,
   NO_ACTIVITY_FILTER,
 } from "./domain/activity.ts";
 import { useBoardTransition } from "./use-board-transition.ts";
@@ -75,7 +77,12 @@ export function ActivityBoard(
     setSaid(done.said);
     if (card && document.activeElement === document.body) titles.current.get(done.key)?.focus();
   });
-  const answer = (
+  // #4240: an answer that did not go through says why on its card, until the next answer or until
+  // the request leaves. The focus stays on the button.
+  const [failed, setFailed] = useState<{ key: string; requestId: string; reason: string } | null>(
+    null,
+  );
+  const answer = async (
     card: ActivityCard,
     request: PendingItem,
     decision: "allow" | "deny",
@@ -89,8 +96,21 @@ export function ActivityBoard(
       requestId: request.requestId,
       said: t(key, { title: card.row.title }),
     };
-    return store.respondTo(request.hostId, request.requestId, decision, held ? { held } : {});
+    setFailed(null);
+    const result = await store.respondTo(
+      request.hostId,
+      request.requestId,
+      decision,
+      held ? { held } : {},
+    );
+    if (!result.ok) {
+      // The request stays, so nothing was answered: the later removal of it is not this answer.
+      if (answered.current?.requestId === request.requestId) answered.current = null;
+      setFailed({ key: card.row.key, requestId: request.requestId, reason: result.reason });
+    }
+    return result;
   };
+  const stage = activityStage(state, data.total + data.hiddenIdle);
   const searchRef = useRef<HTMLInputElement>(null);
   const set = (patch: Partial<ActivityFilter>) => setFilter({ ...filter, ...patch });
   return (
@@ -162,13 +182,36 @@ export function ActivityBoard(
             />
             {t("activityBoard.showIdle")}
           </label>
+          {data.hiddenIdle > 0 && (
+            <span className="activity-idle-hidden">
+              {data.hiddenIdle === 1
+                ? t("activityBoard.idleHiddenOne")
+                : t("activityBoard.idleHidden", { n: data.hiddenIdle })}
+            </span>
+          )}
           <output className="activity-shown">
             {t("activityBoard.shown", { n: data.shown, m: data.total })}
           </output>
         </div>
       }
     >
-      {data.total === 0 && state.hosts.length > 0 ? (
+      {stage === "no_host" ? (
+        <EmptyState
+          title={t("activityBoard.noHost")}
+          action={
+            <Button onClick={() => props.go({ name: "add-host" })}>{t("start.addHost")}</Button>
+          }
+        />
+      ) : null}
+      {stage === "loading" ? (
+        <output className="block">
+          <Inline>
+            <Spinner />
+            <span className="text-sm">{t("activityBoard.loading")}</span>
+          </Inline>
+        </output>
+      ) : null}
+      {stage === "board" && data.total === 0 && data.hiddenIdle === 0 ? (
         <EmptyState title={t("activityBoard.emptyAll")} />
       ) : null}
       {/* Filters that match no card: say so and offer the way back (#3967). The idle switch is a view
@@ -191,32 +234,38 @@ export function ActivityBoard(
         />
       ) : null}
       <output className="sr-only">{said}</output>
-      <div className="activity-board">
-        {columns.map((column) => (
-          <ActivityColumnView
-            key={column}
-            name={t(`activityBoard.columns.${column}` as Key)}
-            count={shown.columns[column].length}
-            none={t("activityBoard.none")}
-          >
-            {shown.columns[column].map((card) => (
-              <ActivityCardView
-                key={card.row.key}
-                card={card}
-                t={t}
-                nowMs={nowMs}
-                {...(props.holdMs !== undefined ? { holdMs: props.holdMs } : {})}
-                onOpen={(newTab) => props.onOpen(card.row, newTab)}
-                titleRef={(button) => {
-                  if (button) titles.current.set(card.row.key, button);
-                  else titles.current.delete(card.row.key);
-                }}
-                onRespond={(request, decision, held) => answer(card, request, decision, held)}
-              />
-            ))}
-          </ActivityColumnView>
-        ))}
-      </div>
+      {stage === "board" && (
+        <div className="activity-board">
+          {columns.map((column) => (
+            <ActivityColumnView
+              key={column}
+              name={t(`activityBoard.columns.${column}` as Key)}
+              count={shown.columns[column].length}
+              none={t("activityBoard.none")}
+              {...(column === "done" ? { hint: t("activityBoard.doneHint") } : {})}
+            >
+              {shown.columns[column].map((card) => (
+                <ActivityCardView
+                  key={card.row.key}
+                  card={card}
+                  t={t}
+                  nowMs={nowMs}
+                  {...(props.holdMs !== undefined ? { holdMs: props.holdMs } : {})}
+                  {...(failed?.key === card.row.key && failed.requestId === card.pending?.requestId
+                    ? { failure: t("activityBoard.answerFailed", { reason: failed.reason }) }
+                    : {})}
+                  onOpen={(newTab) => props.onOpen(card.row, newTab)}
+                  titleRef={(button) => {
+                    if (button) titles.current.set(card.row.key, button);
+                    else titles.current.delete(card.row.key);
+                  }}
+                  onRespond={(request, decision, held) => answer(card, request, decision, held)}
+                />
+              ))}
+            </ActivityColumnView>
+          ))}
+        </div>
+      )}
     </Page>
   );
 }
