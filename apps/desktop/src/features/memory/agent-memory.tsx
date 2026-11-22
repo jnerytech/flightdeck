@@ -212,7 +212,10 @@ export function AgentMemory(
                   {...control}
                   ref={nameField}
                   onKeyDown={(event) => {
-                    if (event.key === "Escape") cancelCreate();
+                    if (event.key !== "Escape") return;
+                    // The form closes alone: a screen around it must not also close on this key.
+                    event.stopPropagation();
+                    cancelCreate();
                   }}
                   value={typed}
                   onChange={(e) => setTyped(e.target.value)}
