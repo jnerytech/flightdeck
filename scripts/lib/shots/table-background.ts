@@ -1,14 +1,23 @@
 /** Part of the print table (scripts/demo-shots.ts), in print order: Claude Code's background sessions (#4173). */
 import type { Page } from "playwright-core";
+import { translator } from "../../../apps/desktop/src/i18n/index.ts";
+import type { Key } from "../../../apps/desktop/src/i18n/types.ts";
 import type { DemoIds } from "../../demo-seed.ts";
 import { ALFA, type Shot } from "./shot.ts";
 import type { WireRule } from "./wire.ts";
 
 /** A demo session the app already shows as an external one: the panel is on its screen. */
 const SCREEN = "ext-rodando";
+/** A card of the demo that nothing runs: its menu offers the start. */
+const CARD = "Definir o esquema do carrinho";
 const CWD = "/srv/projects/flightdeck-web";
 
-const text = (en: string, pt: string) => new RegExp(`^(${en}|${pt})$`);
+const EN = translator("en");
+const PT = translator("pt-BR");
+const exactly = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** The text of a dictionary key in either language, exactly (a print runs in both). */
+const text = (key: Key, vars?: Record<string, string>) =>
+  new RegExp(`^(${exactly(EN(key, vars))}|${exactly(PT(key, vars))})$`);
 
 type State = "working" | "blocked" | "done" | "failed" | "stopped";
 
@@ -19,7 +28,7 @@ function session(state: State, claudeSessionId: string | null, name: string, at 
     name,
     cwd: CWD,
     state,
-    status: null,
+    status: state === "working" ? "busy" : state === "blocked" ? "waiting" : null,
     waitingFor: state === "blocked" ? "Bash: bun test" : null,
     pid: state === "working" || state === "blocked" ? 4200 + at : null,
     claudeSessionId,
@@ -38,8 +47,8 @@ const list = (...sessions: ReturnType<typeof session>[]): WireRule => ({
 const own = (state: State): WireRule[] => [list(session(state, SCREEN, "Dev server"))];
 
 const external = { name: "external" as const, host: ALFA, claudeSessionId: SCREEN };
-const field = (page: Page) => page.getByRole("textbox", { name: text("Message", "Mensagem") });
-const send = (page: Page) => page.getByRole("button", { name: text("Send", "Enviar") });
+const field = (page: Page) => page.getByRole("textbox", { name: text("bg.message") });
+const send = (page: Page) => page.getByRole("button", { name: text("bg.send") });
 
 /** The box with a text in it, so Send is on. */
 async function typeMessage(page: Page): Promise<void> {
@@ -50,51 +59,39 @@ async function typeMessage(page: Page): Promise<void> {
 async function sendMessage(page: Page): Promise<void> {
   await typeMessage(page);
   await send(page).click();
-  await page.getByText(text("Message sent.", "Mensagem enviada.")).waitFor();
+  await page.getByText(text("bg.sent")).waitFor();
 }
 
 /** The text sent and refused: the host does not list this session, so it says so, and the text stays. */
 async function sendRefused(page: Page): Promise<void> {
   await typeMessage(page);
   await send(page).click();
-  await page
-    .getByText(
-      text(
-        "The message was not sent. Your text is still in the field.",
-        "A mensagem não foi enviada. Seu texto continua no campo.",
-      ),
-    )
-    .waitFor();
+  await page.getByText(text("bg.sendFailed")).waitFor();
 }
 
 /** Stop asked and confirmed, and the host refuses it for the same reason. */
 async function stopRefused(page: Page): Promise<void> {
-  await page.getByRole("button", { name: text("Stop", "Parar") }).click();
+  await page.getByRole("button", { name: text("bg.stop") }).click();
   await page
     .getByRole("alertdialog")
-    .getByRole("button", { name: text("Stop session", "Parar a sessão") })
+    .getByRole("button", { name: text("bg.stopTitle") })
     .click();
-  await page
-    .getByText(text("Could not stop the session.", "Não foi possível parar a sessão."))
-    .waitFor();
+  await page.getByText(text("bg.stopFailed")).waitFor();
 }
 
 /** The new-session form with the option ticked; it sits in the folded "More options". */
 async function tickBackground(page: Page): Promise<void> {
-  await page.getByRole("button", { name: text("More options", "Mais opções") }).click();
-  await page
-    .getByRole("checkbox", { name: text("Start in the background", "Iniciar em segundo plano") })
-    .check();
+  await page.getByRole("button", { name: text("newSession.moreOptions") }).click();
+  await page.getByRole("checkbox", { name: text("bg.start") }).check();
 }
 
 /** A card's menu open, with the item that starts it in the background. */
 async function openCardMenu(page: Page): Promise<void> {
-  await page.getByRole("button", { name: /^(Ações de|Actions for) Tela do carrinho$/ }).click();
-  await page
-    .getByRole("menuitem", {
-      name: text("Start in the background, no terminal", "Iniciar em segundo plano, sem terminal"),
-    })
-    .waitFor();
+  // The tile's own menu has no such item: it is in the run panel of the card's detail.
+  await page.getByRole("button", { name: CARD, exact: true }).click();
+  const run = page.locator("[data-slot=card-run]");
+  await run.getByRole("button", { name: /^(Ações de|Actions for) / }).click();
+  await page.getByRole("menuitem", { name: text("bg.startItem") }).waitFor();
 }
 
 export function backgroundShots(ids: DemoIds): Shot[] {
