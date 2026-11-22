@@ -119,6 +119,14 @@ export const NARROW_SHOTS: readonly string[] = [
   "projeto-conhecimento-criar-erro",
   "agente-memoria",
   "agente-memoria-nome-erro",
+  // #4287: the preview page and the workflow timeline's states: a long step line and the budget meter wrap at 390.
+  "previa-ambiente",
+  "previa-recusada",
+  "card-run-rodando",
+  "card-run-cota",
+  "card-run-falhou",
+  "card-run-tentativa",
+  "card-run-passo-longo",
   // #4215: the Personas list, the editor of one, its field errors and the row with the most buttons; they wrap at 390.
   "personas",
   "personas-editor-existing",
