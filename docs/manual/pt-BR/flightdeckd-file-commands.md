@@ -41,7 +41,7 @@ escreva a partir do seu próprio arquivo. O shell de uma sessão não roda `writ
 que a pessoa abra o arquivo e salve. Escrever o que orienta uma sessão (um arquivo dentro de qualquer pasta `.claude`, como as configurações, os agentes,
 as skills, os comandos e as regras, ou um `CLAUDE.md` ou `CLAUDE.local.md`, de qualquer forma que o caminho seja escrito
 ou ligado) exige uma conexão próxima (este computador ou a Tailscale), pois ele pode declarar hooks que rodam em toda sessão: por uma distante o daemon recusa com
-`transport_refused`. Qualquer outro arquivo escreve de qualquer lugar.
+`transport_refused`. O mesmo vale para um `.mcp.json` e para um arquivo que tem outro hard link (ele pode ser um arquivo de configuração com outro nome) e para o nome curto do `CLAUDE.local.md` que o Windows lê (`CLAUDE~1.MD`). Desfazer a reversão de um arquivo assim (`changes.undo`) exige o mesmo. Qualquer outro arquivo escreve de qualquer lugar.
 
 `search <alvo> --mode name|content --query <texto>` procura arquivos pelo nome ou pelo que guardam. O texto tem de 1
 a 200 caracteres e nenhum caractere de controle. `--limit` (1 a 200) limita os resultados. Cada resultado é uma linha:

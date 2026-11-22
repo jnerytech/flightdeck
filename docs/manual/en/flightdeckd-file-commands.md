@@ -41,7 +41,7 @@ own file. A session's own shell cannot run `write` without the person approving 
 to open the file and save it. Writing anything that steers a session (a file inside any `.claude` folder, such as its settings, agents,
 skills, commands and rules, or a `CLAUDE.md` or `CLAUDE.local.md`, however the path is spelled or linked) needs a
 near connection (this computer or Tailscale), since it can declare hooks that run in every session: over a far one the daemon refuses with
-`transport_refused`. Any other file writes from anywhere.
+`transport_refused`. So do a `.mcp.json` (each server in it is a command the next session starts), a file that has another hard link (it may be a settings file under another name) and the short name of `CLAUDE.local.md` that Windows reads (`CLAUDE~1.MD`). Undoing a revert of such a file (`changes.undo`) needs the same. Any other file writes from anywhere.
 
 `search <target> --mode name|content --query <text>` finds files by name or by what they hold. The text has 1 to 200
 characters and no control character. `--limit` (1 to 200) caps the matches. Each match is one line: the path, and for

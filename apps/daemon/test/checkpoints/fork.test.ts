@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { Forker } from "../../src/checkpoints/fork.ts";
 import { Rewinder } from "../../src/checkpoints/rewind.ts";
@@ -65,6 +65,28 @@ describe("bifurcar", () => {
     const turn = "row" in before ? before.row.n : -1;
     await forker.fork({ claudeSessionId: "orig-1", cwd: repo, open: "terminal", rewindTurn: turn });
     expect(existsSync(join(repo, "depois.txt"))).toBe(false);
+  });
+
+  test("a rewind that would put back Claude Code's settings runs the guard before the fork and before any write (#3825)", async () => {
+    const { forker, snapshots, runtime, repo } = setup();
+    mkdirSync(join(repo, ".claude"));
+    writeFileSync(join(repo, ".claude", "settings.json"), "{}\n");
+    const before = await snapshots.take({ cwd: repo, claudeSessionId: "orig-1", kind: "before" });
+    writeFileSync(join(repo, ".claude", "settings.json"), '{"hooks":{}}\n');
+    const turn = "row" in before ? before.row.n : -1;
+    const refused = await forker
+      .fork({ claudeSessionId: "orig-1", cwd: repo, open: "terminal", rewindTurn: turn }, () => {
+        throw new Error("guard ran");
+      })
+      .then(
+        () => "forked",
+        (error: Error) => error.message,
+      );
+    expect([
+      refused,
+      runtime.forks.length,
+      readFileSync(join(repo, ".claude", "settings.json"), "utf8"),
+    ]).toEqual(["guard ran", 0, '{"hooks":{}}\n']);
   });
 
   test("a rewind into a repository outside the roots is refused before any fork is made (#3554)", async () => {

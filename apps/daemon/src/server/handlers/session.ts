@@ -22,6 +22,7 @@ import {
   statKind,
 } from "../../permissions/index.ts";
 import { preparePersonas } from "../../personas/index.ts";
+import { requireVaultTransport } from "../../vault/index.ts";
 import type { ServerContext } from "../context.ts";
 import { coalesceDeltas } from "../delta-coalescer.ts";
 import { afterAck, type Call, type Handlers } from "../domain/handler.ts";
@@ -206,8 +207,10 @@ export const sessionHandlers = {
     }
     return { claudeSessionId, ...meta };
   },
-  "session.fork": async (payload, { server }) => {
-    return await server.needIn("checkpoints", "forker").fork(payload);
+  "session.fork": async (payload, { ws, server }) => {
+    // A fork that rewinds the files puts back what `rewind.apply` would: the same near-only guard (#3825).
+    const guard = () => requireVaultTransport(ws.data.origin, "session.fork", server.opts.log);
+    return await server.needIn("checkpoints", "forker").fork(payload, guard);
   },
   "history.list": async (payload, { server }) => {
     const { projectKey, ...filter } = payload;
