@@ -84,8 +84,12 @@ export function NewSecretForm(
           className="h-9 rounded-md border border-input bg-transparent px-2"
           value={type}
           onChange={(event) => {
-            setType(event.target.value as SecretType);
+            const next = event.target.value as SecretType;
+            setType(next);
             setShown(false);
+            // A one-line input drops the line breaks of what it shows but not of what we keep:
+            // carrying a pasted key into it would save a different secret than the one on screen.
+            if (MASKED.has(next) && /[\r\n]/.test(value)) setValue("");
           }}
         >
           {TYPES.map((option) => (
@@ -103,7 +107,7 @@ export function NewSecretForm(
               id={`${id}-value`}
               type={shown ? "text" : "password"}
               value={value}
-              autoComplete="off"
+              autoComplete="new-password"
               spellCheck={false}
               onChange={(event) => setValue(event.target.value)}
             />
