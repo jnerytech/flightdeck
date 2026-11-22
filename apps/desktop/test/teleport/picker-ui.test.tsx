@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { basename, join } from "node:path";
+import { git } from "../../../daemon/test/support/board-helpers.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
 
@@ -44,6 +45,7 @@ async function setup(options: { canBrowse?: boolean; projects?: string[] } = {})
   );
   for (const name of options.projects ?? []) {
     mkdirSync(join(beta.root, name), { recursive: true });
+    git(join(beta.root, name), "init", "-q", "-b", "main");
     await store.hostCommand(to, "project.add", { path: join(beta.root, name) });
   }
   if (options.canBrowse === false) {
