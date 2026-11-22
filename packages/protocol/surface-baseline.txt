@@ -4453,6 +4453,7 @@ CommitSource|1.kind=="worktree"
 CommitSource|2.cwd
 CommitSource|2.kind
 CommitSource|2.kind=="staged"
+ContextBudget.home?
 ContextBudget.memory
 ContextBudget.memory.cutBy
 ContextBudget.memory.cutBy|0="bytes"
@@ -4465,6 +4466,7 @@ ContextBudget.memory.limitBytes
 ContextBudget.memory.limitLines
 ContextBudget.memory.loadedBytes
 ContextBudget.memory.loadedLines
+ContextBudget.root?
 ContextBudget.sources
 ContextBudget.sources[].bytes
 ContextBudget.sources[].kind
