@@ -57,7 +57,7 @@ export interface MessagePatch {
 }
 
 /** A refusal's key and the values its text fills in. */
-export interface Why {
+interface Why {
   key?: string | null;
   params?: Record<string, string | number> | null;
 }

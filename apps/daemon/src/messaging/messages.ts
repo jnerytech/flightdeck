@@ -41,6 +41,7 @@ import {
   textRefusal,
   validatePolicy,
 } from "./domain/policy.ts";
+import { relayedWhy } from "./domain/refusal.ts";
 import { relayOf } from "./domain/relay.ts";
 import type { EndpointInfo, Endpoints } from "./endpoints.ts";
 import { type MessagePatch, type MessageRow, MessageStore, type NewMessage } from "./store.ts";
@@ -371,7 +372,7 @@ export class Messaging {
     this.update(id, {
       status: result.status,
       reason: result.reason ?? null,
-      why: { key: result.reasonKey, params: result.reasonParams },
+      why: relayedWhy(result.reasonKey, result.reasonParams),
       at: this.ms(),
       relayed: true,
     });
