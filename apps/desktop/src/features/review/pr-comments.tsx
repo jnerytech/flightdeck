@@ -44,15 +44,18 @@ export function PrComments(
       if (!current) return;
       // A refusal is `null`: it is a failed read, not a PR with no comments.
       setFailed(result === null);
-      if (result) {
-        setComments(result.comments);
-        props.onRead?.(result.comments);
-      }
+      if (result) setComments(result.comments);
+      // A failed read leaves no marks: the diff must not count comments the list no longer shows.
+      props.onRead?.(result ? result.comments : []);
     });
     return () => {
       current = false;
     };
   }, [store, hostId, cardId, props.moment, attempt]);
+
+  // Gone from the screen (another tab): the diff marks nothing.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only on unmount
+  useEffect(() => () => props.onRead?.([]), []);
 
   if (failed) {
     return (

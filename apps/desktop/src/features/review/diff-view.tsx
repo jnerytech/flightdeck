@@ -260,11 +260,14 @@ export function DiffView(
       {props.onPick && props.files.length > 0 && (
         <p className="text-muted-foreground text-xs">{t("changes.commentHint")}</p>
       )}
-      {props.files.map((file) => (
+      {props.files.map((file, index) => (
         <div key={`${file.path}:${file.uncommitted}`} className="flex flex-col gap-2">
           <Inline>
             <h4 className="font-medium font-mono text-xs">{file.path}</h4>
-            <PrCommentsMark path={file.path} marks={props.prComments} />
+            {/* A path can be listed twice (committed and not): its comments are marked once. */}
+            {props.files.findIndex((f) => f.path === file.path) === index && (
+              <PrCommentsMark path={file.path} marks={props.prComments} />
+            )}
           </Inline>
           <FileDiff
             file={file}
@@ -296,7 +299,7 @@ function PrCommentsMark(props: Readonly<{ path: string; marks: PrCommentsByPath 
       onClick={() => {
         const target = document.getElementById(`prc:${mark.firstId}`);
         target?.scrollIntoView({ block: "center" });
-        target?.focus();
+        target?.focus({ preventScroll: true });
       }}
     >
       <MessageSquare aria-hidden="true" className="size-3.5" />
