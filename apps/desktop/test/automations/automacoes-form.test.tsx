@@ -123,7 +123,7 @@ describe.each(["en", "pt-BR"] as const)("the automation form, its fields (%s)", 
     expect(asked.filter((a) => a.type === "automation.save")).toEqual([]);
   });
 
-  test.each(["0", "-1", "", "2.5", "1e30"])(
+  test.each(["0", "-1", "", "2.5", "99999999999999999999"])(
     "a limit of %p is said on the field and nothing is sent",
     async (bad) => {
       const { asked } = await form(lang);
