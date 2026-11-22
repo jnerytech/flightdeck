@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { MessageInfo } from "@flightdeck/protocol";
+import type { MessageInfo, MessagingSession } from "@flightdeck/protocol";
 import { registerDom } from "../dom.ts";
 import { uiIdle } from "../wait.ts";
 
 registerDom();
-const { act, cleanup, render } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render } = await import("@testing-library/react");
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
 const { RulesSection } = await import("../../src/features/permissions/project-rules.tsx");
@@ -94,5 +94,162 @@ describe("estados-vazios: rules and session messages", () => {
     await uiIdle();
     expect(messages.container.textContent).toContain("a revisão está pronta");
     expect(messages.container.textContent).not.toContain(EMPTY_MESSAGES.en);
+  });
+});
+
+const peer = (name: string | null, id = "s9"): MessagingSession =>
+  ({ address: `h/${id}`, id, host: "h", name }) as MessagingSession;
+
+/** A store whose `messages.send` answers with `status` and counts the sends. */
+function writingStore(
+  language: "en" | "pt-BR",
+  options: { sessions: MessagingSession[]; messages?: MessageInfo[]; status?: string },
+) {
+  const sends: unknown[] = [];
+  const store = {
+    hostCommand: async (_host: string, command: string, payload: unknown) => {
+      if (command === "messages.list") return { messages: options.messages ?? [] };
+      if (command === "messages.sessions") return { sessions: options.sessions };
+      if (command === "messages.send") {
+        sends.push(payload);
+        return { id: "m2", status: options.status ?? "delivered", reason: null };
+      }
+      return null;
+    },
+    messaging: { onUpdated: () => () => {} },
+    formatDateTime: (iso: string) => iso,
+    i18n: { t: translator(language) },
+  } as unknown as AppStore;
+  return { store, sends };
+}
+
+const WRITE = { en: "Send to another session…", "pt-BR": "Mandar para outra sessão…" };
+const SEND = { en: "Send", "pt-BR": "Enviar" };
+const CANCEL = { en: "Cancel", "pt-BR": "Cancelar" };
+const NO_TARGET = {
+  en: "No other session can receive a message from this one.",
+  "pt-BR": "Nenhuma outra sessão pode receber uma mensagem desta.",
+};
+
+const button = (root: HTMLElement, label: string) =>
+  [...root.querySelectorAll("button")].find((b) => b.textContent?.trim() === label) ?? null;
+
+async function open(root: HTMLElement, language: "en" | "pt-BR") {
+  await act(async () => {
+    fireEvent.click(button(root, WRITE[language]) as HTMLElement);
+  });
+  await uiIdle();
+}
+
+describe("session messages: the write form (#3852)", () => {
+  for (const language of ["en", "pt-BR"] as const) {
+    test(`a delivered message empties the box and Send waits for a new text, in ${language}`, async () => {
+      const { store, sends } = writingStore(language, { sessions: [peer("Reviewer")] });
+      const view = render(<SessionMessages store={store} hostId="h" sessionId="c1" />);
+      await uiIdle();
+      await open(view.container, language);
+      const box = view.container.querySelector("textarea") as HTMLTextAreaElement;
+      fireEvent.change(box, { target: { value: "ship it" } });
+      await act(async () => {
+        fireEvent.click(button(view.container, SEND[language]) as HTMLElement);
+      });
+      await uiIdle();
+      expect(sends.length).toBe(1);
+      expect(box.value === "").toBe(true);
+      expect((button(view.container, SEND[language]) as HTMLButtonElement).disabled).toBe(true);
+      expect(view.container.querySelector("output")).not.toBeNull();
+    });
+
+    test(`a refused message keeps its text so it can be fixed, in ${language}`, async () => {
+      const { store } = writingStore(language, { sessions: [peer("Reviewer")], status: "refused" });
+      const view = render(<SessionMessages store={store} hostId="h" sessionId="c1" />);
+      await uiIdle();
+      await open(view.container, language);
+      const box = view.container.querySelector("textarea") as HTMLTextAreaElement;
+      fireEvent.change(box, { target: { value: "ship it" } });
+      await act(async () => {
+        fireEvent.click(button(view.container, SEND[language]) as HTMLElement);
+      });
+      await uiIdle();
+      expect(box.value === "ship it").toBe(true);
+    });
+
+    test(`opening the form focuses To and Cancel returns to the write button, in ${language}`, async () => {
+      const { store } = writingStore(language, { sessions: [peer("Reviewer")] });
+      const view = render(<SessionMessages store={store} hostId="h" sessionId="c1" />);
+      await uiIdle();
+      await open(view.container, language);
+      expect(document.activeElement === view.container.querySelector("select")).toBe(true);
+      await act(async () => {
+        fireEvent.click(button(view.container, CANCEL[language]) as HTMLElement);
+      });
+      await uiIdle();
+      expect(document.activeElement === button(view.container, WRITE[language])).toBe(true);
+    });
+
+    test(`a result of an earlier send does not show again on reopening, in ${language}`, async () => {
+      const { store } = writingStore(language, { sessions: [peer("Reviewer")] });
+      const view = render(<SessionMessages store={store} hostId="h" sessionId="c1" />);
+      await uiIdle();
+      await open(view.container, language);
+      fireEvent.change(view.container.querySelector("textarea") as HTMLElement, {
+        target: { value: "ship it" },
+      });
+      await act(async () => {
+        fireEvent.click(button(view.container, SEND[language]) as HTMLElement);
+      });
+      await uiIdle();
+      await act(async () => {
+        fireEvent.click(button(view.container, CANCEL[language]) as HTMLElement);
+      });
+      await open(view.container, language);
+      expect(view.container.querySelector("output") === null).toBe(true);
+    });
+
+    test(`with no session to message, one line says so, in ${language}`, async () => {
+      const { store } = writingStore(language, { sessions: [] });
+      const view = render(<SessionMessages store={store} hostId="h" sessionId="c1" />);
+      await uiIdle();
+      await open(view.container, language);
+      expect(view.container.textContent?.includes(NO_TARGET[language])).toBe(true);
+    });
+  }
+
+  test("a row names the other side when the sessions list knows it, and the id when not", async () => {
+    const known = { ...message, id: "m1" };
+    const unknown = {
+      ...message,
+      id: "m2",
+      fromSession: "s7",
+      createdAt: "2026-10-30T11:00:00.000Z",
+    };
+    const sent = {
+      ...message,
+      id: "m3",
+      fromSession: "c1",
+      toSession: "s9",
+      createdAt: "2026-10-30T10:00:00.000Z",
+    };
+    const { store } = writingStore("en", {
+      sessions: [peer("Reviewer")],
+      messages: [known, unknown, sent],
+    });
+    const view = render(<SessionMessages store={store} hostId="h" sessionId="c1" />);
+    await uiIdle();
+    const rows = [...view.container.querySelectorAll("li")].map((li) => li.textContent ?? "");
+    expect(rows[0]?.includes("From Reviewer")).toBe(true);
+    expect(rows[0]?.includes("h/s9 →")).toBe(false);
+    expect(rows[1]?.includes("From h/s7")).toBe(true);
+    expect(rows[2]?.includes("To Reviewer")).toBe(true);
+  });
+
+  test("a row names the other side in Portuguese", async () => {
+    const { store } = writingStore("pt-BR", {
+      sessions: [peer("Revisora")],
+      messages: [message],
+    });
+    const view = render(<SessionMessages store={store} hostId="h" sessionId="c1" />);
+    await uiIdle();
+    expect(view.container.querySelector("li")?.textContent?.includes("De Revisora")).toBe(true);
   });
 });
