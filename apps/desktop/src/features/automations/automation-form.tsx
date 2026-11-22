@@ -4,11 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";
+import { Field, Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { AppDialogContent } from "../../shared/feedback/index.ts";
-import { actionOf, type Draft, draftOf, STEPS, triggerOf } from "./domain/automation-draft.ts";
+import {
+  actionOf,
+  type Draft,
+  draftOf,
+  draftProblems,
+  STEPS,
+  triggerOf,
+} from "./domain/automation-draft.ts";
 import {
   type ActionType,
   actionsFor,
@@ -39,6 +46,9 @@ export function AutomationForm(
     draftOf(initial, Intl.DateTimeFormat().resolvedOptions().timeZone),
   );
   const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
+  // The name and limit messages show after the first Save press, then follow what is typed.
+  const [tried, setTried] = useState(false);
+  const problems = draftProblems(draft);
 
   const usable = props.workflows.filter((w) => w.errors.length === 0);
   const workflow = usable.some((w) => w.name === draft.workflow)
@@ -52,14 +62,17 @@ export function AutomationForm(
   };
 
   const save = async () => {
-    const max = Number.parseInt(draft.max, 10);
+    if (problems.name || problems.max) {
+      setTried(true);
+      return;
+    }
     const saved = await store.hostCommand(props.hostId, "automation.save", {
       projectId: props.projectId,
       ...(initial ? { id: initial.id } : {}),
       name: draft.name,
       trigger: triggerOf(draft),
       action: actionOf(draft, workflow),
-      ...(Number.isInteger(max) && max >= 1 ? { maxRunsPerDay: max } : {}),
+      maxRunsPerDay: Number(draft.max.trim()),
       allowExternalAuthors: carriesThirdParty(draft.trigger) && draft.external,
     });
     if (saved) props.onSaved(saved);
@@ -80,88 +93,131 @@ export function AutomationForm(
           </p>
           {step === 0 && (
             <div className="flex flex-col gap-3">
-              <NativeSelect
-                aria-label={t("automationsUi.form.trigger")}
-                value={draft.trigger}
-                onChange={(e) => pickTrigger(e.target.value as TriggerType)}
-              >
-                {TRIGGER_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {t(`automationsUi.form.triggerTypes.${type}` as Key)}
-                  </option>
-                ))}
-              </NativeSelect>
+              <Field label={t("automationsUi.form.trigger")}>
+                {(control) => (
+                  <NativeSelect
+                    {...control}
+                    value={draft.trigger}
+                    onChange={(e) => pickTrigger(e.target.value as TriggerType)}
+                  >
+                    {TRIGGER_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {t(`automationsUi.form.triggerTypes.${type}` as Key)}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                )}
+              </Field>
               {draft.trigger === "cron" && (
                 <>
-                  <Input
-                    aria-label={t("automationsUi.form.cron")}
-                    placeholder={t("automationsUi.form.cronHint")}
-                    value={draft.expr}
-                    onChange={(e) => set({ expr: e.target.value })}
-                  />
-                  <Input
-                    aria-label={t("automationsUi.form.tz")}
-                    value={draft.tz}
-                    onChange={(e) => set({ tz: e.target.value })}
-                  />
+                  <Field
+                    label={t("automationsUi.form.cron")}
+                    help={t("automationsUi.form.cronHint")}
+                  >
+                    {(control) => (
+                      <Input
+                        {...control}
+                        value={draft.expr}
+                        onChange={(e) => set({ expr: e.target.value })}
+                      />
+                    )}
+                  </Field>
+                  <Field label={t("automationsUi.form.tz")}>
+                    {(control) => (
+                      <Input
+                        {...control}
+                        value={draft.tz}
+                        onChange={(e) => set({ tz: e.target.value })}
+                      />
+                    )}
+                  </Field>
                 </>
               )}
               {draft.trigger === "issue_label" && (
-                <Input
-                  aria-label={t("automationsUi.form.label")}
-                  value={draft.label}
-                  onChange={(e) => set({ label: e.target.value })}
-                />
+                <Field label={t("automationsUi.form.label")}>
+                  {(control) => (
+                    <Input
+                      {...control}
+                      value={draft.label}
+                      onChange={(e) => set({ label: e.target.value })}
+                    />
+                  )}
+                </Field>
               )}
             </div>
           )}
           {step === 1 && (
             <div className="flex flex-col gap-3">
-              <NativeSelect
-                aria-label={t("automationsUi.form.action")}
-                value={draft.action}
-                onChange={(e) => set({ action: e.target.value as ActionType })}
-              >
-                {actions.map((type) => (
-                  <option key={type} value={type}>
-                    {t(`automationsUi.form.actionTypes.${type}` as Key)}
-                  </option>
-                ))}
-              </NativeSelect>
+              <Field label={t("automationsUi.form.action")}>
+                {(control) => (
+                  <NativeSelect
+                    {...control}
+                    value={draft.action}
+                    onChange={(e) => set({ action: e.target.value as ActionType })}
+                  >
+                    {actions.map((type) => (
+                      <option key={type} value={type}>
+                        {t(`automationsUi.form.actionTypes.${type}` as Key)}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                )}
+              </Field>
               {draft.action === "start_workflow" &&
                 (usable.length === 0 ? (
                   <p className="text-muted-foreground text-sm">
                     {t("automationsUi.form.noWorkflows")}
                   </p>
                 ) : (
-                  <NativeSelect
-                    aria-label={t("automationsUi.form.workflow")}
-                    value={workflow}
-                    onChange={(e) => set({ workflow: e.target.value })}
-                  >
-                    {usable.map((w) => (
-                      <option key={w.name} value={w.name}>
-                        {w.trusted ? w.name : t("automationsUi.form.untrusted", { name: w.name })}
-                      </option>
-                    ))}
-                  </NativeSelect>
+                  <Field label={t("automationsUi.form.workflow")}>
+                    {(control) => (
+                      <NativeSelect
+                        {...control}
+                        value={workflow}
+                        onChange={(e) => set({ workflow: e.target.value })}
+                      >
+                        {usable.map((w) => (
+                          <option key={w.name} value={w.name}>
+                            {w.trusted
+                              ? w.name
+                              : t("automationsUi.form.untrusted", { name: w.name })}
+                          </option>
+                        ))}
+                      </NativeSelect>
+                    )}
+                  </Field>
                 ))}
             </div>
           )}
           {step === 2 && (
             <div className="flex flex-col gap-3">
-              <Input
-                aria-label={t("automationsUi.form.name")}
-                value={draft.name}
-                onChange={(e) => set({ name: e.target.value })}
-              />
-              <Input
-                type="number"
-                min={1}
-                aria-label={t("automationsUi.form.max")}
-                value={draft.max}
-                onChange={(e) => set({ max: e.target.value })}
-              />
+              <Field
+                label={t("automationsUi.form.name")}
+                error={tried && problems.name ? t("automationsUi.form.nameMissing") : undefined}
+              >
+                {(control) => (
+                  <Input
+                    {...control}
+                    value={draft.name}
+                    onChange={(e) => set({ name: e.target.value })}
+                  />
+                )}
+              </Field>
+              <Field
+                label={t("automationsUi.form.max")}
+                error={tried && problems.max ? t("automationsUi.form.maxBad") : undefined}
+              >
+                {(control) => (
+                  <Input
+                    {...control}
+                    type="number"
+                    // No `min` and any step: the browser would stop the submit with its own bubble, and the field's message in both languages would never show.
+                    step="any"
+                    value={draft.max}
+                    onChange={(e) => set({ max: e.target.value })}
+                  />
+                )}
+              </Field>
               {carriesThirdParty(draft.trigger) && (
                 <div className="flex items-center justify-between gap-3">
                   <span className="flex flex-col text-sm">

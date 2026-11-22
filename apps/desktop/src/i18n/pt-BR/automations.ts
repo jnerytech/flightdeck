@@ -107,7 +107,8 @@ export const automations = {
         issue_label: "Issue nova com um rótulo",
       },
       cron: "Expressão cron",
-      cronHint: "minuto hora dia mês dia-da-semana",
+      cronHint:
+        "minuto hora dia mês dia-da-semana. Exemplo: 0 9 * * 1-5 é de segunda a sexta às 09:00.",
       tz: "Fuso horário",
       label: "Rótulo",
       action: "Ação",
@@ -121,6 +122,8 @@ export const automations = {
       untrusted: "{name} (não confiado)",
       name: "Nome da automação",
       max: "Máximo de disparos por dia",
+      nameMissing: "Dê um nome à automação.",
+      maxBad: "O limite é um número inteiro de pelo menos 1.",
       external: "Agir também sobre autores externos",
       externalHint: "Vem desligado. O texto de fora vai marcado como não confiável.",
       next: "Próximo",
