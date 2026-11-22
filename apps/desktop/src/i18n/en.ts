@@ -148,7 +148,7 @@ export const en: Dictionary = {
     deny: "Deny",
     open: "Open",
     more: "and {n} more…",
-    show: "Open",
+    show: "Open Flightdeck",
     quit: "Quit",
     idle: "Flightdeck: nothing waiting for you",
     waiting: {
@@ -158,6 +158,10 @@ export const en: Dictionary = {
     plainWaiting: {
       one: "Flightdeck: {n} task waiting for your answer ({hosts})",
       other: "Flightdeck: {n} tasks waiting for your answer ({hosts})",
+    },
+    moreHosts: {
+      one: "and {n} more host",
+      other: "and {n} more hosts",
     },
     autoApproved: {
       one: "{n} automatic approval",

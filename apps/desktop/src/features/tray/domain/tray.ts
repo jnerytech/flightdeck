@@ -6,6 +6,9 @@ import { type PendingItem, pendingText, pendingWhere } from "../../needs-you/ind
 /** Requests listed in the tray submenu; the rest become "e mais N…". */
 const TRAY_MENU_MAX = 10;
 
+/** Windows shows 127 characters of a tooltip (a 128-character buffer with its terminator). */
+const TOOLTIP_MAX = 127;
+
 /** How long the submenu waits for the list to settle before it is rebuilt. */
 export const TRAY_MENU_DELAY_MS = 500;
 
@@ -53,6 +56,32 @@ export function trayMenu(
   };
 }
 
+/**
+ * The tooltip cut to what Windows shows (#4121): the hosts with the most requests stay and the rest
+ * are counted ("and 3 more hosts"), the request total is always the full one. Hosts go first; only
+ * when even one host does not fit with the automatic approvals are those dropped, and a name too long
+ * for the limit on its own is cut with an ellipsis.
+ */
+function fitTooltip(
+  perHost: { name: string; count: number }[],
+  told: (hosts: string) => string,
+  auto: string,
+  t: T,
+): string {
+  const text = (shown: number, withAuto: boolean): string => {
+    const names = perHost.slice(0, shown).map((h) => `${h.name}: ${h.count}`);
+    if (shown < perHost.length) names.push(t("tray.moreHosts", { n: perHost.length - shown }));
+    return `${told(names.join(", "))}${withAuto ? auto : ""}`;
+  };
+  for (const withAuto of [true, false]) {
+    for (let shown = perHost.length; shown > 0; shown--) {
+      const fits = text(shown, withAuto);
+      if (fits.length <= TOOLTIP_MAX) return fits;
+    }
+  }
+  return `${text(1, false).slice(0, TOOLTIP_MAX - 1)}…`;
+}
+
 export interface TrayHost {
   name: string;
   /** The host is in simple mode: its requests are told as tasks waiting for an answer (issue #88). */
@@ -76,11 +105,11 @@ export function trayStatus(hosts: TrayHost[], t: T = PT, autoApproved = 0): Tray
   const label = t("tray.needsYou", { n: count });
   const auto = autoApproved > 0 ? ` · ${t("tray.autoApproved", { n: autoApproved })}` : "";
   if (count === 0) return { count, label, tooltip: `${t("tray.idle")}${auto}` };
-  const breakdown = perHost.map((h) => `${h.name}: ${h.count}`).join(", ");
   // Plain words only when every host that waits is in simple mode: a mixed fleet keeps the usual one.
   const plainly = hosts
     .filter((h) => perHost.some((p) => p.name === h.name))
     .every((h) => h.simple);
   const key = plainly ? "tray.plainWaiting" : "tray.waiting";
-  return { count, label, tooltip: `${t(key, { n: count, hosts: breakdown })}${auto}` };
+  const told = (hosts: string) => t(key, { n: count, hosts });
+  return { count, label, tooltip: fitTooltip(perHost, told, auto, t) };
 }
