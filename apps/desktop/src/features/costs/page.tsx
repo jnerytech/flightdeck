@@ -7,7 +7,7 @@ import { RoiPeople, RoiSettingsPanel, RoiTable } from "@/features/roi/ui.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
-import { InlineNotice } from "@/shared/feedback/index.ts";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
 import { EmptyState, LoadingState, Page, Panel } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -26,6 +26,7 @@ import {
   periodProjectKeys,
   withFilter,
 } from "./domain/costs-derive.ts";
+import { type CostsExport, exportNote } from "./domain/costs-export-note.ts";
 import { awayHost, hostScope } from "./domain/costs-scope.ts";
 import { awayKey } from "./domain/data-scope.ts";
 import { QuotaCharts } from "./QuotaCharts.tsx";
@@ -113,7 +114,16 @@ export const CostsPage = memo(function CostsPage(props: {
   const status = useCostsStatus(store, hostId, acrossHosts);
   const setFilter = (name: keyof typeof filters, value: string) =>
     setFilters(withFilter(filters, name, value));
-  const exportCsv = () => exportCosts(store, { acrossHosts, hostId, hosts }, filter);
+  // What the last press of Export CSV did; a new press clears it, and a cancel leaves it clear.
+  // It describes the file of one scope and filter, so it is shown only while they are on screen.
+  const exportKey = JSON.stringify([hostId, acrossHosts, filter]);
+  const [exported, setExported] = useState<{ key: string; result: CostsExport } | null>(null);
+  const exportCsv = async () => {
+    setExported(null);
+    const result = await exportCosts(store, { acrossHosts, hostId, hosts }, filter);
+    setExported({ key: exportKey, result });
+  };
+  const exportedNote = exported?.key === exportKey ? exportNote(exported.result, t) : null;
   const byDay = summary?.byDay ?? [];
   // One set of labels for the whole screen, so a project reads the same in the list, the chart
   // and the table; two that share a folder name are told apart.
@@ -147,9 +157,9 @@ export const CostsPage = memo(function CostsPage(props: {
           >
             {t("costsUi.setBudget")}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => void exportCsv()}>
+          <ActionButton variant="outline" size="sm" onClick={exportCsv}>
             {t("costsUi.export")}
-          </Button>
+          </ActionButton>
         </>
       }
       toolbar={
@@ -170,6 +180,7 @@ export const CostsPage = memo(function CostsPage(props: {
       }
     >
       <div className="flex flex-col gap-5">
+        {exportedNote && <InlineNotice tone={exportedNote.tone}>{exportedNote.text}</InlineNotice>}
         <CostsNotices
           status={status}
           acrossHosts={acrossHosts}
