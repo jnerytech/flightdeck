@@ -437,7 +437,7 @@ export const ptBR = {
       "O atalho {accelerator} não pôde ser registrado: outro programa já deve usá-lo. Escolha outro.",
     terminalFailed: "Terminal não abriu: {error}. Use Copiar comando e cole no seu terminal.",
     updateCheckFailed:
-      "não consegui procurar atualização: {error}. Confira a rede e tente de novo em Configurações.",
+      "A verificação de atualização não terminou: {error}. Confira a rede e tente de novo em Configurações.",
     updateDownloadFailed:
       "A versão nova não foi baixada: {error}. Ela é tentada de novo na próxima verificação, ou instale por Configurações.",
     updateInstallFailed:

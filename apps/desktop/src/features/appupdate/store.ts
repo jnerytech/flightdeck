@@ -126,6 +126,11 @@ export class AppUpdateSlice {
     this.patch({ offer: null });
   }
 
+  /** Hides the error line of the banner; the next failure shows its own. */
+  dismissError(): void {
+    this.patch({ error: null });
+  }
+
   /**
    * Issue #280: downloads the version on offer in the background, once; the banner then offers to
    * restart into it. A failure says why and is tried again at the next check.

@@ -1,4 +1,5 @@
 /** Part of the print table (scripts/demo-shots.ts), in print order. */
+import type { Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
 import {
   ALFA,
@@ -8,6 +9,20 @@ import {
   type Shot,
   showSection,
 } from "./shot.ts";
+
+/** The session id the forked print shows: the demo's host never writes the fork it stands for. */
+const FORKED_SESSION = "7b1f3c52-9d3e-4a6b-8f10-2c5d9e4a1b77";
+
+/** The Fork dialog of turn 2 with "Also rewind the files" ticked. */
+async function openForkWithFiles(page: Page): Promise<void> {
+  await openTimeline(page);
+  await page
+    .getByRole("button", { name: /^(Bifurcar daqui|Fork from here) \((turno|turn) 2\)$/ })
+    .click();
+  await page
+    .getByRole("checkbox", { name: /^(Voltar os arquivos também|Also rewind the files)$/ })
+    .check();
+}
 
 export function agentShots(ids: DemoIds): Shot[] {
   return [
@@ -193,6 +208,66 @@ export function agentShots(ids: DemoIds): Shot[] {
           .first()
           .click();
         await page.waitForTimeout(600);
+      },
+    },
+    // #4039: the Fork dialog with "Also rewind the files" ticked (turn 2 has files), the same with the
+    // preview refused, and the result of a fork opened in the terminal.
+    {
+      name: "linha-do-tempo-bifurcar-arquivos",
+      route: { name: "session", host: ALFA, id: ids.rewindSession },
+      prepare: async (page) => {
+        await openForkWithFiles(page);
+        await page
+          .getByText(/^(Calculando o que muda|Working out what changes)/)
+          .waitFor({ state: "hidden", timeout: 8000 });
+        await page.mouse.move(1000, 700);
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      name: "linha-do-tempo-bifurcar-recusa",
+      route: { name: "session", host: ALFA, id: ids.rewindSession },
+      wire: [
+        {
+          command: "rewind.preview",
+          refuse: "The snapshots could not be read: git is not available here.",
+        },
+      ],
+      prepare: async (page) => {
+        await openForkWithFiles(page);
+        await page
+          .getByRole("button", { name: /^(Tentar de novo|Try again)$/ })
+          .waitFor({ timeout: 8000 });
+        await page.mouse.move(1000, 700);
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      name: "linha-do-tempo-bifurcado",
+      route: { name: "session", host: ALFA, id: ids.rewindSession },
+      // A real fork writes a transcript on the demo's host: the request goes out as a read, and its
+      // answer is the forked session the dialog prints.
+      wire: [
+        {
+          command: "session.fork",
+          as: "snapshots.list",
+          data: { claudeSessionId: FORKED_SESSION, command: `claude --resume ${FORKED_SESSION}` },
+        },
+      ],
+      prepare: async (page) => {
+        await openTimeline(page);
+        await page
+          .getByRole("button", { name: /^(Bifurcar daqui|Fork from here) \((turno|turn) 2\)$/ })
+          .click();
+        await page
+          .getByRole("radio", { name: /^(Abrir no terminal|Open in the terminal)$/ })
+          .check();
+        await page.getByRole("button", { name: /^(Bifurcar|Fork)$/ }).click();
+        await page
+          .getByText(/^(Conversa bifurcada|Conversation forked)/)
+          .waitFor({ timeout: 8000 });
+        await page.mouse.move(1000, 700);
+        await page.waitForTimeout(400);
       },
     },
     // #3982: the Timeline's other states. The refused read, the empty history and the applied rewind
