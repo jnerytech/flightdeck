@@ -51,7 +51,7 @@ export function WhatsNewDialog(props: Readonly<{ store: AppStore; onClose(): voi
           <DialogDescription className="sr-only">{t("whatsNew.description")}</DialogDescription>
         </DialogHeader>
         <Body result={result} onRetry={() => setAttempt((n) => n + 1)} store={store} />
-        <DialogFooter className="max-sm:flex-col-reverse">
+        <DialogFooter className="max-sm:flex-col">
           <Button variant="outline" onClick={() => store.openLink(RELEASES_PAGE)}>
             <ExternalLink aria-hidden="true" />
             {t("whatsNew.viewAll")}

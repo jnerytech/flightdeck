@@ -158,6 +158,27 @@ describe("whats-new-ui: the dialog (issue #125)", () => {
     expect(screen.queryByRole("button", { name: "Ver todas as versões" })).not.toBeNull();
     expect(screen.queryByText("6 de nov. de 2026")).not.toBeNull();
   });
+
+  // #4058: a reversed footer puts the first button at the bottom while Tab still starts there.
+  test("the footer keeps the tab order and the screen order the same at every width", async () => {
+    for (const lang of ["en", "pt-BR"] as const) {
+      const { view } = setup([{ kind: "none" }], lang);
+      const { unmount } = render(view);
+      const footer = document.querySelector('[data-slot="dialog-footer"]');
+      expect(footer).not.toBeNull();
+      const classes = (footer?.className ?? "").split(" ");
+      // Below 640 px a plain column (the default there is column-reverse); from 640 px a row.
+      expect(classes).toContain("max-sm:flex-col");
+      expect(classes).not.toContain("max-sm:flex-col-reverse");
+      expect(classes).toContain("sm:flex-row");
+      const names = [...(footer?.querySelectorAll("button") ?? [])].map((b) => b.textContent);
+      expect(names).toEqual([
+        lang === "en" ? "View all releases" : "Ver todas as versões",
+        lang === "en" ? "Close" : "Fechar",
+      ]);
+      unmount();
+    }
+  });
 });
 
 describe("whats-new-ui: the account menu entry and its dot (issue #125)", () => {
