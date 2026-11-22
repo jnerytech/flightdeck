@@ -32,6 +32,7 @@ import { automationShots } from "./lib/shots/table-automations.ts";
 import { boardShots } from "./lib/shots/table-board.ts";
 import { harnessShots } from "./lib/shots/table-harness.ts";
 import { hostShots } from "./lib/shots/table-hosts.ts";
+import { permissionShots } from "./lib/shots/table-permissions.ts";
 import { shellShots } from "./lib/shots/table-shell.ts";
 import { snippetShots } from "./lib/shots/table-snippets.ts";
 import { teleportShots } from "./lib/shots/table-teleport.ts";
@@ -80,6 +81,7 @@ function shots(ids: DemoIds): Shot[] {
     ...hostShots(ids),
     ...harnessShots(ids),
     ...automationShots(ids),
+    ...permissionShots(ids),
     ...snippetShots(ids),
     ...teleportShots(ids),
   ];
