@@ -172,6 +172,30 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     createdAt: "2026-10-01T10:00:00Z",
     authorAssociation: "MEMBER",
   };
+  // #4099: the Issues panel's prints also need an issue that already has a card (#8, made below) and one by
+  // an outside author (#9). The issue-and-risk journey finds #7 by its title, so these change nothing for it.
+  const moreIssues = [
+    {
+      number: 8,
+      title: "Limitar a taxa da exportação",
+      body: "A exportação em lote derruba o servidor com arquivos grandes.",
+      url: "https://github.com/Acme/App/issues/8",
+      author: { login: "ana" },
+      labels: [{ name: "performance" }, { name: "backend" }],
+      createdAt: "2026-10-03T09:30:00Z",
+      authorAssociation: "MEMBER",
+    },
+    {
+      number: 9,
+      title: "Aceitar login por SAML",
+      body: "Nossa empresa usa SAML e não consegue entrar.",
+      url: "https://github.com/Acme/App/issues/9",
+      author: { login: "bob" },
+      labels: [{ name: "enhancement" }],
+      createdAt: "2026-10-05T14:00:00Z",
+      authorAssociation: "NONE",
+    },
+  ];
   // Issue #1244: the open PR of the In review card. It stays open with its build passing; a merge is
   // held for a review, so Merge PR asks first and the card says why, run after run.
   const build = [{ name: "build", status: "COMPLETED", conclusion: "SUCCESS" }];
@@ -179,8 +203,9 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     "gh",
     [
       { args: ["api", "user"], stdout: "eu\n" },
-      { args: ["issue", "list"], stdout: JSON.stringify([issue]) },
+      { args: ["issue", "list"], stdout: JSON.stringify([issue, ...moreIssues]) },
       { args: ["issue", "view", "7"], stdout: JSON.stringify(issue) },
+      { args: ["issue", "view", "8"], stdout: JSON.stringify(moreIssues[0]) },
       // Issue #1221: a workflow template added from the app opens its PR through the CLI. The branch
       // has no PR yet (`pr view <branch>` finds none), so the create answers with the PR's URL.
       { args: ["pr", "create"], stdout: `Creating pull request\n${DEMO_TEMPLATE_PR_URL}\n` },
@@ -280,6 +305,11 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     hash: sha256(WORKFLOW),
   });
   await client.call("project.update", { projectId: project.id, issues: { provider: "github" } });
+  // #4099: one of the listed issues already has its card.
+  await client.call("issues.createCard", {
+    projectId: project.id,
+    issueRef: "github:Acme/App#8",
+  });
   const empty = await client.call<{ id: string }>("project.add", {
     path: join(alfa.projects, "vazio"),
   });
