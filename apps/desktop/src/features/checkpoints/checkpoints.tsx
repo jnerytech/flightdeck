@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { type Turn, turnsOf } from "@/features/sessions/index.ts";
 import { ActionButton, IconActionButton, InlineNotice } from "@/shared/feedback/index.ts";
-import { EmptyState, ErrorState, LoadingState } from "@/shared/layout/index.ts";
+import { EmptyState, ErrorState, Inline, LoadingState } from "@/shared/layout/index.ts";
 import { formatDateTime } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { ForkDialog, RewindDialog, type Target } from "./checkpoint-dialogs.tsx";
@@ -26,7 +26,9 @@ function TurnRow(
     /** The id of the panel's busy notice, which says why the rewind is off. */
     busyId: string;
     files: SnapshotFiles | undefined;
-    onToggle(): void;
+    /** The last read of this turn's files was refused. */
+    filesFailed: boolean;
+    onToggle(): Promise<void>;
     onRewind(): void;
     onFork(): void;
   }>,
@@ -52,11 +54,19 @@ function TurnRow(
       <p className="line-clamp-3 whitespace-pre-wrap break-words">{turn.prompt ?? ""}</p>
       {turn.files === "changed" && (
         <div className="flex flex-col gap-1">
-          <Button variant="ghost" size="sm" className="self-start" onClick={props.onToggle}>
+          <ActionButton variant="ghost" size="sm" className="self-start" onClick={props.onToggle}>
             {props.files
               ? t("timeline.hideFiles", { n: turn.ordinal })
               : t("timeline.showFiles", { n: turn.ordinal })}
-          </Button>
+          </ActionButton>
+          {props.filesFailed && (
+            <InlineNotice tone="error">
+              <span>{t("timeline.filesFailed", { n: turn.ordinal })}</span>{" "}
+              <ActionButton variant="outline" size="sm" onClick={props.onToggle}>
+                {t("timeline.retry")}
+              </ActionButton>
+            </InlineNotice>
+          )}
           {props.files && (
             <ul className="flex flex-col gap-1">
               {props.files.files.map((file) => (
@@ -119,6 +129,8 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
   // The first load was refused: the sheet says so and offers a new try, instead of loading for ever.
   const [failed, setFailed] = useState(false);
   const [files, setFiles] = useState<Record<number, SnapshotFiles>>({});
+  // The turns whose files the host refused to read: the row says so and offers a new try.
+  const [filesFailed, setFilesFailed] = useState<Record<number, true>>({});
   const [rewinding, setRewinding] = useState<Turn | null>(null);
   const [forking, setForking] = useState<Turn | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -144,7 +156,10 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
       claudeSessionId,
       n: turn.n,
     });
-    if (result) setFiles((all) => ({ ...all, [turn.n]: result }));
+    if (result) {
+      setFiles((all) => ({ ...all, [turn.n]: result }));
+      setFilesFailed(({ [turn.n]: _read, ...rest }) => rest);
+    } else setFilesFailed((all) => ({ ...all, [turn.n]: true }));
   };
 
   const rewound = (turn: Turn) => {
@@ -199,7 +214,8 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
             busy={props.busy}
             busyId={busyId}
             files={files[turn.n]}
-            onToggle={() => void toggle(turn)}
+            filesFailed={filesFailed[turn.n] === true}
+            onToggle={() => toggle(turn)}
             onRewind={() => setRewinding(turn)}
             onFork={() => setForking(turn)}
           />
@@ -241,16 +257,13 @@ export function CheckpointsButton(props: Target & { busy: boolean }) {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent showCloseButton={false} className="sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle>{t("timeline.title")}</SheetTitle>
+            <Inline className="justify-between">
+              <SheetTitle className="text-lg">{t("timeline.title")}</SheetTitle>
+              <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
+                {t("common.close")}
+              </Button>
+            </Inline>
             <SheetDescription>{t("timeline.description")}</SheetDescription>
-            <Button
-              variant="outline"
-              size="sm"
-              className="self-start"
-              onClick={() => setOpen(false)}
-            >
-              {t("common.close")}
-            </Button>
           </SheetHeader>
           <TimelinePanel
             {...props}
