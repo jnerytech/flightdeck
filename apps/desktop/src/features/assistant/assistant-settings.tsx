@@ -7,6 +7,7 @@ import {
 } from "@flightdeck/protocol";
 import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
+import { MORE_MODELS, modelName } from "@/features/models/index.ts";
 import type { Key, T } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
@@ -29,12 +30,7 @@ const OPENROUTER_PRIVACY = "https://openrouter.ai/docs/guides/privacy/data-colle
 const PROFILES: AssistantProfile[] = ["quick", "careful"];
 
 /** The host provider's models: the Claude Code ids that are current, apart from what the host defaults to. */
-const HOST_MODELS: ModelOption[] = [
-  { id: "claude-fable-5-2", label: "Fable 5.2" },
-  { id: "claude-opus-5-5", label: "Opus 5.5" },
-  { id: "claude-sonnet-5-5", label: "Sonnet 5.5" },
-  { id: "claude-haiku-5-5", label: "Haiku 5.5" },
-];
+const HOST_MODELS: ModelOption[] = MORE_MODELS.map((id) => ({ id, label: modelName(id) ?? id }));
 
 /** A kind's name; a dictionary key has no dot, so `prompt.plain` is `prompt_plain` there. */
 const kindLabel = (t: T, kind: AssistantKind) =>

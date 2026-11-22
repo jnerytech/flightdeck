@@ -139,6 +139,22 @@ describe("personas-ui-editar: model and tools are choices (issue #134)", () => {
     expect(screen.getByRole("region", { name: "Prévia" }).textContent).toContain("claude-x-9");
   });
 
+  test("Model lists the current models by name, with the id as the value, Fable 5.2 among them", async () => {
+    await open();
+    await click(button("Nova persona"));
+    const model = screen.getByLabelText("Modelo") as HTMLSelectElement;
+    const rows = [...model.options].map((o) => [o.value, o.textContent]);
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        ["opus", "Opus"],
+        ["claude-fable-5-2", "Fable 5.2"],
+        ["claude-opus-5-5", "Opus 5.5"],
+        ["claude-haiku-5-5", "Haiku 5.5"],
+      ]),
+    );
+    expect(rows.some(([value]) => value === "claude-fable-5-1")).toBe(false);
+  });
+
   test("a persona whose model is not in the list opens on Other… with its model typed", async () => {
     await open((store, hostId) =>
       store.hostRequest(hostId, "personas.save", {

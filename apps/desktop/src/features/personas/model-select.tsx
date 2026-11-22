@@ -2,7 +2,7 @@ import type { EffortLevel } from "@flightdeck/protocol";
 import { Field, NativeSelect } from "@/shared/layout/index.ts";
 
 /** The model aliases a session can open in or switch to. */
-export const MODELS = ["opus", "sonnet", "haiku"] as const;
+const MODELS = ["opus", "sonnet", "haiku"] as const;
 
 /** How hard the model works, from the lightest. */
 const EFFORTS: readonly EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
