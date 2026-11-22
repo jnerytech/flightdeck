@@ -52,8 +52,26 @@ Whether sessions on the host may run without permission prompts. It prints `bypa
   exits `1` and says to turn it on in the app. Nothing is signed or retried.
 - A session that runs `fd host bypass on` is stopped by the risk rules (high); `off` is not.
 
+## fd ui set
+
+```sh
+fd ui set --mode simple --confirm
+fd ui set --lock --confirm
+fd ui set --mode full --unlock --confirm --json
+```
+
+How the host presents itself to whoever uses its app: the mode it starts in (`full` or `simple`) and whether the
+switch between them is locked. It prints `mode simple, locked yes`; `--json` prints `{"mode":"simple","locked":true}`.
+
+- Give at least one of `--mode full|simple`, `--lock` and `--unlock`. What you leave out stays as the host has it.
+  `--lock` with `--unlock`, a mode that is not `full` or `simple`, or none of the three is refused and exits `1`.
+- `--confirm` is your own word that you mean it. Without it nothing is sent and the command exits `1`.
+- It asks the daemon of this machine only: `--host` does not apply.
+- A session that runs `fd ui set` is stopped by the risk rules (high): it could lock the person out of the mode they
+  work in. It is safe to run again, since it sets and does not toggle.
+
 ## Flags and exit codes
 
-`--host <name>` and `--json` work with every verb, and `--config <file>` as for the other commands. `--confirm`
-goes only with `bypass on`. A connection that drops while a verb is in flight exits `2` and says the setting may or
+`--json` works with every verb, `--host <name>` with every one but `fd ui set`, which asks this machine's daemon only, and `--config <file>` as for the other commands. `--confirm`
+goes only with `bypass on` and `ui set`. A connection that drops while a verb is in flight exits `2` and says the setting may or
 may not have changed: every verb here is safe to run again. Exit codes: `0` done, `1` refused, `2` no daemon.

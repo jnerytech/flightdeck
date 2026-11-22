@@ -159,6 +159,7 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 - [fd host sleep](flightdeckd-host-commands.md#fd-host-sleep)
 - [fd host keep-awake, pause and updates](flightdeckd-host-commands.md#fd-host-keep-awake-pause-and-updates)
 - [fd host bypass](flightdeckd-host-commands.md#fd-host-bypass)
+- [fd ui set](flightdeckd-host-commands.md#fd-ui-set)
 
 ## flightdeckd commands: terminal sessions and names
 
