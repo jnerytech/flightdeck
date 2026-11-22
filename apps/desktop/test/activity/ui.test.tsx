@@ -419,6 +419,55 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     expect(has(within(column("Needs you")).queryByText("None"))).toBe(true);
   });
 
+  // Issue #3967: filters that match no card said "None" in every column with no way back.
+  test("filters that match no card say so and Clear filters brings every card back", async () => {
+    const w = setup(SPECS);
+    render(w.view(SPECS));
+    expect(has(screen.queryByRole("button", { name: "Clear filters" }))).toBe(false);
+    await act(async () => {
+      fireEvent.change(field("searchbox", "Search sessions"), { target: { value: "zzz" } });
+      fireEvent.change(labelled("Host"), { target: { value: "beta" } });
+    });
+    expect(has(screen.queryByText("No session matches these filters."))).toBe(true);
+    expect(
+      has(screen.queryByText("Nothing here yet. Start a session and it shows on this board.")),
+    ).toBe(false);
+    const clear = screen.queryByRole("button", { name: "Clear filters" });
+    expect(has(clear)).toBe(true);
+    await act(async () => {
+      fireEvent.click(clear as HTMLElement);
+    });
+    expect(has(screen.queryByText("3 of 3 shown"))).toBe(true);
+    expect(has(screen.queryByText("No session matches these filters."))).toBe(false);
+    expect((field("searchbox", "Search sessions") as HTMLInputElement).value).toBe("");
+    expect((labelled("Host") as HTMLSelectElement).value).toBe("");
+  });
+
+  test("Clear filters keeps the idle switch, which is a view choice", async () => {
+    const w = setup(SPECS);
+    render(w.view(SPECS));
+    await act(async () => {
+      fireEvent.click(idleSwitch());
+      fireEvent.change(field("searchbox", "Search sessions"), { target: { value: "zzz" } });
+    });
+    const clear = screen.queryByRole("button", { name: "Clear filters" });
+    expect(has(clear)).toBe(true);
+    await act(async () => {
+      fireEvent.click(clear as HTMLElement);
+    });
+    expect((idleSwitch() as HTMLInputElement).checked).toBe(true);
+  });
+
+  test("filters that match no card say so in Portuguese", async () => {
+    const w = setup(SPECS, { language: "pt-BR" });
+    render(w.view(SPECS));
+    await act(async () => {
+      fireEvent.change(field("searchbox", "Buscar sessões"), { target: { value: "zzz" } });
+    });
+    expect(has(screen.queryByText("Nenhuma sessão atende a estes filtros."))).toBe(true);
+    expect(has(screen.queryByRole("button", { name: "Limpar filtros" }))).toBe(true);
+  });
+
   test("the Project and Persona lists narrow the cards too", async () => {
     const w = setup(SPECS);
     render(w.view(SPECS));
