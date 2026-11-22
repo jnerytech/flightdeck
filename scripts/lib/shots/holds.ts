@@ -8,7 +8,7 @@ export interface FrameRewriter {
   drops?(frame: string): boolean;
   /** Frames the host seems to send right after `frame`, which the app hears once it heard `frame` (#3943). */
   followUp?(frame: string): string[];
-  /** The host's answer to a frame the app sends, when the print answers for it: the frame then never leaves the page (#3987). */
+  /** The host's answer to a frame the app sends, when the print answers for it: the frame then never leaves the page (#3987). `null` swallows the frame and answers nothing (#4236). */
   answer?(frame: string): string | null | undefined;
 }
 
@@ -115,10 +115,12 @@ export function installHolds(
       if (typeof sent === "string") {
         const answer = this.rewriter.answer?.(sent);
         if (answer !== undefined) {
-          // Never sent: the host would do what the print only shows (#3987).
-          queueMicrotask(() => {
-            for (const listener of this.hear) listener(answer);
-          });
+          // Never sent: the host would do what the print only shows (#3987). `null`: no answer comes (#4236).
+          if (answer !== null) {
+            queueMicrotask(() => {
+              for (const listener of this.hear) listener(answer);
+            });
+          }
           return;
         }
       }
