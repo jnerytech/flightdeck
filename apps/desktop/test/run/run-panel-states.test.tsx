@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, jest, test } from "bun:test";
 import type { Card, RunProcessState, RunState } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
@@ -196,12 +196,16 @@ describe("the run panel keeps the focus where the person pressed, and its lists 
   test("Run pressed with the focus on it hands the focus to Stop, and Stop hands it back to Run", async () => {
     const { store, answers } = await panel("en", run({ status: "ended" }));
     await press("Run");
-    await act(async () => answers[0]?.());
-    await act(async () => store.runEnv.updated("h", run({ status: "running" })));
+    await act(async () => {
+      store.runEnv.updated("h", run({ status: "running" }));
+      await answers[0]?.();
+    });
     expect(focused("Stop")).toBe(true);
     await press("Stop");
-    await act(async () => answers[1]?.());
-    await act(async () => store.runEnv.updated("h", run({ status: "ended" })));
+    await act(async () => {
+      store.runEnv.updated("h", run({ status: "ended" }));
+      await answers[1]?.();
+    });
     expect(focused("Run")).toBe(true);
   });
 
@@ -221,10 +225,15 @@ describe("the run panel keeps the focus where the person pressed, and its lists 
   test("a press the host refused takes no focus when the run changes right after", async () => {
     const { store, answers } = await panel("en", run({ status: "ended" }));
     await press("Run");
-    await act(async () => answers[0]?.());
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
+    jest.useFakeTimers();
+    try {
+      await act(async () => answers[0]?.());
+      await act(async () => {
+        jest.advanceTimersByTime(1);
+      });
+    } finally {
+      jest.useRealTimers();
+    }
     await act(async () => store.runEnv.updated("h", run({ status: "running" })));
     expect(focused("Stop")).toBe(false);
   });
