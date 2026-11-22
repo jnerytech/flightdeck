@@ -40,6 +40,9 @@ export const NARROW_SHOTS: readonly string[] = [
   // #1052: the onboarding journey, the first screens a new person sees.
   "primeira-execucao",
   "host-novo",
+  // #3886: its field errors and a refused token must fit the window too.
+  "host-novo-campos",
+  "host-novo-recusado",
   // #168, round 3: the surfaces shipped on 2026-11-07 and 08.
   "projeto-conhecimento",
   "card-novo-modelo",

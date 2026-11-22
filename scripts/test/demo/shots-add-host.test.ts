@@ -18,7 +18,7 @@ describe("the Add host prints (#3886)", () => {
     ]);
   });
 
-  test("both open the Add host page of a host that already exists, and are re-measured narrow", () => {
+  test("both open the Add host page, and are re-measured narrow", () => {
     const shots = hostShots(IDS).filter((s) => s.name.startsWith("host-novo-"));
     expect(shots.map((s) => s.route.name)).toEqual(["add-host", "add-host"]);
     expect(NARROW_SHOTS).toContain("host-novo-campos");

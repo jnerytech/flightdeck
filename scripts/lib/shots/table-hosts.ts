@@ -1,4 +1,5 @@
 /** Part of the print table (scripts/demo-shots.ts), in print order. */
+import { formatPairingLink } from "@flightdeck/protocol";
 import type { DemoIds } from "../../demo-seed.ts";
 import { DEMO_CARD_TEMPLATE } from "../demo/card-templates.ts";
 import { DEMO_PR_CARD, DEMO_PR_URL, DEMO_TEAM_REPORT } from "../e2e/journeys.ts";
@@ -11,6 +12,8 @@ function vaultTab(name: string | RegExp): NonNullable<Shot["prepare"]> {
     await page.getByRole("tabpanel").waitFor();
   };
 }
+
+const SUBMIT = /^(Test and add|Testar e adicionar)$/;
 
 export function hostShots(ids: DemoIds): Shot[] {
   return [
@@ -204,6 +207,32 @@ export function hostShots(ids: DemoIds): Shot[] {
       route: { name: "add-host" },
       async prepare(page) {
         await page.getByRole("heading", { name: /^(Add a host|Adicionar um host)$/ }).waitFor();
+      },
+    },
+    {
+      // #3886: Test and add pressed on the empty form: each empty field says what it needs, the first has the focus.
+      name: "host-novo-campos",
+      route: { name: "add-host" },
+      async prepare(page) {
+        await page.getByRole("button", { name: SUBMIT }).click();
+        await page.getByText(/^(Fill in the name\.|Preencha o nome\.)$/).waitFor();
+      },
+    },
+    {
+      // #3886: the first demo host's own link with a wrong token, on the first-run page (no host listed, so the
+      // address is not a duplicate): the daemon refuses it and the page says to run `flightdeckd pair` again.
+      name: "host-novo-recusado",
+      route: { name: "add-host" },
+      query: { hosts: "none" },
+      async prepare(page) {
+        const link = formatPairingLink({
+          ...ids.alfaPairing,
+          name: "orange-pi",
+          token: "wrong-token",
+        });
+        await page.getByLabel(/^(Pairing link|Link de pareamento)$/).fill(link);
+        await page.getByRole("button", { name: SUBMIT }).click();
+        await page.getByText(/^(Token refused|Token recusado):/).waitFor({ timeout: 15_000 });
       },
     },
     {
