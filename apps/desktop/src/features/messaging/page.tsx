@@ -131,20 +131,25 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
       hubs.find(
         (r) =>
           r.hostId === host?.id && (r.sessionId === sessionId || r.claudeSessionId === sessionId),
-      )?.title ?? null
+      )?.title || null
     );
   };
   /** The recipient's name where the hub knows the session, else its address. */
   const recipientName = (message: MessageInfo) =>
     knownName(message.toHost, message.toSession) ?? `${message.toHost}/${message.toSession}`;
-  /** One end of a row: the session's name with its address as a title, or the address alone. */
-  const endOf = (hostName: string, sessionId: string) => {
+  /**
+   * One end of a row: the session's name with its address as a title, or the address alone. When both
+   * ends read the same name (two sessions of one folder), the address stays on screen too.
+   */
+  const endOf = (hostName: string, sessionId: string, showAddress: boolean) => {
     const address = `${hostName}/${sessionId}`;
     const name = knownName(hostName, sessionId);
-    return name === null ? (
-      <span className="font-mono">{address}</span>
-    ) : (
-      <span title={address}>{name}</span>
+    if (name === null) return <span className="font-mono">{address}</span>;
+    return (
+      <span title={address}>
+        {name}
+        {showAddress && <span className="font-mono text-muted-foreground">{` ${address}`}</span>}
+      </span>
     );
   };
   // The pairs a host paused for a loop, on the hosts this page lists (#4086).
@@ -226,15 +231,17 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
         <Stack as="ul" label={t("conversationsUi.list")} gap={2} className="max-w-3xl">
           {shown.map((row) => {
             const m = row.message;
+            const fromName = knownName(m.fromHost, m.fromSession);
+            const twins = fromName !== null && fromName === knownName(m.toHost, m.toSession);
             return (
               <li key={m.id} data-slot="message-row" className="message-row">
                 <div data-slot="message-meta" className="message-meta">
                   <time dateTime={m.createdAt} className="text-muted-foreground tabular-nums">
                     {store.formatDateTime(m.createdAt)}
                   </time>
-                  {endOf(m.fromHost, m.fromSession)}
+                  {endOf(m.fromHost, m.fromSession, twins)}
                   <span className="text-muted-foreground">{t("conversationsUi.to")}</span>
-                  {endOf(m.toHost, m.toSession)}
+                  {endOf(m.toHost, m.toSession, twins)}
                   <Badge variant="outline">{row.hostName}</Badge>
                   {m.teamId && <Badge variant="outline">{m.teamId}</Badge>}
                   <strong className={TONE[m.status]}>
