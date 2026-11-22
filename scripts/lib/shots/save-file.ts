@@ -23,3 +23,18 @@ export function keepSaves(win: SaveWindow): void {
     }),
   });
 }
+
+/** The part of the page the file offer touches. */
+export interface OfferWindow {
+  __saved?: KeptSave;
+  document: { createElement(tag: string): unknown };
+}
+
+/**
+ * #4001: the web build reads a backup through a file input the print cannot click. `offerBackup` makes
+ * every input the page creates "choose" the file `keepSaves` kept (or cancel when none was kept).
+ * Self-contained, like `keepSaves`.
+ */
+export function offerBackup(win: OfferWindow): void {
+  void win;
+}
