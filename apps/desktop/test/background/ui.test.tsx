@@ -338,6 +338,11 @@ describe("bg-ui: the actions of a session", () => {
     expect(screen.queryByRole("region", { name: "Background session faxina" })).not.toBeNull();
   });
 
+  test("a session with an empty name is named by its folder (#4171)", async () => {
+    await openPanel(undefined, [{ ...BLOCKED, name: "" }]);
+    expect(screen.queryByRole("region", { name: "Sessão em segundo plano app" })).not.toBeNull();
+  });
+
   test("a host without the terminal does not offer to bring it there", async () => {
     await openPanel(["bg"]);
     expect(screen.queryByRole("button", { name: "Trazer para o terminal" })).toBeNull();
