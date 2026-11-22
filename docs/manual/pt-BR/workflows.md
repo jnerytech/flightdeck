@@ -286,7 +286,8 @@ flightdeckd card dismiss-unblocked <card> [--json]
   `validation-template` imprime o formato próprio do projeto para uma nota de validação, ou diz por que
   ele não foi usado.
 - `pr-create` envia o branch do card e abre o pull request com o título e o texto do card, ou com
-  `--title` e `--description`; um texto que parece ter um segredo é recusado. O link é impresso.
+  `--title` e `--description`; um texto que parece ter um segredo é recusado. O link é impresso. Ele envia o branch, o que roda o hook de pre-push do repositório, então pede uma conexão
+  próxima: por uma conexão distante (não este computador nem o Tailscale) o daemon o recusa com `transport_refused`.
 - `update-from-base` faz o rebase do branch do card sobre a base; num conflito ele para e deixa o
   worktree como estava (saída 1).
 - `merge-local` é para um card sem pull request: junta o card na base (um commit de merge, ou um só

@@ -87,7 +87,8 @@ describe("writing an agent, a skill or a CLAUDE.md needs a near connection (#381
       ["claudemd", "CLAUDE.md", "Be careful.\n"],
     ];
     const reasons: Array<string | null> = [];
-    for (const [kind, path, content] of targets) reasons.push(await write(far, kind, path, content));
+    for (const [kind, path, content] of targets)
+      reasons.push(await write(far, kind, path, content));
     expect([reasons, targets.some(([, path]) => existsSync(join(repo, path)))]).toEqual([
       Array(4).fill("transport_refused"),
       false,
