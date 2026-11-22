@@ -178,6 +178,7 @@ describe("the nouns whose verb the shell rules read (#3627)", () => {
       "db",
       "external",
       "file",
+      "github",
       "history",
       "host",
       "issues",
