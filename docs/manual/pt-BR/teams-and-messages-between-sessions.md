@@ -100,9 +100,12 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
   5. integrar na ordem combinada;
   6. avisar você quando algo for decisão sua;
   7. relatar o resultado do time.
+- **O objetivo do time:** o card abre com o objetivo, em **Objetivo**, antes do resultado. Uma palavra
+  longa quebra dentro do card, e um objetivo de mais de três linhas é cortado ali, com **Mostrar mais**
+  para ler tudo e **Mostrar menos** para dobrá-lo de novo.
 - **O resultado do time:** a coordenadora o relata com a ferramenta `team_report` (até 4000
-  caracteres); o host recusa qualquer outra sessão. O último relato abre o card do time em
-  **Resultado**, marcado **Concluído** ou **Em andamento**, como texto simples; um relato longo rola
+  caracteres); o host recusa qualquer outra sessão. O último relato vem logo depois do objetivo, no
+  card do time, em **Resultado**, marcado **Concluído** ou **Em andamento**, como texto simples; um relato longo rola
   numa caixa que o teclado alcança. Abaixo dele, a linha de cada executora mostra o **Último relato**,
   a branch do card e quantos arquivos o card mudou. Quando a coordenadora relata o objetivo
   concluído, uma notificação avisa e abre o time.
@@ -122,8 +125,9 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
   - tirar um membro: a sessão dele é parada, a coordenadora é avisada e o card fica no board;
   - encerrar o time, com confirmação.
 - **Excluir um time encerrado:** um time encerrado mantém o card dele até você excluí-lo. O menu **⋯**
-  do card tem **Excluir time**: desligado num time aberto (diz "Encerre o time primeiro"), e num
-  encerrado pergunta antes, com o nome do time. O que sai é o registro do time e o card dele na
+  do card aparece quando o time é encerrado e tem **Excluir time**: pergunta antes, com o nome do
+  time. Um time aberto não tem esse menu; Pausar, Adicionar executora e Encerrar ficam abaixo dos
+  membros. O que sai é o registro do time e o card dele na
   página Times. O que fica é a sessão de cada membro, com a transcrição e o histórico, e os cards
   deles no board: só deixam de ser do time. O host recusa enquanto um membro trabalha (rodando ou
   esperando uma resposta); tente de novo quando descansarem. Todos os apps conectados tiram o card.

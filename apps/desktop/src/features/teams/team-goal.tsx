@@ -9,9 +9,8 @@ import { Stack } from "@/shared/layout/index.ts";
  * so it never pushes the members out of sight. The control shows only when the text is taller
  * than the clamped box, which the browser measures; a goal that fits has none.
  */
-export function TeamGoal(props: Readonly<{ t: T; goal: string }>) {
-  const { t, goal } = props;
-  const title = useId();
+export function TeamGoal(props: Readonly<{ t: T; name: string; goal: string }>) {
+  const { t, name, goal } = props;
   const textId = useId();
   const text = useRef<HTMLParagraphElement>(null);
   const [expanded, setExpanded] = useState(false);
@@ -29,9 +28,9 @@ export function TeamGoal(props: Readonly<{ t: T; goal: string }>) {
     return () => watch.disconnect();
   }, [expanded, goal]);
   return (
-    <section aria-labelledby={title} className="min-w-0">
+    <section aria-label={t("teamsUi.goalOf", { name })} className="min-w-0">
       <Stack gap={1}>
-        <strong id={title}>{t("teamsUi.goal")}</strong>
+        <strong>{t("teamsUi.goal")}</strong>
         <p
           ref={text}
           id={textId}
@@ -45,6 +44,7 @@ export function TeamGoal(props: Readonly<{ t: T; goal: string }>) {
             variant="link"
             size="sm"
             className="self-start"
+            aria-label={t(expanded ? "teamsUi.goalLessOf" : "teamsUi.goalMoreOf", { name })}
             aria-expanded={expanded}
             aria-controls={textId}
             onClick={() => setExpanded((now) => !now)}

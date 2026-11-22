@@ -116,7 +116,7 @@ export function Team(
           </DropdownMenu>
         )}
       </div>
-      <TeamGoal t={t} goal={team.goal} />
+      <TeamGoal t={t} name={team.name} goal={team.goal} />
       {props.status?.outcome && <TeamOutcome t={t} outcome={props.status.outcome} />}
       <ul className="flex flex-col gap-1">
         {team.members.map((member) => (
