@@ -127,6 +127,7 @@ export function ClientsPage(
     const next = clients[index + 1] ?? clients[index - 1];
     setRemoving(null);
     if (!store.clients.remove(client.id)) return;
+    if (renaming?.id === client.id) stopRenaming();
     setDone(t("clients.removed", { name: client.name }));
     setFocus({ kind: "gone", id: client.id, next: next?.id ?? null });
   };
