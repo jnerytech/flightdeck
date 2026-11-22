@@ -160,6 +160,20 @@ describe("flightdeckd knowledge index (issue #3623)", () => {
     expect(run.out).toEqual(["no document is given to sessions"]);
   });
 
+  test("the spaces and blank lines at the end of the text are not printed, and those inside stay", async () => {
+    const daemon = fakeDaemon(
+      base({
+        "knowledge.index": () => ({
+          text: "# Library\n\n- a  \r\n\n  \n",
+          fed: 1,
+          truncated: false,
+        }),
+      }),
+    );
+    const run = await flightdeckd(["knowledge", "index", "api"], daemon.port);
+    expect(run.out).toEqual(["# Library", "", "- a"]);
+  });
+
   test("a text a file shaped cannot drive the terminal", async () => {
     const daemon = fakeDaemon(
       base({ "knowledge.index": () => ({ text: "a\u001b[2Jb", fed: 1, truncated: false }) }),
