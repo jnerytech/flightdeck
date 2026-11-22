@@ -195,6 +195,80 @@ export function agentShots(ids: DemoIds): Shot[] {
         await page.waitForTimeout(600);
       },
     },
+    // #3982: the Timeline's other states. The refused read, the empty history and the applied rewind
+    // are made on the page's sockets (`wire`), so the demo's hosts are never left in them.
+    {
+      name: "linha-do-tempo-arquivos",
+      route: { name: "session", host: ALFA, id: ids.rewindSession },
+      prepare: async (page) => {
+        await openTimeline(page);
+        await page
+          .getByRole("button", { name: /^(Ver arquivos do turno|Show files of turn) 1$/ })
+          .click();
+        await page
+          .getByRole("button", { name: /^(Esconder arquivos do turno|Hide files of turn) 1$/ })
+          .waitFor({ timeout: 8000 });
+        await page.mouse.move(1000, 700);
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      // The rewind of turn 2 applied: the notice says so and offers Undo.
+      name: "linha-do-tempo-desfeito",
+      route: { name: "session", host: ALFA, id: ids.rewindSession },
+      wire: [{ command: "rewind.apply", as: "rewind.preview" }],
+      prepare: async (page) => {
+        await openTimeline(page);
+        await page
+          .getByRole("button", { name: /\((turno|turn) 2\)$/ })
+          .first()
+          .click();
+        await page
+          .getByRole("button", { name: /^(Voltar arquivos|Rewind files)$/ })
+          .click({ timeout: 8000 });
+        await page
+          .getByRole("button", { name: /^(Desfazer volta|Undo rewind)$/ })
+          .waitFor({ timeout: 8000 });
+        await page.mouse.move(1000, 700);
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      // A session in a turn: the notice says why Rewind is off.
+      name: "linha-do-tempo-ocupado",
+      route: { name: "session", host: ALFA, id: ids.waitingSession },
+      prepare: async (page) => {
+        await openTimeline(page);
+        await page
+          .getByText(/^(A sessão está num turno|The session is in a turn)/)
+          .waitFor({ timeout: 8000 });
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      name: "linha-do-tempo-falhou",
+      route: { name: "session", host: ALFA, id: ids.rewindSession },
+      wire: [{ command: "snapshots.list", refuse: "The snapshot store could not be read." }],
+      prepare: async (page) => {
+        await openTimeline(page);
+        await page
+          .getByRole("button", { name: /^(Tentar de novo|Try again)$/ })
+          .waitFor({ timeout: 8000 });
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      name: "linha-do-tempo-vazia",
+      route: { name: "session", host: ALFA, id: ids.rewindSession },
+      wire: [{ command: "snapshots.list", data: { snapshots: [] } }],
+      prepare: async (page) => {
+        await openTimeline(page);
+        await page
+          .getByText(/^(Ainda não há turnos|There are no turns)/)
+          .waitFor({ timeout: 8000 });
+        await page.waitForTimeout(400);
+      },
+    },
     {
       // Issue #137: the bell's panel, unread rows with their dots, a session's repeats as one row, a read row and a gone target.
       name: "sino-painel",
@@ -209,6 +283,32 @@ export function agentShots(ids: DemoIds): Shot[] {
           .getByRole("button", { name: /^(Approve|Aprovar)/ })
           .first()
           .waitFor({ timeout: 8000 });
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      // #3982: the bell's panel with nothing in it.
+      name: "sino-vazio",
+      route: { name: "hub" },
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Notifications|Notificações)/ }).click();
+        await page
+          .getByText(/^(No notifications\.|Nenhuma notificação\.)$/)
+          .waitFor({ timeout: 8000 });
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      // #3982: right after Clear, the panel says so and offers Undo.
+      name: "sino-limpo",
+      inbox: true,
+      route: { name: "hub" },
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Notifications|Notificações)/ }).click();
+        const panel = page.getByRole("dialog");
+        await panel.waitFor({ timeout: 8000 });
+        await panel.getByRole("button", { name: /^(Clear|Limpar)$/ }).click();
+        await panel.getByRole("button", { name: /^(Undo|Desfazer)$/ }).waitFor({ timeout: 8000 });
         await page.waitForTimeout(400);
       },
     },

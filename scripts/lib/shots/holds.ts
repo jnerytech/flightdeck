@@ -103,8 +103,7 @@ export function installHolds(
   class Held extends Base {
     readonly rewriter = make();
     override send(data: Parameters<WebSocket["send"]>[0]): void {
-      if (typeof data === "string") this.rewriter.fromApp(data);
-      super.send(data);
+      super.send(typeof data === "string" ? this.rewriter.fromApp(data) : data);
     }
     override addEventListener(
       type: string,

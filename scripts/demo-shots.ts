@@ -30,6 +30,7 @@ import { boardShots } from "./lib/shots/table-board.ts";
 import { hostShots } from "./lib/shots/table-hosts.ts";
 import { shellShots } from "./lib/shots/table-shell.ts";
 import { pickVariants } from "./lib/shots/variants.ts";
+import { wireScript } from "./lib/shots/wire.ts";
 import {
   type Finding,
   GAP_BOXES,
@@ -251,6 +252,7 @@ async function printShot(
     // Playwright's routeWebSocket never saw the app's sockets under Bun: the page's own WebSocket is
     // wrapped instead.
     if (shot.holds) await page.addInitScript({ content: holdsScript() });
+    if (shot.wire) await page.addInitScript({ content: wireScript(shot.wire) });
     await page.goto(`${url}?${query}`);
     // The hosts connect and the screen loads its data.
     await page.waitForTimeout(1500);
