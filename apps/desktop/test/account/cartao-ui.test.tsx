@@ -322,7 +322,7 @@ describe("conta-cartao-ui: the refresh button", () => {
     act(() => button.focus());
     fireEvent.click(button);
     expect(reads).toEqual([]);
-    expect(document.activeElement === button).toBe(true);
+    expect(document.activeElement === button).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
   });
 
   test("the live region says a read is running, then when it was last read", () => {
