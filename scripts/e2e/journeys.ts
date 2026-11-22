@@ -2362,6 +2362,19 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await tree.getByRole("button", { name: /fd\/revisar-o-fluxo-de-login/ }).click();
     const panel = c.page.locator("[data-slot='board-files']");
     await panel.getByText("app.ts").first().waitFor({ timeout: WAIT });
+    // Beside the panel the columns scroll sideways: when one is cut at the edge, a fade says so (#3972).
+    const columns = c.page.locator("[data-slot='board-columns']");
+    const CSS_SCROLL_TIMELINE = await c.page.evaluate(() =>
+      CSS.supports("animation-timeline", "scroll()"),
+    );
+    const cut = await columns.evaluate((box) => ({
+      cut: box.scrollWidth > box.clientWidth,
+      fade: Number.parseFloat(getComputedStyle(box).getPropertyValue("--board-fade")) > 0,
+    }));
+    // An engine without scroll-driven animations has no fade to show: the native scrollbar stays.
+    if (cut.cut && !cut.fade && CSS_SCROLL_TIMELINE) {
+      throw new Error("a board column is cut at the Files panel edge with no cue that it scrolls");
+    }
     const results = panel.getByRole("list", { name: c.t("files.results"), exact: true });
     // By name: the file is found; a credential is listed as hidden and cannot be opened.
     const names = panel.getByRole("searchbox", { name: c.t("files.searchNames"), exact: true });
@@ -2376,6 +2389,19 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .waitFor({ timeout: WAIT });
     if ((await results.getByRole("button", { name: ".env", exact: true }).count()) > 0) {
       throw new Error("um arquivo de credencial devia aparecer como oculto, sem botão para abrir");
+    }
+    // The tree: a credential's name starts where its siblings' names do, not left of them (#3971).
+    await names.fill("");
+    const nameBoxes = panel.locator("li [data-name].font-mono");
+    await nameBoxes.first().waitFor({ timeout: WAIT });
+    const lefts = await nameBoxes.evaluateAll((boxes) =>
+      boxes.map((box) => ({ name: box.textContent ?? "", left: box.getBoundingClientRect().left })),
+    );
+    const secret = lefts.find((box) => box.name === ".env");
+    const sibling = lefts.find((box) => box.name !== ".env");
+    if (!secret || !sibling) throw new Error("the tree should list .env and a sibling file");
+    if (Math.abs(secret.left - sibling.left) > 1) {
+      throw new Error(`.env starts at x=${secret.left} and its sibling at x=${sibling.left}`);
     }
     // By content: the key-shaped line is found, and nothing of the key shows.
     await panel.getByRole("button", { name: c.t("files.byContent"), exact: true }).click();
