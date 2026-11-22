@@ -25,6 +25,7 @@ import { PENDING_SELECTOR } from "./lib/shots/loaded.ts";
 import { narrowSizes, unknownNarrowShots } from "./lib/shots/narrow.ts";
 import { ALFA, DEMO_CLIENTS, DEMO_ROI, type Shot } from "./lib/shots/shot.ts";
 import { agentShots } from "./lib/shots/table-agent.ts";
+import { automationShots } from "./lib/shots/table-automations.ts";
 import { boardShots } from "./lib/shots/table-board.ts";
 import { hostShots } from "./lib/shots/table-hosts.ts";
 import { shellShots } from "./lib/shots/table-shell.ts";
@@ -64,7 +65,13 @@ export const NARROW_BASELINE = resolve(import.meta.dir, "../apps/desktop/respons
 
 /** The prints, in print order: each table is a stretch of the list, so the order is the tables' order. */
 function shots(ids: DemoIds): Shot[] {
-  return [...shellShots(ids), ...boardShots(ids), ...agentShots(ids), ...hostShots(ids)];
+  return [
+    ...shellShots(ids),
+    ...boardShots(ids),
+    ...agentShots(ids),
+    ...hostShots(ids),
+    ...automationShots(ids),
+  ];
 }
 
 /** axe-core's browser bundle. */

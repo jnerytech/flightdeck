@@ -64,6 +64,9 @@ export const NARROW_SHOTS: readonly string[] = [
   "board-atualizar",
   // #1501: the Compare hosts table on the host page, a wide table in a sideways frame at 390.
   "host-comparar",
+  // #3858: the Automations list and the Workflows page.
+  "automacoes-lista",
+  "workflows",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */
