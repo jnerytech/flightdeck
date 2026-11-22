@@ -42,9 +42,11 @@ export const UpdateBanner = memo(function UpdateBanner(props: { store: AppStore 
         </>
       )}
       {error && (
-        <div role="alert">
+        <div>
           <Stack gap={2}>
-            <p className="text-status-needs-you">{error}</p>
+            <p role="alert" className="text-status-needs-you">
+              {error}
+            </p>
             <Inline gap={2}>
               <Button
                 variant="outline"

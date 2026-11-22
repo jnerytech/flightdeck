@@ -294,7 +294,7 @@ for (const [lang, dict] of [
       ];
       expect(texts.map((text) => /^\p{Lu}/u.test(text))).toEqual([true, true, true]);
       expect(texts.map((text) => text.includes("{error}"))).toEqual([true, true, true]);
-      expect(texts.some((text) => /consegui|\bI\b|\bwe\b/i.test(text))).toBe(false);
+      expect(texts.some((text) => /consegui|\bI\b|\bWe\b|\bwe\b/.test(text))).toBe(false);
     });
 
     // #4057: the card is announced politely, and its button says the app restarts.

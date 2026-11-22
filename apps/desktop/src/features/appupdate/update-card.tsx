@@ -69,6 +69,7 @@ export const UpdateCard = memo(function UpdateCard(props: { store: AppStore }) {
       className="update-card"
     >
       <CardAnnouncement
+        key={offer.version}
         text={`${t("update.cardTitle")}. ${t("update.cardReady", { version: offer.version })}`}
       />
       <div className="update-card-head">
