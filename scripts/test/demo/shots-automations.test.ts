@@ -22,6 +22,17 @@ describe("the Automations and Workflows prints (#3858)", () => {
       "automacoes-acao",
       "automacoes-limite",
       "automacoes-ligar",
+      "automacoes-vazio",
+      "automacoes-falhou",
+      "automacoes-carregando",
+      "automacoes-historico-vazio",
+      "automacoes-excluir",
+      "automacoes-form-erros",
+      "automacoes-editar",
+      "automacoes-rotulo",
+      "automacoes-sem-workflows",
+      "automacoes-externos",
+      "automacoes-ligar-externo",
       "workflows",
     ]);
   });
@@ -29,7 +40,7 @@ describe("the Automations and Workflows prints (#3858)", () => {
   test("each print opens its page on the demo's first host and project", () => {
     const routes = SHOTS().map((shot) => shot.route);
     expect(routes.map((route) => route.name)).toEqual([
-      ...Array(6).fill("automations"),
+      ...Array(17).fill("automations"),
       "workflows",
     ]);
     for (const route of routes) {
@@ -40,6 +51,44 @@ describe("the Automations and Workflows prints (#3858)", () => {
   test("the list and the Workflows page are re-measured narrow, in the dark prints", () => {
     expect(narrowSizes("dark", "automacoes-lista")).toHaveLength(3);
     expect(narrowSizes("dark", "workflows")).toHaveLength(3);
+  });
+
+  test("the form's first step and its errors are re-measured narrow too (#4190)", () => {
+    expect(narrowSizes("dark", "automacoes-gatilho")).toHaveLength(3);
+    expect(narrowSizes("dark", "automacoes-form-erros")).toHaveLength(3);
+  });
+
+  test("the empty, failed and loading prints change the host's answer to the automations, and the no-workflow print its workflows (#4190)", () => {
+    const wire = (name: string) => SHOTS().find((shot) => shot.name === name)?.wire;
+    expect(wire("automacoes-vazio")).toEqual([
+      { command: "automation.list", data: { automations: [] } },
+    ]);
+    expect(wire("automacoes-falhou")).toEqual([
+      { command: "automation.list", refuse: "The automations could not be read." },
+    ]);
+    expect(wire("automacoes-carregando")).toEqual([{ command: "automation.list", hold: true }]);
+    expect(wire("automacoes-sem-workflows")).toEqual([
+      { command: "workflow.list", data: { workflows: [] } },
+    ]);
+  });
+
+  test("the prints that open a seeded row leave the host's answers as the seed gives them (#4190)", () => {
+    for (const name of [
+      "automacoes-historico-vazio",
+      "automacoes-excluir",
+      "automacoes-form-erros",
+      "automacoes-editar",
+      "automacoes-rotulo",
+      "automacoes-externos",
+      "automacoes-ligar-externo",
+    ]) {
+      const shot = SHOTS().find((one) => one.name === name);
+      expect({ name, printed: shot !== undefined, wire: shot?.wire }).toEqual({
+        name,
+        printed: true,
+        wire: undefined,
+      });
+    }
   });
 });
 
