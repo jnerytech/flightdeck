@@ -133,7 +133,7 @@ describe("orcamentos-ui", () => {
     await online();
     await chooseFromAccountMenu("Configurações");
     await settle(() => section() !== null);
-    expect(form().getAttribute("aria-label")).toBe("Novo orçamento");
+    expect(form().getAttribute("aria-label")).toBe("Novo orçamento em alfa");
     for (const label of ["Escopo", "Período", "Limite (US$)", "Ao passar do limite"]) {
       expect(field(label).labels?.length).toBe(1);
     }
@@ -187,10 +187,10 @@ describe("orcamentos-ui", () => {
     expect(within(section() as HTMLElement).queryByText("Nenhum orçamento ainda.")).toBeNull();
     expect(screen.queryByRole("button", { name: "Cancelar edição" })).toBeNull();
     await click("Editar orçamento do host (dia)");
-    expect(form().getAttribute("aria-label")).toBe("Editar orçamento do host (dia)");
+    expect(form().getAttribute("aria-label")).toBe("Editar orçamento do host (dia) em alfa");
     expect((field("Limite (US$)") as HTMLInputElement).value).toBe("10");
     await click("Cancelar edição");
-    expect(form().getAttribute("aria-label")).toBe("Novo orçamento");
+    expect(form().getAttribute("aria-label")).toBe("Novo orçamento em alfa");
     expect((field("Limite (US$)") as HTMLInputElement).value).toBe("");
     expect(rows()).toHaveLength(1);
   });
