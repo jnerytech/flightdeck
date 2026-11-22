@@ -180,6 +180,7 @@ export const validCommands: Record<CommandType, unknown> = {
   "rewind.preview": { claudeSessionId: "c1", turn: 1 },
   "rewind.apply": { claudeSessionId: "c1", turn: 1, confirm: true },
   "rewind.undo": { claudeSessionId: "c1", confirm: true },
+  "rewind.undoPreview": { claudeSessionId: "c1" },
   "session.fork": { claudeSessionId: "c1", cwd: "/p", upToMessageId: "u1", open: "terminal" },
   "mcp.list": { projectId: "p1" },
   "mcp.test": { projectId: "p1", name: "eco", confirm: true },

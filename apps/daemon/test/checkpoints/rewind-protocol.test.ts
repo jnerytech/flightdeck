@@ -41,4 +41,36 @@ describe("rewind", () => {
     await client.data("rewind.undo", { claudeSessionId: "s1", confirm: true });
     expect(existsSync(join(repo, "novo.txt"))).toBe(true);
   });
+  test("protocolo: rewind.undoPreview lists what an undo would change, writes nothing and asks no confirm (#4041)", async () => {
+    const { rewinder, repo, turn, snapshots } = await turnInRepo();
+    const { manager } = newManager();
+    const server = startServer({
+      manager,
+      checkpoints: { snapshots, rewinder },
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [],
+    });
+    cleanups.push(() => server.stop());
+    const client = new FrameClient(server.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    // No rewind yet: refused with the undo's own reason.
+    expect(await client.request("rewind.undoPreview", { claudeSessionId: "s1" })).toMatchObject({
+      ok: false,
+      error: { code: "not_found" },
+    });
+    await client.data("rewind.apply", { claudeSessionId: "s1", turn, confirm: true });
+    const preview = await client.data<{ files: Array<{ path: string }> }>("rewind.undoPreview", {
+      claudeSessionId: "s1",
+    });
+    expect(preview?.files.map((file) => file.path)).toEqual([
+      "README.md",
+      "apagar.txt",
+      "novo.txt",
+    ]);
+    expect(existsSync(join(repo, "novo.txt"))).toBe(false);
+  });
 });
