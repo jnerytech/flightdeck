@@ -125,6 +125,15 @@ const LANGS = [
     save: "Save",
     refresh: "Refresh",
     query: "Issues search",
+    provider: "Issues provider",
+    filter: "Filter issues",
+    clearFilter: "Clear filter",
+    none: "No issues found",
+    noMatch: (text: string) => `No issue matches "${text}"`,
+    count: (n: number) => `${n} issues`,
+    countOf: (shown: number, n: number) => `${shown} of ${n} issues`,
+    githubHint: "label:bug",
+    azureHint: "WIQL",
     loading: "Loading issues",
     failed: "Could not list the issues",
     retry: "Try again",
@@ -140,6 +149,15 @@ const LANGS = [
     save: "Salvar",
     refresh: "Atualizar",
     query: "Busca de issues",
+    provider: "Provedor de issues",
+    filter: "Filtrar issues",
+    clearFilter: "Limpar filtro",
+    none: "Nenhuma issue encontrada",
+    noMatch: (text: string) => `Nenhuma issue corresponde a "${text}"`,
+    count: (n: number) => `${n} issues`,
+    countOf: (shown: number, n: number) => `${shown} de ${n} issues`,
+    githubHint: "label:bug",
+    azureHint: "WIQL",
     loading: "Carregando issues",
     failed: "Não consegui listar as issues",
     retry: "Tentar de novo",
@@ -402,5 +420,104 @@ describe.each(LANGS)("issues panel rows ($lang)", (words) => {
     });
     await settle(() => button(words.openFor(1)) !== null);
     expect(document.activeElement).toBe(button(words.openFor(1)));
+  });
+});
+
+const typeIn = async (label: string, value: string) => {
+  await act(async () => {
+    fireEvent.change(within(panel()).getByLabelText(label), { target: { value } });
+  });
+};
+const statusLine = (text: string) => within(panel()).queryByText(text)?.getAttribute("role");
+
+describe.each(LANGS)("issues panel filter ($lang)", (words) => {
+  test("a filter that matches nothing names the filter, and Clear filter brings the list and the focus back", async () => {
+    const h = host({ list: [listed(1, 2)] });
+    show(h.store(words.lang), words.lang, project("p1", { provider: "github" }));
+    await settle(() => rows() === 2);
+    await typeIn(words.filter, "zzz");
+    expect(rows()).toBe(0);
+    expect(within(panel()).queryByText(words.noMatch("zzz"))).not.toBeNull();
+    expect(within(panel()).queryByText(words.none)).toBeNull();
+    await press(words.clearFilter);
+    expect(rows()).toBe(2);
+    expect(document.activeElement).toBe(within(panel()).getByLabelText(words.filter));
+  });
+
+  test("a project with no issues and no filter says there are none", async () => {
+    const h = host({ list: [listed()] });
+    show(h.store(words.lang), words.lang, project("p1", { provider: "github" }));
+    await settle(() => within(panel()).queryByText(words.none) !== null);
+    expect(button(words.clearFilter)).toBeNull();
+  });
+
+  test("the field has a clear control only while it holds text and the list is not empty", async () => {
+    const h = host({ list: [listed(1, 2)] });
+    show(h.store(words.lang), words.lang, project("p1", { provider: "github" }));
+    await settle(() => rows() === 2);
+    expect(button(words.clearFilter)).toBeNull();
+    await typeIn(words.filter, "Issue number 1");
+    expect(button(words.clearFilter)).not.toBeNull();
+    await press(words.clearFilter);
+    expect(rows()).toBe(2);
+    expect(button(words.clearFilter)).toBeNull();
+    expect(document.activeElement).toBe(within(panel()).getByLabelText(words.filter));
+  });
+
+  test("a live count line says how many issues the list holds and how many the filter keeps", async () => {
+    const h = host({ list: [listed(1, 2)] });
+    show(h.store(words.lang), words.lang, project("p1", { provider: "github" }));
+    await settle(() => rows() === 2);
+    expect(statusLine(words.count(2))).toBe("status");
+    await typeIn(words.filter, "Issue number 1");
+    expect(statusLine(words.countOf(1, 2))).toBe("status");
+  });
+});
+
+describe.each(LANGS)("issues panel configuration ($lang)", (words) => {
+  test("Configure names the form it opens and moves the focus to its first field, and closing returns the focus", async () => {
+    const h = host({ list: [listed(1)] });
+    show(h.store(words.lang), words.lang, project("p1", { provider: "github" }));
+    await settle(() => rows() === 1);
+    button(words.configure)?.focus();
+    await press(words.configure);
+    const form = button(words.configure)?.getAttribute("aria-controls") ?? "";
+    expect(form).not.toBe("");
+    expect(
+      panel()
+        .querySelector(`#${CSS.escape(form)}`)
+        ?.contains(document.activeElement),
+    ).toBe(true);
+    expect(document.activeElement).toBe(within(panel()).getByLabelText(words.provider));
+    await press(words.configure);
+    expect(document.activeElement).toBe(button(words.configure));
+  });
+
+  test("a project not connected yet shows its form without taking the focus", async () => {
+    const h = host({ list: [] });
+    show(h.store(words.lang), words.lang, project("p1", null));
+    await settle(() => within(panel()).queryByLabelText(words.query) !== null);
+    expect(document.activeElement).not.toBe(within(panel()).getByLabelText(words.provider));
+  });
+
+  test("the search field is described by a hint that stays while typing and follows the provider", async () => {
+    const h = host({ list: [listed(1)] });
+    show(h.store(words.lang), words.lang, project("p1", { provider: "github" }));
+    await settle(() => rows() === 1);
+    await press(words.configure);
+    const hint = () => {
+      const id = within(panel()).getByLabelText(words.query).getAttribute("aria-describedby");
+      return (id && document.getElementById(id)?.textContent) ?? "";
+    };
+    expect(hint()).toContain(words.githubHint);
+    await typeIn(words.query, "label:x");
+    expect(hint()).toContain(words.githubHint);
+    await act(async () => {
+      fireEvent.change(within(panel()).getByLabelText(words.provider), {
+        target: { value: "azure" },
+      });
+    });
+    expect(hint()).toContain(words.azureHint);
+    expect(hint()).not.toContain(words.githubHint);
   });
 });

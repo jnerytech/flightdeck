@@ -1,6 +1,6 @@
 import type { Card, Issue, IssuesConfig, Project } from "@flightdeck/protocol";
-import { ExternalLink, RefreshCw, Settings } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { ExternalLink, RefreshCw, Settings, X } from "lucide-react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,13 @@ import { Switch } from "@/components/ui/switch";
 import { refusalText } from "@/i18n/errors";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
-import { EmptyState, ErrorState, LoadingState, NativeSelect } from "@/shared/layout/index.ts";
+import {
+  EmptyState,
+  ErrorState,
+  Inline,
+  LoadingState,
+  NativeSelect,
+} from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { filterIssues, issueLabel, issueNumber } from "./domain/issues.ts";
 
@@ -32,6 +38,10 @@ export function ExternalSeal({ t }: Readonly<{ t: AppStore["i18n"]["t"] }>) {
 function ConfigForm(
   props: Readonly<{
     store: AppStore;
+    /** The form's id, for the button that opens it to name it. */
+    id: string;
+    /** The form was opened by the person: its first field takes the focus. */
+    focus: boolean;
     current: IssuesConfig | null;
     /** The refusal of the last save, shown here with the person's values still in the form. */
     error: string | null;
@@ -44,14 +54,20 @@ function ConfigForm(
   );
   const [query, setQuery] = useState(props.current?.query ?? "");
   const [commentOnPr, setCommentOnPr] = useState(props.current?.commentOnPr ?? false);
+  const first = useRef<HTMLSelectElement>(null);
+  const hint = useId();
+  useEffect(() => {
+    if (props.focus) first.current?.focus();
+  }, [props.focus]);
   const save = () => {
     const text = query.trim();
     return props.onSave({ provider, ...(text ? { query: text } : {}), commentOnPr });
   };
   return (
-    <div className="flex flex-col gap-3">
+    <div id={props.id} className="flex flex-col gap-3">
       {!props.current && <p className="text-sm">{t("issuesUi.connect")}</p>}
       <NativeSelect
+        ref={first}
         aria-label={t("issuesUi.provider")}
         value={provider}
         onChange={(e) => setProvider(e.target.value as IssuesConfig["provider"])}
@@ -61,10 +77,13 @@ function ConfigForm(
       </NativeSelect>
       <Input
         aria-label={t("issuesUi.query")}
-        placeholder={t("issuesUi.queryHint")}
+        aria-describedby={hint}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
+      <p id={hint} className="text-muted-foreground text-xs">
+        {t(provider === "azure" ? "issuesUi.queryHintAzure" : "issuesUi.queryHintGithub")}
+      </p>
       <div className="flex items-center justify-between gap-3">
         <span className="flex flex-col text-sm">
           {t("issuesUi.commentOnPr")}
@@ -215,6 +234,8 @@ export function IssuesPanel(
   /** A save just closed the form: the focus goes back to the button that opened it. */
   const [refocus, setRefocus] = useState(false);
   const configure = useRef<HTMLButtonElement>(null);
+  const filterField = useRef<HTMLInputElement>(null);
+  const formId = useId();
   /** The latest list request: an older answer, such as the previous project's, is dropped. */
   const latest = useRef(0);
   const configured = project.issues !== null;
@@ -274,6 +295,11 @@ export function IssuesPanel(
   };
 
   const shown = filterIssues(issues ?? [], filter);
+  const filtering = filter.trim() !== "";
+  const clearFilter = () => {
+    setFilter("");
+    filterField.current?.focus();
+  };
   const provider = project.issues?.provider === "azure" ? "azure" : "github";
   const sourceKey = provider === "azure" ? "issuesUi.fromAzure" : "issuesUi.fromGithub";
   return (
@@ -296,8 +322,11 @@ export function IssuesPanel(
                   variant="ghost"
                   size="sm"
                   aria-expanded={configuring}
+                  aria-controls={configuring ? formId : undefined}
                   onClick={() => {
                     setSaveError(null);
+                    // The form takes the focus with it when it closes: it goes back to this button.
+                    if (configuring) setRefocus(true);
                     setConfiguring(!configuring);
                   }}
                 >
@@ -313,16 +342,37 @@ export function IssuesPanel(
             </SheetClose>
           </div>
           {(!configured || configuring) && (
-            <ConfigForm store={store} current={project.issues} error={saveError} onSave={save} />
+            <ConfigForm
+              store={store}
+              id={formId}
+              focus={configuring}
+              current={project.issues}
+              error={saveError}
+              onSave={save}
+            />
           )}
           {configured && !configuring && (
             <>
-              <Input
-                aria-label={t("issuesUi.filter")}
-                placeholder={t("issuesUi.filterPlaceholder")}
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-              />
+              <Inline gap={2}>
+                <Input
+                  ref={filterField}
+                  className="min-w-0 flex-1"
+                  aria-label={t("issuesUi.filter")}
+                  placeholder={t("issuesUi.filterPlaceholder")}
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                />
+                {filter !== "" && shown.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t("issuesUi.clearFilter")}
+                    onClick={clearFilter}
+                  >
+                    <X aria-hidden="true" />
+                  </Button>
+                )}
+              </Inline>
               {loading && <LoadingState label={t("issuesUi.loading")} />}
               {failure && (
                 <ErrorState
@@ -331,7 +381,30 @@ export function IssuesPanel(
                   onRetry={() => void load()}
                 />
               )}
-              {issues && shown.length === 0 && <EmptyState title={t("issuesUi.none")} />}
+              {/* Always mounted: a live region that appears already filled is not announced. */}
+              <p role="status" className="text-muted-foreground text-xs empty:sr-only">
+                {issues &&
+                  issues.length > 0 &&
+                  (filtering
+                    ? t("issuesUi.countOf", { shown: shown.length, n: issues.length })
+                    : t("issuesUi.count", { n: issues.length }))}
+              </p>
+              {issues && shown.length === 0 && (
+                <EmptyState
+                  title={
+                    filtering && issues.length > 0
+                      ? t("issuesUi.noMatch", { filter: filter.trim() })
+                      : t("issuesUi.none")
+                  }
+                  action={
+                    filtering && issues.length > 0 ? (
+                      <Button variant="outline" size="sm" onClick={clearFilter}>
+                        {t("issuesUi.clearFilter")}
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              )}
               {issues && cut && (
                 <InlineNotice>{t("issuesUi.cut", { n: issues.length })}</InlineNotice>
               )}

@@ -14,7 +14,7 @@ issues** pergunta o provedor e uma busca opcional (em branco, as abertas atribu�
 permitir que o daemon comente na issue quando o PR abrir (desligado por padrão, porque escreve no
 provedor).
 
-- **Filtrar issues** reduz a lista por título, rótulo ou autor.
+- **Filtrar issues** reduz a lista por título, rótulo ou autor. Uma linha sob o campo conta as issues ("3 de 12 issues" com um filtro digitado), **Limpar filtro** esvazia o campo, e um filtro sem resultado diz isso pelo nome. Em **Configurar issues**, uma dica sob a busca mostra a sintaxe do provedor escolhido.
 - **Criar card** faz um card no Backlog a partir da issue e guarda o link: a linha passa a oferecer
   **Abrir card**, o card mostra a issue (um botão que a abre no navegador) e um PR que fecha o card
   fecha a issue (`Fixes #n` ou `AB#id`).

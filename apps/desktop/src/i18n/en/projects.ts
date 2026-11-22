@@ -81,6 +81,7 @@ export const projects = {
       },
       empty: "No documents in docs/decisions, docs/adr, docs/rfc, docs/prd or docs/specs.",
       truncated: "The list is cut: only the first documents are shown.",
+      countsCut: "The counts are of the documents loaded, not of the whole library.",
       failed: "The documents could not be read from this host.",
       failedHint:
         "Check that the host is online and that the project's folder still exists, then try again.",

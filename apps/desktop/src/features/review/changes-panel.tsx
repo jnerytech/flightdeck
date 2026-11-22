@@ -1,6 +1,6 @@
 import type { ChangesResult, DiffFile, PrComment, ReviewComment } from "@flightdeck/protocol";
 import { reviewMessage } from "@flightdeck/protocol";
-import { Pencil, RotateCcw } from "lucide-react";
+import { Check, Pencil, RotateCcw } from "lucide-react";
 import {
   lazy,
   type ReactNode,
@@ -18,7 +18,8 @@ import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import { cn } from "@/lib/utils";
 import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
-import { Stack } from "@/shared/layout/index.ts";
+import { useBreakpoint } from "@/shared/hooks/index.ts";
+import { Inline, Stack } from "@/shared/layout/index.ts";
 import { formatBytes } from "@/shared/lib/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { DiffView } from "./diff-view.tsx";
@@ -32,10 +33,11 @@ const FileEditor = lazy(() => import("./file-editor.tsx").then((m) => ({ default
 /** How long the status line about a comment stays: 6 s, by the store's clock. */
 const NOTICE_MS = 6000;
 
-/** What the host offers to take back a revert: the file and when the offer ends. */
+/** What the host offers to take back a revert: the file, when the offer ends and how long it lasts. */
 interface Undo {
   path: string;
   until: number;
+  seconds: number;
 }
 
 /**
@@ -70,11 +72,16 @@ export function ChangesPanel(
   const [changes, setChanges] = useState<ChangesResult | null>(null);
   const [unavailable, setUnavailable] = useState<string | null>(null);
   const [comments, setComments] = useState<ReviewComment[]>([]);
-  const [mode, setMode] = useState<"unified" | "split">("unified");
+  const [chosen, setMode] = useState<"unified" | "split">("unified");
+  // Two half-width columns do not fit a compact window: the diff stays in one column there, and
+  // the choice comes back with the width.
+  const compact = useBreakpoint() === "compact";
+  const mode = compact ? "unified" : chosen;
   const [selection, setSelection] = useState<Selection | null>(null);
   const [body, setBody] = useState("");
   const commentBox = useRef<HTMLTextAreaElement>(null);
   const hintId = useId();
+  const splitOffId = useId();
   const panel = useRef<HTMLElement>(null);
   // Focus brings the draft into view: it sits after the whole diff (#1496). Once the drafts were
   // sent, the reviewer's first comment in the history is where they went.
@@ -110,6 +117,15 @@ export function ChangesPanel(
   const refocus = useRef(false);
   const [reverting, setReverting] = useState<string | null>(null);
   const [undo, setUndo] = useState<Undo | null>(null);
+  /** The Revert button that opened the dialog, to give the focus back when it is cancelled or refused. */
+  const opener = useRef<HTMLElement | null>(null);
+  const undoRegion = useRef<HTMLDivElement>(null);
+  const undoButton = useRef<HTMLButtonElement>(null);
+  /** The offer goes: a focus inside it moves to the panel, so it is not lost to the page. */
+  const dropUndo = useCallback(() => {
+    if (undoRegion.current?.contains(document.activeElement)) panel.current?.focus();
+    setUndo(null);
+  }, []);
   const [editing, setEditing] = useState<string | null>(null);
 
   const loadComments = useCallback(async () => {
@@ -155,8 +171,24 @@ export function ChangesPanel(
   const until = undo?.until ?? null;
   useEffect(() => {
     if (until === null) return;
-    return store.later(() => setUndo(null), Math.max(0, until - store.now()));
-  }, [store, until]);
+    return store.later(dropUndo, Math.max(0, until - store.now()));
+  }, [store, until, dropUndo]);
+  // The confirmation leaves the focus where the reverted file's row is going away: the offer takes it.
+  useEffect(() => {
+    if (until === null) return;
+    const now = document.activeElement;
+    // A dialog still on its way out holds the focus too: the offer takes it from there.
+    if (
+      !now ||
+      now === document.body ||
+      now === panel.current ||
+      now === opener.current ||
+      now.closest("[role=alertdialog]")
+    ) {
+      undoButton.current?.focus();
+    }
+    opener.current = null;
+  }, [until]);
 
   const onPick = (path: string, side: ReviewComment["side"], line: number, extend: boolean) => {
     if (!selection && document.activeElement instanceof HTMLElement) {
@@ -214,7 +246,8 @@ export function ChangesPanel(
     setReverting(null);
     const done = await store.hostCommand(hostId, "changes.revert", { target, path, confirm: true });
     if (!done) return;
-    setUndo({ path, until: Date.parse(done.undoUntil) });
+    const until = Date.parse(done.undoUntil);
+    setUndo({ path, until, seconds: Math.max(1, Math.round((until - store.now()) / 1000)) });
     await refresh();
   };
 
@@ -224,7 +257,7 @@ export function ChangesPanel(
       path,
       confirm: true,
     });
-    setUndo(null);
+    dropUndo();
     if (!done) return;
     store.success(t("changes.undone", { path }));
     await refresh();
@@ -288,45 +321,50 @@ export function ChangesPanel(
   );
 
   const fileRow = (file: DiffFile, root: string) => (
-    <li key={`${file.path}:${file.uncommitted}`} className="flex items-center gap-2">
-      <span className="font-mono text-xs">{file.path}</span>
-      {!file.secret && (
-        <span className="text-muted-foreground text-xs tabular-nums">
-          {file.tooLarge && file.additions + file.deletions === 0 && file.bytes !== undefined
-            ? formatBytes(file.bytes)
-            : `+${file.additions} −${file.deletions}`}
-        </span>
-      )}
-      <Badge variant="outline">{t(`changes.status.${file.status}`)}</Badge>
-      {file.secret && <Badge variant="outline">{t("changes.secret")}</Badge>}
-      {file.binary && <Badge variant="outline">{t("changes.binary")}</Badge>}
-      {file.tooLarge && <Badge variant="outline">{t("changes.tooLarge")}</Badge>}
-      {file.uncommitted && (
-        <Badge variant="outline" className="text-status-needs-you">
-          {t("diff.uncommitted")}
-        </Badge>
-      )}
-      <span className="ml-auto flex">
-        {!file.binary && !file.secret && file.status !== "deleted" && (
+    <li key={`${file.path}:${file.uncommitted}`}>
+      <Inline>
+        <span className="min-w-0 break-all font-mono text-xs">{file.path}</span>
+        {!file.secret && (
+          <span className="text-muted-foreground text-xs tabular-nums">
+            {file.tooLarge && file.additions + file.deletions === 0 && file.bytes !== undefined
+              ? formatBytes(file.bytes)
+              : `+${file.additions} −${file.deletions}`}
+          </span>
+        )}
+        <Badge variant="outline">{t(`changes.status.${file.status}`)}</Badge>
+        {file.secret && <Badge variant="outline">{t("changes.secret")}</Badge>}
+        {file.binary && <Badge variant="outline">{t("changes.binary")}</Badge>}
+        {file.tooLarge && <Badge variant="outline">{t("changes.tooLarge")}</Badge>}
+        {file.uncommitted && (
+          <Badge variant="outline" className="text-status-needs-you">
+            {t("diff.uncommitted")}
+          </Badge>
+        )}
+        <span className="ml-auto flex shrink-0">
+          {!file.binary && !file.secret && file.status !== "deleted" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={t("changes.edit", { path: file.path })}
+              onClick={() => setEditing(file.path)}
+            >
+              <Pencil aria-hidden="true" className="size-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
-            aria-label={t("changes.edit", { path: file.path })}
-            onClick={() => setEditing(file.path)}
+            aria-label={t("changes.revert", { path: file.path })}
+            onClick={(event) => {
+              opener.current = event.currentTarget;
+              setReverting(file.path);
+            }}
           >
-            <Pencil aria-hidden="true" className="size-4" />
+            <RotateCcw aria-hidden="true" className="size-4" />
           </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label={t("changes.revert", { path: file.path })}
-          onClick={() => setReverting(file.path)}
-        >
-          <RotateCcw aria-hidden="true" className="size-4" />
-        </Button>
-        <FileSessions store={store} hostId={hostId} root={root} path={file.path} />
-      </span>
+          <FileSessions store={store} hostId={hostId} root={root} path={file.path} />
+        </span>
+      </Inline>
     </li>
   );
 
@@ -377,29 +415,51 @@ export function ChangesPanel(
           variant="outline"
           size="sm"
           aria-pressed={mode === "unified"}
-          className="aria-pressed:bg-accent"
+          className="aria-pressed:bg-accent aria-pressed:font-semibold"
           onClick={() => setMode("unified")}
         >
+          {mode === "unified" && <Check aria-hidden="true" className="size-4" />}
           {t("diff.unified")}
         </Button>
         <Button
           variant="outline"
           size="sm"
           aria-pressed={mode === "split"}
-          className="aria-pressed:bg-accent"
+          aria-describedby={compact ? splitOffId : undefined}
+          className="aria-pressed:bg-accent aria-pressed:font-semibold"
+          disabled={compact}
           onClick={() => setMode("split")}
         >
+          {mode === "split" && <Check aria-hidden="true" className="size-4" />}
           {t("diff.split")}
         </Button>
+        {/* In the flow, not hung under the button: at 390 px a hanging line has no room to the right. */}
+        {compact && (
+          <p id={splitOffId} className="w-full text-muted-foreground text-xs">
+            {t("diff.splitOff")}
+          </p>
+        )}
       </div>
-      {undo && (
-        <output className="flex items-center gap-2 text-sm">
-          <span>{t("changes.reverted", { path: undo.path })}</span>
-          <Button variant="outline" size="sm" onClick={() => void undoRevert(undo.path)}>
+      {/* The words sit in a status line that is in the page before they arrive; the button stays out of it. */}
+      <div
+        ref={undoRegion}
+        className={cn("flex items-center gap-2 text-sm", undo === null && "sr-only")}
+      >
+        <output>
+          {undo &&
+            `${t("changes.reverted", { path: undo.path })} ${t("changes.undoFor", { n: undo.seconds })}`}
+        </output>
+        {undo && (
+          <Button
+            ref={undoButton}
+            variant="outline"
+            size="sm"
+            onClick={() => void undoRevert(undo.path)}
+          >
             {t("changes.undo")}
           </Button>
-        </output>
-      )}
+        )}
+      </div>
       {changes.files.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("changes.empty")}</p>
       ) : (
@@ -450,6 +510,13 @@ export function ChangesPanel(
           }`}
           confirmLabel={t("changes.revertConfirm")}
           destructive
+          // The row that opened the dialog goes with a revert: keep the focus where it is until the
+          // offer to undo takes it; a cancel or a refusal puts it back on the button.
+          onRestoreFocus={() => {
+            // The offer to undo may hold the focus already: the row this came from is going away.
+            if (undoRegion.current?.contains(document.activeElement)) return;
+            (opener.current?.isConnected ? opener.current : panel.current)?.focus();
+          }}
           onConfirm={() => void revert(reverting)}
           onCancel={() => setReverting(null)}
         />
