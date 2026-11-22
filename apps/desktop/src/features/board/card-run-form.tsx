@@ -149,6 +149,7 @@ export function CardRunForm(
   };
   /** The lead button, and whether the focus is owed to it: the press that found the provider removed the button it was on. */
   const leadRef = useRef<HTMLButtonElement>(null);
+  const menuButton = useRef<HTMLButtonElement>(null);
   const focusLead = useRef(false);
   useEffect(() => {
     if (noRemote || !focusLead.current) return;
@@ -224,7 +225,11 @@ export function CardRunForm(
           {/* Not modal (#1004, #4173): a modal menu marks the page aria-hidden while its links stay focusable (axe). */}
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" aria-label={t("board.cardActions", { title: card.title })}>
+              <Button
+                ref={menuButton}
+                variant="outline"
+                aria-label={t("board.cardActions", { title: card.title })}
+              >
                 <MoreHorizontal aria-hidden="true" />
                 {t("cardUi.menu")}
               </Button>
@@ -359,6 +364,7 @@ export function CardRunForm(
           hostId={hostId}
           card={card}
           onClose={() => setFinishing(false)}
+          returnFocus={() => menuButton.current?.focus()}
           onComplete={() => setConfirming({ kind: "complete", warning: null })}
           onMerge={props.onShowDiff}
         />

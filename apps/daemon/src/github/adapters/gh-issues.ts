@@ -45,7 +45,8 @@ export class GithubIssues {
         "--json",
         GH_FIELDS,
         "--limit",
-        String(ISSUE_LIMIT),
+        // One more than the limit: the extra issue tells the service the list was cut.
+        String(ISSUE_LIMIT + 1),
       ],
       cwd,
     );

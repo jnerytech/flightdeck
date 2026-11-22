@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { type Turn, turnsOf } from "@/features/sessions/index.ts";
 import { ActionButton, IconActionButton, InlineNotice } from "@/shared/feedback/index.ts";
-import { EmptyState, ErrorState, Inline, LoadingState, Stack } from "@/shared/layout/index.ts";
+import { EmptyState, ErrorState, Inline, LoadingState } from "@/shared/layout/index.ts";
 import { refusalText } from "../../i18n/errors.ts";
 import { formatDateTime } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -23,43 +23,7 @@ import {
   type Target,
   UndoDialog,
 } from "./checkpoint-dialogs.tsx";
-
-/** More than this many lines or characters and the prompt is clamped, with a button to read it whole (#4038). */
-// Keep PROMPT_LINES equal to the `line-clamp-3` class below: a Tailwind class cannot be built from it.
-const PROMPT_LINES = 3;
-const PROMPT_CHARS = 240;
-
-/** The turn's prompt: clamped when long, with Show more and Show less; a turn without one says so. */
-function TurnPrompt(props: Readonly<{ store: AppStore; prompt: string | null }>) {
-  const { t } = props.store.i18n;
-  const id = useId();
-  const [open, setOpen] = useState(false);
-  const text = props.prompt?.trim() ?? "";
-  if (text === "") return <p className="text-muted-foreground">{t("timeline.noPrompt")}</p>;
-  // Decided by the text, not by the layout: the same on every screen width.
-  const long = text.split("\n").length > PROMPT_LINES || text.length > PROMPT_CHARS;
-  return (
-    <Stack gap={1} className="items-start">
-      <p
-        id={id}
-        className={`whitespace-pre-wrap break-words ${long && !open ? "line-clamp-3" : ""}`.trim()}
-      >
-        {text}
-      </p>
-      {long && (
-        <Button
-          variant="link"
-          size="sm"
-          aria-expanded={open}
-          aria-controls={id}
-          onClick={() => setOpen(!open)}
-        >
-          {open ? t("timeline.showLess") : t("timeline.showMore")}
-        </Button>
-      )}
-    </Stack>
-  );
-}
+import { TurnPrompt } from "./turn-prompt.tsx";
 
 /** One turn: its prompt, time and files, and the two actions. */
 function TurnRow(
@@ -80,6 +44,7 @@ function TurnRow(
   const { store, turn } = props;
   const { t } = store.i18n;
   const noUuidId = useId();
+  const filesId = useId();
   const summary = {
     changed: t("timeline.changed"),
     unchanged: t("timeline.unchanged"),
@@ -98,7 +63,14 @@ function TurnRow(
       <TurnPrompt store={store} prompt={turn.prompt} />
       {turn.files === "changed" && (
         <div className="flex flex-col gap-1">
-          <ActionButton variant="ghost" size="sm" className="self-start" onClick={props.onToggle}>
+          <ActionButton
+            variant="ghost"
+            size="sm"
+            className="self-start"
+            aria-expanded={Boolean(props.files)}
+            aria-controls={props.files ? filesId : undefined}
+            onClick={props.onToggle}
+          >
             {props.files
               ? t("timeline.hideFiles", { n: turn.ordinal })
               : t("timeline.showFiles", { n: turn.ordinal })}
@@ -112,7 +84,11 @@ function TurnRow(
             </InlineNotice>
           )}
           {props.files && (
-            <ul className="flex flex-col gap-1">
+            <ul
+              id={filesId}
+              aria-label={t("timeline.filesOf", { n: turn.ordinal })}
+              className="flex flex-col gap-1"
+            >
               {props.files.files.map((file) => (
                 <li key={file.path} className="flex flex-wrap items-center gap-2">
                   <code className="break-all">{file.path}</code>

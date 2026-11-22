@@ -146,6 +146,16 @@ export function boardShots(ids: DemoIds): Shot[] {
       },
     },
     {
+      // #4225: the same tab in the side-by-side diff, which a narrow window turns off with its reason.
+      name: "card-mudancas-dividido",
+      route: { name: "card", host: ALFA, projectId: ids.project, cardId: ids.diffCard },
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Mudanças|Changes)$/ }).click();
+        await page.getByRole("button", { name: /^(Lado a lado|Side by side)$/ }).click();
+        await page.waitForTimeout(500);
+      },
+    },
+    {
       // #1446: the card's Mudanças tab after a second-opinion review: its summary, the finding on
       // no changed line, and the reviewer drafts with their severity.
       name: "card-segunda-opiniao",
