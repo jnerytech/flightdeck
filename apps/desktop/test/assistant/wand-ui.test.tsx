@@ -647,3 +647,38 @@ describe("assistant-wand-ui: the focus stays where the person is working (issue 
     expect(screen.queryByText("Você pode desfazer por 15 segundos.")).not.toBeNull();
   });
 });
+
+describe("assistant-wand-ui: the reason the button is off stays reachable (issue #4167)", () => {
+  /** A button that is off for a reason keeps the focus and starts nothing. */
+  async function offButNamed(name: string, fake: { calls: unknown[][] }) {
+    const wand = screen.queryByRole("button", { name }) as HTMLElement | null;
+    expect(wand?.hasAttribute("disabled")).toBe(false);
+    expect(wand?.getAttribute("aria-disabled")).toBe("true");
+    act(() => wand?.focus());
+    expect(focused(wand)).toBe(true);
+    await act(async () => {
+      if (wand) fireEvent.click(wand);
+    });
+    expect(asked(fake as never)).toHaveLength(0);
+    expect(screen.queryByRole("status")).toBeNull();
+  }
+
+  test("an empty box: the button takes the focus, says why, and starts nothing", async () => {
+    const { fake } = await make();
+    await offButNamed("Write something first", fake);
+  });
+
+  test("another request running: the same", async () => {
+    const { store, fake } = await make();
+    type("fix the totl");
+    await act(async () => void store.assistant.gate.acquire("other"));
+    await offButNamed("Another AI request is running", fake);
+  });
+
+  test("it is on again, and not aria-disabled, once there is text", async () => {
+    await make();
+    type("fix the totl");
+    const wand = screen.queryByRole("button", { name: "Improve with AI" });
+    expect(wand?.hasAttribute("aria-disabled")).toBe(false);
+  });
+});
