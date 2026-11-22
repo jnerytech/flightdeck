@@ -62,6 +62,15 @@ describe("models: the lists", () => {
     expect(EFFORTS).toEqual(["low", "medium", "high", "xhigh", "max"]);
   });
 
+  test("the versions are the current models, Fable 5.2 first", () => {
+    expect(MORE_MODELS).toEqual([
+      "claude-fable-5-2",
+      "claude-opus-5-5",
+      "claude-sonnet-5-5",
+      "claude-haiku-5-5",
+    ]);
+  });
+
   test("the aliases come first and the versions under More models, none twice", () => {
     expect(MAIN_MODELS).toEqual(["opus", "sonnet", "haiku"]);
     expect(MORE_MODELS.every((id) => id.startsWith("claude-"))).toBe(true);
