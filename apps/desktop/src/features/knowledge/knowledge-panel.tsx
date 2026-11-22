@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { Key } from "@/i18n";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
-import { ActionButton } from "@/shared/feedback/action-button.tsx";
-import { InlineNotice } from "@/shared/feedback/index.ts";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { Inline, LoadingState, NativeSelect, Panel } from "@/shared/layout/index.ts";
 import { KnowledgeCreate } from "./knowledge-create.tsx";
 import { KnowledgeFeedSwitch } from "./knowledge-feed-switch.tsx";
@@ -168,8 +167,9 @@ export function KnowledgePanel(
       status,
       expectedHash: entry.hash,
     });
-    if (result.ok) refocus.current = entry.path;
-    else {
+    // The busy button was disabled, which drops the focus: it goes back to the picker, answered or refused.
+    refocus.current = entry.path;
+    if (!result.ok) {
       writing.current.delete(entry.path);
       setWritingNow(new Set(writing.current));
     }

@@ -1,8 +1,8 @@
 import type { KnowledgeFeedState } from "@flightdeck/protocol";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { AppStore } from "@/lib/app-store";
-import { ActionButton } from "@/shared/feedback/action-button.tsx";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import { Inline } from "@/shared/layout/index.ts";
 
 /**
@@ -22,6 +22,18 @@ export function KnowledgeFeedSwitch(
     setFailed(result === null);
     if (result) setState(result);
   }, []);
+
+  // A press is out until the host answers. State for the busy button, a ref for a second press in the same tick.
+  const [sending, setSending] = useState(false);
+  const sendingNow = useRef(false);
+  // The busy button is disabled, which drops the focus: it comes back once the answer is in.
+  const switchButton = useRef<HTMLButtonElement>(null);
+  const refocus = useRef(false);
+  useEffect(() => {
+    if (sending || !refocus.current) return;
+    refocus.current = false;
+    switchButton.current?.focus();
+  }, [sending]);
 
   // Bumped by Try again: the read runs again.
   const [reads, setReads] = useState(0);
@@ -54,8 +66,16 @@ export function KnowledgeFeedSwitch(
     );
   }
   const own = state.own;
-  const change = (enabled: boolean) =>
-    store.hostCommand(hostId, "knowledge.setFeed", { path, enabled }).then(received);
+  const change = async (enabled: boolean) => {
+    if (sendingNow.current) return;
+    sendingNow.current = true;
+    setSending(true);
+    const result = await store.hostCommand(hostId, "knowledge.setFeed", { path, enabled });
+    received(result);
+    refocus.current = true;
+    sendingNow.current = false;
+    setSending(false);
+  };
   let words = t("projectPage.knowledge.feed.on");
   if (!state.on) {
     words = own
@@ -70,7 +90,14 @@ export function KnowledgeFeedSwitch(
       <output className="block text-sm">{words}</output>
       {(state.on || own) && (
         // The answer is awaited: a second press while it is out is ignored, and the button is busy.
-        <ActionButton type="button" size="sm" variant="outline" onClick={() => change(!state.on)}>
+        <ActionButton
+          ref={switchButton}
+          type="button"
+          size="sm"
+          variant="outline"
+          pending={sending}
+          onClick={() => void change(!state.on)}
+        >
           {t(state.on ? "projectPage.knowledge.feed.turnOff" : "projectPage.knowledge.feed.turnOn")}
         </ActionButton>
       )}
