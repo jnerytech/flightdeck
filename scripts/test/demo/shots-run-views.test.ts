@@ -95,7 +95,7 @@ describe("the preview page and the workflow timeline's prints (#4287)", () => {
 
   test("the retried timeline has a step with two attempts, the first failed; the long one has a step id over 60 characters", () => {
     const attempts = (runOf("card-run-tentativa")?.steps ?? []).filter((s) => s.attempt > 1);
-    expect(attempts.length > 0).toBe(true);
+    expect(attempts.length).toBeGreaterThan(0);
     const first = (runOf("card-run-tentativa")?.steps ?? []).find(
       (s) => s.stepId === attempts[0]?.stepId && s.attempt === 1,
     );

@@ -122,7 +122,7 @@ export function runViewShots(ids: DemoIds): Shot[] {
     {
       // An address that is not this computer's: no frame, and the reason.
       name: "previa-recusada",
-      route: { name: "preview", url: "http://192.168.1.20:3000/", title: "api" },
+      route: { name: "preview", url: "https://192.168.1.20:3000/", title: "api" },
       prepare: async (page) => {
         await page
           .getByText(
