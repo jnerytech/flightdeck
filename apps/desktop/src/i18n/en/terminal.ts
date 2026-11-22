@@ -24,6 +24,12 @@ export const terminal = {
     reopen: "Reopen",
     close: "Close terminal",
     closeFailed: "Could not close the terminal, so it is still open: {reason}",
+    notLive: {
+      detached: "Detached: keys you type are not sent. Use Reopen to type.",
+      ended: "The process ended, so keys you type are not sent.",
+    },
+    attachFailed: "Could not open the terminal: {reason}",
+    writeFailed: "The host did not take what you typed: {reason}",
     closeMessage: "Detach keeps the process running on the host. End process stops it.",
     pasteTitle: "Paste {n} lines?",
     pasteMessage:
