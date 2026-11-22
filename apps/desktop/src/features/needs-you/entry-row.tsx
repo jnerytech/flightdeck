@@ -163,7 +163,8 @@ function EntryRowImpl(props: Readonly<EntryRowProps>) {
   const risk =
     item.toolName === "AskUserQuestion" || item.toolName === "ExitPlanMode" ? undefined : item.risk;
   const riskWord = risk ? t(`approval.risk.${risk}` as Key) : "";
-  const label = riskWord ? `${who} (${riskWord}): ${what}` : `${who}: ${what}`;
+  // The risk word ends the name: journeys and prints find a row by "<session>: <Tool>".
+  const label = riskWord ? `${who}: ${what} (${riskWord})` : `${who}: ${what}`;
   return (
     <RowButton active={active} pressed={selected} label={label} onActivate={onActivate}>
       <DotLine t={t} text={who}>
