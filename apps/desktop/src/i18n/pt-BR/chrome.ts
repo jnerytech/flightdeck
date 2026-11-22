@@ -192,7 +192,7 @@ export const chrome = {
       backup:
         "backup restaurar exportar importar arquivo cifrado frase-senha cofre hosts personas snippets",
       assistant:
-        "varinha mágica ia assistente melhorar escrever provedor anthropic openrouter claude chave api modelo",
+        "varinha mágica ia botão assistente melhorar escrever provedor anthropic openrouter claude chave api modelo",
     },
   },
 } as const;

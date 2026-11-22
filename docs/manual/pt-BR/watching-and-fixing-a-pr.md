@@ -47,7 +47,7 @@ Mais duas coisas vêm junto:
 - **Abrir PR** num card mostra antes a **Descrição do PR**, feita das sessões do card, para você
   editar. As linhas que parecem segredo são tiradas e contadas. Nada é aberto até você clicar em
   **Abrir o PR com este texto**. O **Título do PR** começa com o título do card; o título e a
-  descrição têm cada um a varinha, que escreve a partir do repositório do card.
+  descrição têm cada um o botão de IA, que escreve a partir do repositório do card.
 - **Ctrl+K**: cole o link de um PR (Azure DevOps ou GitHub) e escolha **Abrir o PR do link**. Os
   hosts são consultados: abre o card, se o PR é de um; senão, a conversa da primeira sessão que o
   histórico conhece para ele; senão, uma mensagem diz que nada tem esse PR.

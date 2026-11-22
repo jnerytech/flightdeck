@@ -91,6 +91,14 @@ type PanelProps = Readonly<{ wand: Wand; t: T; focusField: () => void }>;
 
 function Running({ wand, t, focusField }: PanelProps) {
   const ref = useReturnFocus<HTMLOutputElement>(focusField);
+  const cancel = useRef<HTMLButtonElement>(null);
+  // The AI button had the focus and is off now: Cancel takes it. A person typing in the field (Ctrl+I, or
+  // Retry, whose button handed the focus to the field) keeps it there, so the next key never cancels (#4166).
+  useLayoutEffect(() => {
+    const at = document.activeElement;
+    if (!(at instanceof HTMLTextAreaElement || at instanceof HTMLInputElement))
+      cancel.current?.focus();
+  }, []);
   return (
     <output ref={ref} className="block">
       <Inline>
@@ -100,7 +108,7 @@ function Running({ wand, t, focusField }: PanelProps) {
           type="button"
           variant="outline"
           size="sm"
-          autoFocus
+          ref={cancel}
           onClick={wand.cancel}
           onKeyDown={(event) => {
             if (event.key !== "Escape") return;
@@ -232,7 +240,7 @@ function Preview({ wand, t, focusField }: PanelProps) {
  * The wand's progress, failure and preview, above the field (issue #158). It never takes the focus
  * from the field while the person types there: a suggestion is announced, and Accept is reached by
  * Tab. What was focused in a view that goes away hands the focus to the field, or to the control
- * of the next view that asks for it (Cancel while it runs, the After text when editing) (#4166).
+ * of the next view that asks for it (Cancel when the AI button had the focus, the After text when editing) (#4166).
  */
 export function WandPanel(props: PanelProps) {
   const { state } = props.wand;
