@@ -187,84 +187,91 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
         </Button>
       </div>
       {servers.length === 0 && <EmptyState title={t("agent.mcp.empty")} />}
-      <ul aria-label={t("agent.mcp.list")} className="flex flex-col gap-2">
-        {servers.map((server) => {
-          const result = results[server.name];
-          const status = live.find((entry) => entry.name === server.name);
-          return (
-            <li
-              key={`${server.origin}/${server.name}`}
-              aria-label={server.name}
-              className="flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <Switch
-                  size="sm"
-                  className="hit-switch"
-                  aria-label={t("agent.mcp.switch", { name: server.name })}
-                  checked={server.enabled}
-                  disabled={server.readOnly}
-                  onCheckedChange={(on) => void toggle(server.name, on)}
-                />
-                <span className="font-medium">{server.name}</span>
-                <Badge variant="outline">{server.transport}</Badge>
-                <Badge variant="secondary">{origin(server)}</Badge>
-                {server.readOnly && <Badge variant="outline">{t("agent.readOnly")}</Badge>}
-                {status && (
-                  <Badge variant={status.status === "failed" ? "destructive" : "outline"}>
-                    {t(`agent.mcp.live.${status.status}`)}
-                  </Badge>
-                )}
-                <span className="flex-1" />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={testing === server.name}
-                  onClick={() => void askToTest(server.name)}
-                >
-                  {testing === server.name
-                    ? t("agent.mcp.testing", { name: server.name })
-                    : t("agent.mcp.test", { name: server.name })}
-                </Button>
-                {!server.readOnly && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setDraft(draftFromServer(server))}
-                    >
-                      {t("agent.mcp.edit", { name: server.name })}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setRemoving(server.name)}>
-                      {t("agent.mcp.remove", { name: server.name })}
-                    </Button>
-                  </>
-                )}
-              </div>
-              <code className="break-all text-muted-foreground text-xs">{commandLine(server)}</code>
-              {status?.status === "failed" && status.error && (
-                <p className="text-destructive text-xs">{status.error}</p>
-              )}
-              {result && (
-                <div className="flex flex-wrap gap-6">
-                  {(["tools", "resources"] as const).map((kind) => (
-                    <div key={kind}>
-                      <h4 className="font-medium text-xs">
-                        {t(kind === "tools" ? "agent.mcp.tools" : "agent.mcp.resources", {
-                          name: server.name,
-                        })}
-                      </h4>
-                      <p className="text-muted-foreground text-xs">
-                        {result[kind].length > 0 ? result[kind].join(", ") : t("agent.mcp.none")}
-                      </p>
-                    </div>
-                  ))}
+      {servers.length > 0 && (
+        <ul aria-label={t("agent.mcp.list")} className="flex flex-col gap-2">
+          {servers.map((server) => {
+            const result = results[server.name];
+            const status = live.find((entry) => entry.name === server.name);
+            return (
+              <li
+                key={`${server.origin}/${server.name}`}
+                aria-label={server.name}
+                className="flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Switch
+                    size="sm"
+                    className="hit-switch"
+                    aria-label={server.name}
+                    checked={server.enabled}
+                    disabled={server.readOnly}
+                    onCheckedChange={(on) => void toggle(server.name, on)}
+                  />
+                  <span className="font-medium">{server.name}</span>
+                  <Badge variant="outline">{server.transport}</Badge>
+                  <Badge variant="secondary">{origin(server)}</Badge>
+                  {server.readOnly && <Badge variant="outline">{t("agent.readOnly")}</Badge>}
+                  {status && (
+                    <Badge variant={status.status === "failed" ? "destructive" : "outline"}>
+                      {t(`agent.mcp.live.${status.status}`)}
+                    </Badge>
+                  )}
+                  <span className="flex-1" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-disabled={testing === server.name || undefined}
+                    aria-busy={testing === server.name || undefined}
+                    onClick={() => testing !== server.name && void askToTest(server.name)}
+                  >
+                    {testing === server.name
+                      ? t("agent.mcp.testing", { name: server.name })
+                      : t("agent.mcp.test", { name: server.name })}
+                  </Button>
+                  {!server.readOnly && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDraft(draftFromServer(server))}
+                      >
+                        {t("agent.mcp.edit", { name: server.name })}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setRemoving(server.name)}>
+                        {t("agent.mcp.remove", { name: server.name })}
+                      </Button>
+                    </>
+                  )}
                 </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+                <code className="break-all text-muted-foreground text-xs">
+                  {commandLine(server)}
+                </code>
+                {status?.status === "failed" && status.error && (
+                  <p role="alert" className="text-destructive text-xs">
+                    {status.error}
+                  </p>
+                )}
+                {result && (
+                  <div role="status" className="flex flex-wrap gap-6">
+                    {(["tools", "resources"] as const).map((kind) => (
+                      <div key={kind}>
+                        <h4 className="font-medium text-xs">
+                          {t(kind === "tools" ? "agent.mcp.tools" : "agent.mcp.resources", {
+                            name: server.name,
+                          })}
+                        </h4>
+                        <p className="text-muted-foreground text-xs">
+                          {result[kind].length > 0 ? result[kind].join(", ") : t("agent.mcp.none")}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       {confirming && (
         <ConfirmDialog
