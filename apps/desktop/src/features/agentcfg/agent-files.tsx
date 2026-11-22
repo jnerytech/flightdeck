@@ -139,9 +139,11 @@ export function AgentFiles(
     void load();
   }, [load]);
 
+  const dirty = opened ? opened.hash === null || text !== opened.saved : false;
+
   /** Something that replaces the open file asks first when it holds edits that were not saved. */
   const replacing = (action: () => void) => {
-    if (opened && (opened.hash === null || text !== opened.saved)) setDiscarding(() => action);
+    if (dirty) setDiscarding(() => action);
     else action();
   };
 
@@ -254,7 +256,6 @@ export function AgentFiles(
   });
   const present = (key: string) => complex(key) || (getField(doc, key) ?? "").trim() !== "";
   const valid = !form || (present("name") && present("description"));
-  const dirty = opened ? opened.hash === null || text !== opened.saved : false;
   const versioned =
     opened?.origin === "project" &&
     (opened.path === "CLAUDE.local.md" ? t("agent.localFile") : t("agent.versioned"));
