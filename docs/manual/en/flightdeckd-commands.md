@@ -336,7 +336,7 @@ fd persona trust local --project-path ~/work/api --hash abcdef012345
 - **`trust <id> --project-path <folder> --hash <hash>`:** trusts a versioned project persona, so its text
   reaches every session of the project. `--hash` is the start (12 or more hex characters) of the hash
   `persona list` showed: if the file was edited since, the command refuses with exit `1` and says the new
-  hash, so you read it again. A persona that is already trusted is left as it is.
+  hash, so you read it again. A persona that is already trusted is left as it is. It needs a near connection (this computer or Tailscale): over a far one the daemon refuses with `transport_refused`.
 
 A change that gets no answer exits `2` and says it may or may not have gone in: run `persona list` before
 trying again.

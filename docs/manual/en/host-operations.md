@@ -78,7 +78,8 @@ flightdeckd daemon stop --confirm [--json]
   `update started` (`{"started":true}`) as soon as the daemon has downloaded and verified the binary (it can take
   a minute on a slow link) and accepts, and does not wait for the restart: run `update check` or `host` afterwards
   to see the new version. The daemon refuses until it has checked the release server once, so run `update check`
-  first on a daemon that just started.
+  first on a daemon that just started. It replaces the daemon's own binary, so over a far connection (not this computer
+  or Tailscale) the daemon refuses it with `transport_refused`.
 - `daemon stop --confirm` makes the daemon exit, so every session and terminal it runs ends. It prints `stopping`
   (`{"stopping":true}`) on the daemon's answer. Under an installed service the service starts it again about 5 s
   later; to keep it down, stop the service with `flightdeckd service stop`.
