@@ -4,6 +4,12 @@ import type { Lang, T } from "./index.ts";
 const DATE_STYLE: Record<Lang, "short" | "medium"> = { "pt-BR": "short", en: "medium" };
 
 /**
+ * A clock's hour cycle, set here because the browser's own pick for a language can print midnight
+ * as "00:00 AM" (#3845): 12-hour with 12 at midnight in English, 24-hour in pt-BR.
+ */
+const HOUR_CYCLE: Record<Lang, "h12" | "h23"> = { "pt-BR": "h23", en: "h12" };
+
+/**
  * Building an Intl.DateTimeFormat is slow (tens of microseconds on x86, far more on a Pi) and the
  * lists format a date per row on every render, so each distinct one is built once.
  */
@@ -23,7 +29,12 @@ const plain = (text: string) => text.replaceAll(" ", " ");
 
 /** HH:MM of an instant in local time (or `timeZone`), in the language's style. */
 export function formatTime(iso: string, lang: Lang, timeZone?: string): string {
-  const format = dateFormat(lang, { hour: "2-digit", minute: "2-digit", timeZone });
+  const format = dateFormat(lang, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: HOUR_CYCLE[lang],
+    timeZone,
+  });
   return plain(format.format(new Date(iso)));
 }
 
@@ -32,6 +43,7 @@ export function formatDateTime(iso: string, lang: Lang, timeZone?: string): stri
   const format = dateFormat(lang, {
     dateStyle: DATE_STYLE[lang],
     timeStyle: "short",
+    hourCycle: HOUR_CYCLE[lang],
     timeZone,
   });
   return plain(format.format(new Date(iso)));

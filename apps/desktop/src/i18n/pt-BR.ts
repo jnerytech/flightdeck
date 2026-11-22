@@ -40,6 +40,7 @@ export const ptBR = {
   scope: {
     menu: "Dados de {scope}",
     all: "Todos os hosts",
+    hosts: "Hosts",
     projects: "Projetos",
     showing: "Mostrando {scope}",
     offline: "{host} está offline. Os números voltam quando ele reconectar.",

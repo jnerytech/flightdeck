@@ -45,7 +45,7 @@ interface HostOptions {
   features?: string[];
 }
 
-function world(language: "en" | "pt-BR" = "en") {
+function world(language: "en" | "pt-BR" = "en", turns = 4) {
   const store = new AppStore(memoryPlatform(false, language).platform, {
     baseDelayMs: 600_000,
     day: () => "2026-10-10",
@@ -55,7 +55,7 @@ function world(language: "en" | "pt-BR" = "en") {
   store.hostRequest = (async (hostId: string, command: string) => {
     asked.push(`${hostId}:${command}`);
     if (command === "costs.summary") return { ok: true, data: costs() };
-    if (command === "usage.summary") return { ok: true, data: usage() };
+    if (command === "usage.summary") return { ok: true, data: usage(turns) };
     return { ok: false, code: "internal", message: "no" };
   }) as never;
   const routes: unknown[] = [];
@@ -178,6 +178,21 @@ describe("home-followups: hosts without costs show unknown, and Avg says where i
     const average = screen.getByRole("button", { name: "Open Avg cost / turn" });
     expect(average.textContent).toContain("Managed sessions only");
   });
+
+  // #3846: an average under a cent is not zero, and Spend says what it adds up.
+  test.each([
+    ["en", "Open Avg cost / turn", "< $0.01", "Open Spend", "All sessions"],
+    ["pt-BR", "Abrir Custo médio / turno", "< US$ 0,01", "Abrir Gasto", "Todas as sessões"],
+  ] as const)(
+    "an average under a cent reads as under a cent, and Spend names what it counts (%s)",
+    async (language, avg, under, spendName, basis) => {
+      const w = world(language, 1000);
+      render(w.view([{ id: "h1" }], { hostsLoaded: true }));
+      const average = await screen.findByRole("button", { name: avg });
+      await waitFor(() => expect(average.textContent).toContain(under));
+      expect(screen.getByRole("button", { name: spendName }).textContent).toContain(basis);
+    },
+  );
 
   test("it reads in Portuguese", async () => {
     const w = world("pt-BR");

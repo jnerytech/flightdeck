@@ -8,14 +8,32 @@ import type { TabOrder } from "../tabs/index.ts";
 import { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "../terminal/index.ts";
 import { TerminalFontInput } from "./terminal-font-input.tsx";
 
-/** A setting: its label on the left and its control on the right; the label focuses the control. */
-function SettingRow(props: Readonly<{ label: string; children: (id: string) => ReactNode }>) {
+/**
+ * A setting: its label on the left and its control on the right; the label focuses the control. A
+ * `hint` sits under the control, in its column, and the control names it with `aria-describedby`.
+ */
+function SettingRow(
+  props: Readonly<{
+    label: string;
+    hint?: { id: string; text: string };
+    children: (id: string) => ReactNode;
+  }>,
+) {
   const id = useId();
   return (
     // One label column for every row, so the controls start on one line whatever the label (#588).
     <div className="setting-row">
       <label htmlFor={id}>{props.label}</label>
-      {props.children(id)}
+      {props.hint ? (
+        <div className="setting-control">
+          {props.children(id)}
+          <small id={props.hint.id} className="setting-note">
+            {props.hint.text}
+          </small>
+        </div>
+      ) : (
+        props.children(id)
+      )}
     </div>
   );
 }
@@ -95,6 +113,7 @@ export function AppearanceSection(
           <NativeSelect
             id={id}
             className="setting-select"
+            disabled={!cacheOn}
             value={String(cacheTtl)}
             onChange={(e) => store.cacheTimer.setTtl(Number(e.target.value) as CacheTtl)}
           >
@@ -116,7 +135,13 @@ export function AppearanceSection(
           </NativeSelect>
         )}
       </SettingRow>
-      <SettingRow label={t("settings.terminalFont")}>
+      <SettingRow
+        label={t("settings.terminalFont")}
+        hint={{
+          id: fontHint,
+          text: t("settings.terminalFontRange", { min: TERMINAL_FONT_MIN, max: TERMINAL_FONT_MAX }),
+        }}
+      >
         {(id) => (
           <TerminalFontInput
             id={id}
@@ -126,9 +151,6 @@ export function AppearanceSection(
           />
         )}
       </SettingRow>
-      <small id={fontHint} className="setting-hint">
-        {t("settings.terminalFontRange", { min: TERMINAL_FONT_MIN, max: TERMINAL_FONT_MAX })}
-      </small>
       <label className={check}>
         <input
           type="checkbox"
