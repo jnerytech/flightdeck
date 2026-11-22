@@ -107,6 +107,7 @@ export function sshRewriter(askpass = false): FrameRewriter {
       if (typeof type === "string" && type in rewrite && typeof message?.id === "string") {
         asked.set(message.id, type);
       }
+      return frame;
     },
     fromHost(frame) {
       const type = answeredType(frame);
