@@ -168,31 +168,34 @@ describe("session-tabs-ui: the views of a session page (issue #107)", () => {
 
   // #3821: the row of views scrolls sideways in a narrow pane, so the view that opens (a click, the
   // arrow keys, Alt+number, the palette) is brought into view, and an edge fade shows tabs are hidden.
-  test("the view that opens is scrolled into view along the row (#3821)", async () => {
-    const seen: Array<{ text: string | null; inline: string | undefined }> = [];
+  // Not `scrollIntoView` (#1430): it moves the first Tab's starting point; the row scrolls itself.
+  test("the view that opens is scrolled into view along the row, never with scrollIntoView (#3821)", async () => {
     const real = HTMLElement.prototype.scrollIntoView;
-    HTMLElement.prototype.scrollIntoView = function (this: HTMLElement, arg?: unknown) {
-      seen.push({ text: this.textContent, inline: (arg as ScrollIntoViewOptions)?.inline });
+    let called = false;
+    HTMLElement.prototype.scrollIntoView = () => {
+      called = true;
     };
     try {
       mount();
-      seen.length = 0;
+      const row = within(document.body).queryByRole("tablist") as HTMLElement;
+      // A 100 px wide row; the fifth tab sits from 250 to 330 px.
+      row.getBoundingClientRect = () => ({ left: 0, right: 100 }) as DOMRect;
+      const fifth = tabs()[4] as HTMLElement;
+      fifth.getBoundingClientRect = () => ({ left: 250, right: 330 }) as DOMRect;
       await clickTab(4);
-      expect(seen.at(-1)).toEqual({ text: "Rastro", inline: "nearest" });
-      tabs()[4]?.focus();
-      await press(tabs()[4] ?? document.body, { key: "ArrowRight" });
-      expect(seen.at(-1)).toEqual({ text: "Mensagens", inline: "nearest" });
+      expect(row.scrollLeft).toBe(230);
+      expect(called).toBe(false);
     } finally {
       HTMLElement.prototype.scrollIntoView = real;
     }
   });
 
-  test("the row of views fades at an edge that hides tabs, like the wide tables (#3821)", () => {
+  test("the row of views fades at an edge that hides tabs, over the opaque tabs (#3821)", () => {
     const css = readFileSync(join(import.meta.dir, "../../src/styles/session.css"), "utf8");
     const start = css.indexOf("@utility session-views {");
     const rule = css.slice(start, css.indexOf("\n}\n", start));
     expect(rule.includes("overflow-x: auto;")).toBe(true);
-    expect(rule.includes("background-attachment: local, local, scroll, scroll;")).toBe(true);
+    expect(rule.includes("mask-image: linear-gradient(")).toBe(true);
   });
 
   test("a key the tab bar does not use is left alone: no view changes and the browser keeps it", async () => {
