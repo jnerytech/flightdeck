@@ -52,6 +52,8 @@ async function setup(
     pending?: Pending[];
     entries?: ReturnType<typeof entry>[];
     status?: "online" | "offline";
+    /** The host refuses every answer with this reason (the request stays waiting). */
+    refuse?: string;
   } = {},
 ) {
   const phone = memoryPlatform(false, options.lang ?? "en");
@@ -85,6 +87,7 @@ async function setup(
   let waiting = options.pending ?? [request()];
   store.respondTo = (async (host: string, id: string, decision: string, answer: unknown) => {
     answered.push([host, id, decision, answer]);
+    if (options.refuse) return { ok: false, reason: options.refuse };
     waiting = waiting.filter((p) => p.requestId !== id);
     await act(async () => patch(waiting));
   }) as never;
@@ -273,6 +276,42 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
       within(group as HTMLElement).queryByRole("button", { name: "Approve" }) === null,
       within(group as HTMLElement).queryByRole("button", { name: "Deny" }) === null,
     ]).toEqual([false, false]);
+  });
+
+  test.each([
+    ["en", "Approve", "Deny", "Not done: host offline"],
+    ["pt-BR", "Aprovar", "Negar", "Não feito: host offline"],
+  ] as const)(
+    "a refused answer says so inside its row and leaves the buttons usable, with the focus on the one pressed (%s, #4032)",
+    async (lang, approve, deny, words) => {
+      await setup({ lang, refuse: "host offline" });
+      const panel = await open();
+      const alert = () => within(panel).queryByRole("alert");
+      expect(alert()).toBeNull();
+      await press(approve);
+      expect(await settleMaybe(() => alert()?.textContent === words)).toBe(true);
+      expect(alert()?.closest("li") === panelButton(approve)?.closest("li")).toBe(true);
+      expect(panelButton(approve)?.hasAttribute("disabled")).toBe(false);
+      expect(await settleMaybe(() => document.activeElement === panelButton(approve))).toBe(true);
+      await press(deny);
+      expect(await settleMaybe(() => document.activeElement === panelButton(deny))).toBe(true);
+    },
+  );
+
+  test("a refused answer typed with A keeps the focus on the row's own button, not on Approve (#4032)", async () => {
+    await setup({ refuse: "host offline" });
+    const panel = await open();
+    const pick = () => panelButton(/Backend tests/) as HTMLElement;
+    pick().focus();
+    await act(async () => {
+      fireEvent.keyDown(pick(), { key: "a" });
+    });
+    expect(
+      await settleMaybe(
+        () => within(panel).queryByRole("alert")?.textContent === "Not done: host offline",
+      ),
+    ).toBe(true);
+    expect(await settleMaybe(() => document.activeElement === pick())).toBe(true);
   });
 
   test("the keys are said on the row, and a high-risk row says approving takes holding", async () => {
