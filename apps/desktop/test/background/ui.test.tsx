@@ -297,6 +297,49 @@ describe("bg-ui: Iniciar em segundo plano", () => {
     expect(daemon.commands.some((c) => c.type === "bg.start")).toBe(false);
   });
 
+  const tickAndFill = async () => {
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("Primeiro prompt") as HTMLTextAreaElement, {
+        target: { value: "limpe os logs" },
+      });
+      fireEvent.click(screen.queryByLabelText("Iniciar em segundo plano") as HTMLInputElement);
+    });
+  };
+
+  test("the option's hint is its accessible description (#4172)", async () => {
+    await newSession();
+    const box = screen.queryByLabelText("Iniciar em segundo plano") as HTMLInputElement;
+    const hint = document.getElementById(box.getAttribute("aria-describedby") ?? "-");
+    expect(hint?.textContent?.includes("sem terminal")).toBe(true);
+  });
+
+  test("a start that works says so in a notice naming the folder (#4172)", async () => {
+    const { store } = await newSession();
+    const said: string[] = [];
+    const success = store.success.bind(store);
+    store.success = (text: string) => {
+      said.push(text);
+      success(text);
+    };
+    await tickAndFill();
+    await click("Criar sessão");
+    await settle(() => said.length > 0);
+    expect(said[0]).toBe('Sessão "work" iniciada em segundo plano. Ela aparece em Sessões.');
+  });
+
+  test("a start the host refuses keeps the form and says so beside the option (#4172)", async () => {
+    const { daemon, store } = await newSession();
+    daemon.bg.refused.set("bg.start", { reason: "bg_cli_failed", params: { message: "boom" } });
+    await tickAndFill();
+    await click("Criar sessão");
+    await settle(() => screen.queryByText("Não foi possível iniciar em segundo plano.") !== null);
+    expect(screen.queryByText("Não foi possível iniciar em segundo plano.")).not.toBeNull();
+    expect(store.router.current.name).toBe("new-session");
+    expect((screen.queryByLabelText("Primeiro prompt") as HTMLTextAreaElement).value).toBe(
+      "limpe os logs",
+    );
+  });
+
   test("a host without bg has no such option", async () => {
     await newSession([]);
     expect(screen.queryByLabelText("Iniciar em segundo plano")).toBeNull();
