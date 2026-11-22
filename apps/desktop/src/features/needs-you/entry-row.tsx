@@ -160,16 +160,18 @@ function EntryRowImpl(props: Readonly<EntryRowProps>) {
   const who = pendingWhere(item);
   // The risk the card shows is on the row too, and part of its name (WCAG 2.5.3).
   const riskWord = item.risk ? t(`approval.risk.${item.risk}` as Key) : "";
-  const label = riskWord ? `${who}: ${what} · ${riskWord}` : `${who}: ${what}`;
+  const label = riskWord ? `${who} (${riskWord}): ${what}` : `${who}: ${what}`;
   return (
     <RowButton active={active} pressed={selected} label={label} onActivate={onActivate}>
       <DotLine t={t} text={who}>
         {item.risk && (
-          <RiskSeal
-            risk={item.risk}
-            t={t}
-            {...(item.riskReason ? { reason: item.riskReason } : {})}
-          />
+          <span className="shrink-0 whitespace-nowrap">
+            <RiskSeal
+              risk={item.risk}
+              t={t}
+              {...(item.riskReason ? { reason: item.riskReason } : {})}
+            />
+          </span>
         )}
         {chip && <ClientChip name={chip.name} color={chip.color} />}
         <time
