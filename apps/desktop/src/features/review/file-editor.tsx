@@ -64,7 +64,8 @@ export function FileEditor(
     if (!file) return;
     const editor = view.current;
     editor?.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: file.text } });
-    initial.current = file.text;
+    // The editor's own text, not the file's: CodeMirror turns CRLF into line breaks it keeps as "\n".
+    initial.current = editor?.state.doc.toString() ?? file.text;
     setPhase({ name: "ready", hash: file.hash, conflict: false });
     return file;
   }, [read]);
@@ -98,6 +99,7 @@ export function FileEditor(
       }),
     });
     view.current = editor;
+    initial.current = editor.state.doc.toString();
     return () => {
       editor.destroy();
       view.current = null;

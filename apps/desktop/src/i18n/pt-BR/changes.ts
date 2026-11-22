@@ -115,7 +115,10 @@ export const changes = {
     reverted: "{path} revertido.",
     undo: "Desfazer",
     undone: "{path} de volta.",
-    undoFor: "Você pode desfazer por {seconds} segundos.",
+    undoFor: {
+      one: "Você pode desfazer por {n} segundo.",
+      other: "Você pode desfazer por {n} segundos.",
+    },
     edit: "Editar arquivo {path}",
     editorTitle: "Editar {path}",
     editorField: "Texto de {path}",

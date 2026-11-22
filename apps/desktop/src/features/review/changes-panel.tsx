@@ -111,7 +111,7 @@ export function ChangesPanel(
   const [undo, setUndo] = useState<Undo | null>(null);
   /** The Revert button that opened the dialog, to give the focus back when it is cancelled or refused. */
   const opener = useRef<HTMLElement | null>(null);
-  const undoRegion = useRef<HTMLOutputElement>(null);
+  const undoRegion = useRef<HTMLDivElement>(null);
   const undoButton = useRef<HTMLButtonElement>(null);
   /** The offer goes: a focus inside it moves to the panel, so it is not lost to the page. */
   const dropUndo = useCallback(() => {
@@ -169,9 +169,17 @@ export function ChangesPanel(
   useEffect(() => {
     if (until === null) return;
     const now = document.activeElement;
-    if (!now || now === document.body || now === panel.current || now === opener.current) {
+    // A dialog still on its way out holds the focus too: the offer takes it from there.
+    if (
+      !now ||
+      now === document.body ||
+      now === panel.current ||
+      now === opener.current ||
+      now.closest("[role=alertdialog]")
+    ) {
       undoButton.current?.focus();
     }
+    opener.current = null;
   }, [until]);
 
   const onPick = (path: string, side: ReviewComment["side"], line: number, extend: boolean) => {
@@ -412,28 +420,26 @@ export function ChangesPanel(
           {t("diff.split")}
         </Button>
       </div>
-      {/* Always in the page, so a screen reader is already listening when the offer arrives. */}
-      <output
+      {/* The words sit in a status line that is in the page before they arrive; the button stays out of it. */}
+      <div
         ref={undoRegion}
         className={cn("flex items-center gap-2 text-sm", undo === null && "sr-only")}
       >
+        <output>
+          {undo &&
+            `${t("changes.reverted", { path: undo.path })} ${t("changes.undoFor", { n: undo.seconds })}`}
+        </output>
         {undo && (
-          <>
-            <span>
-              {t("changes.reverted", { path: undo.path })}{" "}
-              {t("changes.undoFor", { seconds: undo.seconds })}
-            </span>
-            <Button
-              ref={undoButton}
-              variant="outline"
-              size="sm"
-              onClick={() => void undoRevert(undo.path)}
-            >
-              {t("changes.undo")}
-            </Button>
-          </>
+          <Button
+            ref={undoButton}
+            variant="outline"
+            size="sm"
+            onClick={() => void undoRevert(undo.path)}
+          >
+            {t("changes.undo")}
+          </Button>
         )}
-      </output>
+      </div>
       {changes.files.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("changes.empty")}</p>
       ) : (
@@ -485,9 +491,11 @@ export function ChangesPanel(
           destructive
           // The row that opened the dialog goes with a revert: keep the focus where it is until the
           // offer to undo takes it; a cancel or a refusal puts it back on the button.
-          onRestoreFocus={() =>
-            (opener.current?.isConnected ? opener.current : panel.current)?.focus()
-          }
+          onRestoreFocus={() => {
+            // The offer to undo may hold the focus already: the row this came from is going away.
+            if (undoRegion.current?.contains(document.activeElement)) return;
+            (opener.current?.isConnected ? opener.current : panel.current)?.focus();
+          }}
           onConfirm={() => void revert(reverting)}
           onCancel={() => setReverting(null)}
         />
