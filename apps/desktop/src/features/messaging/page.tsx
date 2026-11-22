@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { sessionProjectKeys } from "@/features/clients/index.ts";
 import { hubRows } from "@/features/sessions/index.ts";
+import { reasonText } from "@/i18n/errors.ts";
 import { useStoreSlice } from "@/lib/use-store";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import {
@@ -211,7 +212,11 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
                   </strong>
                 </div>
                 <p className="whitespace-pre-wrap">{m.text}</p>
-                {m.reason && <p className="text-status-error text-xs">{m.reason}</p>}
+                {m.reason && (
+                  <p className="text-status-error text-xs">
+                    {reasonText(t, m.reason, m.reasonKey, m.reasonParams)}
+                  </p>
+                )}
                 {inPausedPair(state.loopAlerts, m) && <RulesLink store={store} />}
                 <ActionButton
                   variant="ghost"
