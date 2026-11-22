@@ -7,6 +7,9 @@ export const board = {
       "Follow an external board: its items become cards here, and a status changed there moves the card.",
     notLinked: "This project is not linked to an external board.",
     boards: "Boards",
+    pickBoard: "Pick a board to link",
+    loading: "Reading the sync state…",
+    retry: "Try again",
     noBoards: "No board found for this login.",
     link: "Link board",
     linked: "Linked to {title}",
@@ -24,6 +27,8 @@ export const board = {
       "Change items on the external board when you move cards here? You can turn it off again.",
     pushConfirmButton: "Turn push on",
     unlink: "Unlink",
+    unlinkConfirm:
+      "Stop following {title}? The cards stay, but they stop syncing and the status mapping is lost.",
     paused: "Paused until {when}",
     lastError: "Last problem: {error}",
     truncated: "The board has more items than are read at a time.",

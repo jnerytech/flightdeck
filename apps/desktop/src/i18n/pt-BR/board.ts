@@ -7,6 +7,9 @@ export const board = {
       "Acompanhe um quadro externo: os itens dele viram cards aqui, e um status mudado lá move o card.",
     notLinked: "Este projeto não está ligado a um quadro externo.",
     boards: "Quadros",
+    pickBoard: "Escolha um quadro para ligar",
+    loading: "Lendo o estado da sincronização…",
+    retry: "Tentar de novo",
     noBoards: "Nenhum quadro encontrado para este login.",
     link: "Ligar quadro",
     linked: "Ligado a {title}",
@@ -24,6 +27,8 @@ export const board = {
       "Mudar itens no quadro externo quando você mover cards aqui? Dá para desligar de novo.",
     pushConfirmButton: "Ligar o envio",
     unlink: "Desligar",
+    unlinkConfirm:
+      "Parar de seguir {title}? Os cards ficam, mas deixam de sincronizar e o mapeamento de status se perde.",
     paused: "Em pausa até {when}",
     lastError: "Último problema: {error}",
     truncated: "O quadro tem mais itens do que se lê de uma vez.",

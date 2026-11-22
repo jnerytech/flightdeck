@@ -181,11 +181,61 @@ for (const [lang, t] of [
       await settle(() => page.d.boardSyncStore.get(page.projectId)?.push === true);
     });
 
-    test("unlink goes back to the list of boards", async () => {
+    test("unlink asks first, cancel changes nothing, and confirming goes back to the list of boards", async () => {
       const page = await linked(lang, t);
+      const question = t.boardSyncUi.unlinkConfirm.replace("{title}", "Roadmap");
+      await click(t.boardSyncUi.unlink);
+      expect(screen.queryByText(question)).not.toBeNull();
+      expect(page.d.boardSyncStore.get(page.projectId) === null).toBe(false);
+      await click(t.common.cancel);
+      await act(async () => {});
+      expect(screen.queryByText(question) === null).toBe(true);
+      expect(page.d.boardSyncStore.get(page.projectId) === null).toBe(false);
+      await click(t.boardSyncUi.unlink);
       await click(t.boardSyncUi.unlink);
       await settle(() => screen.queryByText(t.boardSyncUi.notLinked) !== null);
       expect(page.d.boardSyncStore.get(page.projectId)).toBeNull();
+    });
+
+    test("the disabled Link board button says what to do, and the dialog says it is loading", async () => {
+      const page = await boardPage(lang);
+      await settle(() => screen.queryByRole("button", { name: t.boardSyncUi.button }) !== null);
+      const real = page.store.hostRequest.bind(page.store) as (...a: unknown[]) => Promise<unknown>;
+      let release = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      (page.store as unknown as { hostRequest: unknown }).hostRequest = async (
+        ...a: unknown[]
+      ) => {
+        if (a[1] === "boardsync.status") await gate;
+        return real(...a);
+      };
+      await click(t.boardSyncUi.button);
+      expect(screen.queryByRole("status", { name: t.boardSyncUi.loading })).not.toBeNull();
+      await act(async () => release());
+      await settle(() => screen.queryByRole("radio", { name: /Roadmap/ }) !== null);
+      expect(screen.queryByRole("status", { name: t.boardSyncUi.loading }) === null).toBe(true);
+      expect(screen.queryByText(t.boardSyncUi.pickBoard)).not.toBeNull();
+    });
+
+    test("a status that is refused shows the problem and a way to try again", async () => {
+      const page = await boardPage(lang);
+      await settle(() => screen.queryByRole("button", { name: t.boardSyncUi.button }) !== null);
+      const real = page.store.hostRequest.bind(page.store) as (...a: unknown[]) => Promise<unknown>;
+      let failing = true;
+      (page.store as unknown as { hostRequest: unknown }).hostRequest = async (
+        ...a: unknown[]
+      ) => {
+        if (a[1] === "boardsync.status" && failing)
+          return { ok: false, code: "internal", message: "no answer" };
+        return real(...a);
+      };
+      await click(t.boardSyncUi.button);
+      await settle(() => screen.queryByRole("button", { name: t.boardSyncUi.retry }) !== null);
+      failing = false;
+      await click(t.boardSyncUi.retry);
+      await settle(() => screen.queryByText(t.boardSyncUi.notLinked) !== null);
     });
 
     test("a card that follows an item opens it, says when it left the board, and shows its sync log", async () => {
