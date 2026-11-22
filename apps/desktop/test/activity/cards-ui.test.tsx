@@ -97,7 +97,7 @@ describe("activity cards: a long title and a request the board cannot answer (#4
     const opened = mount("en", [], { "h1/c1": question });
     const card = needsYou()[0];
     expect(card).not.toBeUndefined();
-    const open = card ? within(card).queryByRole("button", { name: "Open to answer" }) : null;
+    const open = card ? within(card).queryByRole("button", { name: /^Open to answer/ }) : null;
     expect(open).not.toBeNull();
     await act(async () => {
       if (open) fireEvent.click(open);
@@ -111,7 +111,7 @@ describe("activity cards: a long title and a request the board cannot answer (#4
     const card = needsYou()[0];
     expect(card).not.toBeUndefined();
     expect(
-      card ? within(card).queryByRole("button", { name: "Abrir para responder" }) : null,
+      card ? within(card).queryByRole("button", { name: /^Abrir para responder/ }) : null,
     ).not.toBeNull();
   });
 
@@ -123,7 +123,9 @@ describe("activity cards: a long title and a request the board cannot answer (#4
     );
     const card = needsYou()[0];
     expect(card).not.toBeUndefined();
-    expect(card ? within(card).queryByRole("button", { name: "Open to answer" }) : null).toBeNull();
+    expect(
+      card ? within(card).queryByRole("button", { name: /^Open to answer/ }) : null,
+    ).toBeNull();
     expect(screen.queryAllByRole("button", { name: /^Approve/ }).length).toBe(1); // NOSONAR: a failed length check on DOM elements prints each node
   });
 });
