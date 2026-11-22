@@ -71,7 +71,7 @@ function pending() {
  * The timeline's button on a store whose host answers each command as the test says: a result, or
  * `null` for a refusal. Every command sent is recorded, in order.
  */
-async function timeline(language: "en" | "pt-BR", answers: Record<string, Answer>) {
+async function timeline(language: "en" | "pt-BR", answers: Record<string, Answer>, busy = false) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
   cleanups.push(() => store.dispose());
   store.i18n.start();
@@ -89,7 +89,7 @@ async function timeline(language: "en" | "pt-BR", answers: Record<string, Answer
   }) as never;
   render(
     <TContext.Provider value={store.i18n.t}>
-      <CheckpointsButton store={store} hostId="h1" claudeSessionId="c1" cwd="/repo" busy={false} />
+      <CheckpointsButton store={store} hostId="h1" claudeSessionId="c1" cwd="/repo" busy={busy} />
     </TContext.Provider>,
   );
   const names = {
@@ -338,11 +338,60 @@ describe("linha-do-tempo-falhas", () => {
     expect(alerts()).toEqual([]);
   });
 
-  test("no safety snapshot, no question to the host and no Undo", async () => {
+  test("a session with no rewind is asked once, the host refuses, and there is no Undo", async () => {
     const { sent } = await timeline("en", { "snapshots.list": async () => SNAPSHOTS });
     expect(screen.queryByText("fix the README")).not.toBeNull();
-    expect(sent).not.toContain("rewind.undoPreview");
+    expect(sent.filter((type) => type === "rewind.undoPreview")).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "Undo rewind" })).toBeNull();
+  });
+
+  test("with the session in a turn the Undo is off and says why, and the dialog is not opened", async () => {
+    const { sent } = await timeline(
+      "en",
+      {
+        "snapshots.list": async () => SAFETY,
+        "rewind.undoPreview": async () => PREVIEW,
+      },
+      true,
+    );
+    expect(isDisabled("Undo rewind")).toBe(true);
+    const reason = screen
+      .queryByRole("button", { name: "Undo rewind" })
+      ?.getAttribute("aria-describedby");
+    expect(reason).toBeTruthy();
+    expect(document.getElementById(reason as string)?.textContent).toContain("in a turn");
+    await click("Undo rewind");
+    expect(screen.queryByRole("dialog", { name: "Undo the rewind" })).toBeNull();
+    expect(sent).not.toContain("rewind.undo");
+  });
+
+  test("an answer to an older undo preview does not bring the Undo back after a newer one said there is none", async () => {
+    const first = pending();
+    let asked = 0;
+    await timeline("en", {
+      "snapshots.list": async () => SAFETY,
+      "rewind.preview": async () => PREVIEW,
+      "rewind.apply": async () => PREVIEW,
+      "rewind.undoPreview": () => (++asked === 1 ? first.promise : Promise.resolve(EMPTY)),
+    });
+    await click("Rewind files to here (turn 1)");
+    await click("Rewind files");
+    expect(screen.queryByText("Files rewound to turn 1.")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Undo rewind" })).toBeNull();
+    await act(async () => first.settle(PREVIEW));
+    expect(screen.queryByRole("button", { name: "Undo rewind" })).toBeNull();
+  });
+
+  test("an undo dialog whose preview is refused says so in its own words and keeps Restore off", async () => {
+    let tries = 0;
+    await timeline("en", {
+      "snapshots.list": async () => SAFETY,
+      "rewind.undoPreview": async () => (++tries === 1 ? PREVIEW : null),
+    });
+    await click("Undo rewind");
+    expect(alerts()).toContain("Could not work out what the undo changes.");
+    expect(screen.queryByText("Working out what changes…")).toBeNull();
+    expect(isDisabled("Restore files")).toBe(true);
   });
 
   test("Undo opens a dialog that lists the files and warns that later changes are overwritten; Cancel sends nothing, Restore sends the undo and the Undo goes away", async () => {
