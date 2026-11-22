@@ -172,6 +172,10 @@ describe("what each Run environment print does on the page (#4287)", () => {
     const run = answerOf("card-ambiente-falhou", "runenv.start") as Run | undefined;
     expect([run?.status, typeof run?.error]).toEqual(["failed", "string"]);
     expect(await calls("card-ambiente-falhou")).toMatch(/alert/);
+    // The host's words are in a toast's Details: its title is the app's own.
+    expect(await calls("card-ambiente-recusado")).toMatch(
+      /Details.*Detalhes.*click\(\).*No free block/,
+    );
     expect(
       wireOf("card-ambiente-recusado").find((r) => r.command === "runenv.start"),
     ).toMatchObject({
