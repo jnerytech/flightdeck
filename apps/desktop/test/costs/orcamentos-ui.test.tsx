@@ -333,8 +333,8 @@ describe("orcamentos-ui", () => {
     await click("Criar orçamento");
     await settle(() => rows().length === 2);
     const text = rows().join("\n");
-    expect(text.includes("github.com/acme/app")).toBe(true);
-    expect(text.includes("github.com/other/app")).toBe(true);
+    expect(text).toContain("github.com/acme/app");
+    expect(text).toContain("github.com/other/app");
     // The buttons and bars of those rows name the key too, so a screen reader can tell them apart.
     for (const key of ["github.com/acme/app", "github.com/other/app"]) {
       for (const verb of ["Editar", "Remover"]) {

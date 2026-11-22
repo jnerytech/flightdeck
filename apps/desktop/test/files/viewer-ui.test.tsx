@@ -139,12 +139,11 @@ describe("file-viewer-ui: a file of the tree, read only, with line numbers (#506
     await press("README.md");
     const viewer = screen.queryByRole("region", { name: "File README.md" });
     expect(viewer).not.toBeNull();
-    expect(document.activeElement === viewer).toBe(true);
+    expect(document.activeElement === viewer).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
     expect(scrolled).toEqual([{ block: "nearest" }]);
     await press("Close");
-    expect(document.activeElement === screen.queryByRole("button", { name: "README.md" })).toBe(
-      true,
-    );
+    const readme = screen.queryByRole("button", { name: "README.md" });
+    expect(document.activeElement === readme).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
   });
 
   test("a second file takes the focus too, and Close returns to the second one's button (#3850)", async () => {
@@ -154,9 +153,10 @@ describe("file-viewer-ui: a file of the tree, read only, with line numbers (#506
     await press("app.ts");
     const viewer = screen.queryByRole("region", { name: "File app.ts" });
     expect(viewer).not.toBeNull();
-    expect(document.activeElement === viewer).toBe(true);
+    expect(document.activeElement === viewer).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
     await press("Close");
-    expect(document.activeElement === screen.queryByRole("button", { name: "app.ts" })).toBe(true);
+    const appTs = screen.queryByRole("button", { name: "app.ts" });
+    expect(document.activeElement === appTs).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
   });
 
   test("the opened file takes the focus in Portuguese too (#3850)", async () => {
@@ -165,7 +165,7 @@ describe("file-viewer-ui: a file of the tree, read only, with line numbers (#506
     await press("README.md");
     const viewer = screen.queryByRole("region", { name: "Arquivo README.md" });
     expect(viewer).not.toBeNull();
-    expect(document.activeElement === viewer).toBe(true);
+    expect(document.activeElement === viewer).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
   });
 
   test("a second match of the open file takes the focus again, and Close returns to that match (#3850)", async () => {
@@ -192,15 +192,14 @@ describe("file-viewer-ui: a file of the tree, read only, with line numbers (#506
     await press("README.md:1");
     const viewer = screen.queryByRole("region", { name: "File README.md" });
     expect(viewer).not.toBeNull();
-    expect(document.activeElement === viewer).toBe(true);
+    expect(document.activeElement === viewer).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
     (screen.queryByRole("button", { name: "README.md:2" }) as HTMLElement).focus();
     await press("README.md:2");
-    expect(document.activeElement === viewer).toBe(true);
-    expect(scrolled.length).toBe(2);
+    expect(document.activeElement === viewer).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
+    expect(scrolled).toHaveLength(2);
     await press("Close");
-    expect(document.activeElement === screen.queryByRole("button", { name: "README.md:2" })).toBe(
-      true,
-    );
+    const second = screen.queryByRole("button", { name: "README.md:2" });
+    expect(document.activeElement === second).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
   });
 
   test("when the button that opened the file is gone, Close gives the focus to the Files region (#3850)", async () => {
@@ -220,9 +219,8 @@ describe("file-viewer-ui: a file of the tree, read only, with line numbers (#506
     });
     await settleMaybe(() => screen.queryByRole("button", { name: "README.md:1" }) === null);
     await press("Close");
-    expect(
-      document.activeElement === screen.queryByRole("region", { name: "Files of the repository" }),
-    ).toBe(true);
+    const region = screen.queryByRole("region", { name: "Files of the repository" });
+    expect(document.activeElement === region).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
   });
 
   test("a credential cannot be opened, and a file that is not text says so", async () => {

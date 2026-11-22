@@ -15,15 +15,15 @@ describe("a custom range of days (#3896)", () => {
     expect(rangeProblem({ from: "0002-11-22", to: "2026-11-05" })).toBe("empty");
     expect(rangeProblem({ from: "0202-11-22", to: "2026-11-05" })).toBe("empty");
     expect(rangeProblem({ from: "2026-02-31", to: "2026-11-05" })).toBe("empty");
-    expect(daysBetween("0002-11-22", "2026-11-05").length).toBe(0);
-    expect(daysBetween("2026-02-31", "2026-03-05").length).toBe(0);
+    expect(daysBetween("0002-11-22", "2026-11-05")).toHaveLength(0);
+    expect(daysBetween("2026-02-31", "2026-03-05")).toHaveLength(0);
     expect(rangeProblem({ from: "2024-02-29", to: "2026-11-05" })).toBeNull();
   });
 
   test("a day that is not a day gives no days and never throws", () => {
     expect(() => daysBetween("", "2026-11-05")).not.toThrow();
-    expect(daysBetween("", "2026-11-05").length).toBe(0);
-    expect(daysBetween("2026-11-05", "").length).toBe(0);
+    expect(daysBetween("", "2026-11-05")).toHaveLength(0);
+    expect(daysBetween("2026-11-05", "")).toHaveLength(0);
     expect(daysBetween("2026-11-30", "2026-12-02")).toEqual([
       "2026-11-30",
       "2026-12-01",

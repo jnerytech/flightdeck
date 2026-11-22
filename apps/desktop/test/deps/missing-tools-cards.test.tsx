@@ -66,39 +66,38 @@ describe("missing-tool cards: a person who cannot see the screen can use them (i
   test("each dismiss button names its tool and its host, in both languages", () => {
     setup("en", ["git", "claude"]);
     expect(
-      screen.queryByRole("button", { name: "Dismiss the note about Git on alfa" }) !== null,
-    ).toBe(true);
+      screen.queryByRole("button", { name: "Dismiss the note about Git on alfa" }),
+    ).not.toBeNull();
     expect(
-      screen.queryByRole("button", { name: "Dismiss the note about Claude Code on alfa" }) !== null,
-    ).toBe(true);
+      screen.queryByRole("button", { name: "Dismiss the note about Claude Code on alfa" }),
+    ).not.toBeNull();
     cleanup();
     setup("pt-BR", ["git", "claude"]);
     expect(
-      screen.queryByRole("button", { name: "Dispensar o aviso sobre Git em alfa" }) !== null,
-    ).toBe(true);
+      screen.queryByRole("button", { name: "Dispensar o aviso sobre Git em alfa" }),
+    ).not.toBeNull();
     expect(
-      screen.queryByRole("button", { name: "Dispensar o aviso sobre Claude Code em alfa" }) !==
-        null,
-    ).toBe(true);
+      screen.queryByRole("button", { name: "Dispensar o aviso sobre Claude Code em alfa" }),
+    ).not.toBeNull();
   });
 
   test("a dismissed card leaves an Undo in its place and the focus moves to it", () => {
     setup("en", ["git", "claude", "gh"]);
     press(/Dismiss the note about Claude Code/);
-    expect(dismissButtons(/Dismiss the note about Claude Code/).length).toBe(0);
-    expect(dismissButtons(/Dismiss the note about Git on/).length).toBe(1);
-    expect(dismissButtons(/Dismiss the note about GitHub CLI/).length).toBe(1);
+    expect(dismissButtons(/Dismiss the note about Claude Code/)).toHaveLength(0);
+    expect(dismissButtons(/Dismiss the note about Git on/)).toHaveLength(1);
+    expect(dismissButtons(/Dismiss the note about GitHub CLI/)).toHaveLength(1);
     const undo = screen.queryByRole("button", { name: /Undo.*Claude Code on alfa/ });
-    expect(undo !== null).toBe(true);
-    expect(document.activeElement === undo).toBe(true);
+    expect(undo).not.toBeNull();
+    expect(document.activeElement === undo).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
   });
 
   test("Undo shows the card again, takes it out of the stored list and gives the focus back", () => {
     const { storage } = setup("en", ["git", "claude"]);
     press(/Dismiss the note about Claude Code/);
     press(/Undo.*Claude Code on alfa/);
-    expect(dismissButtons(/Dismiss the note about Claude Code/).length).toBe(1);
-    expect(screen.queryByRole("button", { name: /Undo/ }) === null).toBe(true);
+    expect(dismissButtons(/Dismiss the note about Claude Code/)).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: /Undo/ }) === null).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
     expect(focused()).toBe("Dismiss");
     expect(new SetupSettings(storage).dismissedTools()).toEqual([]);
   });
@@ -112,7 +111,7 @@ describe("missing-tool cards: a person who cannot see the screen can use them (i
     act(() => git?.focus());
     act(() => show(["git"]));
     act(() => show(["git", "claude"]));
-    expect(document.activeElement === git).toBe(true);
+    expect(document.activeElement === git).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
   });
 
   test("a card that arrives later is announced; the cards of the first render are not", () => {
@@ -120,7 +119,7 @@ describe("missing-tool cards: a person who cannot see the screen can use them (i
     expect(statusText()).toBe("");
     act(() => show(["git", "claude"]));
     expect(statusText()).toContain("Claude Code is missing on alfa");
-    expect(statusText()?.includes("Git is missing")).toBe(false);
+    expect(statusText()).not.toContain("Git is missing");
   });
 
   test("dismissing is announced too, in Portuguese as well", () => {
@@ -176,10 +175,10 @@ describe("missing-tool cards: a dismissed note has a way back, and a tool out of
     press(/Dismiss the note about Claude Code/);
     cleanup();
     setup("en", ["git", "claude"], kept);
-    expect(screen.queryAllByRole("note").length).toBe(0);
+    expect(screen.queryAllByRole("note")).toHaveLength(0);
     expect(screen.queryByText("Dismissed notes: 2")).not.toBeNull();
     press(/Show them again/);
-    expect(screen.queryAllByRole("note").length).toBe(2);
+    expect(screen.queryAllByRole("note")).toHaveLength(2);
     expect(screen.queryByText(/Dismissed notes/)).toBeNull();
     expect(new SetupSettings(kept).dismissedTools()).toEqual([]);
     expect(focused()).toBe("Dismiss");
