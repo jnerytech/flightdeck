@@ -28,9 +28,10 @@ export function snapshotsLines(session: string, snapshots: SnapshotInfo[]): stri
   if (snapshots.length === 0) return [`${session}: no snapshots`];
   return [
     `${session}: ${plural(snapshots.length, "snapshot", "snapshots")}`,
-    ...snapshots.map(
-      (s) => `  ${s.n} ${s.kind} ${s.createdAt}${s.prompt ? ` ${clip(s.prompt)}` : ""}`,
-    ),
+    ...snapshots.map((s) => {
+      const prompt = s.prompt ? ` ${clip(s.prompt)}` : "";
+      return `  ${s.n} ${s.kind} ${s.createdAt}${prompt}`;
+    }),
   ];
 }
 
