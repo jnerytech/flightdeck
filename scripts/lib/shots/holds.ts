@@ -4,6 +4,8 @@ export interface FrameRewriter {
   fromApp(frame: string): string;
   /** A frame the host sends: the answer to a noted request comes back rewritten. */
   fromHost(frame: string): string;
+  /** A host frame the app never hears, such as the answer of a command left pending (#4001). */
+  drops?(frame: string): boolean;
   /** Frames the host seems to send right after `frame`, which the app hears once it heard `frame` (#3943). */
   followUp?(frame: string): string[];
   /** The host's answer to a frame the app sends, when the print answers for it: the frame then never leaves the page (#3987). */
@@ -135,6 +137,7 @@ export function installHolds(
       const rewritten = (event: Event) => {
         const data = (event as MessageEvent).data;
         if (typeof data !== "string") return listener.call(this, event);
+        if (this.rewriter.drops?.(data)) return undefined;
         const answer = listener.call(
           this,
           new MessageEvent("message", { data: this.rewriter.fromHost(data) }),

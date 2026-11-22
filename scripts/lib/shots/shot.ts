@@ -38,6 +38,11 @@ export interface Shot {
   ssh?: boolean;
   /** #3943: with `ssh`, an askpass prompt follows the first destinos answer, so the print shows it. */
   askpass?: boolean;
+  /**
+   * #4001: the hosts answer the Maintenance panel with fixed facts, paths and counts (`maintenanceScript`);
+   * `refuseStatus` refuses its first read, `holdClean` never answers the cleanup, so the print shows Clean busy.
+   */
+  maintenance?: { refuseStatus?: boolean; holdClean?: boolean };
   /** #3987: the preview switch of Teleport is on, so a session's menu offers "Move to another host". */
   teleportPreview?: boolean;
   /** #3987: the hosts' teleport answers are faked in the page; `refuses`: the source's package is not a manifest, so the move fails (`teleportScript`). */

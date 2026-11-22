@@ -60,6 +60,10 @@ export const rewoundLines = (session: string, turn: number, done: RewindPreview)
 export const undoneLines = (session: string, done: RewindPreview): string[] =>
   changeLines(`${session} rewind undone, through ${through(done)}`, done);
 
+/** What going back to the state before the last rewind would change, from the working tree as it is now. */
+export const undoPreviewLines = (session: string, preview: RewindPreview): string[] =>
+  changeLines(`${session} rewind undo would change`, preview);
+
 /** What a rewind to a turn would change, and through what the daemon would do it. */
 export const rewindPreviewLines = (
   session: string,

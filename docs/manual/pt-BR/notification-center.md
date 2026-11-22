@@ -11,7 +11,7 @@ PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
 - Uma linha não lida tem um ponto, o título em negrito e a palavra "não lida" para o leitor de
   tela; uma lida não tem nada disso. O selo conta os pontos. Cada linha diz a sessão, o card ou o
   time e o host, e diz o que pede em palavras ("Pergunta: qual banco usar?"), não o nome da
-  ferramenta. Os pedidos repetidos de uma sessão viram uma linha só com a contagem ("3 vezes").
+  ferramenta. Os pedidos repetidos de uma sessão viram uma linha só com a contagem ("Aconteceu 3 vezes").
   Uma linha cujo card ou pedido não existe mais avisa e tem **Descartar**.
 - Um pedido que ainda espera é respondido na própria linha: o selo de risco, depois **Aprovar** e
   **Negar** (com a linha focada, **A** aprova e **N** nega, como em Precisa de você). Um pedido de
@@ -35,6 +35,9 @@ PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
   foco ao título do painel. Depois de **Limpar**, uma linha **Desfazer** traz as entradas de volta,
   lidas ou não como estavam, enquanto o painel continuar aberto. A lista fica neste computador (as
   500 mais recentes) e sobrevive a um reinício. Esc fecha o painel.
+- O painel vazio diz "Nenhuma notificação.", lista o que chega aqui (os eventos que Configurações,
+  Notificações oferece) e tem **Configurar notificações**, que fecha o painel e abre essa seção. A hora de
+  cada linha traz a data e a hora exatas (como dica e para o leitor de tela).
 - Uma linha lida tem **Marcar como não lida** (com o nome da linha; passe o mouse ou foque nela) para voltar a ela depois.
 - As notificações do sistema saem como antes, a menos que você as ajuste (abaixo). A central só
   guarda uma cópia: uma que nunca é enviada (a janela estava em foco) também não entra nela.

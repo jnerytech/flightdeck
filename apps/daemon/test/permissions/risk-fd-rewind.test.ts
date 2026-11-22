@@ -26,6 +26,31 @@ describe("risk rules: a session rewinding its own checkout through flightdeckd f
     ).toEqual([]);
   });
 
+  test("rewind undo --preview reads, but with --confirm in the line it is rated as the undo it may be (#4041)", () => {
+    expect(
+      wrongReasons([
+        ["fd rewind undo s1 --preview --confirm", REASON],
+        ["fd rewind undo s1 --confirm --preview", REASON],
+        ["fd rewind undo s1 --confirm --host --preview", REASON],
+        ["fd rewind undo s1 --preview --confirm=true", REASON],
+        ["fd rewind undo s1 --preview && fd rewind undo s1 --confirm", REASON],
+        // A `--preview` of another command is no preview of this undo, and a word the shell expands may be `--confirm`.
+        ["C=--confirm; fd rewind undo s1 $C; echo --preview", REASON],
+        ["fd rewind undo s1 $C --preview", REASON],
+        ['fd rewind undo s1 --preview "$C"', REASON],
+        ["fd rewind undo s1 --preview; fd rewind undo s1 $C", REASON],
+        ["fd rewind undo s1 --con*", REASON],
+        // A here-string is stdin, not an argument: its `--preview` does not make the line a preview.
+        ["C=--confirm; fd rewind undo s1 $C <<< --preview", REASON],
+        ["fd rewind undo s1 $'--confirm' <<< --preview", REASON],
+        ["fd rewind undo s1 && fd rewind undo s2 --preview", REASON],
+        ['bash -c "fd rewind undo s1 $C; echo --preview"', REASON],
+        ["fd rewind apply s1 2 --preview --confirm", REASON],
+        ["fd rewind apply s1 2 --preview", REASON],
+      ]),
+    ).toEqual([]);
+  });
+
   test("a verb the shell expands could be any of them, so it is high", () => {
     expect(
       wrongReasons([
@@ -39,6 +64,8 @@ describe("risk rules: a session rewinding its own checkout through flightdeckd f
     expect(
       notHigh([
         "fd rewind preview s1 2",
+        "fd rewind undo s1 --preview",
+        "fd --json rewind undo s1 --preview",
         "fd snapshots list s1",
         "fd snapshots files s1 2",
         "fd trace get s1",

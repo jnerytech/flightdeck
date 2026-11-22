@@ -20,6 +20,9 @@ function permissionResponse(requestId: string, decision: "allow" | "deny", answe
   };
 }
 
+/** What an answer came to: done, or not, with the reason the send gave. */
+type AnswerResult = { ok: true } | { ok: false; reason: string };
+
 type PermissionResponse = ReturnType<typeof permissionResponse> & { proof?: ApprovalProof };
 
 /** What answering a request reads and asks through the app's store. */
@@ -104,26 +107,32 @@ export class PermissionsSlice {
     else this.core.act({ key: `${item.hostId}/${item.requestId}`, action: decision });
   }
 
-  /** Answers a request from the "Precisa de você" queue, on whichever host it lives. */
+  /**
+   * Answers a request from the "Precisa de você" queue, on whichever host it lives. A failed send is
+   * shown as a notice and also returned, so a screen that has its own place for it can say it there.
+   */
   async respondTo(
     hostId: string,
     requestId: string,
     decision: "allow" | "deny",
     answer: Answer = {},
-  ): Promise<void> {
-    if (this.unheld(hostId, requestId, decision, answer)) return;
+  ): Promise<AnswerResult> {
+    if (this.unheld(hostId, requestId, decision, answer)) return { ok: true };
     if (decision === "allow") startMeasure("approve");
     // A request of the vault is answered in its own queue; any other goes to the host.
     const vaultAnswer = decision === "allow" ? ({ scope: "once", via: "app" } as const) : null;
+    let result: AnswerResult = { ok: true };
     if (!this.core.settleVault(requestId, vaultAnswer)) {
       const response = await this.signed(hostId, requestId, decision, answer);
       try {
         if (response) await this.core.sendOn(hostId, response);
       } catch (error) {
         this.core.fail(error);
+        result = { ok: false, reason: error instanceof Error ? error.message : String(error) };
       }
     }
     if (decision === "allow") endMeasure("approve");
+    return result;
   }
 
   /** Answers a request of the session open in the window. */

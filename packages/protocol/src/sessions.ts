@@ -456,6 +456,8 @@ export const sessionsCommands = [
     "rewind.undo",
     z.object({ claudeSessionId: z.string().min(1), confirm: z.boolean().optional() }),
   ),
+  /** #4041: what going back to the state before the last rewind would change; it writes nothing. */
+  cmd("rewind.undoPreview", z.object({ claudeSessionId: z.string().min(1) })),
   /** Phase 12: a new Claude session up to a message, opened in the app or in the terminal. */
   cmd(
     "session.fork",
@@ -567,6 +569,7 @@ export interface SessionsResults {
   "rewind.preview": RewindPreview;
   "rewind.apply": RewindPreview;
   "rewind.undo": RewindPreview;
+  "rewind.undoPreview": RewindPreview;
   "session.fork": { claudeSessionId: string; sessionId?: string; command?: string };
   "names.list": { names: SessionNameInfo[] };
   "hooks.status": HooksStatusResult;
