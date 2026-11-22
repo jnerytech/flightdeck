@@ -560,7 +560,7 @@ describe("orcamentos-ui", () => {
       expect(rowOf("orçamento do host")?.getAttribute("aria-current")).toBeNull();
     });
 
-    test("a confirmação fica enquanto nada mais começou, e some ao editar ou mudar um campo (#3913)", async () => {
+    test("a confirmação fica enquanto nada mais começou, e some ao mudar um campo (#3913)", async () => {
       await online();
       await chooseFromAccountMenu("Configurações");
       await settle(() => section() !== null);
@@ -570,8 +570,13 @@ describe("orcamentos-ui", () => {
       expect(status()).toBe("Orçamento criado: orçamento do host (dia)");
       await choose("Limite (US$)", "20");
       expect(status()).toBeNull();
-      await click("Criar orçamento");
-      await uiIdle();
+    });
+
+    test("apertar Editar tira a confirmação da última mudança (#3913)", async () => {
+      await online();
+      await chooseFromAccountMenu("Configurações");
+      await settle(() => section() !== null);
+      await create("10");
       expect(status()).not.toBeNull();
       await click("Editar orçamento do host (dia)");
       expect(status()).toBeNull();
