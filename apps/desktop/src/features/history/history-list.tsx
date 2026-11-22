@@ -186,7 +186,7 @@ export function HistoryList(
         {/* Issue #180: every filter has a visible label (which date is from and which is to). */}
         <Form
           variant="inline"
-          className="flex-row flex-wrap items-end gap-2"
+          className="flex-row flex-wrap items-start gap-2"
           onSubmit={() => apply(draft)}
         >
           <Field
@@ -225,7 +225,7 @@ export function HistoryList(
               </NativeSelect>
             )}
           </Field>
-          <Button type="submit" variant="outline">
+          <Button type="submit" variant="outline" className="field-action">
             {t("historyUi.filter")}
           </Button>
         </Form>
