@@ -158,19 +158,18 @@ function EntryRowImpl(props: Readonly<EntryRowProps>) {
   // A workflow gate is not a tool: its line says which step waits (issue #175).
   const what = pendingText(item, t);
   const who = pendingWhere(item);
-  // The risk the card shows is on the row too, and part of its name (WCAG 2.5.3).
-  const riskWord = item.risk ? t(`approval.risk.${item.risk}` as Key) : "";
+  // The risk the card shows is on the row too, and part of its name (WCAG 2.5.3). A question or a
+  // plan approves no action, so its card shows none and its row neither.
+  const risk =
+    item.toolName === "AskUserQuestion" || item.toolName === "ExitPlanMode" ? undefined : item.risk;
+  const riskWord = risk ? t(`approval.risk.${risk}` as Key) : "";
   const label = riskWord ? `${who} (${riskWord}): ${what}` : `${who}: ${what}`;
   return (
     <RowButton active={active} pressed={selected} label={label} onActivate={onActivate}>
       <DotLine t={t} text={who}>
-        {item.risk && (
+        {risk && (
           <span className="shrink-0 whitespace-nowrap">
-            <RiskSeal
-              risk={item.risk}
-              t={t}
-              {...(item.riskReason ? { reason: item.riskReason } : {})}
-            />
+            <RiskSeal risk={risk} t={t} {...(item.riskReason ? { reason: item.riskReason } : {})} />
           </span>
         )}
         {chip && <ClientChip name={chip.name} color={chip.color} />}
