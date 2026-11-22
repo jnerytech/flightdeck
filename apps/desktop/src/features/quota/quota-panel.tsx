@@ -91,12 +91,15 @@ function HostQuota(
             key={bar.window}
             data-window={bar.window}
             data-hot={bar.hot}
+            data-out={bar.out ?? undefined}
             className="flex flex-col gap-1"
           >
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-sm">{bar.label}</span>
-              {bar.hasReading && (
-                <span className={cn("font-medium text-sm", bar.hot && "text-status-error")}>
+              {bar.hasReading && bar.percentKnown && (
+                <span
+                  className={cn("font-medium text-sm", (bar.hot || bar.out) && "text-status-error")}
+                >
                   {`${bar.percent}%`}
                 </span>
               )}
@@ -108,7 +111,7 @@ function HostQuota(
                   value={bar.value}
                   max={1}
                   valueText={`${bar.percent}%`}
-                  hot={bar.hot}
+                  hot={bar.hot || bar.out !== null}
                   className="w-full"
                 />
                 <div className="flex flex-wrap gap-x-3 text-muted-foreground text-xs">
@@ -124,6 +127,14 @@ function HostQuota(
             )}
           </div>
         ))}
+      {bars.map(
+        (bar) =>
+          bar.out && (
+            <p key={bar.window} className="text-sm text-status-needs-you">
+              {t(`quota.out.${bar.out}`, { window: bar.label })}
+            </p>
+          ),
+      )}
       {hotHosts.length > 0 && (
         <>
           {hotHosts.map((h) => (

@@ -26,9 +26,9 @@ export function shortDuration(ms: number): string {
 
 const RANK: Record<QuotaLevel, number> = { ok: 0, near: 1, reached: 2 };
 
-/** Reached at 100%, or as the account card's red bar (at `pauseAt`, or refused); near from 80%. */
+/** Reached at 100%, when the plan refused the window, or at the host's `pauseAt`; near from 80%. */
 function levelOf(window: QuotaWindow, utilization: number, pauseAt: number | null): QuotaLevel {
-  if (utilization >= 1 || isHot(window, pauseAt)) return "reached";
+  if (utilization >= 1 || window.status === "rejected" || isHot(window, pauseAt)) return "reached";
   return utilization >= 0.8 ? "near" : "ok";
 }
 

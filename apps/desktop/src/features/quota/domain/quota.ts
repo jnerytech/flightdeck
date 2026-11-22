@@ -73,6 +73,10 @@ export interface QuotaBar {
   percent: number;
   /** At or over `pauseAt` (or rejected): new cards wait. */
   hot: boolean;
+  /** The plan's own word, whatever the guard: rejected, or at 100% (#4304). */
+  out: "full" | "rejected" | null;
+  /** False for a rejected window the host gave no use for: its "0%" would be made up. */
+  percentKnown: boolean;
   /** "reinicia às 15:00" and "lida há 12 min"; empty without a reading. */
   reset: string;
   age: string;
@@ -82,6 +86,12 @@ export interface QuotaBar {
 export function isHot(window: QuotaWindow, pauseAt: number | null): boolean {
   if (pauseAt === null) return false;
   return window.status === "rejected" || (window.utilization ?? 0) >= pauseAt;
+}
+
+/** Whether the plan rejected the window or it is at 100%: a fact, whatever the guard (#4304). */
+function outOf(window: QuotaWindow): QuotaBar["out"] {
+  if (window.status === "rejected") return "rejected";
+  return (window.utilization ?? 0) >= 1 ? "full" : null;
 }
 
 /** Percentage, reset time and age of the 5-hour and 7-day windows of a host. */
@@ -102,6 +112,8 @@ export function quotaBars(
         value: 0,
         percent: 0,
         hot: false,
+        out: null,
+        percentKnown: false,
         reset: "",
         age: "",
       };
@@ -113,6 +125,8 @@ export function quotaBars(
       value: reading.utilization ?? 0,
       percent: Math.round((reading.utilization ?? 0) * 100),
       hot: isHot(reading, quota?.pauseAt ?? null),
+      out: outOf(reading),
+      percentKnown: reading.utilization !== null || reading.status !== "rejected",
       reset: reading.resetsAt ? t("quota.resets", { time: formatTime(reading.resetsAt) }) : "",
       age: t("quota.read", { ago: formatAgo(now - Date.parse(reading.readAt), t) }),
     };
