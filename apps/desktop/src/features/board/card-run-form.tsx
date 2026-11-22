@@ -317,12 +317,14 @@ export function CardRunForm(
           hostId={hostId}
           card={card}
           onClose={() => setStartingWith(false)}
+          returnFocus={() => menuButton.current?.focus()}
           onStarted={() => {}}
         />
       )}
       {startAsk.dialog}
       {draft && (
         <PrDescriptionDialog
+          returnFocus={() => menuButton.current?.focus()}
           text={draft.text}
           title={card.title}
           redacted={draft.redacted}
@@ -385,6 +387,7 @@ export function CardRunForm(
           destructive={confirming.kind === "discard"}
           onConfirm={() => void confirm()}
           onCancel={() => setConfirming(null)}
+          onRestoreFocus={() => menuButton.current?.focus()}
         />
       )}
     </>

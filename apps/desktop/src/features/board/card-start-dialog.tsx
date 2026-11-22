@@ -38,6 +38,8 @@ export function CardStartDialog(
       startPersona?: string | null;
     };
     onClose(): void;
+    /** The dialog was opened from a menu item that is gone: the focus goes back to the menu's button (#4272). */
+    returnFocus?(): void;
     /** The card started: the caller tells the person. */
     onStarted(): void;
   }>,
@@ -105,7 +107,7 @@ export function CardStartDialog(
   };
   return (
     <Dialog open onOpenChange={(open) => !open && props.onClose()}>
-      <AppDialogContent>
+      <AppDialogContent {...(props.returnFocus ? { returnFocus: props.returnFocus } : {})}>
         <DialogHeader>
           <DialogTitle>{t("board.startCard")}</DialogTitle>
           <DialogDescription>{t("board.startFor", { title: card.title })}</DialogDescription>
