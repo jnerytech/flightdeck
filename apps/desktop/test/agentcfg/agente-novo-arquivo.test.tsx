@@ -101,6 +101,8 @@ describe.each(["en", "pt-BR"] as const)("agent files, new file (%s)", (lang) => 
     expect(screen.queryByText(w.refusedAgent)).toBeNull();
     await typeInto(field as HTMLInputElement, "a b");
     expect(screen.queryByText(w.refusedAgent)).not.toBeNull();
+    // The rule stays beside the error, so the person sees what to change.
+    expect(screen.queryByText(w.ruleAgent)).not.toBeNull();
     expect(createButton(w)?.disabled).toBe(true);
     await submit(field as HTMLInputElement);
     expect(screen.queryByLabelText(w.name)).toBeNull();
