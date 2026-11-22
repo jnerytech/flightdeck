@@ -389,6 +389,8 @@ export const en: Dictionary = {
     hideAutomated: "Hide automated runs",
     automatedHidden: "{count} automated runs hidden",
     emptyAutomated: "{count} automated runs are hidden by the filter.",
+    loadFailed: "Could not read the history.",
+    retry: "Try again",
     emptyFiltered: "No session matches these filters.",
     periodReversed: "From is after To: pick a period that starts first.",
     clearFilters: "Clear the filters",

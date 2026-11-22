@@ -12,6 +12,7 @@ import {
   CardGrid,
   CheckField,
   EmptyState,
+  ErrorState,
   Field,
   Form,
   Inline,
@@ -79,7 +80,9 @@ export function HistoryList(
   const [automatedCount, setAutomatedCount] = useState(0);
   /** `null` until the host answers (the skeleton shows meanwhile). */
   const [sessions, setSessions] = useState<HistorySessionSummary[] | null>(null);
-  const loading = useMinLoading(sessions === null);
+  /** The last read was refused: the screen says so and offers Try again, not the skeleton for ever. */
+  const [failed, setFailed] = useState(false);
+  const loading = useMinLoading(sessions === null && !failed);
   const { t } = store.i18n;
   /** Lines or cards: the same choice as the hub's. */
   const [view, setView] = useState<HubView>(() => store.viewPrefs.hubView());
@@ -107,8 +110,16 @@ export function HistoryList(
 
   useEffect(() => {
     let live = true;
+    // A new read drops the old list, so it is never shown as the answer to these filters (#3965).
+    setSessions(null);
+    setFailed(false);
     void store.history.list(hostId, { ...filter, hideAutomated }).then((result) => {
-      if (!live || !result) return;
+      if (!live) return;
+      if (!result) {
+        // The store sent the reason to the banner; the screen says it and offers another read.
+        setFailed(true);
+        return;
+      }
       setSessions(result.sessions);
       setAutomatedCount(result.automatedCount ?? 0);
     });
@@ -245,6 +256,14 @@ export function HistoryList(
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {loading && <LoadingState label={t("states.loadingSessions")} />}
+        {failed && (
+          <ErrorState
+            message={t("historyUi.loadFailed")}
+            retryLabel={t("historyUi.retry")}
+            // A copy of the applied filters is a new value, so the effect reads once more.
+            onRetry={() => setFilter({ ...filter })}
+          />
+        )}
         {/* Issue #180: an empty list says why: the hidden automated runs, the filters, or nothing yet. */}
         {emptyBecause === "automated" && (
           <EmptyState

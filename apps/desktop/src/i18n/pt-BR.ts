@@ -389,6 +389,8 @@ export const ptBR = {
     hideAutomated: "Ocultar execuções automáticas",
     automatedHidden: "{count} execuções automáticas ocultas",
     emptyAutomated: "{count} execuções automáticas estão ocultas pelo filtro.",
+    loadFailed: "Não foi possível ler o histórico.",
+    retry: "Tentar de novo",
     emptyFiltered: "Nenhuma sessão atende a estes filtros.",
     periodReversed: "A data De vem depois da data Até: escolha um período que comece antes.",
     clearFilters: "Limpar os filtros",
