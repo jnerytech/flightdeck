@@ -1,6 +1,16 @@
 /** Part of the print table (scripts/demo-shots.ts), in print order. */
+import type { Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
 import { ALFA, type Shot, showToast } from "./shot.ts";
+
+/** #4059: the account menu's What's new item opens the dialog; each print then waits for what it shows. */
+async function openWhatsNew(page: Page): Promise<void> {
+  await page
+    .getByRole("button", { name: /^(Account menu for|Menu da conta de) / })
+    .click({ timeout: 8000 });
+  await page.getByRole("menuitem", { name: /^(What's new|Novidades)/ }).click({ timeout: 8000 });
+  await page.getByRole("dialog").waitFor({ timeout: 8000 });
+}
 
 export function shellShots(ids: DemoIds): Shot[] {
   return [
@@ -15,6 +25,78 @@ export function shellShots(ids: DemoIds): Shot[] {
       async prepare(page) {
         await page.locator('[data-slot="update-card"]').waitFor();
         await showToast(page);
+      },
+    },
+    {
+      // #4059: an offered version with the automatic update off: the banner above the screen.
+      name: "atualizacao-faixa",
+      route: { name: "hub" },
+      query: { update: "9.9.9" },
+      autoUpdateOff: true,
+      async prepare(page) {
+        await page
+          .getByRole("region", { name: /^(App update|Atualização do app)$/ })
+          .waitFor({ timeout: 8000 });
+      },
+    },
+    {
+      // #4059: the check fails: the banner says what went wrong and offers Settings.
+      name: "atualizacao-faixa-erro",
+      route: { name: "hub" },
+      query: { update: "fail" },
+      async prepare(page) {
+        await page
+          .getByRole("alert")
+          .filter({
+            hasText: /^(The update check did not finish|A verificação de atualização não terminou)/,
+          })
+          .waitFor({ timeout: 8000 });
+      },
+    },
+    {
+      // #4059: What's new while the notes are being read.
+      name: "novidades-carregando",
+      route: { name: "hub" },
+      releases: "loading",
+      async prepare(page) {
+        await openWhatsNew(page);
+        await page
+          .getByText(/^(Reading the release notes|Lendo as notas de versão)/)
+          .waitFor({ timeout: 8000 });
+      },
+    },
+    {
+      // #4059: no host can read the notes.
+      name: "novidades-vazio",
+      route: { name: "hub" },
+      releases: "none",
+      async prepare(page) {
+        await openWhatsNew(page);
+        await page
+          .getByText(/^(No connected host can read|Nenhum host conectado consegue ler)/)
+          .waitFor({ timeout: 8000 });
+      },
+    },
+    {
+      // #4059: the host refuses: the reason and Try again.
+      name: "novidades-erro",
+      route: { name: "hub" },
+      releases: "error",
+      async prepare(page) {
+        await openWhatsNew(page);
+        await page
+          .getByRole("button", { name: /^(Try again|Tentar de novo)$/ })
+          .waitFor({ timeout: 8000 });
+      },
+    },
+    {
+      // #4059: the list, one release with no highlights; re-measured narrow, where the footer is a column.
+      name: "novidades",
+      route: { name: "hub" },
+      releases: "list",
+      async prepare(page) {
+        await openWhatsNew(page);
+        await page.getByRole("list", { name: /^(Releases|Versões)$/ }).waitFor({ timeout: 8000 });
       },
     },
     {

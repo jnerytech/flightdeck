@@ -204,6 +204,17 @@ describe("demo-prints", () => {
     await expect(demo.updater.install()).resolves.toBeUndefined();
   });
 
+  test("?update=fail makes the demo's updater fail every check, so the update banner shows its error (#4059)", async () => {
+    const { platform } = memoryPlatform();
+    const demo = demoPlatform(platform, "?route=%7B%7D&update=fail&lang=en");
+    expect(demo.updater.supported).toBe(true);
+    const failure = await demo.updater.check().then(
+      () => "offered",
+      (error: unknown) => (error instanceof Error ? error.message : String(error)),
+    );
+    expect(failure).toBe("The update server did not answer");
+  });
+
   test("?backupFolder=demo gives the page a backup folder that keeps its files across a reload; without it the web build has none", async () => {
     const { platform } = memoryPlatform();
     expect(demoPlatform(platform, "?route=%7B%7D").backupFolder).toBeUndefined();

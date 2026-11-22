@@ -6,6 +6,7 @@
 import type { Page } from "playwright-core";
 import type { Route } from "../../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../../demo-seed.ts";
+import type { ReleasesMode } from "./releases.ts";
 import type { WireRule } from "./wire.ts";
 
 export interface Shot {
@@ -47,7 +48,11 @@ export interface Shot {
   teleportPreview?: boolean;
   /** #3987: the hosts' teleport answers are faked in the page; `refuses`: the source's package is not a manifest, so the move fails (`teleportScript`). */
   teleport?: "answers" | "refuses";
-  /** Demo switches added to the address (`update=<version>`: the update card shows). */
+  /** #4059: the app's automatic update is off, kept in the page's storage before it loads, so an offered version shows in the banner and not in the corner card. */
+  autoUpdateOff?: boolean;
+  /** #4059: the What's new dialog's answer, made in the page: the list, a refusal, never answered, or no host that offers it (`releasesScript`). */
+  releases?: ReleasesMode;
+  /** Demo switches added to the address (`update=<version>`: the update card shows; `update=fail`: every check fails). */
   query?: Record<string, string>;
   /** After the screen loads: open the palette, scroll a long list to its end… */
   prepare?(page: Page): Promise<void>;

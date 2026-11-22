@@ -79,6 +79,8 @@ export const NARROW_SHOTS: readonly string[] = [
   "workflows",
   // #3956: the Installed tab, a long-named plugin with its chips, badge and four buttons in one row.
   "plugins",
+  // #4059: What's new takes the whole window below 640 px; its footer is a plain column.
+  "novidades",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */
