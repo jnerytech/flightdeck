@@ -153,6 +153,14 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 - [fd resources pause-at](flightdeckd-resources-commands.md#fd-resources-pause-at)
 - [fd resources end-orphan](flightdeckd-resources-commands.md#fd-resources-end-orphan)
 
+## flightdeckd commands: task templates and what a task made
+
+[Read the chapter.](flightdeckd-template-commands.md) Its sections:
+
+- [fd template](flightdeckd-template-commands.md#fd-template)
+- [fd task](flightdeckd-template-commands.md#fd-task)
+- [fd harness templates](flightdeckd-template-commands.md#fd-harness-templates)
+
 ## flightdeckd commands: the switches of a host
 
 [Read the chapter.](flightdeckd-host-commands.md) Its sections:
