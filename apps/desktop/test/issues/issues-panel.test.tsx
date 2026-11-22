@@ -140,6 +140,8 @@ const LANGS = [
     cardCreated: "Card created",
     createFor: (n: number) => `Create card for Acme/App#${n}`,
     openFor: (n: number) => `Open card of Acme/App#${n}`,
+    seal: "External author",
+    sealWhy: "Third-party content: automatic approval stays suspended on the card",
     cut: (n: number) => `Showing the first ${n} issues. Narrow the search under Configure issues.`,
   },
   {
@@ -164,6 +166,8 @@ const LANGS = [
     cardCreated: "Card criado",
     createFor: (n: number) => `Criar card de Acme/App#${n}`,
     openFor: (n: number) => `Abrir card de Acme/App#${n}`,
+    seal: "Autor externo",
+    sealWhy: "Conteúdo de terceiro: a aprovação automática fica suspensa no card",
     cut: (n: number) =>
       `Mostrando as primeiras ${n} issues. Restrinja a busca em Configurar issues.`,
   },
@@ -329,6 +333,29 @@ const card = (n: number): Card => ({ id: `c${n}`, issueRef: `github:Acme/App#${n
 const created: Answer = { ok: true, data: { id: "c1" } };
 
 describe.each(LANGS)("issues panel rows ($lang)", (words) => {
+  test("a long title with no space wraps inside its row instead of running past the sheet (#4258)", async () => {
+    const path = `src/${"deeply/".repeat(17)}file.ts`;
+    const long: Answer = { ok: true, data: { issues: [{ ...issue(1), title: path }] } };
+    const h = host({ list: [long] });
+    render(<Switch store={h.store(words.lang)} id="p1" />);
+    await settle(() => rows() === 1);
+    const title = within(panel()).queryByText(path);
+    expect(title).not.toBeNull();
+    expect(title?.className.split(" ")).toContain("break-words");
+  });
+
+  test("the external seal carries its reason as text a screen reader reads with it, in one node (#4258)", async () => {
+    const outside: Answer = { ok: true, data: { issues: [{ ...issue(1), external: true }] } };
+    const h = host({ list: [outside] });
+    render(<Switch store={h.store(words.lang)} id="p1" />);
+    await settle(() => rows() === 1);
+    const seal = within(panel()).queryByText(words.seal);
+    expect(seal).not.toBeNull();
+    expect(seal?.textContent).toContain(words.sealWhy);
+    expect(seal?.getAttribute("aria-describedby")).toBeNull();
+    expect(seal?.querySelector(".sr-only")?.textContent).toContain(words.sealWhy);
+  });
+
   test("each row's create and open buttons name their issue", async () => {
     const h = host({ list: [listed(1, 2)] });
     render(<Switch store={h.store(words.lang)} id="p1" cards={[card(2)]} />);
@@ -428,7 +455,8 @@ const typeIn = async (label: string, value: string) => {
     fireEvent.change(within(panel()).getByLabelText(label), { target: { value } });
   });
 };
-const statusLine = (text: string) => within(panel()).queryByText(text)?.getAttribute("role");
+/** The element that says `text`: an `output` is a live region (role status) by itself. */
+const statusLine = (text: string) => within(panel()).queryByText(text)?.tagName.toLowerCase();
 
 describe.each(LANGS)("issues panel filter ($lang)", (words) => {
   test("a filter that matches nothing names the filter, and Clear filter brings the list and the focus back", async () => {
@@ -468,9 +496,9 @@ describe.each(LANGS)("issues panel filter ($lang)", (words) => {
     const h = host({ list: [listed(1, 2)] });
     show(h.store(words.lang), words.lang, project("p1", { provider: "github" }));
     await settle(() => rows() === 2);
-    expect(statusLine(words.count(2))).toBe("status");
+    expect(statusLine(words.count(2))).toBe("output");
     await typeIn(words.filter, "Issue number 1");
-    expect(statusLine(words.countOf(1, 2))).toBe("status");
+    expect(statusLine(words.countOf(1, 2))).toBe("output");
   });
 });
 
