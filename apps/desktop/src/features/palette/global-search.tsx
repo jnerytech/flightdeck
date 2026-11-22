@@ -197,8 +197,11 @@ export function GlobalSearch(
   const rowCount = stops.filter((stop) => stop.kind === "item").length;
   const typed = query.trim() !== "" && !actionsOf;
   const noMatch = typed && rowCount === 0 && !search;
+  const historyNone =
+    search && search.waiting.length === 0 && search.hits.length === 0 && !actionsOf;
   let status = "";
-  if (noMatch) status = t("searchUi.noMatch", { query: query.trim() });
+  if (historyNone) status = t("searchUi.historyNone", { query: search.query });
+  else if (noMatch) status = t("searchUi.noMatch", { query: query.trim() });
   else if (typed) status = t("searchUi.found", { n: rowCount });
 
   /** Opens an entry and remembers it for the Recent section (an action of the Tab list is not one). */
@@ -306,6 +309,7 @@ export function GlobalSearch(
           aria-controls={listIds.length > 0 ? listIds.join(" ") : undefined}
           aria-activedescendant={activeDomId}
           aria-label={t("searchUi.input")}
+          aria-describedby={`${uid}-hint`}
           placeholder={t("searchUi.placeholder")}
           value={query}
           onKeyDown={onKeyDown}
@@ -314,10 +318,13 @@ export function GlobalSearch(
             back();
           }}
         />
+        <small id={`${uid}-hint`} className="text-muted-foreground text-xs">
+          {t("searchUi.hint")}
+        </small>
       </form>
       <output
         data-slot="palette-status"
-        className={noMatch ? "px-2 py-1 text-muted-foreground text-sm" : "sr-only"}
+        className={noMatch ? "text-muted-foreground text-sm" : "sr-only"}
       >
         {status}
       </output>

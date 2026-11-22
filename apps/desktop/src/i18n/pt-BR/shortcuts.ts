@@ -84,7 +84,9 @@ export const shortcuts = {
   searchUi: {
     label: "Busca global",
     input: "Buscar no histórico",
-    placeholder: "Sessões, cards, projetos, ações… (Enter busca no histórico)",
+    placeholder: "Sessões, cards, projetos, ações…",
+    hint: "Enter busca no histórico.",
+    historyNone: "Nada no histórico corresponde a “{query}”.",
     history: "Histórico",
     searching: "{host}: buscando…",
     silent: "{host}: sem resposta",
