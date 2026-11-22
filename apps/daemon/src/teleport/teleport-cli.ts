@@ -205,9 +205,9 @@ export function runTeleportCli(
           cleanupMs: options.cleanupMs,
           onProgress: progress ? (sent, total) => progress(progressLine(sent, total)) : undefined,
           refuse: (why) => new PackageRefused(why),
-          confirm: async () => {
+          confirm: () => {
             if (manifest) lines.push(...summaryLines(sessionName, target.name, manifest));
-            return args.confirm;
+            return Promise.resolve(args.confirm);
           },
         });
         if (outcome.kind === "cancelled") return failure(1, CANCELLED);

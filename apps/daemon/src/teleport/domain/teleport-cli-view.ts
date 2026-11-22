@@ -14,6 +14,14 @@ function size(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** The secrets line: how many lines look like one and the kinds, never their text. */
+function secretsLine(secrets: TeleportManifest["secrets"]): string {
+  if (secrets.lines === 0) return "secrets: no line looks like one";
+  const verb = secrets.lines === 1 ? "looks" : "look";
+  const kinds = secrets.labels.length > 0 ? ` (${secrets.labels.join(", ")})` : "";
+  return `secrets: ${count(secrets.lines, "line", "lines")} ${verb} like one${kinds}: they move with the session`;
+}
+
 /** What the person decides on: the app's dialog says the same, with the kinds of secrets and never their text. */
 export function summaryLines(
   session: string,
@@ -21,16 +29,15 @@ export function summaryLines(
   manifest: TeleportManifest,
 ): string[] {
   const { git, secrets } = manifest;
+  const partList = manifest.parts.map((p) => `${p.name} ${size(p.size)}`).join(", ");
   return [
     `move ${session} to ${target}`,
     `model ${manifest.model ?? "default"}, permission mode ${manifest.permissionMode}, persona ${manifest.persona ?? "none"}`,
-    `parts: ${manifest.parts.map((p) => `${p.name} ${size(p.size)}`).join(", ")}`,
+    `parts: ${partList}`,
     git
       ? `code: branch ${git.branch ?? "(detached)"}, ${count(git.ahead, "commit", "commits")} ahead of ${git.base}, ${count(git.changed, "file", "files")} changed`
       : "code: none",
-    secrets.lines === 0
-      ? "secrets: no line looks like one"
-      : `secrets: ${count(secrets.lines, "line", "lines")} ${secrets.lines === 1 ? "looks" : "look"} like one${secrets.labels.length > 0 ? ` (${secrets.labels.join(", ")})` : ""}: they move with the session`,
+    secretsLine(secrets),
   ];
 }
 
