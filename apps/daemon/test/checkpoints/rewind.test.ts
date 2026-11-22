@@ -398,4 +398,26 @@ describe("rewind guard (#3825)", () => {
     expect(await reason(plain.rewinder.apply("s1", plain.turn, true, refuse))).toBe("ok");
     expect(read(join(plain.repo, "plain.txt"))).toBe("p\n");
   });
+
+  test("a file the SDK names by its absolute path is judged as the same file (#3825)", async () => {
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const snapshots = new Snapshots({ db: store.db });
+    const { repo } = gitRepo();
+    writeFileSync(join(repo, "x.txt"), "one\n");
+    linkSync(join(repo, "x.txt"), join(repo, "twin.txt"));
+    const taken = await snapshots.take({
+      cwd: repo,
+      claudeSessionId: "s1",
+      kind: "before",
+      turnUuid: "u-1",
+    });
+    const turn = "row" in taken ? taken.row.n : -1;
+    const sessions = {
+      busy: () => false,
+      rewindFiles: async () => ({ canRewind: true, filesChanged: [join(repo, "x.txt")] }),
+    };
+    const rewinder = new Rewinder({ snapshots, sessions, allowedRoots: [dirname(repo)] });
+    expect(await reason(rewinder.apply("s1", turn, true, refuse))).toBe("guard ran");
+  });
 });
