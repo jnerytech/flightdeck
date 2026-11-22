@@ -165,11 +165,11 @@ export function BackupPanel(props: Readonly<{ store: AppStore }>) {
             >
               <Form
                 variant="page"
-                onSubmit={() =>
-                  preview.conflicting.length > 0 && choice === "overwrite"
-                    ? setReplacing(true)
-                    : applying.run(doApply)
-                }
+                onSubmit={() => {
+                  if (applying.busy) return;
+                  if (preview.conflicting.length > 0 && choice === "overwrite") setReplacing(true);
+                  else applying.run(doApply);
+                }}
               >
                 <Stack gap={1}>
                   <p>{t("vault.backup.added", { n: preview.added.length })}</p>
