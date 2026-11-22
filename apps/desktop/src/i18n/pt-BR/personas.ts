@@ -40,6 +40,7 @@ export const personas = {
     loadFailed: "Não foi possível ler as personas deste host.",
     retry: "Tentar de novo",
     project: "Projeto",
+    projectLocked: "Termine ou cancele o editor aberto para mudar o projeto.",
     hostOnly: "Do host",
     globals: "Globais (deste app)",
     origin: {
@@ -53,6 +54,8 @@ export const personas = {
     edit: "Editar",
     editFor: "Editar {name}",
     editor: {
+      discardMessage: "Descartar o que você escreveu? Isso se perde.",
+      discardConfirm: "Descartar",
       id: "Id",
       name: "Nome",
       description: "Descrição",

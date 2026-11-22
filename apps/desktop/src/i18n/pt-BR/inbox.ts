@@ -42,6 +42,8 @@ export const inbox = {
     asks: "Pergunta: {question}",
     keys: "A aprova · N nega",
     keysHigh: "Segure o botão para aprovar · N nega",
+    keysCut: "Mostrado em parte: abra a linha para ver o comando inteiro · N nega",
+    cut: "Mostrado em parte: abra para ver o comando inteiro.",
     runs: "Quer executar: {command}",
     edits: "Quer alterar {file}",
     uses: "Quer usar {tool}",

@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/shared/feedback/index.ts";
@@ -232,6 +233,29 @@ export function CheckField(
       />
       {props.children}
     </label>
+  );
+}
+
+/** A switch with its label beside it (a setting that is on or off). */
+export function SwitchField(
+  props: Readonly<{
+    checked: boolean;
+    onChange(checked: boolean): void;
+    children: ReactNode;
+  }>,
+) {
+  const id = useId();
+  return (
+    <span className="flex items-center gap-2 text-sm">
+      <Switch
+        id={id}
+        // 24 px tall by itself: axe's target-size rule asks that of a target with a neighbor close by.
+        className="data-[size=default]:h-6"
+        checked={props.checked}
+        onCheckedChange={props.onChange}
+      />
+      <label htmlFor={id}>{props.children}</label>
+    </span>
   );
 }
 

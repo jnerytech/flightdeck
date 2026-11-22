@@ -264,4 +264,11 @@ export const ISSUES: readonly string[] = [
   ALTER TABLE session_messages ADD COLUMN reason_key TEXT;
   ALTER TABLE session_messages ADD COLUMN reason_params TEXT;
   `,
+  // Issue #4185: a firing's cause and detail as a code and its values (JSON), beside the English text, so the app can translate them.
+  `
+  ALTER TABLE automation_runs ADD COLUMN cause_code TEXT;
+  ALTER TABLE automation_runs ADD COLUMN cause_params TEXT;
+  ALTER TABLE automation_runs ADD COLUMN detail_code TEXT;
+  ALTER TABLE automation_runs ADD COLUMN detail_params TEXT;
+  `,
 ];

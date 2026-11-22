@@ -221,7 +221,8 @@ export function CardRunForm(
             </ActionButton>
           )}
           {props.arenaStart}
-          <DropdownMenu>
+          {/* Not modal (#1004, #4173): a modal menu marks the page aria-hidden while its links stay focusable (axe). */}
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" aria-label={t("board.cardActions", { title: card.title })}>
                 <MoreHorizontal aria-hidden="true" />

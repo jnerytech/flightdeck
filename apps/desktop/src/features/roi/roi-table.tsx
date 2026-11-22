@@ -1,6 +1,5 @@
-import type { RoiSummaryResult } from "@flightdeck/protocol";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
@@ -10,7 +9,9 @@ import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { LoadingState, WideTable } from "@/shared/layout/index.ts";
 import { usd } from "../costs/index.ts";
 import { roiMultiple } from "./domain/roi.ts";
+import { answeredHosts, failedHosts, type RoiAnswer } from "./domain/roi-answers.ts";
 import { csvOf, type RoiColumn, rowsFrom, sortRows, totalsOf } from "./domain/roi-table.ts";
+import { RoiReadFailed } from "./roi-read-failed.tsx";
 
 const COLUMNS: RoiColumn[] = [
   "project",
@@ -64,32 +65,35 @@ export function RoiTable(
   // The money is the app's own settings: a saved rate shows at once.
   useStoreSlice(store, ["roiRevision"]);
   // Null until a host answers, so a slow read is never shown as "no project".
-  const [answers, setAnswers] = useState<Array<{
-    hostId: string;
-    result: RoiSummaryResult;
-  }> | null>(null);
+  const [answers, setAnswers] = useState<RoiAnswer[] | null>(null);
   const [sort, setSort] = useState<{ column: RoiColumn; direction: "asc" | "desc" } | null>(null);
   const hostKey = props.hostIds.join("|");
 
-  useEffect(() => {
-    let live = true;
-    const load = () =>
-      void store.roiFigures
-        .summaries(from, to === store.today() ? store.roiFigures.today() : to)
-        .then((all) => {
-          if (live) setAnswers(all.filter((a) => hostKey.split("|").includes(a.hostId)));
-        });
-    load();
-    const timer = setInterval(load, REFRESH_MS);
-    return () => {
-      live = false;
-      clearInterval(timer);
-    };
+  // The read asked last is the one that counts: an earlier period answering late is dropped.
+  const latest = useRef(0);
+  const load = useCallback(async () => {
+    const mine = ++latest.current;
+    const all = await store.roiFigures.summaries(
+      from,
+      to === store.today() ? store.roiFigures.today() : to,
+    );
+    if (mine === latest.current) {
+      setAnswers(all.filter((a) => hostKey.split("|").includes(a.hostId)));
+    }
   }, [store, from, to, hostKey]);
+  useEffect(() => {
+    void load();
+    const timer = setInterval(() => void load(), REFRESH_MS);
+    return () => {
+      clearInterval(timer);
+      latest.current++;
+    };
+  }, [load]);
+  const failed = failedHosts(answers ?? []);
 
   const scope = store.clientScope.get();
   const rows = rowsFrom({
-    summaries: answers ?? [],
+    summaries: answeredHosts(answers ?? []),
     inScope: (key) => scope.includes(selection, key),
     moneyOf: (key) => store.roiFigures.moneyOf(key),
     nameOf: (key, name) => projectName(key) || name,
@@ -135,7 +139,10 @@ export function RoiTable(
         <InlineNotice tone="info">{t("roiUi.table.saved", { file: saved })}</InlineNotice>
       )}
       {answers === null && <LoadingState label={t("roiUi.loading")} />}
-      {answers !== null && rows.length === 0 && (
+      {failed.length > 0 && (
+        <RoiReadFailed store={store} hostIds={failed} onRetry={() => void load()} />
+      )}
+      {answers !== null && rows.length === 0 && failed.length === 0 && (
         <p className="text-muted-foreground text-sm">{t("roiUi.table.empty")}</p>
       )}
       {rows.length > 0 && (

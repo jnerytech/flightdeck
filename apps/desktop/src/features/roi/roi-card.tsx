@@ -11,8 +11,11 @@ import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { SwitchField } from "@/shared/layout/index.ts";
 import { periodRange, usd } from "../costs/index.ts";
 import { compare, EMPTY_PERIOD, figures, headline, mergePeriods } from "./domain/roi.ts";
+import { answeredHosts, failedHosts } from "./domain/roi-answers.ts";
+import { RoiReadFailed } from "./roi-read-failed.tsx";
 
 /** The signals of the same project on several hosts: counts add up, the first refusal is told. */
 function mergeSignals(list: Array<RoiSignalValues | undefined>): RoiSignalValues {
@@ -55,6 +58,7 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
   };
   const [periods, setPeriods] = useState<{ current: RoiPeriod; previous: RoiPeriod } | null>(null);
   const [answered, setAnswered] = useState(0);
+  const [failed, setFailed] = useState<string[]>([]);
   const [signals, setSignals] = useState<RoiSignalValues>({});
   const [on, setOn] = useState(project.roiSignals);
   const [how, setHow] = useState(false);
@@ -75,7 +79,9 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
 
   const load = useCallback(async () => {
     const { from, to } = periodRange(choice, store.roiFigures.today());
-    const answers = await store.roiFigures.summaries(from, to);
+    const all = await store.roiFigures.summaries(from, to);
+    const answers = answeredHosts(all);
+    setFailed(failedHosts(all));
     const found = answers.flatMap(({ result }) =>
       result.projects.filter((p) => p.projectKey === key),
     );
@@ -106,7 +112,11 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
   if (answered === 0) {
     return (
       <section aria-label={t("roiUi.title")} className="rounded-lg border bg-card p-4 text-sm">
-        {t("roiUi.noHost")}
+        {failed.length > 0 ? (
+          <RoiReadFailed store={store} hostIds={failed} onRetry={() => void load()} />
+        ) : (
+          t("roiUi.noHost")
+        )}
       </section>
     );
   }
@@ -325,22 +335,18 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
                 aria-label={t("roiUi.signals.title")}
                 className="m-0 flex min-w-0 flex-col gap-1 border-0 p-0 text-xs"
               >
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={on.commits}
-                    onChange={(e) => void setSignal("commits", e.target.checked)}
-                  />
+                <SwitchField
+                  checked={on.commits}
+                  onChange={(next) => void setSignal("commits", next)}
+                >
                   {t("roiUi.signals.commits")}
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={on.issues}
-                    onChange={(e) => void setSignal("issues", e.target.checked)}
-                  />
+                </SwitchField>
+                <SwitchField
+                  checked={on.issues}
+                  onChange={(next) => void setSignal("issues", next)}
+                >
                   {t("roiUi.signals.issues")}
-                </label>
+                </SwitchField>
               </fieldset>
             </div>
           </details>

@@ -199,6 +199,36 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
     expect(within(row).queryByText(why) === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
+  test.each([
+    ["en", "Approve", "Shown in part: open it to see the whole command."],
+    ["pt-BR", "Aprovar", "Mostrado em parte: abra para ver o comando inteiro."],
+  ] as const)(
+    "a command shown in part is not approved from the row, only denied or opened (%s, #4199)",
+    async (lang, approve, hint) => {
+      const long = request({ input: { command: `npm test ${"x".repeat(80)}` } });
+      const { answered } = await setup({ lang, pending: [long] });
+      await open();
+      const dialog = within(screen.getByRole("dialog"));
+      expect(panelButton(approve) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+      expect(panelButton(lang === "en" ? "Deny" : "Negar") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+      expect(dialog.queryByText(hint) === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+      await act(async () => {
+        fireEvent.keyDown(panelButton(/Backend tests/) as HTMLElement, { key: "a" });
+      });
+      await stays(() => answered.length === 0);
+      await act(async () => {
+        fireEvent.keyDown(panelButton(/Backend tests/) as HTMLElement, { key: "n" });
+      });
+      expect(answered.map(([, , decision]) => decision)).toEqual(["deny"]);
+    },
+  );
+
+  test("a command of two lines is not approved from the row either (#4199)", async () => {
+    await setup({ pending: [request({ input: { command: "npm test\nrm -rf build" } })] });
+    await open();
+    expect(panelButton("Approve") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+  });
+
   test("a question and a plan are not answered from the row", async () => {
     await setup({
       pending: [

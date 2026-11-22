@@ -25,6 +25,12 @@ type AnswerResult = { ok: true } | { ok: false; reason: string };
 
 type PermissionResponse = ReturnType<typeof permissionResponse> & { proof?: ApprovalProof };
 
+/** What the proof step came to: the answer to send, the person's decline (silent), or a failure. */
+type Signed =
+  | { kind: "send"; response: PermissionResponse }
+  | { kind: "declined" }
+  | { kind: "failed"; reason: string };
+
 /** What answering a request reads and asks through the app's store. */
 export interface PermissionsCore {
   /** The requests waiting for an answer, worded in the current language. */
@@ -123,9 +129,10 @@ export class PermissionsSlice {
     const vaultAnswer = decision === "allow" ? ({ scope: "once", via: "app" } as const) : null;
     let result: AnswerResult = { ok: true };
     if (!this.core.settleVault(requestId, vaultAnswer)) {
-      const response = await this.signed(hostId, requestId, decision, answer);
+      const signed = await this.signed(hostId, requestId, decision, answer);
+      if (signed.kind === "failed") result = { ok: false, reason: signed.reason };
       try {
-        if (response) await this.core.sendOn(hostId, response);
+        if (signed.kind === "send") await this.core.sendOn(hostId, signed.response);
       } catch (error) {
         this.core.fail(error);
         result = { ok: false, reason: error instanceof Error ? error.message : String(error) };
@@ -139,25 +146,25 @@ export class PermissionsSlice {
   async respond(requestId: string, decision: "allow" | "deny", answer: Answer = {}): Promise<void> {
     const hostId = this.core.selectedHostId();
     if (hostId && this.unheld(hostId, requestId, decision, answer)) return;
-    const response = hostId
+    const signed: Signed = hostId
       ? await this.signed(hostId, requestId, decision, answer)
-      : permissionResponse(requestId, decision, answer);
-    if (response) await this.core.sendSelected(response);
+      : { kind: "send", response: permissionResponse(requestId, decision, answer) };
+    if (signed.kind === "send") await this.core.sendSelected(signed.response);
   }
 
   /**
-   * The request of an answer with this device's proof when the host needs one (#3439). Null when
-   * nothing is to be sent: the person declined the system's dialog (silent), or the proof could not
-   * be made (the banner says why).
+   * The request of an answer with this device's proof when the host needs one (#3439). Nothing is
+   * sent when the person declined the system's dialog (silent), or the proof could not be made: the
+   * banner says why, and the reason is returned so a row can say it too (#4201).
    */
   private async signed(
     hostId: string,
     requestId: string,
     decision: "allow" | "deny",
     answer: Answer,
-  ): Promise<PermissionResponse | null> {
+  ): Promise<Signed> {
     const response = permissionResponse(requestId, decision, answer);
-    if (decision !== "allow" || !this.core.prove) return response;
+    if (decision !== "allow" || !this.core.prove) return { kind: "send", response };
     try {
       const { updatedPermissions, updatedInput, message } = response;
       const outcome = await this.core.prove(
@@ -165,11 +172,14 @@ export class PermissionsSlice {
         { requestId, decision, updatedPermissions, updatedInput, message },
         this.riskOf(hostId, requestId),
       );
-      if (outcome.kind === "declined") return null;
-      return outcome.kind === "proof" ? { ...response, proof: outcome.proof } : response;
+      if (outcome.kind === "declined") return { kind: "declined" };
+      return {
+        kind: "send",
+        response: outcome.kind === "proof" ? { ...response, proof: outcome.proof } : response,
+      };
     } catch (error) {
       this.core.fail(error);
-      return null;
+      return { kind: "failed", reason: error instanceof Error ? error.message : String(error) };
     }
   }
 

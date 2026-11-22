@@ -1,3 +1,5 @@
+import { automationRefusal } from "./automation-refusals.ts";
+
 /** What a refusal of the daemon, of the assistant and of the snippets says, one entry per code. */
 export const refusals = {
   daemonRefusal: {
@@ -266,20 +268,7 @@ export const refusals = {
     action_secret_refused: "O app recusou o segredo {secret}.",
     action_secret_expired: "O pedido do segredo {secret} venceu sem resposta e foi negado.",
     action_ssh_env_name: "{name} não é um nome de variável válido para uma ação ssh.",
-    cron_fields: "Uma expressão cron tem 5 campos: minuto, hora, dia do mês, mês e dia da semana.",
-    cron_step: "O passo do campo {field} do cron não é válido: {part}.",
-    cron_value: "O valor do campo {field} do cron não é válido: {part}.",
-    cron_range: "O campo {field} do cron aceita valores de {min} a {max}: {part}.",
-    automation_tz_unknown:
-      "O fuso horário {tz} não é conhecido. Use um nome como America/Sao_Paulo.",
-    automation_send_needs_card:
-      "Mandar para um card pede um gatilho que tenha card: comentário de PR ou falha de CI.",
-    automation_create_needs_label: "Criar um card pede o gatilho de rótulo de issue.",
-    automation_name_required: "A automação precisa de um nome.",
-    automation_max_runs: "O limite por dia é um número inteiro de 1 em diante.",
-    automation_not_found: "A automação {id} não existe.",
-    automation_remove_confirm: "Remover uma automação pede a sua confirmação.",
-    automation_enable_confirm: "Ligar uma automação pede a sua confirmação.",
+    ...automationRefusal,
     workflow_changed_review:
       "O workflow {name} mudou. Revise os comandos de novo antes de confiar.",
     workflow_invalid: "O workflow {name} tem erros. Corrija antes de usar.",

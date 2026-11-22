@@ -70,6 +70,10 @@ describe.each([
       retry: "Try again",
       empty: "No persona.",
       project: "Project",
+      add: "New persona",
+      edit: "Edit QA",
+      cancel: "Cancel",
+      locked: "Finish or cancel the open editor to change the project.",
     },
   ],
   [
@@ -80,6 +84,10 @@ describe.each([
       retry: "Tentar de novo",
       empty: "Nenhuma persona.",
       project: "Projeto",
+      add: "Nova persona",
+      edit: "Editar QA",
+      cancel: "Cancelar",
+      locked: "Termine ou cancele o editor aberto para mudar o projeto.",
     },
   ],
 ] as const)("personas list (%s)", (language, words) => {
@@ -154,5 +162,19 @@ describe.each([
     await settle(() => hasText("QA"));
     expect(alerted(words.failed)).toBe(false);
     expect(page.count("personas.list")).toBe(2);
+  });
+
+  test("while an editor is open the project cannot change under it, and says why", async () => {
+    mount(() => ({ personas: [qa] }), language);
+    await settle(() => hasText("QA"));
+    const select = () => screen.getByLabelText(words.project) as HTMLSelectElement;
+    expect([select().disabled, hasText(words.locked)]).toEqual([false, false]);
+    await press(words.add);
+    expect([select().disabled, hasText(words.locked)]).toEqual([true, true]);
+    await press(words.cancel);
+    expect([select().disabled, hasText(words.locked)]).toEqual([false, false]);
+    // The editor of a persona already in the list is the one that would lose its text.
+    await press(words.edit);
+    expect([select().disabled, hasText(words.locked)]).toEqual([true, true]);
   });
 });

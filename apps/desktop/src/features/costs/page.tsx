@@ -9,7 +9,7 @@ import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
-import { EmptyState, LoadingState, Page, Panel } from "@/shared/layout/index.ts";
+import { EmptyState, ErrorState, LoadingState, Page, Panel } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { CostsQuotaLead } from "./CostsQuotaLead.tsx";
@@ -103,7 +103,7 @@ export const CostsPage = memo(function CostsPage(props: {
   // The filters offer every project and model of the period: with no filter set, that is the
   // summary itself, and it is not asked for twice.
   const unfiltered = Object.keys(filters).length === 0 && !projectKey;
-  const { summary, all, sessionHost, failed } = useCostsLoad(store, {
+  const { summary, all, sessionHost, failed, pending, reload } = useCostsLoad(store, {
     hostIds,
     filter,
     days,
@@ -142,8 +142,13 @@ export const CostsPage = memo(function CostsPage(props: {
       ? costByClient(summary, scope, state.clientList, t("clients.unassigned"))
       : [];
 
+  // Every asked host refused: the empty summary is not "no costs", so say so, with a retry.
+  const unanswered = hostIds.length > 0 && !pending && failed.length >= hostIds.length;
   const loading = useMinLoading(hostId !== "" && summary === null);
-  const empty = summary !== null && summary.totals.costUsd === 0 && summary.byDay.length === 0;
+  // The figures on screen answer an older question: they stay, marked as being refreshed.
+  const refreshing = summary !== null && pending;
+  const empty =
+    !unanswered && summary !== null && summary.totals.costUsd === 0 && summary.byDay.length === 0;
   return (
     <Page
       title={t("costsUi.title")}
@@ -224,6 +229,16 @@ export const CostsPage = memo(function CostsPage(props: {
           />
         )}
         {loading && <LoadingState label={t("costsUi.loading")} shape="tiles" />}
+        {unanswered && (
+          <ErrorState
+            message={t("costsUi.failed")}
+            retryLabel={t("costsUi.retry")}
+            onRetry={reload}
+          />
+        )}
+        {refreshing && (
+          <output className="text-muted-foreground text-xs">{t("costsUi.refreshing")}</output>
+        )}
         {empty && projectKey && (
           <InlineNotice tone="info">
             <span>{t("scope.projectEmpty", { project: projectName(projectKey) })} </span>

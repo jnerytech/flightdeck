@@ -79,17 +79,19 @@ describe("form-enter: dialogs are forms", () => {
   test("Nova automação: Enter advances a step until the last, and then saves", async () => {
     const s = store();
     const asked: string[] = [];
-    s.hostCommand = (async (_host: string, type: string) => {
+    s.hostRequest = (async (_host: string, type: string) => {
       asked.push(type);
-      return null;
-    }) as typeof s.hostCommand;
+      return { ok: true, data: null };
+    }) as typeof s.hostRequest;
     render(
       <TContext.Provider value={s.i18n.t}>
         <AutomationForm
           store={s}
           hostId="h"
           projectId="p"
-          workflows={[]}
+          workflows={[
+            { name: "feature", hash: "h", trusted: true, checks: [], errors: [], inputs: [] },
+          ]}
           initial={null}
           onClose={() => {}}
           onSaved={() => {}}

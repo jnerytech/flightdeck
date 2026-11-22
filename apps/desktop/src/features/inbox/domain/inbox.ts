@@ -209,19 +209,30 @@ export function unreadRows(list: InboxEntry[], now: Date): number {
 const SHORT = 70;
 const cut = (text: string) => (text.length > SHORT ? `${text.slice(0, SHORT - 1)}…` : text);
 
+const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+
+/** A command's text, trimmed: what the row draws is its first line, cut at `SHORT`. */
+const commandOf = (toolName: string, input: Record<string, unknown> | undefined) =>
+  toolName === "Bash" ? text(input?.command) : "";
+
+/** Whether the row shows only part of the command: it has a second line, or is longer than `SHORT`. */
+export function commandCut(toolName: string, input: Record<string, unknown> | undefined): boolean {
+  const command = commandOf(toolName, input);
+  return command.includes("\n") || command.length > SHORT;
+}
+
 /** A request in plain words, from the tool and its input. */
 export function describeRequest(
   toolName: string,
   input: Record<string, unknown> | undefined,
   t: T,
 ): string {
-  const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
   if (toolName === "AskUserQuestion") {
     const first = Array.isArray(input?.questions) ? input.questions[0] : undefined;
     const question = text((first as { question?: unknown } | undefined)?.question);
     if (question) return t("inbox.asks", { question: cut(question) });
   }
-  const command = text(input?.command).split("\n")[0] ?? "";
+  const command = commandOf(toolName, input).split("\n")[0] ?? "";
   if (toolName === "Bash" && command) return t("inbox.runs", { command: cut(command) });
   const file = text(input?.file_path ?? input?.notebook_path);
   if (["Edit", "MultiEdit", "Write", "NotebookEdit"].includes(toolName) && file) {
