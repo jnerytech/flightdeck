@@ -179,6 +179,8 @@ function seedStorage(seed: StorageSeed): void {
       // configuracoes-backup-agenda (#1328) and the configuracoes-agenda-* prints (#4001) turn the schedule on and pick the demo folder: not for the next.
       "flightdeck.backupSchedule",
       "flightdeck.demoBackupFolder",
+      // The Restore a backup prints seed the personas and the restore writes them (#4001): not for the next.
+      "flightdeck.personas",
       // The Teleport prints turn the preview on (#3987): not for the next print.
       "flightdeck.teleportPreview",
     ]) {
