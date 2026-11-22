@@ -132,6 +132,36 @@ describe("i18n", () => {
     expect(formatTime("2026-11-20T00:00:00Z", "pt-BR", "UTC")).toBe("00:00");
   });
 
+  test("a browser that counts the English hours from 0 still prints midnight as 12:00 AM (#3981)", () => {
+    // Chrome 157 on the CI runner printed "00:00 AM" although the hour cycle was pinned to h12
+    // (#3845): the text is built from the parts, so the engine's pick of 0 never reaches a person.
+    const Real = Intl.DateTimeFormat;
+    const parts = (hour: string, period: string): Intl.DateTimeFormatPart[] => [
+      { type: "hour", value: hour },
+      { type: "literal", value: ":" },
+      { type: "minute", value: "00" },
+      { type: "literal", value: " " },
+      { type: "dayPeriod", value: period },
+    ];
+    const zero = (hour: string, period: string) =>
+      new Proxy(Real, {
+        construct: () =>
+          ({
+            format: () => `${hour}:00 ${period}`,
+            formatToParts: () => parts(hour, period),
+          }) as unknown as Intl.DateTimeFormat,
+      });
+    try {
+      Intl.DateTimeFormat = zero("00", "AM");
+      expect(formatTime("2026-11-20T00:00:00Z", "en", "Pacific/Auckland")).toBe("12:00 AM");
+      expect(formatDateTime("2026-11-20T00:00:00Z", "en", "Pacific/Auckland")).toBe("12:00 AM");
+      Intl.DateTimeFormat = zero("01", "PM");
+      expect(formatTime("2026-11-20T13:00:00Z", "en", "Pacific/Fiji")).toBe("01:00 PM");
+    } finally {
+      Intl.DateTimeFormat = Real;
+    }
+  });
+
   test("datas e horas locais, números, dólares e durações legíveis", () => {
     const iso = "2026-10-29T15:04:00.000Z";
     expect(formatTime(iso, "pt-BR", "America/Sao_Paulo")).toBe("12:04");
