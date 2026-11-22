@@ -72,6 +72,6 @@ switch between them is locked. It prints `mode simple, locked yes`; `--json` pri
 
 ## Flags and exit codes
 
-`--host <name>` and `--json` work with every verb but `fd ui set`, which has no `--host`, and `--config <file>` as for the other commands. `--confirm`
+`--json` works with every verb, `--host <name>` with every one but `fd ui set`, which asks this machine's daemon only, and `--config <file>` as for the other commands. `--confirm`
 goes only with `bypass on` and `ui set`. A connection that drops while a verb is in flight exits `2` and says the setting may or
 may not have changed: every verb here is safe to run again. Exit codes: `0` done, `1` refused, `2` no daemon.

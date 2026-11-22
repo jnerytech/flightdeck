@@ -56,7 +56,9 @@ describe("flightdeckd ui set: the words and flags (issue #3781)", () => {
     expect(refusedWith(["sessions", "--unlock"])).toContain(
       "--unlock: this flag only applies to flightdeckd ui set",
     );
-    expect(refusedWith(["ui", "set", "--lock", "--confirm", "--host", "pi"])).toContain("--host");
+    expect(refusedWith(["ui", "set", "--lock", "--confirm", "--host", "pi"])).toContain(
+      "--host: this flag only applies to flightdeckd",
+    );
   });
 
   test("`file search --mode` keeps reading the file's mode", () => {

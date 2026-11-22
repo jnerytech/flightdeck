@@ -72,6 +72,6 @@ dois está travada. Imprime `mode simple, locked yes`; `--json` imprime `{"mode"
 
 ## Flags e códigos de saída
 
-`--host <nome>` e `--json` valem para todos os verbos menos `fd ui set`, que não tem `--host`, e `--config <arquivo>` como nos outros comandos. `--confirm`
+`--json` vale para todos os verbos, `--host <nome>` para todos menos `fd ui set`, que pergunta só ao daemon desta máquina, e `--config <arquivo>` como nos outros comandos. `--confirm`
 vale só com `bypass on` e `ui set`. Uma conexão que cai com um verbo em andamento sai com `2` e diz que a configuração pode ou
 não ter mudado: todo verbo daqui é seguro de repetir. Códigos de saída: `0` feito, `1` recusado, `2` sem daemon.
