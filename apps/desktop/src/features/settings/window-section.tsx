@@ -51,8 +51,8 @@ export function WindowSection(
         />
         {t("setup.restore")}
       </label>
-      <fieldset className="grid gap-2">
-        <legend className="mb-2 text-muted-foreground text-xs">{t("prefs.previewGroup")}</legend>
+      <fieldset>
+        <legend className="setting-hint">{t("prefs.previewGroup")}</legend>
         <label className={check}>
           <input
             type="checkbox"
