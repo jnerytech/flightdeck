@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
@@ -23,14 +23,21 @@ export function RoiPeople(props: Readonly<{ store: AppStore }>) {
   // The people are the app's own settings: a person added or removed shows at once.
   useStoreSlice(store, ["roiRevision"]);
   const [answers, setAnswers] = useState<RoiAnswer[] | null>(null);
+  // The read asked last is the one that counts; one that answers after the screen left is dropped.
+  const latest = useRef(0);
   const load = useCallback(async () => {
+    const mine = ++latest.current;
     const { from, to } = periodRange("month", store.roiFigures.today());
-    setAnswers(await store.roiFigures.summaries(from, to));
+    const all = await store.roiFigures.summaries(from, to);
+    if (mine === latest.current) setAnswers(all);
   }, [store]);
   useEffect(() => {
     void load();
     const timer = setInterval(() => void load(), REFRESH_MS);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      latest.current++;
+    };
   }, [load]);
   const failed = failedHosts(answers ?? []);
   // When no asked host answered, a table of zeros would read as "nobody delivered".

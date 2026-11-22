@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
@@ -69,17 +69,25 @@ export function RoiTable(
   const [sort, setSort] = useState<{ column: RoiColumn; direction: "asc" | "desc" } | null>(null);
   const hostKey = props.hostIds.join("|");
 
+  // The read asked last is the one that counts: an earlier period answering late is dropped.
+  const latest = useRef(0);
   const load = useCallback(async () => {
+    const mine = ++latest.current;
     const all = await store.roiFigures.summaries(
       from,
       to === store.today() ? store.roiFigures.today() : to,
     );
-    setAnswers(all.filter((a) => hostKey.split("|").includes(a.hostId)));
+    if (mine === latest.current) {
+      setAnswers(all.filter((a) => hostKey.split("|").includes(a.hostId)));
+    }
   }, [store, from, to, hostKey]);
   useEffect(() => {
     void load();
     const timer = setInterval(() => void load(), REFRESH_MS);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      latest.current++;
+    };
   }, [load]);
   const failed = failedHosts(answers ?? []);
 
