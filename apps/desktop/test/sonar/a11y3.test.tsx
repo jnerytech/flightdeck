@@ -106,7 +106,7 @@ describe("sonar-a11y3: the model picker keeps its roles and names", () => {
   test("a combobox drives a named listbox of options, grouped by name", () => {
     picker(OPTIONS);
     const box = screen.getByRole("combobox", { name: "Quick model" });
-    const list = screen.getByRole("listbox", { name: "Quick model" });
+    const list = screen.getByRole("listbox", { name: "Quick model: models" });
     expect(box.getAttribute("aria-controls")).toBe(list.id);
     expect(within(list).getAllByRole("option")).toHaveLength(3);
     const haiku = screen.getByRole("group", { name: "Haiku" });

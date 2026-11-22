@@ -86,7 +86,7 @@ describe.each(["en", "pt-BR"] as const)("agent files, new file (%s)", (lang) => 
     const { w, field } = await mount(lang, "agent");
     expect(field?.closest("form")).not.toBeNull();
     expect(createButton(w)?.type).toBe("submit");
-    expect(createButton(w)?.closest("form") === field?.closest("form")).toBe(true);
+    expect(createButton(w)?.closest("form") === field?.closest("form")).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
     await typeInto(field as HTMLInputElement, "revisor");
     await submit(field as HTMLInputElement);
     const name = screen.queryByLabelText(w.name) as HTMLInputElement | null;

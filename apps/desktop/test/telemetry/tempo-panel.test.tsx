@@ -136,7 +136,7 @@ for (const w of LANGS) {
       try {
         show(host([{ prompts: [prompt([tool(5, "Read"), tool(5, "Read")])] }]), w.lang);
         await settle(() => screen.queryAllByText("Read", { exact: false }).length > 0);
-        expect(screen.queryAllByText("Read", { exact: false }).length).toBe(2);
+        expect(screen.queryAllByText("Read", { exact: false })).toHaveLength(2);
         const warned = errors.mock.calls.some((call) => String(call[0]).includes("same key"));
         expect(warned).toBe(false);
       } finally {

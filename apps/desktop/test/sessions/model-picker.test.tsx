@@ -68,7 +68,8 @@ describe("model-picker: one list of models for every provider", () => {
   test("a default row first, then the models grouped, the chosen one marked", () => {
     const { view, rerender } = setup();
     const names = screen.getAllByRole("option").map((o) => o.textContent);
-    expect(names[0]).toBe("Provider default");
+    // The chosen row ends with its check mark (#4165).
+    expect(names[0]).toBe("Provider default ✓");
     expect(names.slice(1).map((n) => n?.split(" ")[0])).toEqual(["Haiku", "Sonnet", "Llama"]);
     expect(screen.getAllByRole("group").map((g) => g.getAttribute("aria-label"))).toEqual([
       "Haiku",
