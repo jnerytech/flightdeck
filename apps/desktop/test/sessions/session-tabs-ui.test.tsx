@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { waiter } from "../wait.ts";
@@ -162,6 +164,35 @@ describe("session-tabs-ui: the views of a session page (issue #107)", () => {
     expect(selected()).toEqual(["Mensagens"]);
     await press(tabs()[5] ?? document.body, { key: "Home" });
     expect(selected()).toEqual(["Conversa"]);
+  });
+
+  // #3821: the row of views scrolls sideways in a narrow pane, so the view that opens (a click, the
+  // arrow keys, Alt+number, the palette) is brought into view, and an edge fade shows tabs are hidden.
+  test("the view that opens is scrolled into view along the row (#3821)", async () => {
+    const seen: Array<{ text: string | null; inline: string | undefined }> = [];
+    const real = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = function (this: HTMLElement, arg?: unknown) {
+      seen.push({ text: this.textContent, inline: (arg as ScrollIntoViewOptions)?.inline });
+    };
+    try {
+      mount();
+      seen.length = 0;
+      await clickTab(4);
+      expect(seen.at(-1)).toEqual({ text: "Rastro", inline: "nearest" });
+      tabs()[4]?.focus();
+      await press(tabs()[4] ?? document.body, { key: "ArrowRight" });
+      expect(seen.at(-1)).toEqual({ text: "Mensagens", inline: "nearest" });
+    } finally {
+      HTMLElement.prototype.scrollIntoView = real;
+    }
+  });
+
+  test("the row of views fades at an edge that hides tabs, like the wide tables (#3821)", () => {
+    const css = readFileSync(join(import.meta.dir, "../../src/styles/session.css"), "utf8");
+    const start = css.indexOf("@utility session-views {");
+    const rule = css.slice(start, css.indexOf("\n}\n", start));
+    expect(rule.includes("overflow-x: auto;")).toBe(true);
+    expect(rule.includes("background-attachment: local, local, scroll, scroll;")).toBe(true);
   });
 
   test("a key the tab bar does not use is left alone: no view changes and the browser keeps it", async () => {
