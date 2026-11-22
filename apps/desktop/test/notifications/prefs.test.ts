@@ -411,4 +411,14 @@ describe("unlistedMutes: the saved mutes the lists cannot show (issue #4007)", (
       ),
     ).toEqual({ hosts: ["gone"], projects: ["h1/p-old", "gone/p1", "h2/p9"] });
   });
+
+  test("a listed host whose projects are not loaded yet says nothing about its project mutes", () => {
+    expect(
+      unlistedMutes(
+        { mutedHosts: [], mutedProjects: ["h3/p1", "gone/p1"] },
+        [...hosts, { id: "h3" }],
+        projects,
+      ),
+    ).toEqual({ hosts: [], projects: ["gone/p1"] });
+  });
 });
