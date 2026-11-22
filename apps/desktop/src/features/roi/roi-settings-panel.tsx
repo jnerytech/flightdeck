@@ -124,7 +124,7 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
           {message}
         </p>
       )}
-      <output className="text-muted-foreground text-sm empty:hidden">{said ?? ""}</output>
+      <output className="text-muted-foreground text-sm empty:sr-only">{said ?? ""}</output>
       <Form
         variant="inline"
         aria-label={t("roiUi.settingsPanel.saveRate")}
@@ -235,7 +235,7 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
               }}
               className="h-8 w-40"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={edited(setName)}
             />
           )}
         </Field>
@@ -269,7 +269,7 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
                 inputMode="numeric"
                 className="h-8 w-32"
                 value={tokenLimit}
-                onChange={(e) => setTokenLimit(e.target.value)}
+                onChange={edited(setTokenLimit)}
               />
             )}
           </Field>
@@ -283,7 +283,7 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
                 inputMode="decimal"
                 className="h-8 w-28"
                 value={costLimit}
-                onChange={(e) => setCostLimit(e.target.value)}
+                onChange={edited(setCostLimit)}
               />
             )}
           </Field>
