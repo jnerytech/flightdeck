@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import type { RoiPeriod, RoiSummaryResult } from "@flightdeck/protocol";
-import { EMPTY_PERIOD, figures, type RoiMoney } from "../../src/features/roi/domain/roi.ts";
+import {
+  EMPTY_PERIOD,
+  figures,
+  type RoiMoney,
+  roiMultiple,
+} from "../../src/features/roi/domain/roi.ts";
 import {
   csvOf,
   type RoiRow,
@@ -83,6 +88,32 @@ describe("roi-tabela-ui: the rows", () => {
       nameOf: (_k, name) => name,
     });
     expect(rows.map((r) => r.figures.valueUsd)).toEqual([20, null]);
+  });
+});
+
+describe("roi-tabela-ui: the Return on cost unit and the hours dash (#3900)", () => {
+  test("the return reads as a multiple of the cost: one decimal and ×, a comma in pt-BR", () => {
+    expect([roiMultiple(29.04, "en"), roiMultiple(29.04, "pt-BR"), roiMultiple(0, "en")]).toEqual([
+      "29.0×",
+      "29,0×",
+      "0.0×",
+    ]);
+  });
+
+  test("a row with no hours sorts after the rows with hours, either way, like any missing figure", () => {
+    const rows = [
+      row("a", "none", { costUsd: 1 }),
+      row("b", "few", { costUsd: 1, hours: 1 }),
+      row("c", "many", { costUsd: 1, hours: 5 }),
+    ];
+    const names = (r: RoiRow[]) => r.map((x) => x.name);
+    expect(names(sortRows(rows, "hours", "asc"))).toEqual(["few", "many", "none"]);
+    expect(names(sortRows(rows, "hours", "desc"))).toEqual(["many", "few", "none"]);
+  });
+
+  test("the file leaves the hours empty when none were entered, as it does for any missing figure", () => {
+    const text = csvOf([row("a", "blog", { costUsd: 0 })], [], () => "");
+    expect(text.split("\r\n")[1]).toBe("blog,0.00,0,0,,,,,,");
   });
 });
 
@@ -189,7 +220,7 @@ describe("roi-csv: the file", () => {
       ].join("\r\n"),
     );
     const bare = csvOf([row("b", "blog", { costUsd: 0 })], header, () => "");
-    expect(bare.split("\r\n")[1]).toBe("blog,0.00,0,0,,,0,,,");
+    expect(bare.split("\r\n")[1]).toBe("blog,0.00,0,0,,,,,,");
   });
 
   test("commas, quotes and line breaks are escaped", () => {

@@ -43,16 +43,110 @@ describe("atalhos-ui: the ? sheet and the go-to chords", () => {
     store.dispose();
   });
 
-  test("Escape and the close button close it", async () => {
+  test("Escape pressed on the page, not inside the sheet, closes it; with it closed Escape opens nothing", async () => {
+    const { store, press } = await mount();
+    await press("Escape");
+    expect(sheet()).toBeNull();
+    await press("?");
+    await press("Escape");
+    expect(sheet()).toBeNull();
+    store.dispose();
+  });
+
+  test("an Escape another handler already took (a working session's interrupt) does not close it", async () => {
     const { store, press } = await mount();
     await press("?");
-    await press("Escape", sheet() as HTMLElement);
-    expect(sheet()).toBeNull();
+    const taken = (e: Event) => e.preventDefault();
+    document.body.addEventListener("keydown", taken);
+    await press("Escape");
+    document.body.removeEventListener("keydown", taken);
+    expect(sheet()).not.toBeNull();
+    store.dispose();
+  });
+
+  test("closing it does not take the focus from a field the person moved to meanwhile", async () => {
+    const { store, press } = await mount();
+    const card = document.createElement("button");
+    const field = document.createElement("input");
+    document.body.append(card, field);
+    card.focus();
+    await press("?", card);
+    field.focus();
+    await press("Escape", field);
+    expect({ closed: sheet() === null, onField: document.activeElement === field }).toEqual({
+      closed: true,
+      onField: true,
+    });
+    card.remove();
+    field.remove();
+    store.dispose();
+  });
+
+  test("the close button closes it", async () => {
+    const { store, press } = await mount();
     await press("?");
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Close the shortcuts" }));
     });
     expect(sheet()).toBeNull();
+    store.dispose();
+  });
+
+  test("opening it moves the focus into it, so Escape and the keys reach it", async () => {
+    const { store, press } = await mount();
+    await press("?");
+    expect(sheet()?.contains(document.activeElement)).toBe(true);
+    store.dispose();
+  });
+
+  describe("the focus goes back to where the person was", () => {
+    const place = () => {
+      const card = document.createElement("button");
+      card.textContent = "a card";
+      document.body.append(card);
+      card.focus();
+      return card;
+    };
+
+    test("after Escape", async () => {
+      const { store, press } = await mount();
+      const card = place();
+      await press("?", card);
+      await press("Escape");
+      expect(document.activeElement).toBe(card);
+      card.remove();
+      store.dispose();
+    });
+
+    test("after the close button", async () => {
+      const { store, press } = await mount();
+      const card = place();
+      await press("?", card);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Close the shortcuts" }));
+      });
+      expect(document.activeElement).toBe(card);
+      card.remove();
+      store.dispose();
+    });
+  });
+
+  test("it lists the palette's own keys", async () => {
+    const { store, press } = await mount();
+    await press("?");
+    const open = within(sheet() as HTMLElement);
+    const row = (label: string) => open.getByText(label).closest(".shortcut-row")?.textContent;
+    expect({
+      group: open.queryByRole("heading", { name: "Palette" }) !== null,
+      recent: row("Open one of the recent entries"),
+      actions: row("Show the chosen entry's actions"),
+      history: row("Search the history (no entry chosen)"),
+    }).toEqual({
+      group: true,
+      recent: "Open one of the recent entriesAlt+1…6",
+      actions: "Show the chosen entry's actionsTab",
+      history: "Search the history (no entry chosen)Enter",
+    });
     store.dispose();
   });
 
@@ -89,6 +183,8 @@ describe("atalhos-ui: the ? sheet and the go-to chords", () => {
     const open = within(sheet() as HTMLElement);
     expect(open.queryByText("Ir para Projetos")).not.toBeNull();
     expect(open.queryByRole("heading", { name: "Ir para" })).not.toBeNull();
+    expect(open.queryByRole("heading", { name: "Paleta" })).not.toBeNull();
+    expect(open.queryByText("Abrir uma das entradas recentes")).not.toBeNull();
     store.dispose();
   });
 });

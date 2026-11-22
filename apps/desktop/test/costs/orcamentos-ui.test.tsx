@@ -299,6 +299,52 @@ describe("orcamentos-ui", () => {
     expect(rows()[0]).toContain("orçamento de solo");
   });
 
+  test("sem projetos conhecidos o campo do projeto traz a ajuda do formato da chave (#3911)", async () => {
+    await online(false);
+    await chooseFromAccountMenu("Configurações");
+    await settle(() => section() !== null);
+    await choose("Escopo", "project");
+    await uiIdle();
+    const project = field("Projeto do orçamento");
+    expect(project.tagName).toBe("INPUT");
+    const help = document.getElementById(project.getAttribute("aria-describedby") ?? "");
+    expect(help?.textContent).toBe(
+      "A chave é o endereço do repositório sem https:// (github.com/acme/app); sem repositório, host:<id>:<pasta>.",
+    );
+  });
+
+  test("dois orçamentos de projetos com o mesmo nome mostram a chave de cada um na linha; um nome único não (#3911)", async () => {
+    const { spend } = await online();
+    spend(1, "github.com/acme/app");
+    spend(1, "github.com/other/app");
+    await chooseFromAccountMenu("Configurações");
+    await settle(() => section() !== null);
+    await choose("Escopo", "project");
+    await settle(() => projectOptions().length > 1);
+    await choose("Projeto do orçamento", "github.com/acme/app");
+    await choose("Limite (US$)", "10");
+    await click("Criar orçamento");
+    await settle(() => rows().length === 1);
+    // One budget on "app": the row reads as before, with no key.
+    expect(rows()[0]).toBe("orçamento de app (dia) · notificar · US$ 1,00 de US$ 10,00 (10%)");
+    await choose("Escopo", "project");
+    await choose("Projeto do orçamento", "github.com/other/app");
+    await choose("Limite (US$)", "10");
+    await click("Criar orçamento");
+    await settle(() => rows().length === 2);
+    const text = rows().join("\n");
+    expect(text.includes("github.com/acme/app")).toBe(true);
+    expect(text.includes("github.com/other/app")).toBe(true);
+    // The buttons and bars of those rows name the key too, so a screen reader can tell them apart.
+    for (const key of ["github.com/acme/app", "github.com/other/app"]) {
+      for (const verb of ["Editar", "Remover"]) {
+        expect(
+          screen.queryByRole("button", { name: `${verb} orçamento de app (dia) (${key})` }),
+        ).not.toBeNull();
+      }
+    }
+  });
+
   test("cada orçamento tem uma barra com o percentual, vermelha ao passar de 80%", async () => {
     const { spend } = await online();
     await chooseFromAccountMenu("Configurações");

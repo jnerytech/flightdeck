@@ -1,18 +1,19 @@
 import type { ReviewComment } from "@flightdeck/protocol";
 import { Pencil, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
-import { Inline } from "@/shared/layout/index.ts";
+import { Inline, Stack } from "@/shared/layout/index.ts";
 import { FindingSeverity } from "./finding-severity.tsx";
 
 /** The review's comments: drafts to edit or remove, then the ones already sent as history. */
 export function ReviewList(
   props: Readonly<{
     comments: ReviewComment[];
-    onUpdate(id: string, body: string): void;
+    /** `false` (or a promise of it) says the host refused the text: the edit box stays open. */
+    onUpdate(id: string, body: string): Promise<boolean> | boolean | undefined;
     onRemove(id: string): void;
     onSend(): void;
     /** Puts the review in the message box instead of sending it; absent where there is none. */
@@ -22,9 +23,40 @@ export function ReviewList(
   const t = useT();
   const [editing, setEditing] = useState<{ id: string; body: string } | null>(null);
   const drafts = props.comments.filter((c) => c.state === "draft").length;
+  const list = useRef<HTMLUListElement>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
+  /** The comment whose edit just ended: its pencil gets the focus back. */
+  const back = useRef<string | null>(null);
+  const blankId = useId();
+  const editingId = editing?.id ?? null;
+  const blank = editing !== null && editing.body.trim() === "";
+  // The edit box takes the focus when it opens; when it closes, the pencil that opened it does,
+  // since the button that was pressed (Save, Cancel) is gone from the page.
+  useEffect(() => {
+    if (editingId !== null) {
+      box.current?.focus();
+      return;
+    }
+    const id = back.current;
+    back.current = null;
+    if (id === null) return;
+    for (const pencil of list.current?.querySelectorAll<HTMLElement>("[data-edit]") ?? []) {
+      if (pencil.dataset.edit === id) pencil.focus();
+    }
+  }, [editingId]);
+  const endEdit = (id: string) => {
+    back.current = id;
+    setEditing(null);
+  };
   return (
     <section className="flex flex-col gap-2">
-      <ul aria-label={t("changes.list")} className="flex flex-col gap-2">
+      <ul
+        ref={list}
+        aria-label={t("changes.list")}
+        data-review-list
+        tabIndex={-1}
+        className="flex flex-col gap-2 focus-visible:outline-2 focus-visible:outline-ring"
+      >
         {props.comments.map((comment) => {
           const where =
             comment.lineStart === comment.lineEnd
@@ -71,26 +103,38 @@ export function ReviewList(
                 </pre>
               )}
               {editing?.id === comment.id ? (
-                <div className="flex items-start gap-2">
-                  <Textarea
-                    aria-label={t("changes.commentText")}
-                    value={editing.body}
-                    className="min-h-16 flex-1"
-                    onChange={(e) => setEditing({ id: comment.id, body: e.target.value })}
-                  />
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      props.onUpdate(comment.id, editing.body);
-                      setEditing(null);
-                    }}
-                  >
-                    {t("changes.saveComment")}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setEditing(null)}>
-                    {t("common.cancel")}
-                  </Button>
-                </div>
+                <Stack gap={1}>
+                  <div className="flex items-start gap-2">
+                    <Textarea
+                      ref={box}
+                      aria-label={t("changes.commentText")}
+                      aria-describedby={blank ? blankId : undefined}
+                      value={editing.body}
+                      className="min-h-16 flex-1"
+                      onChange={(e) => setEditing({ id: comment.id, body: e.target.value })}
+                    />
+                    <Button
+                      size="sm"
+                      disabled={blank}
+                      aria-describedby={blank ? blankId : undefined}
+                      onClick={async () => {
+                        // A host that refused the text leaves the box open, so nothing typed is lost.
+                        const saved = await props.onUpdate(comment.id, editing.body);
+                        if (saved !== false) endEdit(comment.id);
+                      }}
+                    >
+                      {t("changes.saveComment")}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => endEdit(comment.id)}>
+                      {t("common.cancel")}
+                    </Button>
+                  </div>
+                  {blank && (
+                    <p id={blankId} className="text-muted-foreground text-xs">
+                      {t("changes.commentBlank")}
+                    </p>
+                  )}
+                </Stack>
               ) : (
                 <p className="whitespace-pre-wrap break-words">{comment.body}</p>
               )}
@@ -100,6 +144,7 @@ export function ReviewList(
                     variant="ghost"
                     size="sm"
                     aria-label={t("changes.editComment", { path: comment.path, where })}
+                    data-edit={comment.id}
                     onClick={() => setEditing({ id: comment.id, body: comment.body })}
                   >
                     <Pencil aria-hidden="true" className="size-4" />

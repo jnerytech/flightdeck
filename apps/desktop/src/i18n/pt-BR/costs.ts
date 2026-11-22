@@ -86,6 +86,7 @@ export const costs = {
       hours: "Horas estimadas",
       value: "Valor estimado",
       roi: "Retorno sobre o custo (estimativa)",
+      roiCsv: "Retorno sobre o custo (estimativa) em ×",
       total: "Total",
       empty: "Nenhum projeto deste escopo tem custo ou entrega neste período.",
       exportCsv: "Exportar a tabela de projetos em CSV",

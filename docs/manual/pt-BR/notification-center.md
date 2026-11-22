@@ -31,8 +31,10 @@ PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
   selo vermelho com o número (`9+` acima de nove). É a contagem do sino, linha por linha: cai
   conforme você lê e some quando a lista está limpa; uma fonte silenciada não gera entrada e não
   soma nada. Ela volta com a contagem na próxima vez que o app abre.
-- **Marcar todas como lidas** mantém a lista; **Limpar** esvazia. A lista fica neste computador
-  (as 500 mais recentes) e sobrevive a um reinício. Esc fecha o painel.
+- **Marcar todas como lidas** mantém a lista; **Limpar** esvazia. Cada uma diz o que fez e leva o
+  foco ao título do painel. Depois de **Limpar**, uma linha **Desfazer** traz as entradas de volta,
+  lidas ou não como estavam, enquanto o painel continuar aberto. A lista fica neste computador (as
+  500 mais recentes) e sobrevive a um reinício. Esc fecha o painel.
 - Uma linha lida tem **Marcar como não lida** (com o nome da linha; passe o mouse ou foque nela) para voltar a ela depois.
 - As notificações do sistema saem como antes, a menos que você as ajuste (abaixo). A central só
   guarda uma cópia: uma que nunca é enviada (a janela estava em foco) também não entra nela.

@@ -15,6 +15,7 @@ import {
   markAllRead,
   markRead,
   markUnread,
+  restoreEntries,
   saveInbox,
   unreadRows,
 } from "./domain/inbox.ts";
@@ -178,6 +179,11 @@ export class InboxSlice {
 
   clear(): void {
     this.setEntries([]);
+  }
+
+  /** Puts back what a Clear dropped (the Undo of the panel), behind what arrived since. */
+  restore(entries: InboxEntry[]): void {
+    this.setEntries(restoreEntries(this.core.entries(), entries));
   }
 
   private setEntries(entries: InboxEntry[]): void {
