@@ -1,6 +1,7 @@
 import { memo, type ReactNode } from "react";
 import type { ClientColor } from "@/features/clients/index.ts";
 import { ClientChip } from "@/features/clients/ui.ts";
+import { RiskSeal } from "@/features/permissions/ui.ts";
 import { formatAgo } from "@/i18n/format";
 import type { Key, T } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
@@ -157,9 +158,19 @@ function EntryRowImpl(props: Readonly<EntryRowProps>) {
   // A workflow gate is not a tool: its line says which step waits (issue #175).
   const what = pendingText(item, t);
   const who = pendingWhere(item);
+  // The risk the card shows is on the row too, and part of its name (WCAG 2.5.3).
+  const riskWord = item.risk ? t(`approval.risk.${item.risk}` as Key) : "";
+  const label = riskWord ? `${who}: ${what} · ${riskWord}` : `${who}: ${what}`;
   return (
-    <RowButton active={active} pressed={selected} label={`${who}: ${what}`} onActivate={onActivate}>
+    <RowButton active={active} pressed={selected} label={label} onActivate={onActivate}>
       <DotLine t={t} text={who}>
+        {item.risk && (
+          <RiskSeal
+            risk={item.risk}
+            t={t}
+            {...(item.riskReason ? { reason: item.riskReason } : {})}
+          />
+        )}
         {chip && <ClientChip name={chip.name} color={chip.color} />}
         <time
           dateTime={item.createdAt}
