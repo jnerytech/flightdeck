@@ -147,6 +147,39 @@ describe("rastro-estados (#3706)", () => {
     expect(screen.queryByRole("status")?.getAttribute("aria-live")).toBe("polite");
   });
 
+  // #3935: the counter alone said "Step 2 of 4"; what the step is has to be said with it.
+  for (const language of ["en", "pt-BR"] as const) {
+    test(`${language}: stepping says the step aloud, and a playing replay says nothing`, async () => {
+      await panel(language, [TRACE]);
+      await click("Replay");
+      const said = () =>
+        Array.from(document.querySelectorAll("[aria-live=polite]"))
+          .map((el) => el.textContent ?? "")
+          .join(" | ");
+      expect(said().includes("Fix the build")).toBe(true);
+      await click(language === "en" ? "Next" : "Próximo");
+      expect(said().includes("a.ts")).toBe(true);
+      await click(language === "en" ? "Play" : "Tocar");
+      expect(said()).toBe("");
+    });
+  }
+
+  // A screen reader speaks only text that changes inside a region that was already polite, so the
+  // region has to stay polite while it plays and merely hold no text.
+  test("the spoken step lives in one polite region that is empty while playing and filled when the person steps out of it", async () => {
+    await panel("en", [TRACE]);
+    await click("Replay");
+    await click("Play");
+    const spoken = document.querySelector("[aria-live=polite][aria-atomic=true]");
+    expect(spoken).not.toBeNull();
+    expect(spoken?.textContent).toBe("");
+    await click("Next");
+    expect(document.querySelector("[aria-live=polite][aria-atomic=true]") === spoken).toBe(true);
+    expect(spoken?.textContent?.includes("Step 2") || spoken?.textContent?.includes("a.ts")).toBe(
+      true,
+    );
+  });
+
   test("a playback that reaches the last step stops by itself", async () => {
     await panel("en", [TRACE]);
     await click("Replay");

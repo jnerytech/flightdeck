@@ -267,6 +267,16 @@ describe("replay: step by step", () => {
     });
   });
 
+  test("the files a turn changed are a list with its own name", async () => {
+    await open(["trace", "checkpoints"]);
+    await openTrace();
+    await click("Replay");
+    await settle(() => steps().includes("src/a.ts"));
+    const list = screen.queryByRole("list", { name: "Arquivos mudados neste turno" });
+    expect(list).not.toBeNull();
+    expect(list?.textContent).toContain("src/a.ts");
+  });
+
   test("a turn whose files the host cannot give is shown without them, and no error is raised", async () => {
     const { daemon, store } = await open(["trace", "checkpoints"]);
     daemon.refuse.set("snapshots.files", "sem snapshot deste turno");
