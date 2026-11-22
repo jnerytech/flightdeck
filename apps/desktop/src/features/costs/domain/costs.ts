@@ -12,9 +12,14 @@ export function addDays(day: string, n: number): string {
   return new Date(Date.parse(`${day}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
 }
 
-/** Every day from `from` to `to`, inclusive. */
+/** Whether `day` is a real `YYYY-MM-DD` day (a date input that was cleared gives an empty string). */
+const isDay = (day: string): boolean =>
+  /^\d{4}-\d{2}-\d{2}$/.test(day) && !Number.isNaN(Date.parse(day));
+
+/** Every day from `from` to `to`, inclusive; none when either is not a day. */
 export function daysBetween(from: string, to: string): string[] {
   const days: string[] = [];
+  if (!isDay(from) || !isDay(to)) return days;
   for (let day = from; day <= to; day = addDays(day, 1)) days.push(day);
   return days;
 }
@@ -23,8 +28,9 @@ export function daysBetween(from: string, to: string): string[] {
 export type RangeProblem = "empty" | "reversed";
 
 /** Whether a custom range can be asked for; null when it can. */
-export function rangeProblem(_range: { from: string; to: string }): RangeProblem | null {
-  return null;
+export function rangeProblem(range: { from: string; to: string }): RangeProblem | null {
+  if (!isDay(range.from) || !isDay(range.to)) return "empty";
+  return range.from > range.to ? "reversed" : null;
 }
 
 /** The host choice that adds every host up (phase 29); a route can carry it too. */
