@@ -117,17 +117,24 @@ export function TraceReplay(
             </span>
           </Inline>
           {step && (
-            <Stack gap={1}>
-              <span className="font-medium text-sm">{nodeTitle(step, t)}</span>
-              <span className="text-muted-foreground text-xs">{nodeNumbers(step, t)}</span>
-              {step.input && <span className="text-xs">{step.input}</span>}
-              {step.result && <span className="text-xs">{step.result}</span>}
-            </Stack>
+            // Said aloud when the person steps, with the counter above: the number alone does not
+            // tell what the step is. Silent while it plays, one step a second (#3935).
+            <div aria-live={playing ? "off" : "polite"} aria-atomic="true">
+              <Stack gap={1}>
+                <span className="font-medium text-sm">{nodeTitle(step, t)}</span>
+                <span className="text-muted-foreground text-xs">{nodeNumbers(step, t)}</span>
+                {step.input && <span className="text-xs">{step.input}</span>}
+                {step.result && <span className="text-xs">{step.result}</span>}
+              </Stack>
+            </div>
           )}
           {changed && changed.files.length > 0 && (
             <Stack gap={1}>
-              <span className="text-xs">{t("trace.files")}</span>
-              <Stack as="ul" gap={1}>
+              {/* The list carries this name itself; the heading is not read a second time. */}
+              <span aria-hidden="true" className="text-xs">
+                {t("trace.files")}
+              </span>
+              <Stack as="ul" label={t("trace.files")} gap={1}>
                 {changed.files.map((file) => (
                   <li key={file.path} className="text-xs">
                     {file.path + " · " + t(`trace.${file.change}` as never)}
