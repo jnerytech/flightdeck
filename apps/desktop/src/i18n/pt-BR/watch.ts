@@ -194,6 +194,7 @@ export const watch = {
     kinds: { session: "sessão", project: "projeto", team: "time", host: "host" },
     retention: "Retenção (dias)",
     saveRetention: "Salvar retenção",
+    retentionSame: "Altere o número de dias para salvar.",
     paused: "Pares pausados por laço",
     noPaused: "Nenhum par pausado.",
     loading: "Lendo as regras de mensagens de {host}…",

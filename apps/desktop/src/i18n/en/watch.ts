@@ -196,6 +196,7 @@ export const watch = {
     kinds: { session: "session", project: "project", team: "team", host: "host" },
     retention: "Retention (days)",
     saveRetention: "Save retention",
+    retentionSame: "Change the number of days to save.",
     paused: "Pairs paused for a loop",
     noPaused: "No pair is paused.",
     loading: "Reading the message rules of {host}…",
