@@ -31,6 +31,8 @@ const APP_STATE = { loopAlerts: [] };
 function fakeStore(language: "en" | "pt-BR", answers: Record<string, unknown>) {
   return {
     hostCommand: async (_host: string, command: string) => answers[command] ?? null,
+    hostRequest: async (_host: string, command: string) =>
+      answers[command] ? { ok: true, data: answers[command] } : { ok: false, message: "no answer" },
     messaging: { onUpdated: () => () => {} },
     // The rules link reads the loop alerts the app store keeps.
     subscribe: () => () => {},
