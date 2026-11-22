@@ -57,6 +57,8 @@ function mount(reply: Reply, options: { language?: string; focus?: "board" } = {
   return { sent, toasts, count };
 }
 
+const listed = () => screen.queryByRole("button", { name: "Open the board of api" }) !== null;
+
 const press = async (button: HTMLElement) => {
   await act(async () => {
     fireEvent.click(button);
@@ -108,10 +110,8 @@ describe("host projects page: reading the list again", () => {
     mount((kind) => (kind === "project.list" && ++calls > 1 ? listOf() : null));
     await settle(() => screen.queryByRole("alert") !== null);
     await press(screen.getByRole("button", { name: "Try again" }));
-    await settle(
-      () => screen.queryByText("/work/api") !== null && screen.queryByRole("alert") === null,
-    );
-    expect(screen.queryByText("/work/api")).not.toBeNull();
+    await settle(() => listed() && screen.queryByRole("alert") === null);
+    expect(listed()).toBe(true);
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
@@ -138,13 +138,13 @@ describe("host projects page: reading the list again", () => {
       if (kind === "project.list") return ++calls === 1 ? listOf() : null;
       return { id: "p2" };
     });
-    await settle(() => screen.queryByText("/work/api") !== null);
+    await settle(() => listed());
     await type("Repository path", "/work/web");
     await press(screen.getByRole("button", { name: "Register project" }));
     await settle(
       () => screen.queryByRole("alert")?.textContent === "Could not read this host's projects.",
     );
-    expect(screen.queryByText("/work/api")).not.toBeNull();
+    expect(listed()).toBe(true);
   });
 });
 
