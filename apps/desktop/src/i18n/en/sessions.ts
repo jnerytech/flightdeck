@@ -603,7 +603,7 @@ export const sessions = {
     description:
       "Each turn of this conversation and what it changed in the files. Rewinding files undoes repository files only: external commands (database, network, git push) are not undone.",
     loading: "Loading the turns…",
-    loadFailed: "Could not load the turns of this session.",
+    loadFailed: "Could not load the turns of this session: {reason}",
     retry: "Try again",
     empty:
       "There are no turns with a snapshot in this session yet. Snapshots only exist in folders of a git repository.",
@@ -642,7 +642,8 @@ export const sessions = {
     },
     nothing: "Nothing to rewind: the files are already as in this turn.",
     previewing: "Working out what changes…",
-    previewFailed: "Could not work out what the rewind changes.",
+    previewFailed: "Could not work out what the rewind changes: {reason}",
+    forkFailed: "Could not fork the conversation: {reason}",
     applyFailed: "Could not rewind the files: {reason}",
     nothingToRewind: "Nothing to rewind: the files are already as they were at this turn.",
     rewindConfirm: "Rewind files",

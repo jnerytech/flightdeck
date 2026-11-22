@@ -603,7 +603,7 @@ export const sessions = {
     description:
       "Cada turno desta conversa e o que ele mudou nos arquivos. Voltar arquivos desfaz só arquivos do repositório: comandos externos (banco, rede, git push) não voltam.",
     loading: "Carregando os turnos…",
-    loadFailed: "Não deu para carregar os turnos desta sessão.",
+    loadFailed: "Não deu para carregar os turnos desta sessão: {reason}",
     retry: "Tentar de novo",
     empty:
       "Ainda não há turnos com snapshot nesta sessão. Os snapshots só existem em pastas de um repositório git.",
@@ -642,7 +642,8 @@ export const sessions = {
     },
     nothing: "Nada para voltar: os arquivos já estão como neste turno.",
     previewing: "Calculando o que muda…",
-    previewFailed: "Não deu para calcular o que a volta muda.",
+    previewFailed: "Não deu para calcular o que a volta muda: {reason}",
+    forkFailed: "Não deu para bifurcar a conversa: {reason}",
     applyFailed: "Não deu para voltar os arquivos: {reason}",
     nothingToRewind: "Nada a voltar: os arquivos já estão como estavam neste turno.",
     rewindConfirm: "Voltar arquivos",
