@@ -741,9 +741,10 @@ export function runsFlightdeckWords(
   // here as `readArguments` marks it for the CLI itself: a rule reads it as unknown, not as the word it looks like.
   return runnerReadings(args).some((reading) => {
     const words = reading.map((w) => (/[$`*?[{]/.test(w) ? w + EXPANDS : w));
-    // A rule that reads no words of its own (one parameter) is not given a copy of the text after each start: the
-    // copies are quadratic in the text, once per rule (a line of 2000 starts took 4 s on a loaded Pi, #4317).
-    const ownWords = matches.length > 1;
+    // A rule that declares exactly one parameter reads no words of its own, so it is not given a copy of the text after
+    // each start: the copies are quadratic in the text, once per rule (a line of 2000 starts took 4 s on a loaded Pi,
+    // #4317). Any other shape (two parameters, a rest parameter) gets the copy, so a rule never rates lower for it.
+    const ownWords = matches.length !== 1;
     return words.some(
       (_, i) =>
         startsCli(words, i) &&
