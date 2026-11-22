@@ -350,6 +350,30 @@ describe.each(["en", "pt-BR"] as const)("teams-actions (%s)", (language) => {
       await settleMaybe(() => said(words.removed), 3000);
       expect(calls).toEqual(["teams.update"]);
     });
+
+    test("two removals at once keep both Remove buttons busy", async () => {
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const { words } = await openTeam(language, null, held);
+      await click(words.removeW1);
+      await confirm(words.removeConfirm);
+      await click(words.removeW2);
+      await confirm(words.removeConfirm);
+      expect([disabled(words.removeW1), disabled(words.removeW2)]).toEqual([true, true]);
+      release();
+      await settleMaybe(() => button(words.removeW1) === null, 3000);
+    });
+
+    test("a refused Remove gives the button back, enabled and focused", async () => {
+      const { words } = await openTeam(language, "teams.update");
+      await click(words.removeW1);
+      await confirm(words.removeConfirm);
+      await settleMaybe(() => said(words.notDone), 3000);
+      await settleMaybe(() => focused() === words.removeW1, 3000);
+      expect([focused(), disabled(words.removeW1)]).toEqual([words.removeW1, false]);
+    });
   });
 
   test("a refused Pause gives the button back, enabled and focused (#3933)", async () => {
