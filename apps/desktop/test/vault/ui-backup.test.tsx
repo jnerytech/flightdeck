@@ -477,6 +477,26 @@ describe("cofre-ui: backup, focus, announcements and a failed restore", () => {
     expect({ calls, busy }).toEqual({ calls: 1, busy: "true" });
   });
 
+  test("pressing Aplicar again while a replace runs does not open the replace dialog a second time", async () => {
+    const { store } = await open(await backupText());
+    await store.vault.restore(LOCAL_GITHUB, "local-value");
+    store.secrets.applyImport = () => new Promise(() => {});
+    await fill("Frase-senha do arquivo", PASS);
+    await click("Importar cofre");
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText("Substituir pelo backup"));
+    });
+    await click("Aplicar");
+    await click("Substituir segredos");
+    // Enter in the form submits it even though the button is busy.
+    const form = screen.getByRole("button", { name: "Aplicar" }).closest("form");
+    await act(async () => {
+      fireEvent.submit(form as HTMLFormElement);
+    });
+    await uiIdle();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
   test("a restore that succeeds is announced as a status and the focus returns to the file passphrase", async () => {
     await open(await backupText());
     await fill("Frase-senha do arquivo", PASS);
