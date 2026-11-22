@@ -1,5 +1,5 @@
 import type { TelemetryItem, TelemetryPrompt } from "@flightdeck/protocol";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { formatMs } from "@/features/sessions/index.ts";
 import { useT } from "@/i18n/context";
 import {
@@ -81,12 +81,18 @@ export function TempoPanel(
   const [prompts, setPrompts] = useState<TelemetryPrompt[] | "failed" | null>(null);
 
   // A retry keeps the error and its button until the host answers, so the focus is not dropped.
+  // The latest request wins: a slow answer for the session just left must not show on the new one.
+  const latest = useRef(0);
   const load = useCallback(() => {
-    void store
-      .hostCommand(hostId, "telemetry.session", { claudeSessionId })
-      .then((result) => setPrompts(result ? result.prompts : "failed"));
+    const mine = ++latest.current;
+    void store.hostCommand(hostId, "telemetry.session", { claudeSessionId }).then((result) => {
+      if (mine === latest.current) setPrompts(result ? result.prompts : "failed");
+    });
   }, [store, hostId, claudeSessionId]);
-  useEffect(load, [load]);
+  useEffect(() => {
+    setPrompts(null);
+    load();
+  }, [load]);
 
   if (prompts === null) return <LoadingState label={t("states.loading")} />;
   if (prompts === "failed") {

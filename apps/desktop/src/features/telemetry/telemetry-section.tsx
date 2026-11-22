@@ -1,5 +1,5 @@
 import type { TelemetryOptInStatus } from "@flightdeck/protocol";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
@@ -29,13 +29,21 @@ export function TelemetrySection(props: Readonly<{ store: AppStore; hostId: stri
   const [confirming, setConfirming] = useState<"install" | "uninstall" | null>(null);
 
   // A retry keeps the error and its button until the host answers, so the focus is not dropped.
+  // The latest request wins: a slow answer for the host just left must not show on the new one.
+  const latest = useRef(0);
   const load = useCallback(() => {
+    const mine = ++latest.current;
     void store.hostCommand(hostId, "telemetry.status", {}).then((result) => {
+      if (mine !== latest.current) return;
       setInfo(result ?? null);
       setFailed(!result);
     });
   }, [store, hostId]);
-  useEffect(load, [load]);
+  useEffect(() => {
+    setInfo(null);
+    setFailed(false);
+    load();
+  }, [load]);
 
   const apply = async () => {
     const kind = confirming;

@@ -103,6 +103,28 @@ for (const w of LANGS) {
       await settle(() => screen.queryByText(w.empty, { exact: false }) !== null);
     });
 
+    test("a slow answer for the session just left does not show on the new one", async () => {
+      const waiting: Array<(value: { prompts: TelemetryPrompt[] }) => void> = [];
+      const store = {
+        hostCommand: () =>
+          new Promise((resolve) => {
+            waiting.push(resolve);
+          }),
+      } as never;
+      const ui = (id: string) => (
+        <TContext.Provider value={translator(w.lang)}>
+          <TempoPanel store={store} hostId="h1" claudeSessionId={id} />
+        </TContext.Provider>
+      );
+      const view = render(ui("a"));
+      view.rerender(ui("b"));
+      await act(async () => waiting[1]?.({ prompts: [] }));
+      await settle(() => screen.queryByText(w.empty, { exact: false }) !== null);
+      await act(async () => waiting[0]?.({ prompts: [prompt([tool(5, "Slow")])] }));
+      expect(screen.queryByText("Slow", { exact: false })).toBeNull();
+      expect(screen.queryByText(w.empty, { exact: false })).not.toBeNull();
+    });
+
     test("an answer with no prompts shows the empty text and no error", async () => {
       show(host([{ prompts: [] }]), w.lang);
       await settle(() => screen.queryByText(w.empty, { exact: false }) !== null);
