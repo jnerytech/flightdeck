@@ -161,7 +161,7 @@ describe.each(LANGS)("issues panel ($lang)", (words) => {
     });
     await press(words.save);
     await settle(() => rows() === 1);
-    expect(within(panel()).queryByText(words.loading)).toBeNull();
+    expect(within(panel()).queryByRole("status", { name: words.loading })).toBeNull();
     expect(h.lists()).toBe(2);
     expect(button(words.configure)?.getAttribute("aria-expanded")).toBe("false");
     expect(document.activeElement).toBe(button(words.configure));
@@ -192,6 +192,32 @@ describe.each(LANGS)("issues panel ($lang)", (words) => {
     expect(alertText()).toContain("gh auth login");
     await press(words.retry);
     await settle(() => rows() === 2);
+    expect(alertText()).toBe("");
+  });
+
+  test("a retry takes the old error off the screen while the host answers", async () => {
+    let release: (answer: Answer) => void = () => undefined;
+    const held = () => new Promise<Answer>((resolve) => (release = resolve));
+    const h = host({ list: [refused, held] });
+    show(h.store(words.lang), words.lang, project("p1", { provider: "github" }));
+    await settle(() => alertText() !== "");
+    await press(words.retry);
+    expect(alertText()).toBe("");
+    expect(within(panel()).queryByRole("status", { name: words.loading })).not.toBeNull();
+    expect(alertText()).toBe("");
+    await act(async () => release(listed(1)));
+    await settle(() => rows() === 1);
+  });
+
+  test("a form opened again does not show the refusal of an earlier save", async () => {
+    const h = host({ list: [listed(1)], update: [refused] });
+    show(h.store(words.lang), words.lang, project("p1", { provider: "github" }));
+    await settle(() => rows() === 1);
+    await press(words.configure);
+    await press(words.save);
+    await settle(() => alertText() !== "");
+    await press(words.configure);
+    await press(words.configure);
     expect(alertText()).toBe("");
   });
 

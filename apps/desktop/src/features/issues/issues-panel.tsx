@@ -182,6 +182,7 @@ export function IssuesPanel(
 
   const load = useCallback(async () => {
     const mine = ++latest.current;
+    setFailure(null);
     const result = await store.hostRequest(hostId, "issues.list", { projectId: project.id });
     if (mine !== latest.current) return;
     if (result.ok) {
@@ -252,7 +253,10 @@ export function IssuesPanel(
                   variant="ghost"
                   size="sm"
                   aria-expanded={configuring}
-                  onClick={() => setConfiguring(!configuring)}
+                  onClick={() => {
+                    setSaveError(null);
+                    setConfiguring(!configuring);
+                  }}
                 >
                   <Settings aria-hidden="true" />
                   {t("issuesUi.configure")}
