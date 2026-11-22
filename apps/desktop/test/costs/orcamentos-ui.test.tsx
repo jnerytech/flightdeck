@@ -335,6 +335,14 @@ describe("orcamentos-ui", () => {
     const text = rows().join("\n");
     expect(text.includes("github.com/acme/app")).toBe(true);
     expect(text.includes("github.com/other/app")).toBe(true);
+    // The buttons and bars of those rows name the key too, so a screen reader can tell them apart.
+    for (const key of ["github.com/acme/app", "github.com/other/app"]) {
+      for (const verb of ["Editar", "Remover"]) {
+        expect(
+          screen.queryByRole("button", { name: `${verb} orçamento de app (dia) (${key})` }),
+        ).not.toBeNull();
+      }
+    }
   });
 
   test("cada orçamento tem uma barra com o percentual, vermelha ao passar de 80%", async () => {
