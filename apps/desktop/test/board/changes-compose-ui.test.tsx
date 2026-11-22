@@ -67,6 +67,16 @@ function fakeStore(comments: ReviewComment[] = []) {
       }
       if (type === "review.send")
         return { via: "session", text: "sent", comments: comments.length };
+      if (type === "review.update") {
+        const found = comments.find((c) => c.id === payload.id);
+        if (found) found.body = String(payload.body);
+        return found ?? null;
+      }
+      if (type === "review.remove") {
+        const at = comments.findIndex((c) => c.id === payload.id);
+        if (at >= 0) comments.splice(at, 1);
+        return {};
+      }
       return null;
     },
     watchChanges: () => () => {},
@@ -216,6 +226,89 @@ describe("changes-compose-ui: commenting by keyboard, and a review put in the me
     expect(calls.filter((c) => c.type === "review.send").map((c) => c.payload.language)).toEqual([
       "en",
     ]);
+  });
+
+  test("Add comment is off while the box is blank, says why, and names the shortcut once there is text (#3890)", async () => {
+    await show();
+    await pick("Comment on line 2 of app.ts");
+    const add = screen.getByRole("button", { name: "Add comment" }) as HTMLButtonElement;
+    expect(add.disabled).toBe(true);
+    expect(add.getAttribute("aria-describedby") !== null).toBe(true);
+    expect(screen.queryByText("Write the comment first.") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    await act(async () => {
+      fireEvent.change(screen.getByRole("textbox", { name: "Comment" }), {
+        target: { value: "   " },
+      });
+    });
+    expect(add.disabled).toBe(true);
+    await act(async () => {
+      fireEvent.change(screen.getByRole("textbox", { name: "Comment" }), {
+        target: { value: "use total" },
+      });
+    });
+    expect(add.disabled).toBe(false);
+    expect(screen.queryByText("Write the comment first.") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(screen.queryByText(/Ctrl\+Enter or Cmd\+Enter/) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+  });
+
+  test("adding, saving and removing a draft each say so in a status line (#3890)", async () => {
+    await show({ comments: [draft("c1", "app.ts", 2, "use total")] });
+    const said = () => screen.queryAllByRole("status").map((el) => el.textContent ?? "");
+    await pick("Comment on line 1 of cart.ts");
+    await act(async () => {
+      fireEvent.change(screen.getByRole("textbox", { name: "Comment" }), {
+        target: { value: "name it" },
+      });
+    });
+    await pick("Add comment");
+    expect(said()).toContain("Draft comment added.");
+    await pick("Edit the comment on app.ts, line 2");
+    await act(async () => {
+      fireEvent.change(screen.getByRole("textbox", { name: "Comment text" }), {
+        target: { value: "use the total" },
+      });
+    });
+    await pick("Save comment");
+    expect(said()).toContain("Comment saved.");
+    await pick("Remove the comment on app.ts, line 2");
+    expect(said()).toContain("Comment removed.");
+  });
+
+  test("the edit box takes the focus, Save is off while it is blank, and Save or Cancel gives the focus back to the pencil (#3890)", async () => {
+    await show({ comments: [draft("c1", "app.ts", 2, "use total")] });
+    const pencil = () => screen.getByRole("button", { name: "Edit the comment on app.ts, line 2" });
+    await pick("Edit the comment on app.ts, line 2");
+    const box = screen.getByRole("textbox", { name: "Comment text" });
+    expect(document.activeElement === box).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    await act(async () => {
+      fireEvent.change(box, { target: { value: "  " } });
+    });
+    const save = screen.getByRole("button", { name: "Save comment" }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    expect(screen.queryByText("Write the comment first.") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    await act(async () => {
+      fireEvent.change(box, { target: { value: "use the total" } });
+    });
+    await pick("Save comment");
+    await act(async () => {});
+    expect(document.activeElement === pencil()).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    await pick("Edit the comment on app.ts, line 2");
+    await pick("Cancel");
+    expect(document.activeElement === pencil()).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+  });
+
+  test("after Remove the focus is on the drafts list, or on the panel when none is left (#3890)", async () => {
+    await show({
+      comments: [draft("c1", "app.ts", 2, "use total"), draft("c2", "cart.ts", 1, "name it")],
+    });
+    await pick("Remove the comment on app.ts, line 2");
+    await act(async () => {});
+    const list = screen.getByRole("list", { name: "Review comments" });
+    expect(document.activeElement === list).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    await pick("Remove the comment on cart.ts, line 1");
+    await act(async () => {});
+    const region = screen.getByRole("region", { name: "Changes" });
+    expect(document.activeElement === region).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a panel with nowhere to hand the review over (a card) keeps only the direct send", async () => {
