@@ -82,7 +82,8 @@ describe("snippets-ui: import from a file", () => {
     ).toEqual(["testes", "revisar"]);
     const left = screen.queryByRole("list", { name: "Entradas ignoradas" });
     expect(left?.textContent).toContain("com-segredo");
-    expect(document.body.innerHTML).not.toContain("ghp_");
+    // The planted token's real shape, not the bare prefix: a React id (`_r_1ghp_`) is not a leak (#4206).
+    expect(document.body.innerHTML).not.toMatch(/ghp_[A-Za-z0-9]{20,}/);
   });
 
   test("they go to the host's snippets", async () => {

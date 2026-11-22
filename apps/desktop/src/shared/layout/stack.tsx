@@ -80,6 +80,8 @@ export function Stack(
     label?: string;
     /** The stack's `data-slot`, for tests and for code that reads the DOM it renders. */
     slot?: string;
+    /** A stack that scrolls (its class caps the height) takes the keyboard focus, so it can be scrolled with the keys. */
+    scrolls?: boolean;
     className?: string;
     children: ReactNode;
   }>,
@@ -89,6 +91,8 @@ export function Stack(
     <Tag
       aria-label={props.label}
       data-slot={props.slot}
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region has to be focusable (axe scrollable-region-focusable)
+      tabIndex={props.scrolls ? 0 : undefined}
       className={cn("flex flex-col", GAPS[props.gap ?? 4], props.className)}
     >
       {props.children}

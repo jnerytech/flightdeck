@@ -6,15 +6,15 @@
  */
 import type { Database } from "bun:sqlite";
 import type { Automation, AutomationRun, Issue } from "@flightdeck/protocol";
-import { inSequence } from "@flightdeck/protocol";
+import { AutomationRunParams, inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/index.ts";
 import type { Issues } from "../issues/index.ts";
-import { FlightdeckError, ulid } from "../kernel/index.ts";
+import { FlightdeckError, parseJsonOr, ulid } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/index.ts";
 import { localDay } from "../quota/index.ts";
 import { act } from "./act.ts";
 import { type CronSpec, parseCron } from "./domain/cron.ts";
-import { type AutomationEvent, causeOf, keyOf } from "./domain/event.ts";
+import { type AutomationEvent, causeOf, keyOf, type Said, type Why } from "./domain/event.ts";
 import { actionOf, triggerOf } from "./domain/row-json.ts";
 import { refusal, ruleProblem } from "./domain/rule-check.ts";
 import { Scheduler } from "./scheduler.ts";
@@ -64,8 +64,12 @@ interface RunRow {
   automation_id: string;
   fired_at: string;
   cause: string;
+  cause_code: string | null;
+  cause_params: string | null;
   status: AutomationRun["status"];
   detail: string | null;
+  detail_code: string | null;
+  detail_params: string | null;
 }
 
 const bad = (message: string, reason?: string, params?: Record<string, string | number>) =>
@@ -87,13 +91,21 @@ const toAutomation = (row: Row): Automation => ({
   createdAt: row.created_at,
 });
 
+/** The values of a code, or null: a row from before the codes, or one whose values do not read. */
+const paramsOf = (text: string | null) =>
+  text === null ? null : parseJsonOr(AutomationRunParams.nullable(), text, null);
+
 const toRun = (row: RunRow): AutomationRun => ({
   id: row.id,
   automationId: row.automation_id,
   firedAt: row.fired_at,
   cause: row.cause,
+  causeCode: row.cause_code,
+  causeParams: paramsOf(row.cause_params),
   status: row.status,
   detail: row.detail,
+  detailCode: row.detail_code,
+  detailParams: paramsOf(row.detail_params),
 });
 
 export class Automations {
@@ -116,7 +128,8 @@ export class Automations {
       enabled: () => this.enabled(),
       spec: (auto) => this.spec(auto),
       fire: (event) => this.fire(event),
-      record: (auto, at, cause, status, detail) => this.record(auto, at, cause, status, detail),
+      record: (auto, at, cause, status, detail, why) =>
+        this.record(auto, at, cause, status, detail, why),
       search: () => this.search(),
     });
   }
@@ -299,12 +312,12 @@ export class Automations {
     const cause = causeOf(event);
     const refused = refusal(auto, event, () => this.today(auto.id, at));
     if (refused) {
-      this.record(auto, at, cause, refused.status, refused.detail);
+      this.record(auto, at, cause, refused.status, refused.detail, refused.why);
       return;
     }
     try {
       const outcome = await act(this.opts, auto, event);
-      this.record(auto, at, cause, outcome.status, outcome.detail);
+      this.record(auto, at, cause, outcome.status, outcome.detail, outcome.why);
     } catch (error) {
       this.record(auto, at, cause, "failed", (error as Error).message);
     }
@@ -324,15 +337,27 @@ export class Automations {
   private record(
     auto: Automation,
     at: number,
-    cause: string,
+    cause: Said,
     status: AutomationRun["status"],
     detail: string | null,
+    detailWhy?: Why,
   ): void {
     this.db
       .query(
-        "INSERT INTO automation_runs (id, automation_id, fired_at, cause, status, detail) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO automation_runs (id, automation_id, fired_at, cause, cause_code, cause_params, status, detail, detail_code, detail_params) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
-      .run(ulid(), auto.id, new Date(at).toISOString(), cause, status, detail);
+      .run(
+        ulid(),
+        auto.id,
+        new Date(at).toISOString(),
+        cause.text,
+        cause.why.code,
+        JSON.stringify(cause.why.params),
+        status,
+        detail,
+        detailWhy?.code ?? null,
+        detailWhy ? JSON.stringify(detailWhy.params) : null,
+      );
   }
 
   private enabled(): Automation[] {

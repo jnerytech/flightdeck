@@ -14,17 +14,45 @@ export type AutomationEvent =
   | { type: "issue_label"; projectId: string; issue: Issue }
   | { type: "cron"; projectId: string; automationId: string; minute: number };
 
+/** A code the app has a sentence for, with the values that go in it (#4185). */
+export interface Why {
+  code: string;
+  params: Record<string, string | number>;
+}
+
+/** What a run's history says about its cause: the English text, and the same as a code for the app. */
+export interface Said {
+  text: string;
+  why: Why;
+}
+
 /** What happened, for the run's history. */
-export function causeOf(event: AutomationEvent): string {
+export function causeOf(event: AutomationEvent): Said {
   switch (event.type) {
-    case "cron":
-      return `schedule of ${new Date(event.minute).toISOString()}`;
+    case "cron": {
+      const at = new Date(event.minute).toISOString();
+      return { text: `schedule of ${at}`, why: { code: "cron", params: { at } } };
+    }
     case "pr_comment":
-      return `comment ${event.commentId} by ${event.author} on the PR of card ${event.cardId}`;
+      return {
+        text: `comment ${event.commentId} by ${event.author} on the PR of card ${event.cardId}`,
+        why: {
+          code: "pr_comment",
+          params: { comment: event.commentId, author: event.author, card: event.cardId },
+        },
+      };
     case "ci_failed":
-      return `checks of the PR of card ${event.cardId} failed`;
-    case "issue_label":
-      return `issue ${event.issue.ref} with the label ${event.issue.labels.join(", ")}`;
+      return {
+        text: `checks of the PR of card ${event.cardId} failed`,
+        why: { code: "ci_failed", params: { card: event.cardId } },
+      };
+    case "issue_label": {
+      const labels = event.issue.labels.join(", ");
+      return {
+        text: `issue ${event.issue.ref} with the label ${labels}`,
+        why: { code: "issue_label", params: { issue: event.issue.ref, labels } },
+      };
+    }
   }
 }
 

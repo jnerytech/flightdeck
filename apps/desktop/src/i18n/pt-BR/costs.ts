@@ -156,6 +156,8 @@ export const costs = {
     cardHours: "Horas estimadas deste card",
     loading: "Lendo os hosts…",
     noHost: "Nenhum host online informa isto.",
+    failed: "Não foi possível ler o retorno de {hosts}.",
+    retry: "Tentar de novo",
   },
   budgets: {
     label: "orçamento {scope} ({period})",
@@ -255,6 +257,9 @@ export const costs = {
     otherProjects: "Outros projetos",
     top: "Top sessões",
     loading: "Carregando custos",
+    failed: "Não foi possível ler os custos.",
+    retry: "Tentar de novo",
+    refreshing: "Atualizando os valores…",
     empty: "Nenhum custo neste período",
     emptyAction: "Ver os últimos 30 dias",
     noHost: "Nenhum host informa custos ainda.",

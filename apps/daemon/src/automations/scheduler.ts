@@ -2,7 +2,7 @@ import type { Database } from "bun:sqlite";
 import type { Automation, AutomationRun } from "@flightdeck/protocol";
 import type { CronSpec } from "./domain/cron.ts";
 import { MINUTE, minuteOf, planSlots, scanFrom } from "./domain/cron-slots.ts";
-import type { AutomationEvent } from "./domain/event.ts";
+import type { AutomationEvent, Said, Why } from "./domain/event.ts";
 
 /** What the scheduler asks of the automations it wakes. */
 export interface SchedulerDeps {
@@ -22,9 +22,10 @@ export interface SchedulerDeps {
   record: (
     auto: Automation,
     at: number,
-    cause: string,
+    cause: Said,
     status: AutomationRun["status"],
     detail: string | null,
+    detailWhy?: Why,
   ) => void;
   /** One search of the issues for `issue_label` automations. */
   search: () => Promise<void>;
@@ -146,12 +147,14 @@ export class Scheduler {
         await this.deps.fire(event); // NOSONAR: a boot (fire=false) never gets here and must finish without yielding
       }
       for (const slot of missed) {
+        const at = new Date(slot).toISOString();
         record(
           auto,
           slot,
-          `missed schedule of ${new Date(slot).toISOString()}`,
+          { text: `missed schedule of ${at}`, why: { code: "missed", params: { at } } },
           "missed",
           "the daemon was stopped",
+          { code: "daemon_stopped", params: {} },
         );
       }
     }

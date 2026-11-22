@@ -67,6 +67,8 @@ export function automationShots(ids: DemoIds): Shot[] {
       prepare: async (page) => {
         await formOpen(page);
         await next(page);
+        // The action step stays shut until the project's workflows have loaded.
+        await page.getByRole("combobox", { name: /^(Workflow)$/ }).waitFor();
         await next(page);
         await page.getByRole("spinbutton").waitFor();
       },
@@ -78,7 +80,9 @@ export function automationShots(ids: DemoIds): Shot[] {
       prepare: async (page) => {
         await listLoaded(page);
         await page
-          .getByRole("switch", { name: new RegExp(`^(Turn on|Ligar) ${DEMO_OFF_AUTOMATION}$`) })
+          .getByRole("switch", {
+            name: new RegExp(`^(Automation|Automação) ${DEMO_OFF_AUTOMATION}$`),
+          })
           .click();
         await page.getByRole("alertdialog").waitFor();
       },

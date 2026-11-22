@@ -6,6 +6,7 @@
 import type { Page } from "playwright-core";
 import type { Route } from "../../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../../demo-seed.ts";
+import type { AssistantMode } from "./assistant-frames.ts";
 import type { ReleasesMode } from "./releases.ts";
 import type { WireRule } from "./wire.ts";
 
@@ -52,6 +53,10 @@ export interface Shot {
   autoUpdateOff?: boolean;
   /** #4059: the What's new dialog's answer, made in the page: the list, a refusal, never answered, or no host that offers it (`releasesScript`). */
   releases?: ReleasesMode;
+  /** #4168: the AI assistant is set up, kept in the page's storage before it loads: the wand on, Claude Code on the demo host chosen and agreed to. */
+  assistantReady?: boolean;
+  /** #4168: what the host seems to answer to the wand's request, made in the page: it never reaches the host (`assistantScript`). */
+  assistant?: AssistantMode;
   /** Demo switches added to the address (`update=<version>`: the update card shows; `update=fail`: every check fails). */
   query?: Record<string, string>;
   /** After the screen loads: open the palette, scroll a long list to its end… */
