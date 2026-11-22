@@ -236,6 +236,21 @@ describe.each(["en", "pt-BR"] as const)("the automation form, its fields (%s)", 
     });
   });
 
+  test("a refused cron does not come back after the trigger is changed and changed back (#4188)", async () => {
+    await refusedSave(CRON_REFUSED);
+    const before =
+      screen.queryByLabelText(w.trigger) !== null && alertText().includes(w.cronRefused);
+    if (before) {
+      await pickTrigger("issue_label");
+      await pickTrigger("cron");
+    }
+    expect({
+      before,
+      cronBack: screen.queryByLabelText(w.cron) !== null,
+      said: alertText().includes(w.cronRefused),
+    }).toEqual({ before: true, cronBack: true, said: false });
+  });
+
   test("a refusal that is not about a field stays on the last step, in the dialog (#4188)", async () => {
     await refusedSave({
       code: "not_found",
