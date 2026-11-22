@@ -251,7 +251,8 @@ export function WandPanel(props: PanelProps) {
   else if (state.kind === "preview") view = <Preview {...props} />;
   return (
     <>
-      <div aria-live="polite" className="sr-only">
+      {/* Fixed to the window, not absolute: an absolute line sits where it falls in a long page and makes the page scroll (#4166). */}
+      <div aria-live="polite" className="sr-only" style={{ position: "fixed" }}>
         {state.kind === "preview" ? props.t("assistantWand.ready") : ""}
       </div>
       {view}
