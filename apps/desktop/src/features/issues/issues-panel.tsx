@@ -380,13 +380,13 @@ export function IssuesPanel(
                 />
               )}
               {/* Always mounted: a live region that appears already filled is not announced. */}
-              <p role="status" className="text-muted-foreground text-xs empty:sr-only">
+              <output className="text-muted-foreground text-xs empty:sr-only">
                 {issues &&
                   issues.length > 0 &&
                   (filtering
                     ? t("issuesUi.countOf", { shown: shown.length, n: issues.length })
                     : t("issuesUi.count", { n: issues.length }))}
-              </p>
+              </output>
               {issues && shown.length === 0 && (
                 <EmptyState
                   title={

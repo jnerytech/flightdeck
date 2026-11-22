@@ -432,7 +432,8 @@ const typeIn = async (label: string, value: string) => {
     fireEvent.change(within(panel()).getByLabelText(label), { target: { value } });
   });
 };
-const statusLine = (text: string) => within(panel()).queryByText(text)?.getAttribute("role");
+/** The element that says `text`: an `output` is a live region (role status) by itself. */
+const statusLine = (text: string) => within(panel()).queryByText(text)?.tagName.toLowerCase();
 
 describe.each(LANGS)("issues panel filter ($lang)", (words) => {
   test("a filter that matches nothing names the filter, and Clear filter brings the list and the focus back", async () => {
@@ -472,9 +473,9 @@ describe.each(LANGS)("issues panel filter ($lang)", (words) => {
     const h = host({ list: [listed(1, 2)] });
     show(h.store(words.lang), words.lang, project("p1", { provider: "github" }));
     await settle(() => rows() === 2);
-    expect(statusLine(words.count(2))).toBe("status");
+    expect(statusLine(words.count(2))).toBe("output");
     await typeIn(words.filter, "Issue number 1");
-    expect(statusLine(words.countOf(1, 2))).toBe("status");
+    expect(statusLine(words.countOf(1, 2))).toBe("output");
   });
 });
 
