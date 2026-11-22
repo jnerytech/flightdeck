@@ -64,7 +64,10 @@ export function PrComments(
               <li key={comment.id} className="flex items-start gap-2 rounded-md border p-3 text-sm">
                 <input
                   type="checkbox"
-                  aria-label={t("cardReview.select", { author: comment.author })}
+                  aria-label={t("cardReview.select", {
+                    author: comment.author,
+                    where: comment.path ? location(comment) : t("cardReview.review"),
+                  })}
                   checked={chosen.has(comment.id)}
                   onChange={() => toggle(comment.id)}
                 />

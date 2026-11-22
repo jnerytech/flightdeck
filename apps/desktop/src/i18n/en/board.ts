@@ -199,7 +199,7 @@ export const board = {
     prComments: "PR comments",
     prEmpty: "No comments on the PR.",
     prNote: "Flightdeck only reads the comments: nothing is posted to the PR.",
-    select: "Select the comment by {author}",
+    select: "Select the comment by {author} on {where}",
     review: "review",
     resolved: "Resolved",
     external: "External author",
