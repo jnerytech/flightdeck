@@ -105,6 +105,9 @@ describe("cota-ui", () => {
     expect(meter?.tagName).toBe("METER");
     expect(meter?.getAttribute("value")).toBe("0.95");
     expect(meter?.getAttribute("max")).toBe("1");
+    // #4306: a screen reader says the percent, not 0.95, and the card draws the shared Meter (it says if it is hot).
+    expect(meter?.getAttribute("aria-valuetext")).toBe("95%");
+    expect(meter?.getAttribute("data-hot")).toBe("true");
     // Over pauseAt: new cards wait, manual sessions go on, and the app says so.
     expect(screen.queryByText(/cards novos esperam a cota; sessões manuais seguem/)).not.toBeNull();
   });

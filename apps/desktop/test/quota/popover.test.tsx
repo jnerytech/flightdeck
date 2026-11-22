@@ -133,6 +133,10 @@ for (const [lang, dict] of [
           .replace("{window}", dict.quota.windows[window])
           .replace("{host}", "alfa");
         expect(within(popover).queryByLabelText(label)).not.toBeNull();
+        // #4306: the meter reads as a percent to a screen reader, not as a fraction.
+        expect(
+          within(popover).queryByLabelText(label)?.getAttribute("aria-valuetext") ?? "",
+        ).toMatch(/^\d+%$/);
       }
       expect(
         within(popover).queryByText(dict.quota.resets.replace("{time}", "14:00")),
