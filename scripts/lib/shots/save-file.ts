@@ -36,5 +36,23 @@ export interface OfferWindow {
  * Self-contained, like `keepSaves`.
  */
 export function offerBackup(win: OfferWindow): void {
-  void win;
+  const make = win.document.createElement.bind(win.document);
+  win.document.createElement = (tag: string) => {
+    const element = make(tag) as {
+      files?: unknown;
+      click?: () => void;
+      dispatchEvent(event: Event): boolean;
+    };
+    if (tag.toLowerCase() !== "input") return element;
+    element.click = () => {
+      const kept = win.__saved;
+      Object.defineProperty(element, "files", {
+        value: kept
+          ? [{ name: kept.name, size: kept.text.length, text: async () => kept.text }]
+          : null,
+      });
+      element.dispatchEvent(new Event(kept ? "change" : "cancel"));
+    };
+    return element;
+  };
 }
