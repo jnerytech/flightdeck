@@ -183,6 +183,7 @@ export interface CliArgs {
     | "check"
     | "undo"
     | "interrupted"
+    | "teleport"
     | "import-preview"
     | "import-history"
     | "favorite"
@@ -411,6 +412,8 @@ export interface CliArgs {
   watchFlags?: string[];
   /** `session summary|files <session>`: the session to read, its name or its id. */
   sessionRef?: string;
+  /** `session teleport <session> --to <host> --repo <path>`: the host to move it to and the project there (issue #3704). */
+  teleport?: { to?: string; repo?: string };
   /** `session set-model|set-effort <session> <value>`: the model or the effort, or `default`. */
   sessionValue?: string;
   /** `session meta set <session> name=... pinned=... archived=...`: the fields to change. */

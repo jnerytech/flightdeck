@@ -147,6 +147,7 @@ export const USAGE = [
   "     fd sessions [--host <name>] [--json] [--config <file>]   (the sessions of a daemon: this host's, or a paired host's)",
   "     fd send <session> <text> [--host <name>] [--json] [--config <file>]   (the session is its name or its id)",
   "     fd session interrupted|summary <session>|files <session> [--host <name>] [--json] [--config <file>]   (a session is its name or its id)",
+  "     fd session teleport <session> --to <host> --repo <path> [--confirm] [--host <name>] [--json] [--config <file>]   (moves an idle session, its transcript and its code, to the paired host --to names, into the project at --repo there, and archives it here; without --confirm it prints what would move and stops; a session that is working, in a team or not on Claude is refused; exit 1 also when a Ctrl-C stopped it)",
   "     fd session interrupt|close|resume|sleep <session> [--host <name>] [--json] [--config <file>]",
   "     fd session set-model <session> <model|default> | set-effort <session> <low|medium|high|xhigh|max|default> [--host <name>] [--json] [--config <file>]",
   "     fd session create --cwd <folder> [--prompt <text>] [--name <text>] [--model <model>] [--effort <low|medium|high|xhigh|max>] [--permission-mode <mode>] [--persona <id> [--language en|pt-BR]] [--host <name>] [--json] [--config <file>]   (starts a session; the folder must be under an allowed root)",

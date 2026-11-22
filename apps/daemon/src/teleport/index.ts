@@ -7,3 +7,4 @@ export { SAFE, TIMEOUT_MS } from "./git.ts";
 export { importPackage, type TeleportImportDeps } from "./import.ts";
 export type { TeleportPackages } from "./package.ts";
 export type { TeleportInbox } from "./receive.ts";
+export { runTeleportCli } from "./teleport-cli.ts";
