@@ -23,7 +23,7 @@ afterEach(cleanup);
 type Specs = Parameters<typeof activityState>[0];
 
 /** Puts the fixture's hosts, hub and unread marks in the store, as a daemon's answers would. */
-function feed(store: InstanceType<typeof AppStore>, specs: Specs, hostsAre: HostsAre) {
+function feed(store: InstanceType<typeof AppStore>, specs: Specs, hostsAre: HostsAre = "online") {
   const { hosts, hub, unread } = activityState(specs, store.getState());
   const shown =
     hostsAre === "none"
