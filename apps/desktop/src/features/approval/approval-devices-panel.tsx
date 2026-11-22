@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
-import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
+import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Inline, ListRow, Panel, Stack } from "@/shared/layout/index.ts";
 import {
   type AddOffer,
@@ -46,6 +46,8 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
   const [done, setDone] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Dropping this device's key is asked first: it cannot approve for the host after that (#4155).
+  const [asking, setAsking] = useState(false);
   // A change the host announced that this device did not make (#3477), until the person dismisses it.
   // All of them are kept: a later change must not hide an alert about an earlier one.
   const [heard, setHeard] = useState<ApprovalHeard[]>([]);
@@ -425,19 +427,26 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
         <Stack gap={1}>
           <p className="text-muted-foreground text-xs">{t("approvalDevices.removeLocalHint")}</p>
           <Inline>
-            <ActionButton
-              variant="outline"
-              onClick={() =>
-                change(
-                  () => store.approval.removeLocalKey(host.id),
-                  t("approvalDevices.removedLocal"),
-                )
-              }
-            >
+            <ActionButton variant="outline" onClick={() => setAsking(true)}>
               {t("approvalDevices.removeLocal")}
             </ActionButton>
           </Inline>
         </Stack>
+      )}
+      {asking && (
+        <ConfirmDialog
+          destructive
+          message={t("approvalDevices.removeLocalAsk")}
+          confirmLabel={t("approvalDevices.removeLocal")}
+          onCancel={() => setAsking(false)}
+          onConfirm={() => {
+            setAsking(false);
+            void change(
+              () => store.approval.removeLocalKey(host.id),
+              t("approvalDevices.removedLocal"),
+            );
+          }}
+        />
       )}
       {notices}
       <p className="text-muted-foreground text-xs">{t("approvalDevices.scope")}</p>
