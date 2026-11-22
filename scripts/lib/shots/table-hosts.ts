@@ -20,8 +20,10 @@ async function listed(page: Page): Promise<void> {
 }
 
 const SIMULATE = /^(Simulate|Simular)$/;
-const CLEAN = /^(Clean up old data|Limpar dados antigos)$/;
-const BACKUP = /^(Back up this host's database|Fazer backup do banco deste host)$/;
+// The labels before and after #3996 (PR #4003) renamed them: whichever main has when the print runs.
+const CLEAN = /^(Clean|Limpar|Clean up old data|Limpar dados antigos)$/;
+const BACKUP =
+  /^(Back up now|Fazer backup agora|Back up this host's database|Fazer backup do banco deste host)$/;
 
 /** The host's Maintenance panel, then the step that brings one of its states up. */
 function maintenancePanel(then?: NonNullable<Shot["prepare"]>): NonNullable<Shot["prepare"]> {
@@ -79,7 +81,7 @@ export function hostShots(ids: DemoIds): Shot[] {
       }),
     },
     {
-      // Clean asks first: the confirmation names the rows it deletes for good.
+      // Clean asks first: the confirmation warns that deleted data does not come back.
       name: "host-manutencao-limpar",
       route: { name: "host", host: ALFA },
       maintenance: {},
