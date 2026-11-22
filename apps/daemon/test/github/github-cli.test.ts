@@ -113,6 +113,10 @@ describe("the github arguments (issue #3703)", () => {
       "refusal",
       expect.stringContaining("--query"),
     );
+    expect(parsed(["github", "repos", "--query", "a\nb"])).toHaveProperty(
+      "refusal",
+      expect.stringContaining("--query"),
+    );
     expect(parsed(["github", "repos", "--query", "  "])).toHaveProperty(
       "refusal",
       expect.stringContaining("--query"),
@@ -181,6 +185,12 @@ describe("flightdeckd github status (issue #3703)", () => {
     });
     const run = await flightdeckd(["github", "status"], daemon.port);
     expect(run.out[0]).toBe("signed in as octocat (environment token)");
+  });
+
+  test("a login source a newer host adds is printed as it came, not as undefined", async () => {
+    const daemon = fakeDaemon({ "github.status": () => ({ ...STATUS, source: "vault" }) });
+    const run = await flightdeckd(["github", "status"], daemon.port);
+    expect(run.out[0]).toBe("signed in as octocat (vault)");
   });
 
   test("no daemon is exit 2", async () => {

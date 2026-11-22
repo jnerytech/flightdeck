@@ -74,6 +74,10 @@ describe("the account arguments (issue #3703)", () => {
     for (const line of [["account"], ["account", "nope"]]) {
       expect(parsed(line)).toHaveProperty("refusal", expect.stringContaining("account action"));
     }
+    expect(parsed(["account", "get", "--query", "x"])).toHaveProperty(
+      "refusal",
+      expect.stringContaining("--query"),
+    );
     expect(parsed(["account", "get", "extra"])).toHaveProperty(
       "refusal",
       expect.stringContaining("extra"),
@@ -107,6 +111,34 @@ describe("flightdeckd account get and refresh (issue #3703)", () => {
     expect(run.out).toContain(
       "the last read failed (account_unavailable): this is the previous reading",
     );
+  });
+
+  test("a first read that failed says so, though there is no previous reading", async () => {
+    const daemon = fakeDaemon({
+      "account.get": () => ({
+        ...SIGNED_OUT,
+        status: "unknown",
+        stale: false,
+        error: "account_unavailable",
+      }),
+    });
+    const run = await flightdeckd(["account", "get"], daemon.port);
+    expect(run.out).toEqual([
+      "the account of this host is not known",
+      "the last read failed (account_unavailable)",
+      "not read yet",
+    ]);
+  });
+
+  test("a field an older host leaves out is left out of the first line, not printed as a gap", async () => {
+    const daemon = fakeDaemon({
+      "account.get": () => {
+        const { organization: _organization, ...older } = SIGNED_IN;
+        return older;
+      },
+    });
+    const run = await flightdeckd(["account", "get"], daemon.port);
+    expect(run.out[0]).toBe("signed in as ana@example.com  max  firstParty");
   });
 
   test("--json prints the state with its windows and the login command", async () => {
@@ -153,26 +185,38 @@ describe("flightdeckd account watch (issue #3703)", () => {
       options,
     );
 
-  test("it writes a line for each state the daemon pushes, and Ctrl-C ends it with 0", async () => {
-    const daemon = fakeDaemon({ "account.watch": () => ({}) });
+  const CURRENT =
+    "signed in as ana@example.com  Acme  max  firstParty | five_hour  42%  allowed  resets 2026-11-20T15:00:00Z | read 2026-11-20T10:00:00Z";
+  const OUT =
+    "signed out of Claude on this host: run `claude auth login` there to sign in | not read yet";
+
+  test("it writes the current state first, then a line for each state the daemon pushes, and Ctrl-C ends it with 0", async () => {
+    const daemon = fakeDaemon({ "account.watch": () => ({}), "account.get": () => SIGNED_IN });
     const { result, lines } = await watched(daemon, {
-      lines: 2,
+      lines: 3,
       after: () => {
-        daemon.push(updated());
         daemon.push(updated(SIGNED_OUT));
+        daemon.push(updated());
       },
     });
-    expect(lines).toEqual([
-      "signed in as ana@example.com  Acme  max  firstParty | five_hour  42%  allowed  resets 2026-11-20T15:00:00Z | read 2026-11-20T10:00:00Z",
-      "signed out of Claude on this host: run `claude auth login` there to sign in | not read yet",
-    ]);
+    expect(lines).toEqual([CURRENT, OUT, CURRENT]);
     expect(result.code).toBe(0);
   });
 
+  test("a watch started while the desktop app already watches is not silent: the current state comes first", async () => {
+    const daemon = fakeDaemon({ "account.watch": () => ({}), "account.get": () => SIGNED_OUT });
+    const { lines } = await watched(daemon, { lines: 1 });
+    expect(lines).toEqual([OUT]);
+  });
+
   test("--json writes the state of each update on one line, without the frame type", async () => {
-    const daemon = fakeDaemon({ "account.watch": () => ({}) });
-    const { lines } = await watched(daemon, { json: true, after: () => daemon.push(updated()) });
-    expect(JSON.parse(lines[0] ?? "{}")).toEqual(SIGNED_IN);
+    const daemon = fakeDaemon({ "account.watch": () => ({}), "account.get": () => SIGNED_IN });
+    const { lines } = await watched(daemon, {
+      json: true,
+      lines: 2,
+      after: () => daemon.push(updated(SIGNED_OUT)),
+    });
+    expect(lines.map((line) => JSON.parse(line))).toEqual([SIGNED_IN, SIGNED_OUT]);
   });
 
   test("a refused watch is exit 1, and a daemon that never acks it is exit 2", async () => {
