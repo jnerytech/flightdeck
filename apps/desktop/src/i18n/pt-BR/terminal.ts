@@ -80,7 +80,7 @@ export const terminal = {
     title: "Mover para outro host",
     host: "Host",
     noTarget:
-      "Nenhum outro host conectado pode receber uma sessão. Conecte um host com teleport e tente de novo.",
+      "Nenhum outro host pode receber uma sessão. Conecte outro host que esteja online e com o Flightdeck atualizado e tente de novo.",
     pickHostReason: "Escolha o host para onde mover a sessão.",
     repoReason: "Digite o repositório nesse host.",
     pickHost: "Escolha um host",
@@ -104,6 +104,8 @@ export const terminal = {
     done: "A sessão está agora em {host}. A daqui fica como estava.",
     open: "Abrir lá",
     close: "Fechar",
+    retry: "Tentar de novo",
+    progress: "Progresso da mudança",
     plainWs: {
       one: "{hosts} se conecta sem TLS (ws:// puro). A conversa e o código da sessão passam por este app sem criptografia: mova só por uma rede em que você confia.",
       other:

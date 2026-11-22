@@ -7,7 +7,7 @@
 import { memo, type ReactNode, useRef, useState } from "react";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RequestError } from "@/features/hosts/index.ts";
-import { Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";
+import { Bar, Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";
 import { formatBytes } from "@/shared/lib/index.ts";
 import { useT } from "../../i18n/context.tsx";
 import { translateError } from "../../i18n/errors.ts";
@@ -124,6 +124,12 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
       );
   };
 
+  /** After a failure: back to the first step with the host and the repository kept, free for a new move. */
+  const retry = () => {
+    stop.current = null;
+    setPhase({ at: "pick" });
+  };
+
   const reply = (yes: boolean) => {
     answer.current?.(yes);
     answer.current = null;
@@ -230,6 +236,16 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
                 ? t("teleportUi.finishing", { host })
                 : t("teleportUi.moving", { percent: phase.percent })}
             </output>
+            <div
+              role="progressbar"
+              aria-label={t("teleportUi.progress")}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={phase.finishing ? 100 : phase.percent}
+              className="w-full"
+            >
+              <Bar ratio={(phase.finishing ? 100 : phase.percent) / 100} />
+            </div>
             <FormActions
               submit={t("teleportUi.move")}
               busy
@@ -256,9 +272,13 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
           </Form>
         )}
         {phase.at === "failed" && (
-          <Form variant="dialog" onSubmit={close}>
+          <Form variant="dialog" onSubmit={retry}>
             <p role="alert">{phase.text}</p>
-            <FormActions submit={t("teleportUi.close")} />
+            <FormActions
+              submit={t("teleportUi.retry")}
+              cancel={t("teleportUi.close")}
+              onCancel={close}
+            />
           </Form>
         )}
       </AppDialogContent>
