@@ -71,9 +71,8 @@ describe("the automations the demo seeds (#3858)", () => {
       const parsed = AutomationRun.safeParse({ id: "r", automationId: "a", ...run });
       expect(parsed.success).toBe(true);
     }
-    expect(new Set(runs.map((run) => run.status))).toEqual(
-      new Set(["ok", "failed", "ignored", "limited"]),
-    );
+    // The outcomes a failing-checks trigger can have; "ignored" needs an outside author's event.
+    expect(new Set(runs.map((run) => run.status))).toEqual(new Set(["ok", "failed", "limited"]));
     expect(DEMO_AUTOMATIONS.find((a) => a.name === DEMO_OFF_AUTOMATION)?.enabled).toBe(false);
   });
 });
