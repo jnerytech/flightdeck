@@ -114,11 +114,16 @@ export function formatCompact(value: number, lang: Lang): string {
   );
 }
 
+/** A number with one decimal in the language's form ("1.5" in English, "1,5" in Portuguese). */
+export function formatDecimal(value: number, lang: Lang): string {
+  return new Intl.NumberFormat(lang, { maximumFractionDigits: 1, minimumFractionDigits: 1 }).format(
+    value,
+  );
+}
+
 /** A time of a few seconds with a decimal ("4.5 s"); a longer one as `formatDuration` says it. */
 export function formatSeconds(ms: number, lang: Lang, t: T): string {
-  return ms < 60_000
-    ? `${new Intl.NumberFormat(lang, { maximumFractionDigits: 1, minimumFractionDigits: 1 }).format(ms / 1000)} s`
-    : formatDuration(ms, t);
+  return ms < 60_000 ? `${formatDecimal(ms / 1000, lang)} s` : formatDuration(ms, t);
 }
 
 /** A size in bytes as B, KB, MB or GB with the language's separators (one decimal at most). */

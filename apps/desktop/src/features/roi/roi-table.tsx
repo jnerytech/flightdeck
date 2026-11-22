@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
+import { formatDecimal } from "@/i18n/format";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
@@ -174,7 +175,7 @@ export function RoiTable(
                   <td className="pr-3">{row.figures.hours}</td>
                   <td className="pr-3">{money(row.figures.valueUsd, t.lang)}</td>
                   <td className="pr-3">
-                    {row.figures.roi === null ? DASH : row.figures.roi.toFixed(1)}
+                    {row.figures.roi === null ? DASH : formatDecimal(row.figures.roi, t.lang)}
                   </td>
                 </tr>
               ))}
@@ -191,7 +192,9 @@ export function RoiTable(
                 <td className="pr-3">{money(totals.costPerPr, t.lang)}</td>
                 <td className="pr-3">{totals.hours}</td>
                 <td className="pr-3">{money(totals.valueUsd, t.lang)}</td>
-                <td className="pr-3">{totals.roi === null ? DASH : totals.roi.toFixed(1)}</td>
+                <td className="pr-3">
+                  {totals.roi === null ? DASH : formatDecimal(totals.roi, t.lang)}
+                </td>
               </tr>
             </tfoot>
           </table>
