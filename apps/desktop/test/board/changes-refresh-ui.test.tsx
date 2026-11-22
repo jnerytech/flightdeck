@@ -92,7 +92,7 @@ const press = async (name: string) => {
 };
 
 const alerts = () => screen.queryAllByRole("alert").map((el) => el.textContent ?? "");
-const showsDiff = () => screen.queryByText("app.ts") !== null; // NOSONAR: the boolean keeps a DOM node out of the failure diff
+const showsDiff = () => screen.queryAllByText("app.ts").length > 0;
 
 describe("changes-refresh-ui: a refused read says so, and Refresh shows it is working (#3891)", () => {
   test("the first read refused is an error with a way to try again", async () => {
