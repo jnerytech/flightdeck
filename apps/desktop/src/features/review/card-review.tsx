@@ -1,5 +1,5 @@
 import type { Card, ChangesResult } from "@flightdeck/protocol";
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +37,8 @@ export function CardReview(
   const t = useT();
   const { store, hostId, card, changes } = props;
   const [refusal, setRefusal] = useState<string | null>(null);
+  const upToDateId = useId();
+  const nothingId = useId();
   const [merging, setMerging] = useState(false);
   const [mode, setMode] = useState<Mode>("merge");
   /** The commit message the person confirmed (issue #162); empty keeps the host's default. */
@@ -87,7 +89,7 @@ export function CardReview(
           variant="outline"
           size="sm"
           disabled={behind === 0}
-          disabledReason={t("cardReview.upToDate", { base })}
+          aria-describedby={behind === 0 ? upToDateId : undefined}
           onClick={() => update()}
         >
           {t("cardReview.updateFromBase")}
@@ -97,13 +99,24 @@ export function CardReview(
             variant="outline"
             size="sm"
             disabled={ahead === 0}
-            disabledReason={t("cardReview.nothingToMerge", { base })}
+            aria-describedby={ahead === 0 ? nothingId : undefined}
             onClick={() => setMerging(true)}
           >
             {t("cardReview.merge")}
           </ActionButton>
         )}
       </div>
+      {/* Why a button is off, as lines of their own: two side by side would overlap. */}
+      {behind === 0 && (
+        <p id={upToDateId} className="text-muted-foreground text-xs">
+          {t("cardReview.upToDate", { base })}
+        </p>
+      )}
+      {ahead === 0 && !card.prUrl && (
+        <p id={nothingId} className="text-muted-foreground text-xs">
+          {t("cardReview.nothingToMerge", { base })}
+        </p>
+      )}
       {refusal && (
         <div
           role="alert"

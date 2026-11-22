@@ -36,11 +36,17 @@ export function PrComments(
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `moment` is the trigger
   useEffect(() => {
+    // An answer that comes after a newer read started (a retry, a new moment) is dropped.
+    let current = true;
     void store.hostCommand(hostId, "pr.comments", { cardId }).then((result) => {
+      if (!current) return;
       // A refusal is `null`: it is a failed read, not a PR with no comments.
       setFailed(result === null);
       if (result) setComments(result.comments);
     });
+    return () => {
+      current = false;
+    };
   }, [store, hostId, cardId, props.moment, attempt]);
 
   if (failed) {
@@ -48,7 +54,12 @@ export function PrComments(
       <ErrorState
         message={t("cardReview.prFailed")}
         retryLabel={t("cardReview.prRetry")}
-        onRetry={() => setAttempt((n) => n + 1)}
+        onRetry={() => {
+          // Back to reading: the error goes while the host answers, so a second press is not needed.
+          setFailed(false);
+          setPicked(null);
+          setAttempt((n) => n + 1);
+        }}
       />
     );
   }
