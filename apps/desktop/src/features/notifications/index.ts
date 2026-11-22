@@ -10,6 +10,7 @@ export {
   type NotifyEvent,
   type NotifyPrefs,
   type NotifySource,
+  SWITCHABLE,
 } from "./domain/notify-policy.ts";
 export { playNotifySound } from "./domain/notify-sound.ts";
 export { NotifyPreferences } from "./notify-preferences.ts";

@@ -3,10 +3,11 @@ import { Check, Undo2 } from "lucide-react";
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PopoverContent } from "@/components/ui/popover";
+import { SWITCHABLE } from "@/features/notifications/index.ts";
 import { ApprovalActions, RiskSeal } from "@/features/permissions/ui.ts";
 import type { Key } from "@/i18n";
-import { Inline } from "@/shared/layout/index.ts";
-import { formatWhen } from "../../i18n/format.ts";
+import { Inline, Stack } from "@/shared/layout/index.ts";
+import { formatDateTime, formatWhen } from "../../i18n/format.ts";
 import type { T } from "../../i18n/index.ts";
 import { type InboxEntry, type InboxRow, inboxRows } from "./domain/inbox.ts";
 
@@ -89,7 +90,15 @@ function InboxItem(
               {t("inbox.count", { n: row.count })}
             </span>
           )}
-          <span className="inbox-time">{formatWhen(entry.at, Date.now(), t.lang)}</span>
+          <time
+            dateTime={entry.at}
+            title={formatDateTime(entry.at, t.lang)}
+            className="inbox-time"
+            aria-hidden="true"
+          >
+            {formatWhen(entry.at, Date.now(), t.lang)}
+          </time>
+          <span className="sr-only">{formatDateTime(entry.at, t.lang)}</span>
         </span>
         <span className="text-muted-foreground text-xs">{says}</span>
         {gone && <span className="text-muted-foreground text-xs">{t("inbox.gone")}</span>}
@@ -174,6 +183,8 @@ export function NotificationCenter(
     onMarkRead(row: InboxRow): void;
     onMarkUnread(row: InboxRow): void;
     onDismiss(row: InboxRow): void;
+    /** Opens Settings, Notifications, where the person chooses what lands here. */
+    onOpenSettings(): void;
     onMarkAll(): void;
     onClear(): void;
     /** Puts back what Clear dropped. */
@@ -299,7 +310,17 @@ export function NotificationCenter(
         {said}
       </output>
       {groups.length === 0 ? (
-        <p className="py-6 text-center text-muted-foreground text-sm">{t("inbox.empty")}</p>
+        <Stack gap={2} className="items-center py-6 text-center">
+          <p className="text-muted-foreground text-sm">{t("inbox.empty")}</p>
+          <p className="text-muted-foreground text-xs">
+            {t("inbox.emptyHint", {
+              events: SWITCHABLE.map((event) => t(`notifyPrefs.event.${event}` as Key)).join(", "),
+            })}
+          </p>
+          <Button variant="outline" size="sm" onClick={props.onOpenSettings}>
+            {t("inbox.settings")}
+          </Button>
+        </Stack>
       ) : (
         <div ref={list} className="inbox-groups">
           {groups.map((group) => (
