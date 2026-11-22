@@ -251,7 +251,7 @@ describe("flightdeckd workflow run, watch and resume (issue #3628)", () => {
   });
 
   test("resume with no reason and no parameters says so, in words", async () => {
-    const check: RunResumeCheck = { from: "", ok: false, reason: null };
+    const check: RunResumeCheck = { from: "", ok: false };
     const daemon = fakeDaemon(base({ "run.resume": () => check }));
     const run = await flightdeckd(["workflow", "resume", "r1"], daemon.port);
     expect(run.out).toEqual(["r1 cannot resume: no reason given"]);
