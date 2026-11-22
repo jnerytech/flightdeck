@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { VALUE_FLAGS } from "../../src/cli/domain/args.ts";
-import { OPTIONS_WITH_VALUE } from "../../src/permissions/domain/shell-call.ts";
+import {
+  OPTIONS_WITH_VALUE,
+  runsFlightdeckWords,
+} from "../../src/permissions/domain/shell-call.ts";
 import { VERB_NOUNS } from "../../src/permissions/domain/verb-nouns.ts";
 import { bash, MEDIUM } from "../support/permissions-risk-rules.ts";
 
@@ -150,6 +153,18 @@ describe("a line with many CLI starts (#3566)", () => {
     const got = bash(`sh -c '${"run start ".repeat(2000)}'`);
     expect(performance.now() - started).toBeLessThan(1500);
     expect(got.level).toBe("medium");
+  });
+});
+
+describe("a rule that reads its own words under a shell (#4317)", () => {
+  test("each form of rule is given the words after its CLI start, none is left with nothing", () => {
+    const text = ["-c", "fd rules remove x"];
+    const two: string[][] = [];
+    const rest: string[][] = [];
+    runsFlightdeckWords("sh", text, (_words, mine) => two.push(mine) < 0);
+    runsFlightdeckWords("sh", text, (...all: string[][]) => rest.push(all[1] ?? []) < 0);
+    expect(two.some((mine) => mine.includes("remove"))).toBe(true);
+    expect(rest).toEqual(two);
   });
 });
 
