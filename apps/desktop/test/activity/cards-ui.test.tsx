@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { ExternalSession } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
-import { activityState, MIN, NOW, type Spec } from "./fixtures.ts";
+import { activityState, MIN, NOW } from "./fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -32,6 +32,8 @@ function utility(name: string): string {
   }
   return "";
 }
+
+type Spec = Parameters<typeof activityState>[0][number];
 
 const question: ExternalSession = {
   claudeSessionId: "c1",
