@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Automations } from "../../src/automations/automations.ts";
 import { DEFAULT_PROMPT_TEMPLATE } from "../../src/board/board.ts";
@@ -481,6 +481,24 @@ describe("reverting Claude Code's settings needs a near connection (#3825)", () 
   });
 });
 
+describe("reverting a deleted folder that holds Claude Code's settings needs a near connection (#3825)", () => {
+  test("a far connection cannot bring back .claude, nor a folder above it; a near one can", async () => {
+    const { near, far, repo, reasonOf } = await nearAndFar();
+    const settings = join(repo, ".claude", "settings.json");
+    rmSync(join(repo, ".claude"), { recursive: true });
+    const ask = { target: "session:s-1", path: ".claude", confirm: true };
+    const farRevert = await reasonOf(far.request("changes.revert", ask));
+    const afterFar = existsSync(settings);
+    const nearRevert = await reasonOf(near.request("changes.revert", ask));
+    expect([farRevert, afterFar, nearRevert, existsSync(settings)]).toEqual([
+      "transport_refused",
+      false,
+      null,
+      true,
+    ]);
+  });
+});
+
 describe("saving an ssh target that forwards a port beyond this computer needs a near connection (#3825)", () => {
   test("a far connection cannot bind a forward to another address; loopback or none it can", async () => {
     const { near, far, reasonOf } = await nearAndFar();
@@ -554,6 +572,11 @@ describe("a project's prompt template and approving model need a near connection
     const nearModel = await reasonOf(
       near.request("project.update", { projectId: project.id, autoApprove: model }),
     );
+    const afterNear = stored().autoApprove.model;
+    // Turning it off carries the default model, which is no change to refuse, even over a custom one.
+    const farOffKeepsCustom = await reasonOf(
+      far.request("project.update", { projectId: project.id, autoApprove: { enabled: false } }),
+    );
     expect([
       farTemplate,
       farAdd,
@@ -565,7 +588,8 @@ describe("a project's prompt template and approving model need a near connection
       afterFar,
       farKeepModel,
       nearModel,
-      stored().autoApprove.model,
+      afterNear,
+      farOffKeepsCustom,
     ]).toEqual([
       "transport_refused",
       "transport_refused",
@@ -578,6 +602,7 @@ describe("a project's prompt template and approving model need a near connection
       null,
       null,
       "claude-opus-5-5",
+      null,
     ]);
   });
 });
