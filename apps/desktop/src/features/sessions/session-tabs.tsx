@@ -123,6 +123,11 @@ export function SessionTabs(
   );
   const root = useRef<HTMLDivElement>(null);
   const tabs = useRef(new Map<SessionView, HTMLButtonElement>());
+  // The row of views scrolls sideways in a narrow pane: whichever way the view changed (a click, the
+  // arrow keys, Alt+number, the palette), its tab comes into view (#3821).
+  useEffect(() => {
+    tabs.current.get(tab)?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [tab]);
   // Alt+1 to Alt+7 (Ctrl+1 to 9 are the app's tabs), and Ctrl+` between the Terminal and the Conversation.
   // `true` when the key was one of them and the view changed.
   const viewKeyHandler = useRef<((event: ViewKey & { preventDefault(): void }) => boolean) | null>(
@@ -168,7 +173,7 @@ export function SessionTabs(
   return (
     <div ref={root} className="flex h-full min-h-0 flex-col">
       {bar && (
-        // The views wrap in a narrow pane instead of running past it (#641).
+        // A narrow pane scrolls the row of views sideways, so the conversation keeps its height (#641).
         <div
           data-slot="session-views"
           className="session-views"

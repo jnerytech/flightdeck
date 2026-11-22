@@ -1,10 +1,28 @@
-/* A session's views (#641): one row that scrolls sideways in a narrow pane, with the app's thin
-   scrollbar showing there is more, instead of a second row taken from the conversation. */
+/* A session's views (#641): one row that scrolls sideways in a narrow pane, instead of a second
+   row taken from the conversation. A fade at an edge that hides tabs shows there are more (#3821):
+   the same recipe as the wide tables, a cover that scrolls with the row over a shadow that stays. */
 @utility session-views {
   display: flex;
   flex-shrink: 0;
   gap: 0.5rem;
   overflow-x: auto;
+  background-image:
+    linear-gradient(to right, var(--background) 30%, transparent),
+    linear-gradient(to left, var(--background) 30%, transparent),
+    linear-gradient(to right, color-mix(in oklab, var(--foreground) 18%, transparent), transparent),
+    linear-gradient(to left, color-mix(in oklab, var(--foreground) 18%, transparent), transparent);
+  background-position:
+    left center,
+    right center,
+    left center,
+    right center;
+  background-repeat: no-repeat;
+  background-size:
+    2.5rem 100%,
+    2.5rem 100%,
+    0.75rem 100%,
+    0.75rem 100%;
+  background-attachment: local, local, scroll, scroll;
   border-bottom: 1px solid var(--border);
   padding: 0.5rem 1rem;
   & > * {
