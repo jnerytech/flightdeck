@@ -289,6 +289,16 @@ describe("setup-steps: what the person chose (issue #164)", () => {
     expect(told).toBe(1);
   });
 
+  test("a note dismissed for an out-of-date tool is forgotten once the tool is in place (issue #4098)", () => {
+    const kept = memory();
+    const s = new SetupSettings(kept.storage);
+    for (const id of ["gh~outdated@h1", "git~outdated@h1"]) s.dismissTool(id);
+    s.clearInstalled({
+      h1: { items: [dep("gh", "optional", "ok"), dep("git", "required", "outdated")] },
+    });
+    expect(s.dismissedTools()).toEqual(["git~outdated@h1"]);
+  });
+
   test("a restored tool leaves the dismissed list, for good, and the listeners are told", () => {
     const kept = memory();
     const s = new SetupSettings(kept.storage);

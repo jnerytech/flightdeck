@@ -212,4 +212,13 @@ describe("missing-tool cards: a dismissed note has a way back, and a tool out of
     expect(card?.textContent ?? "").toContain("Without it: card worktrees and branches");
     expect(screen.queryByRole("link", { name: "How to update Git on alfa" })).not.toBeNull();
   });
+
+  test("a note dismissed while the tool was lacking does not hide its later out-of-date card", () => {
+    const view = setup("en", ["git"]);
+    press(/Dismiss the note about Git on/);
+    view.show([missing("git", { state: "outdated", minVersion: "2.30" })]);
+    expect(note("Git is out of date on alfa")).not.toBeNull();
+    press(/Dismiss the note about Git on/);
+    expect(note("Git is out of date on alfa")).toBeNull();
+  });
 });
