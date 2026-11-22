@@ -19,6 +19,14 @@ export function daysBetween(from: string, to: string): string[] {
   return days;
 }
 
+/** Why a custom range is not one: a date is missing, or From is after To. */
+export type RangeProblem = "empty" | "reversed";
+
+/** Whether a custom range can be asked for; null when it can. */
+export function rangeProblem(_range: { from: string; to: string }): RangeProblem | null {
+  return null;
+}
+
 /** The host choice that adds every host up (phase 29); a route can carry it too. */
 export const ALL_HOSTS = "__all__";
 

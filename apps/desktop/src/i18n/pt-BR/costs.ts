@@ -225,6 +225,8 @@ export const costs = {
     quotaPick: "Escolha um host para ver a cota",
     from: "De",
     to: "Até",
+    rangeEmpty: "Escolha as duas datas para mudar o período.",
+    rangeReversed: 'A data "De" não pode vir depois de "Até".',
     model: "Modelo",
     allModels: "Todos os modelos",
     origin: "Origem",
