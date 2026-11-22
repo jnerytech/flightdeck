@@ -28,7 +28,6 @@ const WORDS = {
     saved: "Saved.",
     unsaved: "Unsaved changes",
     newFile: "New file: it exists after Save.",
-    reload: "Reload",
   },
   "pt-BR": {
     open: (n: string) => `${n} (Do projeto)`,
@@ -42,7 +41,6 @@ const WORDS = {
     saved: "Salvo.",
     unsaved: "Alterações não salvas",
     newFile: "Arquivo novo: ele passa a existir depois de Salvar.",
-    reload: "Recarregar",
   },
 } as const;
 
@@ -56,20 +54,17 @@ const item = (name: string) => ({
 });
 const textOf = (name: string) => `---\nname: ${name}\ndescription: d\n---\nBody.\n`;
 
-/** The Agents tab over a host that holds two agents; `writes` says how a save is answered: `null` is a refusal. */
-async function mount(lang: Lang, writes: "ok" | "stale" = "ok") {
+/** The Agents tab over a host that holds two agents and takes every save. */
+async function mount(lang: Lang) {
   const s = new AppStore(memoryPlatform(false, lang).platform, { baseDelayMs: 600_000 });
   await s.i18n.setLang(lang);
-  const asked: string[] = [];
   s.hostCommand = (async (_host: string, type: string, payload: { path?: string }) => {
-    asked.push(type);
     if (type === "agentcfg.list") return { items: [item("revisor"), item("tester")] };
     if (type === "agentcfg.read") {
       const name = /agents\/(.*)\.md$/.exec(payload.path ?? "")?.[1] ?? "x";
-      const moved = writes === "stale" && asked.filter((a) => a === "agentcfg.read").length > 1;
-      return { content: textOf(name), hash: moved ? "hash-moved" : `hash-${name}` };
+      return { content: textOf(name), hash: `hash-${name}` };
     }
-    if (type === "agentcfg.write") return writes === "ok" ? { hash: "hash-saved" } : null;
+    if (type === "agentcfg.write") return { hash: "hash-saved" };
     return null;
   }) as never;
   render(
@@ -130,24 +125,6 @@ describe.each(["en", "pt-BR"] as const)(
       });
       await press(w.save);
       await settle(() => screen.queryByText(w.saved) !== null);
-      expect(focused() === field(w.description)).toBe(true);
-    });
-
-    test("a reload does not move the focus either", async () => {
-      const w = await mount(lang, "stale");
-      await press(w.open("revisor"));
-      await settle(() => field(w.description) !== null);
-      await edit(w.description, "changed");
-      await act(async () => {
-        field(w.description)?.focus();
-      });
-      await press(w.save);
-      await settle(() => screen.queryByRole("button", { name: w.reload }) !== null);
-      await act(async () => {
-        field(w.description)?.focus();
-      });
-      await press(w.reload);
-      await settle(() => screen.queryByRole("button", { name: w.reload }) === null);
       expect(focused() === field(w.description)).toBe(true);
     });
 

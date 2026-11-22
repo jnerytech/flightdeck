@@ -177,6 +177,8 @@ export const agent = {
       edit: "Edit",
       save: "Save",
       saved: "Saved.",
+      unsaved: "Unsaved changes",
+      newFile: "New file: it exists after Save.",
       nothingChanged: "Nothing changed",
       stale:
         "The file changed on disk after you opened it. What you wrote is still here; reload to see the current version.",
