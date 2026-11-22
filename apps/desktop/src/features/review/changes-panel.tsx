@@ -17,7 +17,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import { cn } from "@/lib/utils";
-import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import { Stack } from "@/shared/layout/index.ts";
 import { formatBytes } from "@/shared/lib/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { DiffView } from "./diff-view.tsx";
@@ -122,8 +123,12 @@ export function ChangesPanel(
     (list ?? panel.current)?.focus();
   }, [comments]);
 
+  // Counts the answers the screen took, so a read that was slow does not undo a newer one.
+  const latest = useRef(0);
   const refresh = useCallback(async () => {
+    const mine = ++latest.current;
     const result = await store.hostRequest(hostId, "changes.get", { target });
+    if (mine !== latest.current) return;
     if (result.ok) {
       setChanges(result.data);
       setUnavailable(null);
@@ -137,6 +142,7 @@ export function ChangesPanel(
   useEffect(() => {
     void refresh();
     return store.watchChanges(hostId, target, (update) => {
+      latest.current++;
       setChanges(update);
       setUnavailable(null);
       void loadComments();
@@ -325,7 +331,16 @@ export function ChangesPanel(
   if (unavailable !== null && changes === null) {
     return (
       <section aria-label={t("changes.region")}>
-        <InlineNotice tone="info">{t("changes.unavailable", { reason: unavailable })}</InlineNotice>
+        <Stack gap={2}>
+          <InlineNotice tone="error">
+            {t("changes.unavailable", { reason: unavailable })}
+          </InlineNotice>
+          <div>
+            <ActionButton variant="outline" size="sm" onClick={() => refresh()}>
+              {t("changes.retry")}
+            </ActionButton>
+          </div>
+        </Stack>
       </section>
     );
   }
@@ -346,11 +361,16 @@ export function ChangesPanel(
       tabIndex={-1}
       className="relative flex flex-col gap-4 focus-visible:outline-2 focus-visible:outline-ring"
     >
+      {unavailable !== null && (
+        <InlineNotice tone="error">
+          {t("changes.refreshFailed", { reason: unavailable })} {t("changes.staleHint")}
+        </InlineNotice>
+      )}
       {props.extra?.(changes, refresh, goToDrafts)}
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => void refresh()}>
+        <ActionButton variant="outline" size="sm" onClick={() => refresh()}>
           {t("changes.refresh")}
-        </Button>
+        </ActionButton>
         <Button
           variant="outline"
           size="sm"
