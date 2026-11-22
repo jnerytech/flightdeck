@@ -125,7 +125,7 @@ describe("the harness prints (#4110)", () => {
 
   test("the delete print opens Settings, scrolls to the templates, then asks to delete the first one", async () => {
     const made = await calls("host-modelos-harness-apagar");
-    const settings = made.findIndex((call) => call.includes("Configurações"));
+    const settings = made.findIndex((call) => call.includes("Settings"));
     const section = made.findIndex((call) =>
       call.includes("Modelos de configuração do Claude Code"),
     );
