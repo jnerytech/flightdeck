@@ -14,8 +14,14 @@ export const PinnedKey = z.object({
 /** The options as stored; a key this daemon does not know (a newer one wrote it) is left out. */
 export const StoredOptions = SshOptions.strip();
 
-/** Only what the ForwardAgent confirm needs from the options a destination had: damage reads as off. */
-export const WasForwardAgent = z.looseObject({ forwardAgent: z.boolean().catch(false) });
+/**
+ * Only what the near-only check needs from the options a destination had (ForwardAgent, and the
+ * forwards it already listened with): damage reads as off and none.
+ */
+export const WasOptions = z.looseObject({
+  forwardAgent: z.boolean().catch(false),
+  localForward: z.array(z.string()).catch([]),
+});
 
 /** A destination's tags. */
 export const Tags = z.array(z.string());

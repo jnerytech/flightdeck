@@ -67,10 +67,13 @@ export const cardHandlers = {
   "card.validationTemplate": async (payload, { server }) => {
     return await server.need("board").validationTemplate(payload.cardId);
   },
-  "card.updateFromBase": async (payload, { server }) => {
+  "card.updateFromBase": async (payload, { ws, server }) => {
+    // It changes the card's branch and the local checkout, with the person's git hooks: near only (#3825).
+    requireVaultTransport(ws.data.origin, "card.updateFromBase", server.opts.log);
     return await server.need("board").updateFromBase(payload.cardId);
   },
-  "card.mergeLocal": async (payload, { server }) => {
+  "card.mergeLocal": async (payload, { ws, server }) => {
+    requireVaultTransport(ws.data.origin, "card.mergeLocal", server.opts.log);
     const { cardId, mode, confirm, message } = payload;
     return await server.need("board").mergeLocal(cardId, mode, confirm === true, message);
   },

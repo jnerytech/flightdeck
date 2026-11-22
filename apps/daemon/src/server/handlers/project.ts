@@ -3,6 +3,7 @@
  * setup (harness) and its templates, and finding or cloning repositories. The board itself
  * (`board.*`) and the allowed roots (`roots.add`) are separate.
  */
+import { AutoApproveSettings } from "@flightdeck/protocol";
 import type { TemplateMarkdown } from "../../harness/index.ts";
 import { FlightdeckError, featureOff, resolveAllowedCwd, rootNames } from "../../kernel/index.ts";
 import { detectProvider } from "../../pr-hosts/index.ts";
@@ -21,6 +22,9 @@ async function markdownOf(
   const templates = server.needIn("harness", "templates");
   return templates.files(template);
 }
+
+/** The model the automatic approval starts with: choosing another one is near only (#3825). */
+const DEFAULT_MODEL = AutoApproveSettings.parse({}).model;
 
 /**
  * Whether a change makes the automatic approval approve more than it did: on where it was off, or
@@ -53,6 +57,12 @@ export const projectHandlers = {
     // trusting a run config is. Anything else about a project answers anywhere (#3807).
     if (payload.setupScript?.trim())
       requireVaultTransport(ws.data.origin, "project.add", server.opts.log);
+    // The prompt template goes into every card's first prompt, and the model decides what the
+    // automatic approval lets through: a custom one is near only (#3825).
+    if (payload.promptTemplate?.trim())
+      requireVaultTransport(ws.data.origin, "project.add", server.opts.log);
+    if (payload.autoApprove?.model !== undefined && payload.autoApprove.model !== DEFAULT_MODEL)
+      requireVaultTransport(ws.data.origin, "project.add", server.opts.log);
     const board = server.need("board");
     return await board.forWire(await board.addProject(payload));
   },
@@ -67,6 +77,16 @@ export const projectHandlers = {
     }
     // Setting a setup script is near only; clearing it (null or blank) is not (#3807).
     if (patch.setupScript?.trim())
+      requireVaultTransport(ws.data.origin, "project.update", server.opts.log);
+    // A prompt template or an approving model that differs from the stored one is near only; the
+    // app and the CLI send the stored values back with a change (#3825).
+    const stored = server.need("board").getProject(projectId);
+    if (patch.promptTemplate !== undefined && patch.promptTemplate !== stored.promptTemplate)
+      requireVaultTransport(ws.data.origin, "project.update", server.opts.log);
+    if (
+      patch.autoApprove?.model !== undefined &&
+      patch.autoApprove.model !== stored.autoApprove.model
+    )
       requireVaultTransport(ws.data.origin, "project.update", server.opts.log);
     const board = server.need("board");
     return await board.forWire(board.updateProject(projectId, patch));

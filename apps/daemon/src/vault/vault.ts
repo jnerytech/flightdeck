@@ -27,9 +27,7 @@ export function requireVaultTransport(
   log?: (message: string) => void,
 ): void {
   if (isVaultTransport(origin)) return;
-  log?.(
-    `vault: ${what} recusado, origem ${origin || "desconhecida"}: fora do loopback e da Tailscale`,
-  );
+  log?.(`vault: ${what} refused, origin ${origin || "unknown"}: outside loopback and Tailscale`);
   throw invalid(REFUSED_TRANSPORT, "transport_refused");
 }
 
