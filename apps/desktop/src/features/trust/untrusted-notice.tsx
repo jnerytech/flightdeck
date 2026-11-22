@@ -30,8 +30,8 @@ export function UntrustedNotice(
   // What the host said about the folder; null until it answered (or when it did not).
   const [trusted, setTrusted] = useState<boolean | null>(null);
   const [restarting, setRestarting] = useState(false);
-  // Issue #422: in a short session area the notice is one line; the project page lists the rest. So
-  // while a request waits for the person (#488).
+  // Issue #422: in a short session area, or one under 700 px high (#3835), the notice is one line;
+  // the project page lists the rest. So while a request waits for the person (#488).
   const short = useTightBands();
   useEffect(() => {
     // No folder yet (the session page before its summary): nothing to ask, and the host refuses "".

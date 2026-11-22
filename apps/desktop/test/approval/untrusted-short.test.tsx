@@ -115,6 +115,7 @@ for (const [lang, dict] of [
       expect(
         await seen(() => screen.queryByText(trust.sessionNotice, { exact: false }) !== null),
       ).toBe(true);
+      expect(screen.queryByText(trust.sessionNoticeShort, { exact: false })).toBeNull();
     });
 
     test("in a tall area it says everything that did not load, as before", async () => {
