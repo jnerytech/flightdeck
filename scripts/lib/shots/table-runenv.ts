@@ -67,9 +67,12 @@ async function openPanel(page: Page, text: RegExp): Promise<void> {
   await panel(page).getByText(text).first().waitFor({ timeout: 15_000 });
 }
 
+const pressTrust = (page: Page) => panel(page).getByRole("button", { name: TRUST }).click();
+const clickRun = (page: Page) => panel(page).getByRole("button", { name: RUN }).click();
+
 /** Presses Run, and waits for `text` (the state the page's answer puts in the panel). */
 async function pressRun(page: Page, text: RegExp): Promise<void> {
-  await panel(page).getByRole("button", { name: RUN }).click();
+  await clickRun(page);
   await panel(page).getByText(text).first().waitFor({ timeout: 15_000 });
 }
 
@@ -98,7 +101,7 @@ export function runenvShots(ids: DemoIds): Shot[] {
       route: card,
       wire: [config({})],
       prepare: async (page) => {
-        await panel(page).getByRole("button", { name: TRUST }).click();
+        await pressTrust(page);
         await page.getByRole("alertdialog").waitFor();
       },
     },
@@ -111,7 +114,7 @@ export function runenvShots(ids: DemoIds): Shot[] {
         { command: "runenv.trust", reject: "The run.yaml changed since you reviewed it." },
       ],
       prepare: async (page) => {
-        await panel(page).getByRole("button", { name: TRUST }).click();
+        await pressTrust(page);
         await page.getByRole("alertdialog").getByRole("button", { name: CONFIRM }).click();
         await panel(page)
           .getByText(/^(The host did not accept the trust\.|O host não aceitou a confiança\.)/)
@@ -142,10 +145,7 @@ export function runenvShots(ids: DemoIds): Shot[] {
       // The setup runs first: its status and the button to read its log.
       name: "card-ambiente-setup",
       route: card,
-      wire: [
-        trusted,
-        started({ status: "setup", setup: "running", ports: { api: 4101, web: 4102 } }),
-      ],
+      wire: [trusted, started({ status: "setup", setup: "running" })],
       prepare: async (page) => {
         await pressRun(page, /^(Preparing \(setup\)…|Preparando \(setup\)…)$/);
         await panel(page)
@@ -197,10 +197,12 @@ export function runenvShots(ids: DemoIds): Shot[] {
           setup: "failed",
           ports: {},
           error: "the setup failed (code 1)",
+          errorKey: "run_setup_failed",
+          errorParams: { code: 1 },
         }),
       ],
       prepare: async (page) => {
-        await panel(page).getByRole("button", { name: RUN }).click();
+        await clickRun(page);
         await panel(page)
           .getByRole("alert")
           .filter({ hasText: /\(code 1\)|\(código 1\)/ })
@@ -213,10 +215,10 @@ export function runenvShots(ids: DemoIds): Shot[] {
       route: card,
       wire: [trusted, { command: "runenv.start", reject: "No free block of ports on this host." }],
       prepare: async (page) => {
-        await panel(page).getByRole("button", { name: RUN }).click();
+        await clickRun(page);
+        // The refusal is a toast with the host's words, not an alert of the panel.
         await page
-          .getByRole("alert")
-          .filter({ hasText: "No free block of ports on this host." })
+          .getByText("No free block of ports on this host.")
           .first()
           .waitFor({ timeout: 15_000 });
       },
