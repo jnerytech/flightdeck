@@ -79,6 +79,30 @@ for (const w of LANGS) {
       expect(screen.queryByRole("alert")).toBeNull();
     });
 
+    test("a retry keeps the error and its button until the host answers, so the focus stays", async () => {
+      let answer: (value: { prompts: TelemetryPrompt[] }) => void = () => {};
+      let calls = 0;
+      const store = {
+        hostCommand: () => {
+          calls += 1;
+          return calls === 1
+            ? Promise.resolve(null)
+            : new Promise((resolve) => {
+                answer = resolve;
+              });
+        },
+      } as never;
+      show(store, w.lang);
+      await settle(() => screen.queryByRole("alert") !== null);
+      await act(async () => {
+        fireEvent.click(screen.queryByRole("button", { name: w.retry }) as HTMLElement);
+      });
+      expect(screen.queryByRole("alert")).not.toBeNull();
+      expect(screen.queryByRole("button", { name: w.retry })).not.toBeNull();
+      await act(async () => answer({ prompts: [] }));
+      await settle(() => screen.queryByText(w.empty, { exact: false }) !== null);
+    });
+
     test("an answer with no prompts shows the empty text and no error", async () => {
       show(host([{ prompts: [] }]), w.lang);
       await settle(() => screen.queryByText(w.empty, { exact: false }) !== null);

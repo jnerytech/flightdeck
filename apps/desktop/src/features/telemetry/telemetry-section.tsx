@@ -28,8 +28,8 @@ export function TelemetrySection(props: Readonly<{ store: AppStore; hostId: stri
   const [failed, setFailed] = useState(false);
   const [confirming, setConfirming] = useState<"install" | "uninstall" | null>(null);
 
+  // A retry keeps the error and its button until the host answers, so the focus is not dropped.
   const load = useCallback(() => {
-    setFailed(false);
     void store.hostCommand(hostId, "telemetry.status", {}).then((result) => {
       setInfo(result ?? null);
       setFailed(!result);

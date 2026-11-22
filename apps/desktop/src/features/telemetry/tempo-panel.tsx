@@ -80,8 +80,8 @@ export function TempoPanel(
   // `null` while loading, `"failed"` when the host did not answer: that is not "no data".
   const [prompts, setPrompts] = useState<TelemetryPrompt[] | "failed" | null>(null);
 
+  // A retry keeps the error and its button until the host answers, so the focus is not dropped.
   const load = useCallback(() => {
-    setPrompts(null);
     void store
       .hostCommand(hostId, "telemetry.session", { claudeSessionId })
       .then((result) => setPrompts(result ? result.prompts : "failed"));

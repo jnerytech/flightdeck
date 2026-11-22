@@ -96,6 +96,29 @@ for (const w of LANGS) {
       expect(screen.queryByRole("alert")).toBeNull();
     });
 
+    test("a retry keeps the error and its button until the host answers, so the focus stays", async () => {
+      let answer: (value: TelemetryOptInStatus | null) => void = () => {};
+      let calls = 0;
+      const store = {
+        hostCommand: () => {
+          calls += 1;
+          return calls === 1
+            ? Promise.resolve(null)
+            : new Promise<TelemetryOptInStatus | null>((resolve) => {
+                answer = resolve;
+              });
+        },
+      } as never;
+      show(store, w.lang);
+      await settle(() => screen.queryByRole("alert") !== null);
+      await press(w.retry);
+      expect(screen.queryByRole("alert")).not.toBeNull();
+      expect(screen.queryByRole("button", { name: w.retry })).not.toBeNull();
+      await act(async () => answer(info("absent")));
+      await settle(() => status() === w.notInstalled);
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
     test("a conflict is named Conflict, not Not installed, and nothing can be installed or removed", async () => {
       const { store } = host({ "telemetry.status": [info("conflict")] });
       show(store, w.lang);
