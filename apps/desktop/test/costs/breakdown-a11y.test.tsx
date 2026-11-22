@@ -67,6 +67,13 @@ for (const [lang, dict] of [
           .map((h) => h.textContent);
       expect(headers(dict.costsUi.byProject)).toEqual([dict.costsUi.colName, dict.costsUi.colCost]);
       expect(headers(dict.costsUi.byOrigin)).toEqual([dict.costsUi.colName, dict.costsUi.colCost]);
+      // The header names the columns for a reader and draws nothing: its text is visually hidden.
+      const shown = [
+        ...within(screen.getByRole("table", { name: dict.costsUi.byModel })).queryAllByRole(
+          "columnheader",
+        ),
+      ].map((h) => h.querySelector(".sr-only")?.textContent === h.textContent);
+      expect(shown).toEqual([true, true]);
     });
 
     test("a Top sessions row has a visible cue and a description that says it opens the session, and the click still opens it", () => {

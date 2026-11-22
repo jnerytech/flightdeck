@@ -19,9 +19,14 @@ export function Breakdown(
       <Panel title={props.name}>
         <table aria-label={props.name} className="w-full text-left text-sm tabular-nums">
           <thead>
-            <tr className="sr-only">
-              <th scope="col">{t("costsUi.colName")}</th>
-              <th scope="col">{t("costsUi.colCost")}</th>
+            <tr>
+              {/* The text is hidden, not the cell: a cell taken out of the flow loses its header role. */}
+              <th scope="col">
+                <span className="sr-only">{t("costsUi.colName")}</span>
+              </th>
+              <th scope="col">
+                <span className="sr-only">{t("costsUi.colCost")}</span>
+              </th>
             </tr>
           </thead>
           <tbody>
