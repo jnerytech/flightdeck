@@ -187,7 +187,9 @@ async function bootDaemon(
   const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   const claudePath = config.claude?.executablePath ?? config.claudePath;
   // This daemon's own command line, as the sessions' MCP server, the hooks and the terminals call it back.
-  const selfCommand = daemonCommand(process.execPath, Bun.main);
+  // A host program that runs the daemon in its own process (the demo) says the command to call back; no
+  // environment value or protocol message ever does (#3989).
+  const selfCommand = options.self ?? daemonCommand(process.execPath, Bun.main);
   const mcpServer = flightdeckMcpServer(selfCommand, configFile);
   const {
     runtime,
