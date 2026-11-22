@@ -71,6 +71,10 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   const { t } = store.i18n;
   /** Null until the hosts first answer. */
   const [rows, setRows] = useState<Row[] | null>(null);
+  /** The hosts that did not answer the last load: their messages are missing, which is not "no messages" (#4293). */
+  const [silent, setSilent] = useState<string[]>([]);
+  // Only the latest load may show its answer: an older one resolving last would show stale rows and hosts.
+  const latestLoad = useRef(0);
   const [status, setStatus] = useState<"" | MessageStatus>("");
   const [text, setText] = useState("");
   const filterField = useRef<HTMLInputElement>(null);
@@ -80,15 +84,18 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   const hostKey = hosts.map((h) => h.id).join("|");
 
   const load = useCallback(async () => {
+    const mine = ++latestLoad.current;
     const found = new Map<string, Row>();
     let anyCut = false;
     const ids = new Set(hostKey.split("|"));
+    const unanswered: string[] = [];
     await inSequence(store.getState().hosts, async (host) => {
       if (!ids.has(host.id)) return;
       const result = await store.hostCommand(host.id, "messages.list", {
         days: MESSAGE_DAYS,
         limit: MESSAGE_LIMIT,
       });
+      if (!result) unanswered.push(host.name);
       if ((result?.messages.length ?? 0) >= MESSAGE_LIMIT) anyCut = true;
       for (const message of result?.messages ?? []) {
         // A relayed message is on both daemons: the recipient's copy has the final state.
@@ -98,7 +105,9 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
         }
       }
     });
+    if (mine !== latestLoad.current) return;
     setCut(anyCut);
+    setSilent(unanswered);
     setRows(
       [...found.values()].sort((a, b) => b.message.createdAt.localeCompare(a.message.createdAt)),
     );
@@ -209,8 +218,16 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
           {t("conversationsUi.paused", { a: alert.from, b: alert.to })} <RulesLink store={store} />
         </InlineNotice>
       ))}
+      {silent.length > 0 && (
+        <InlineNotice tone={rows?.length === 0 ? "error" : "warn"}>
+          {t("conversationsUi.silent", { hosts: silent.join(", ") })}{" "}
+          <ActionButton variant="outline" size="sm" onClick={load}>
+            {t("conversationsUi.retry")}
+          </ActionButton>
+        </InlineNotice>
+      )}
       {rows === null && <LoadingState label={t("conversationsUi.loading")} />}
-      {rows?.length === 0 && (
+      {rows?.length === 0 && silent.length === 0 && (
         <EmptyState
           icon={MessagesSquare}
           title={t("conversationsUi.empty")}
