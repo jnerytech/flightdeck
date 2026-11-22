@@ -7,6 +7,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { ApprovalCard } = await import("../../src/features/permissions/approval-card.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 afterEach(cleanup);
 const settle = waiter(2000);
@@ -16,24 +17,27 @@ type Resolution = { decision: "allow" | "deny"; message?: string };
 
 function card(lang: "en" | "pt-BR", risk: "high" | undefined, resolution?: Resolution) {
   const calls: unknown[][] = [];
+  const t = translator(lang);
   const ui = (res?: Resolution) => (
-    <ApprovalCard
-      request={{
-        requestId: "r1",
-        toolName: "Bash",
-        input: { command: "rm -rf build" },
-        cwd: null,
-        createdAt: null,
-        ...(risk ? { risk } : {}),
-      }}
-      t={translator(lang)}
-      nowMs={NOW}
-      holdMs={40}
-      {...(res ? { resolution: res } : {})}
-      onRespond={(...args: unknown[]) => {
-        calls.push(args);
-      }}
-    />
+    <TContext.Provider value={t}>
+      <ApprovalCard
+        request={{
+          requestId: "r1",
+          toolName: "Bash",
+          input: { command: "rm -rf build" },
+          cwd: null,
+          createdAt: null,
+          ...(risk ? { risk } : {}),
+        }}
+        t={t}
+        nowMs={NOW}
+        holdMs={40}
+        {...(res ? { resolution: res } : {})}
+        onRespond={(...args: unknown[]) => {
+          calls.push(args);
+        }}
+      />
+    </TContext.Provider>
   );
   const view = render(ui(resolution));
   return { calls, answer: (res: Resolution) => view.rerender(ui(res)) };
