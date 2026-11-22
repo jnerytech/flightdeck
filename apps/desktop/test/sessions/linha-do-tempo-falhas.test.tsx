@@ -406,7 +406,9 @@ describe("linha-do-tempo-falhas", () => {
       "rewind.undoPreview": async () => (++tries === 1 ? PREVIEW : null),
     });
     await click("Undo rewind");
-    expect(alerts()).toContain("Could not work out what the undo changes.");
+    expect(alerts()).toContain(
+      "Could not work out what the undo changes: the host said noTry again",
+    );
     expect(screen.queryByText("Working out what changes…")).toBeNull();
     expect(isDisabled("Restore files")).toBe(true);
   });
@@ -517,10 +519,90 @@ describe("linha-do-tempo-falhas", () => {
     });
     await click(names.rewind);
     expect(screen.queryByRole("dialog", { name: "Rewind files to turn 1" })).not.toBeNull();
-    expect(alerts()).toEqual([`Could not work out what the rewind changes: ${TURN_RUNNING_TEXT}`]);
+    expect(alerts()).toEqual([
+      `Could not work out what the rewind changes: ${TURN_RUNNING_TEXT}Try again`,
+    ]);
     expect(screen.queryByText("Working out what changes…")).toBeNull();
     expect(isDisabled("Rewind files")).toBe(true);
     expect(banner).not.toContain("rewind.preview");
+  });
+
+  // #4249: Rewind and Undo tell a refusal as Fork does, by its code in the app's language, and a refused preview can be asked again.
+  test("a refused Rewind preview can be asked again, and then lists the files", async () => {
+    let tries = 0;
+    const { names } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "rewind.preview": async () => (++tries === 1 ? TURN_RUNNING : PREVIEW),
+    });
+    await click(names.rewind);
+    await click("Try again");
+    expect(alerts()).toEqual([]);
+    expect(screen.queryByText("README.md")).not.toBeNull();
+    expect(isDisabled("Rewind files")).toBe(false);
+  });
+
+  test("a refused Rewind gives the reason in the app's language", async () => {
+    const { names } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "rewind.preview": async () => PREVIEW,
+      "rewind.apply": async () => TURN_RUNNING,
+    });
+    await click(names.rewind);
+    await click("Rewind files");
+    expect(alerts()).toEqual([`Could not rewind the files: ${TURN_RUNNING_TEXT}`]);
+  });
+
+  test("a refused Rewind gives the reason in Portuguese", async () => {
+    const { names } = await timeline("pt-BR", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "rewind.preview": async () => PREVIEW,
+      "rewind.apply": async () => TURN_RUNNING,
+    });
+    await click(names.rewind);
+    await click("Voltar arquivos");
+    expect(alerts()).toEqual([
+      "Não deu para voltar os arquivos: A sessão está num turno: pare-a antes de voltar.",
+    ]);
+  });
+
+  test("a refused Undo gives the reason in the app's language", async () => {
+    await timeline("en", {
+      "snapshots.list": async () => SAFETY,
+      "rewind.undoPreview": async () => PREVIEW,
+      "rewind.undo": async () => TURN_RUNNING,
+    });
+    await click("Undo rewind");
+    await click("Restore files");
+    expect(alerts()).toEqual([`Could not undo the rewind: ${TURN_RUNNING_TEXT}`]);
+  });
+
+  test("a refused Undo preview gives its reason, and Try again lists the files", async () => {
+    let tries = 0;
+    await timeline("en", {
+      "snapshots.list": async () => SAFETY,
+      "rewind.undoPreview": async () =>
+        ++tries === 1 ? PREVIEW : tries === 2 ? TURN_RUNNING : PREVIEW,
+    });
+    await click("Undo rewind");
+    expect(alerts()).toEqual([
+      `Could not work out what the undo changes: ${TURN_RUNNING_TEXT}Try again`,
+    ]);
+    await click("Try again");
+    expect(alerts()).toEqual([]);
+    expect(screen.queryByText("README.md")).not.toBeNull();
+    expect(isDisabled("Restore files")).toBe(false);
+  });
+
+  test("a refused Undo preview gives its reason in Portuguese", async () => {
+    let tries = 0;
+    await timeline("pt-BR", {
+      "snapshots.list": async () => SAFETY,
+      "rewind.undoPreview": async () => (++tries === 1 ? PREVIEW : TURN_RUNNING),
+    });
+    await click("Desfazer volta");
+    expect(alerts()).toEqual([
+      "Não deu para saber o que o desfazer muda: A sessão está num turno: pare-a antes de voltar.Tentar de novo",
+    ]);
   });
 
   test("a refused Fork file preview gives its reason once and does not use the banner", async () => {
