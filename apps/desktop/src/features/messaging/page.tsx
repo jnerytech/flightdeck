@@ -24,6 +24,9 @@ import { hostsWith } from "../../lib/version.ts";
 import { RulesLink } from "./rules-link.tsx";
 import { inPausedPair, loopPairKey } from "./store.ts";
 
+/** What the page asks each host for; the daemon's own defaults, said out loud so the page can tell a cut list (#4292). */
+const MESSAGE_LIMIT = 200;
+const MESSAGE_DAYS = 30;
 const STATUSES: MessageStatus[] = ["delivered", "queued", "refused", "expired", "pending"];
 const TONE: Record<MessageStatus, string> = {
   delivered: "text-status-idle",
@@ -74,18 +77,26 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   const latestLoad = useRef(0);
   const [status, setStatus] = useState<"" | MessageStatus>("");
   const [text, setText] = useState("");
+  const filterField = useRef<HTMLInputElement>(null);
+  /** True when a host answered as many messages as it was asked for: older ones exist. */
+  const [cut, setCut] = useState(false);
   const hosts = hostsWith(state.hosts, "messaging");
   const hostKey = hosts.map((h) => h.id).join("|");
 
   const load = useCallback(async () => {
     const mine = ++latestLoad.current;
     const found = new Map<string, Row>();
+    let anyCut = false;
     const ids = new Set(hostKey.split("|"));
     const unanswered: string[] = [];
     await inSequence(store.getState().hosts, async (host) => {
       if (!ids.has(host.id)) return;
-      const result = await store.hostCommand(host.id, "messages.list", {});
+      const result = await store.hostCommand(host.id, "messages.list", {
+        days: MESSAGE_DAYS,
+        limit: MESSAGE_LIMIT,
+      });
       if (!result) unanswered.push(host.name);
+      if ((result?.messages.length ?? 0) >= MESSAGE_LIMIT) anyCut = true;
       for (const message of result?.messages ?? []) {
         // A relayed message is on both daemons: the recipient's copy has the final state.
         const seen = found.get(message.id);
@@ -95,6 +106,7 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
       }
     });
     if (mine !== latestLoad.current) return;
+    setCut(anyCut);
     setSilent(unanswered);
     setRows(
       [...found.values()].sort((a, b) => b.message.createdAt.localeCompare(a.message.createdAt)),
@@ -110,6 +122,12 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   const scope = store.clientScope.get();
   const hubs = hubRows(store.getState(), t);
   const projectOf = sessionProjectKeys(hubs);
+  const filtering = needle !== "" || status !== "";
+  const clearFilter = () => {
+    setText("");
+    setStatus("");
+    filterField.current?.focus();
+  };
   const shown = (rows ?? []).filter(({ message: m, hostName }) => {
     const ends = [projectOf.get(m.fromSession) ?? null, projectOf.get(m.toSession) ?? null];
     if (!scope.includesAny(state.clientSelection, ends)) return false;
@@ -151,10 +169,11 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   return (
     <Page
       title={t("conversationsUi.title")}
-      subtitle={t("conversationsUi.subtitle")}
+      subtitle={t("conversationsUi.subtitle", { days: MESSAGE_DAYS })}
       toolbar={
         <Toolbar label={t("conversationsUi.list")}>
           <Input
+            ref={filterField}
             aria-label={t("conversationsUi.filter")}
             placeholder={t("conversationsUi.filter")}
             value={text}
@@ -178,6 +197,22 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
         </Toolbar>
       }
     >
+      {/* Always mounted: a live region that appears already filled is not announced. */}
+      <output className="text-muted-foreground text-xs empty:sr-only">
+        {filtering &&
+          rows &&
+          rows.length > 0 &&
+          t("conversationsUi.countOf", { shown: shown.length, n: rows.length })}
+      </output>
+      {cut && (
+        <InlineNotice>
+          {t("conversationsUi.cut", {
+            n: rows?.length ?? 0,
+            limit: MESSAGE_LIMIT,
+            days: MESSAGE_DAYS,
+          })}
+        </InlineNotice>
+      )}
       {paused.map((alert) => (
         <InlineNotice key={`${alert.hostId}/${loopPairKey(alert)}`}>
           {t("conversationsUi.paused", { a: alert.from, b: alert.to })} <RulesLink store={store} />
@@ -207,7 +242,17 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
         />
       )}
       {(rows?.length ?? 0) > 0 && shown.length === 0 && (
-        <EmptyState icon={MessagesSquare} title={t("conversationsUi.noMatch")} />
+        <EmptyState
+          icon={MessagesSquare}
+          title={t("conversationsUi.noMatch")}
+          action={
+            filtering ? (
+              <Button variant="outline" size="sm" onClick={clearFilter}>
+                {t("conversationsUi.clearFilter")}
+              </Button>
+            ) : undefined
+          }
+        />
       )}
       {shown.length > 0 && (
         <Stack as="ul" label={t("conversationsUi.list")} gap={2} className="max-w-3xl">
