@@ -104,6 +104,12 @@ describe("form-enter: dialogs are forms", () => {
     await submit(formAround(screen.queryByRole("button", { name: "Próximo" })));
     expect(asked).toEqual([]);
     expect(type("Salvar")).toBe("submit");
+    // The form no longer sends an empty name (#3857): Enter saves once the name is typed.
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("Nome da automação") as HTMLInputElement, {
+        target: { value: "diária" },
+      });
+    });
     await submit(formAround(screen.queryByRole("button", { name: "Salvar" })));
     expect(asked).toEqual(["automation.save"]);
   });

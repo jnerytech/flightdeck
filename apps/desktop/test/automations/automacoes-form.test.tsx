@@ -45,7 +45,7 @@ const WORDS = {
   },
 } as const;
 
-const WORKFLOW = { name: "feature", hash: "h", trusted: true, checks: [], errors: [] };
+const WORKFLOW = { name: "feature", hash: "h", trusted: true, checks: [], errors: [], inputs: [] };
 
 type Asked = Array<{ type: string; payload: Record<string, unknown> }>;
 
