@@ -3,7 +3,7 @@ import { RequestError } from "../../src/features/hosts/host-connection.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { interceptWire } from "../fake-host.ts";
 import { memoryPlatform } from "../fixtures.ts";
-import { settle } from "../wait.ts";
+import { settle, uiIdle } from "../wait.ts";
 import { snippetsHost } from "./ui-setup.ts";
 
 registerDom();
@@ -60,11 +60,8 @@ const press = async (name: string) => {
     fireEvent.click(target as HTMLElement);
   });
 };
-/** Lets the page take in what it was just answered, so a check on its screen looks at the settled one. */
-const afterAnswer = () =>
-  act(async () => {
-    await Bun.sleep(80);
-  });
+/** Waits until the page has taken in what it was just answered, so a check on its screen looks at the settled one. */
+const afterAnswer = () => uiIdle();
 const choose = async (label: string, value: string) => {
   await act(async () => {
     fireEvent.change(screen.getByLabelText(label), { target: { value } });

@@ -3,7 +3,7 @@ import { RequestError } from "../../src/features/hosts/host-connection.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { interceptWire } from "../fake-host.ts";
 import { memoryPlatform } from "../fixtures.ts";
-import { settle } from "../wait.ts";
+import { settle, uiIdle } from "../wait.ts";
 import { snippetsHost } from "./ui-setup.ts";
 
 registerDom();
@@ -57,11 +57,8 @@ const type = async (label: string, value: string) => {
 };
 const refuse: Intercept = (type, _payload, next) =>
   type === "snippets.list" ? Promise.reject(new RequestError("bad_thing", "No room left")) : next();
-/** Lets the page take in what it was just answered, so a check on its screen looks at the settled one. */
-const afterAnswer = () =>
-  act(async () => {
-    await Bun.sleep(80);
-  });
+/** Waits until the page has taken in what it was just answered, so a check on its screen looks at the settled one. */
+const afterAnswer = () => uiIdle();
 
 const WORDS = {
   en: {
