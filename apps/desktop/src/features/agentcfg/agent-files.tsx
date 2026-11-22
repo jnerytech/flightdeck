@@ -72,7 +72,7 @@ function FileRow(
           current && "bg-accent",
         )}
       >
-        <span className="font-medium">{name}</span>
+        <span className="min-w-0 font-medium [overflow-wrap:anywhere]">{name}</span>
         {item.name && item.name !== shownPath(item) && (
           <span className="break-all text-muted-foreground text-xs">{shownPath(item)}</span>
         )}
@@ -312,19 +312,22 @@ export function AgentFiles(
             </Form>
           </div>
         )}
-        {items.length === 0 && <EmptyState title={labels.empty} />}
-        <ul aria-label={t("agent.files.list")} className="flex flex-col gap-1">
-          {inReadingOrder(items).map((item) => (
-            <FileRow
-              key={`${item.origin}/${item.path}`}
-              item={item}
-              current={opened?.path === item.path && opened.origin === item.origin}
-              originLabel={originLabel(item.origin)}
-              t={t}
-              onOpen={() => open(item)}
-            />
-          ))}
-        </ul>
+        {items.length === 0 ? (
+          <EmptyState title={labels.empty} />
+        ) : (
+          <ul aria-label={t("agent.files.list")} className="flex flex-col gap-1">
+            {inReadingOrder(items).map((item) => (
+              <FileRow
+                key={`${item.origin}/${item.path}`}
+                item={item}
+                current={opened?.path === item.path && opened.origin === item.origin}
+                originLabel={originLabel(item.origin)}
+                t={t}
+                onOpen={() => open(item)}
+              />
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="flex min-w-0 flex-col gap-3">
