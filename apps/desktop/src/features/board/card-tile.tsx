@@ -152,7 +152,7 @@ export function CardTile(
             tabIndex={props.tabbable ? 0 : -1}
             aria-describedby={props.hintId}
             aria-keyshortcuts="S M X"
-            className="min-w-0 text-left font-medium"
+            className="min-w-0 break-words text-left font-medium"
             onFocus={props.onFocus}
             onKeyDown={(e) => {
               const action = props.onKey(e);

@@ -161,9 +161,17 @@ export function CardWork(
             {t("cardUi.exitCode", { code: openedStep.exitCode ?? "" })}
           </p>
           <section aria-label={t("cardUi.checkOutput", { step: openedStep.stepId })}>
-            <pre className="overflow-x-auto rounded-md border bg-muted p-3 font-mono text-xs">
-              {openedStep.output}
-            </pre>
+            {openedStep.output ? (
+              <pre
+                // biome-ignore lint/a11y/noNoninteractiveTabindex: long lines scroll sideways; focus lets the keyboard do it
+                tabIndex={0} // NOSONAR: a region that scrolls must take focus, or the keyboard cannot scroll it (axe scrollable-region-focusable)
+                className="overflow-x-auto rounded-md border bg-muted p-3 font-mono text-xs focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                {openedStep.output}
+              </pre>
+            ) : (
+              <p className="text-muted-foreground text-sm">{t("cardUi.checkNoOutput")}</p>
+            )}
           </section>
         </div>
       );
