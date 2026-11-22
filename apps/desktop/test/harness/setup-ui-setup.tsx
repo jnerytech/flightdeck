@@ -75,6 +75,8 @@ export function setup(
     previewRefusesTemplate?: boolean;
     /** The first preview is refused (a path the host will not read); the next one answers. */
     previewRefusedOnce?: { code: string; message: string };
+    /** Every preview waits until `releasePreview()` is called. */
+    previewHeld?: boolean;
     /** The host asks a device to sign the apply (#3507): the person signs, says no, or the signing fails. */
     proof?: "signed" | "declined" | "fails";
   } = {},
@@ -107,6 +109,10 @@ export function setup(
     ...(options.answers ?? [{ ok: true, data: { written: [SETTINGS, "CLAUDE.md"] } }]),
   ];
   let refusedOnce = options.previewRefusedOnce;
+  let releasePreview = () => {};
+  const previewGate = new Promise<void>((resolve) => {
+    releasePreview = resolve;
+  });
   store.hostCommand = (async (_host: string, type: string, payload: unknown) => {
     sent.push([type, payload]);
     if (type === "project.trust.state") {
@@ -124,6 +130,7 @@ export function setup(
   store.hostRequest = (async (_host: string, type: string, payload: unknown) => {
     sent.push([type, payload]);
     if (type === "project.harness.preview") {
+      if (options.previewHeld) await previewGate;
       const named = (payload as { template?: string }).template !== undefined;
       const refusal = refusedOnce;
       refusedOnce = undefined;
@@ -151,7 +158,7 @@ export function setup(
     <ProjectPage store={store} state={appState} hostId="h1" projectId="p1" go={() => {}} />
   );
   const count = (type: string) => sent.filter(([sentType]) => sentType === type).length;
-  return { view, sent, count, signed, errors };
+  return { view, sent, count, signed, errors, releasePreview: () => releasePreview() };
 }
 
 export const listing = (text = "What this project would load") =>

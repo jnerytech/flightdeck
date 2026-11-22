@@ -345,4 +345,17 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
       ]);
     },
   );
+
+  test("a second click on Set up while the first preview is under way asks nothing more", async () => {
+    const { view, count, releasePreview } = setup({ previewHeld: true });
+    render(view);
+    await listing();
+    await settleMaybe(() => button("Set up Claude Code") !== null);
+    await click("Set up Claude Code");
+    await click("Set up Claude Code");
+    await uiIdle();
+    await act(async () => releasePreview());
+    await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
+    expect(count("project.harness.preview")).toBe(1);
+  });
 });
