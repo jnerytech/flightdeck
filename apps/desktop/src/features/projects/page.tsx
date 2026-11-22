@@ -3,15 +3,18 @@ import { FolderGit2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
 import { EmptyState, LoadingState, Page, Panel } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { RulesSection } from "../permissions/ui.ts";
+import { parseLimit } from "./domain/host-limit.ts";
 import { FindProjects } from "./find-projects.tsx";
 import { ProjectForm } from "./project-form.tsx";
 import { ProjectRow } from "./project-row.tsx";
 import { ProjectsPicker } from "./projects-picker.tsx";
+import { ReadFailed } from "./read-failed.tsx";
 import { StartFromGithub } from "./start-from-github.tsx";
 
 /** Projects of one host (register and edit) and the host's limit of parallel runs. */
@@ -45,13 +48,21 @@ export function ProjectsPage(
   // Another Edit click starts the form over from that project: it gets a new key.
   const [round, setRound] = useState(0);
   const [limit, setLimit] = useState("");
-  const loading = useMinLoading(list === null);
+  // The last read was refused: said in place of the loading state, above a list that loaded before.
+  const [failed, setFailed] = useState(false);
+  const loading = useMinLoading(list === null && !failed);
+  const wholeLimit = parseLimit(limit);
   const { t } = props.store.i18n;
   const pathField = useRef<HTMLInputElement>(null);
   const host = store.getState().hosts.find((h) => h.id === hostId);
 
+  // Reads can overlap (a retry, then a project added): only the latest one to start is heard.
+  const latest = useRef(0);
   const reload = useCallback(async () => {
+    const mine = ++latest.current;
     const result = await store.hostCommand(hostId, "project.list", {});
+    if (mine !== latest.current) return;
+    setFailed(!result);
     if (result) {
       setList(result);
       setLimit(String(result.maxParallelRuns));
@@ -74,6 +85,8 @@ export function ProjectsPage(
         focus={props.focus}
         list={list}
         loading={loading}
+        failed={failed}
+        onRetry={reload}
         onOpenBoard={props.onOpenBoard}
         onOpenWorkflows={props.onOpenWorkflows}
         onChanged={reloaded}
@@ -85,7 +98,8 @@ export function ProjectsPage(
     <Page title={t("projectsUi.title", { host: props.hostName })}>
       <div className="flex max-w-3xl flex-col gap-6">
         {loading && <LoadingState label={t("states.loadingProjects")} />}
-        {!loading && list?.projects.length === 0 && (
+        {failed && <ReadFailed store={store} onRetry={reload} />}
+        {!loading && !failed && list?.projects.length === 0 && (
           <EmptyState
             icon={FolderGit2}
             title={t("states.emptyProjects")}
@@ -151,16 +165,21 @@ export function ProjectsPage(
               value={limit}
               onChange={(e) => setLimit(e.target.value)}
             />
-            <Button
+            <ActionButton
               variant="outline"
-              onClick={() =>
-                void store.hostCommand(hostId, "board.settings", {
-                  maxParallelRuns: Number(limit),
-                })
-              }
+              // Until the host has said its limit, the field is not the problem: no reason is given.
+              disabled={list === null || wholeLimit === null}
+              disabledReason={list ? t("projectsUi.limitInvalid") : undefined}
+              onClick={async () => {
+                if (wholeLimit === null) return;
+                const saved = await store.hostCommand(hostId, "board.settings", {
+                  maxParallelRuns: wholeLimit,
+                });
+                if (saved) store.success(t("projectsUi.limitSaved", { count: wholeLimit }));
+              }}
             >
               {t("projectsUi.saveLimit")}
-            </Button>
+            </ActionButton>
           </div>
         </Panel>
       </div>

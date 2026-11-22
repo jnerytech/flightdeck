@@ -5,6 +5,7 @@ import { EmptyState, LoadingState, Page } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { AddProject } from "./add-project.tsx";
 import { HostBoardLanding } from "./board-landing.tsx";
+import { ReadFailed } from "./read-failed.tsx";
 
 /** Only the picker for Board or Workflows: a nav item of a host with several projects. */
 export function ProjectsPicker(
@@ -16,6 +17,10 @@ export function ProjectsPicker(
     /** The host's projects, or null while they are read. */
     list: ProjectListResult | null;
     loading: boolean;
+    /** The last read of the list was refused. */
+    failed: boolean;
+    /** Reads the list again. */
+    onRetry(): Promise<unknown>;
     onOpenBoard(projectId: string): void;
     onOpenWorkflows(project: { id: string; name: string }): void;
     /** A project was added or started from here: the list is read again. */
@@ -34,6 +39,7 @@ export function ProjectsPicker(
   return (
     <Page title={t(board ? "sidebar.boardOf" : "sidebar.workflowsOf", { host: props.hostName })}>
       {loading && <LoadingState label={t("states.loadingProjects")} />}
+      {props.failed && <ReadFailed store={store} onRetry={props.onRetry} />}
       {!loading && hidden && <EmptyState title={t("clients.noneHere")} />}
       {/* The Board screen of a host: its projects as cards (#669). */}
       {!loading && board && !hidden && list && (
