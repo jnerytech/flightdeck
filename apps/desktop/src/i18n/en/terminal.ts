@@ -85,6 +85,8 @@ export const terminal = {
     repoReason: "Type the repository on that host.",
     pickHost: "Pick a host",
     repo: "Repository on that host",
+    known: "Known projects on that host",
+    pickKnown: "Pick a project that host already has",
     next: "Continue",
     preparing: "Getting the session ready…",
     cancel: "Cancel",
