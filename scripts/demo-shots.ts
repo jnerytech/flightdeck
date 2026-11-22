@@ -31,6 +31,7 @@ import { agentShots } from "./lib/shots/table-agent.ts";
 import { automationShots } from "./lib/shots/table-automations.ts";
 import { boardShots } from "./lib/shots/table-board.ts";
 import { hostShots } from "./lib/shots/table-hosts.ts";
+import { issuesShots } from "./lib/shots/table-issues.ts";
 import { shellShots } from "./lib/shots/table-shell.ts";
 import { snippetShots } from "./lib/shots/table-snippets.ts";
 import { teleportShots } from "./lib/shots/table-teleport.ts";
@@ -78,6 +79,7 @@ function shots(ids: DemoIds): Shot[] {
     ...agentShots(ids),
     ...hostShots(ids),
     ...automationShots(ids),
+    ...issuesShots(ids),
     ...snippetShots(ids),
     ...teleportShots(ids),
   ];
@@ -188,6 +190,8 @@ function seedStorage(seed: StorageSeed): void {
       "flightdeck.teleportPreview",
       // The update banner's print turns the automatic update off (#4059): not for the next print, whose card needs it on.
       "flightdeck.autoUpdate",
+      // The tool cards' print dismisses a note (#4099): not for the next start screen.
+      "flightdeck.setupToolsDismissed",
     ]) {
       localStorage.removeItem(key);
     }
