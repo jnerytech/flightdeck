@@ -236,7 +236,7 @@ describe("changes-compose-ui: commenting by keyboard, and a review put in the me
     await pick("Comment on line 2 of app.ts");
     const add = screen.getByRole("button", { name: "Add comment" }) as HTMLButtonElement;
     expect(add.disabled).toBe(true);
-    expect(add.getAttribute("aria-describedby") !== null).toBe(true);
+    expect(add.getAttribute("aria-describedby")).not.toBeNull();
     expect(screen.queryByText("Write the comment first.") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.change(screen.getByRole("textbox", { name: "Comment" }), {

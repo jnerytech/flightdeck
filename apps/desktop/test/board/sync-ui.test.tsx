@@ -186,11 +186,11 @@ for (const [lang, t] of [
       const question = t.boardSyncUi.unlinkConfirm.replace("{title}", "Roadmap");
       await click(t.boardSyncUi.unlink);
       expect(screen.queryByText(question)).not.toBeNull();
-      expect(page.d.boardSyncStore.get(page.projectId) === null).toBe(false);
+      expect(page.d.boardSyncStore.get(page.projectId)).not.toBeNull();
       await click(t.common.cancel);
       await act(async () => {});
-      expect(screen.queryByText(question) === null).toBe(true);
-      expect(page.d.boardSyncStore.get(page.projectId) === null).toBe(false);
+      expect(screen.queryByText(question) === null).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
+      expect(page.d.boardSyncStore.get(page.projectId)).not.toBeNull();
       await click(t.boardSyncUi.unlink);
       await click(t.boardSyncUi.unlink);
       await settle(() => screen.queryByText(t.boardSyncUi.notLinked) !== null);
@@ -213,7 +213,7 @@ for (const [lang, t] of [
       expect(screen.queryByRole("status", { name: t.boardSyncUi.loading })).not.toBeNull();
       await act(async () => release());
       await settle(() => screen.queryByRole("radio", { name: /Roadmap/ }) !== null);
-      expect(screen.queryByRole("status", { name: t.boardSyncUi.loading }) === null).toBe(true);
+      expect(screen.queryByRole("status", { name: t.boardSyncUi.loading }) === null).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
       expect(screen.queryByText(t.boardSyncUi.pickBoard)).not.toBeNull();
     });
 

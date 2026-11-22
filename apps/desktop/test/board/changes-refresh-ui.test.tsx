@@ -134,7 +134,7 @@ describe("changes-refresh-ui: a refused read says so, and Refresh shows it is wo
     await act(async () => {
       fireEvent.click(button);
     });
-    expect(fake.asked.length).toBe(before);
+    expect(fake.asked).toHaveLength(before);
     await fake.answer();
     expect(screen.getByRole("button", { name: "Refresh" }).getAttribute("aria-busy")).toBeNull();
   });
@@ -142,7 +142,7 @@ describe("changes-refresh-ui: a refused read says so, and Refresh shows it is wo
   test("a change the host sees on disk clears the stale notice", async () => {
     const fake = await show([ok, refused]);
     await press("Refresh");
-    expect(alerts().length).toBe(1);
+    expect(alerts()).toHaveLength(1);
     await fake.watch();
     expect(alerts()).toEqual([]);
   });

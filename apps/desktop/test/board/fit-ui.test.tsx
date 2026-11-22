@@ -154,7 +154,7 @@ describe("board-fit-ui: the columns share the window until the person picks a wi
       const names = [...document.querySelectorAll("[data-slot='board-columns'] .column-title")];
       expect(names.length).toBe(5); // NOSONAR: the boolean keeps a DOM node out of the failure diff
       const untitled = names.filter((name) => name.getAttribute("title") !== name.textContent);
-      expect(untitled.length).toBe(0);
+      expect(untitled).toHaveLength(0);
       restore();
     });
   }
