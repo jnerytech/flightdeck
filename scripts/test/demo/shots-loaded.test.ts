@@ -12,4 +12,12 @@ describe("what a print waits out before the shot (#4001)", () => {
     expect(selector).toContain('[aria-busy="true"]:not(button)');
     expect(selector).not.toBe(PENDING_SELECTOR);
   });
+
+  test("a print of an answer left on its way waits for skeletons and busy regions, but not for the busy button (#4203)", () => {
+    const selector = pendingSelectorFor({
+      wire: [{ command: "permission.respond", stall: true }],
+    });
+    expect(selector).toContain('[aria-busy="true"]:not(button)');
+    expect(pendingSelectorFor({ wire: [{ command: "x", hold: true }] })).toBe(PENDING_SELECTOR);
+  });
 });
