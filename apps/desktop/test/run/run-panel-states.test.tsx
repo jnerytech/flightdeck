@@ -335,3 +335,76 @@ describe("the run panel keeps the focus where the person pressed, and its lists 
     expect(code?.className.includes("[overflow-wrap:anywhere]")).toBe(true);
   });
 });
+
+describe("Trust keeps the panel when the host refuses and hands the focus to Run when it accepts (#4283)", () => {
+  const untrusted = {
+    trusted: false,
+    config: {
+      exclusive: false,
+      setup: null,
+      run: [{ name: "web", cmd: ["bun", "dev"], env: {}, ports: [] }],
+      ports: [],
+    },
+  };
+  const REFUSED = {
+    en: /The host did not accept the trust/,
+    "pt-BR": /O host não aceitou a confiança/,
+  } as const;
+  const confirmTrust = async (store: InstanceType<typeof AppStore>) => {
+    await click(store.i18n.t("runEnv.trust"));
+    await settle(
+      () => screen.queryByRole("button", { name: store.i18n.t("runEnv.trustConfirm") }) !== null,
+    );
+    await click(store.i18n.t("runEnv.trustConfirm"));
+  };
+  const trustedInfo = { exists: true, hash: "h", errors: [], ...untrusted, trusted: true };
+  // The host's answer and the panel's follow-up reads are promises: act drains them, no timer.
+  const flush = () => act(async () => {});
+  const onRun = () => (document.activeElement as HTMLElement | null)?.dataset.action === "run";
+
+  test.each(["en", "pt-BR"] as const)(
+    "a refused Trust leaves the review and the Trust button and says so (%s)",
+    async (lang) => {
+      const { store } = await panel(lang, run({}), [], untrusted);
+      store.runEnv.trust = (async () => null) as typeof store.runEnv.trust;
+      await confirmTrust(store);
+      await flush();
+      expect({
+        review: screen.queryByText("bun dev") !== null,
+        trustButton: screen.queryByRole("button", { name: store.i18n.t("runEnv.trust") }) !== null,
+        said: REFUSED[lang].test(screen.queryByRole("alert")?.textContent ?? ""),
+      }).toEqual({ review: true, trustButton: true, said: true });
+    },
+  );
+
+  test("the refusal is gone once a second Trust is accepted", async () => {
+    const { store } = await panel("en", run({}), [], untrusted);
+    let answers = 0;
+    store.runEnv.trust = (async () =>
+      answers++ === 0 ? null : trustedInfo) as unknown as typeof store.runEnv.trust;
+    await confirmTrust(store);
+    await flush();
+    await confirmTrust(store);
+    await flush();
+    expect(REFUSED.en.test(document.body.textContent ?? "")).toBe(false);
+  });
+
+  test("an answer that is not trusted counts as a refusal: the line shows and the focus stays off Run", async () => {
+    const { store } = await panel("en", run({}), [], untrusted);
+    store.runEnv.trust = (async () => ({
+      ...trustedInfo,
+      trusted: false,
+    })) as unknown as typeof store.runEnv.trust;
+    await confirmTrust(store);
+    await flush();
+    expect(REFUSED.en.test(screen.queryByRole("alert")?.textContent ?? "")).toBe(true);
+  });
+
+  test("an accepted Trust puts the focus on Run, not on the page body", async () => {
+    const { store } = await panel("en", run({}), [], untrusted);
+    store.runEnv.trust = (async () => trustedInfo) as unknown as typeof store.runEnv.trust;
+    await confirmTrust(store);
+    await flush();
+    expect(onRun()).toBe(true);
+  });
+});

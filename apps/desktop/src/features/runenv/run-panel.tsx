@@ -3,7 +3,7 @@ import { type MouseEvent, useEffect, useRef, useState, useSyncExternalStore } fr
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { reasonText } from "@/i18n/errors";
-import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
+import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 
@@ -25,6 +25,10 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
   ];
   const [info, setInfo] = useState<RunConfigInfo | null>(null);
   const [trusting, setTrusting] = useState(false);
+  // The host refused the last Trust: the review stays, with a line saying so.
+  const [trustRefused, setTrustRefused] = useState(false);
+  // A Trust the person confirmed: once it is accepted, the Trust button is gone and Run takes the focus.
+  const focusRun = useRef(false);
   // Stop kills the processes, so their codes are not a crash: only the run after the last Stop can crash.
   const [stoppedByPerson, setStoppedByPerson] = useState(false);
 
@@ -69,10 +73,30 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
       ?.focus();
   }, [live]);
 
+  const trusted = info?.trusted === true;
+  useEffect(() => {
+    if (!trusted || !focusRun.current) return;
+    focusRun.current = false;
+    // The person may have moved on while the host answered: only the page body gives the focus up.
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    section.current?.querySelector<HTMLElement>('[data-action="run"]')?.focus();
+  }, [trusted]);
+
   if (!info?.exists) return null;
   const trust = async () => {
     setTrusting(false);
-    if (info.hash) setInfo(await store.runEnv.trust(hostId, card.projectId, info.hash));
+    if (!info.hash) return;
+    const accepted = await store.runEnv.trust(hostId, card.projectId, info.hash);
+    setTrustRefused(accepted?.trusted !== true);
+    if (accepted?.trusted) {
+      focusRun.current = true;
+      setInfo(accepted);
+      return;
+    }
+    // A refusal may mean the file changed since it was reviewed: show what it says now.
+    const found = await store.runEnv.config(hostId, card.projectId);
+    if (found) setInfo(found);
   };
   const open = (name: "terminal" | "preview", terminalId: string, url = "", title = "") => {
     if (name === "terminal") store.hostTabs.show({ name, host: hostId, terminalId });
@@ -117,9 +141,15 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
                 </li>
               ))}
             </Stack>
-            <Button size="sm" className="self-start" onClick={() => setTrusting(true)}>
+            <Button
+              size="sm"
+              className="self-start"
+              data-action="trust"
+              onClick={() => setTrusting(true)}
+            >
               {t("runEnv.trust")}
             </Button>
+            {trustRefused && <InlineNotice tone="error">{t("runEnv.trustRefused")}</InlineNotice>}
           </>
         )}
         {info.config && info.trusted && (
@@ -230,6 +260,12 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
         <ConfirmDialog
           message={t("runEnv.trustMessage")}
           confirmLabel={t("runEnv.trustConfirm")}
+          // Radix would return the focus to Trust, which an accepted Trust removes: Run is there then.
+          onRestoreFocus={() =>
+            section.current
+              ?.querySelector<HTMLElement>('[data-action="run"], [data-action="trust"]')
+              ?.focus()
+          }
           onConfirm={() => void trust()}
           onCancel={() => setTrusting(false)}
         />
