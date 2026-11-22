@@ -54,6 +54,8 @@ export const personas = {
     edit: "Editar",
     editFor: "Editar {name}",
     editor: {
+      discardMessage: "Descartar o que você escreveu? Isso se perde.",
+      discardConfirm: "Descartar",
       id: "Id",
       name: "Nome",
       description: "Descrição",
