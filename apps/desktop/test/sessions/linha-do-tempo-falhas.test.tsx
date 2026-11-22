@@ -178,6 +178,34 @@ describe("linha-do-tempo-falhas", () => {
     expect(screen.queryByRole("button", { name: "Tentar de novo" })).not.toBeNull();
   });
 
+  test("the sheet's Close sits in the title row, above the description, and the title is heading-sized", async () => {
+    await timeline("en", { "snapshots.list": async () => SNAPSHOTS });
+    const title = screen.queryByText("Timeline", { selector: "[data-slot='sheet-title']" });
+    const close = screen.queryByRole("button", { name: "Close" });
+    expect(title).not.toBeNull();
+    expect(close).not.toBeNull();
+    const row = (title as HTMLElement).parentElement as HTMLElement;
+    expect(row.contains(close)).toBe(true);
+    const description = row.parentElement?.querySelector("[data-slot='sheet-description']");
+    expect(description?.parentElement === row.parentElement && !row.contains(description)).toBe(
+      true,
+    );
+    expect((title as HTMLElement).classList.contains("text-lg")).toBe(true);
+  });
+
+  test("the sheet's Close is in the title row in Portuguese too, and it still closes the sheet", async () => {
+    await timeline("pt-BR", { "snapshots.list": async () => SNAPSHOTS });
+    const title = screen.queryByText("Linha do tempo", { selector: "[data-slot='sheet-title']" });
+    const close = screen.queryByRole("button", { name: "Fechar" });
+    expect(title).not.toBeNull();
+    expect(close).not.toBeNull();
+    const row = (title as HTMLElement).parentElement as HTMLElement;
+    expect(row.contains(close)).toBe(true);
+    expect(row.querySelector("[data-slot='sheet-description']")).toBeNull();
+    await click("Fechar");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   test("the Fork dialog says when the file preview failed and Try again runs it again", async () => {
     let tries = 0;
     const { sent, names } = await timeline("en", {
