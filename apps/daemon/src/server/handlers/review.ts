@@ -26,15 +26,20 @@ export const reviewHandlers = {
     const { claudeSessionId, turn } = payload;
     return await server.needIn("checkpoints", "rewinder").preview(claudeSessionId, turn);
   },
-  "rewind.apply": async (payload, { server }) => {
+  "rewind.apply": async (payload, { ws, server }) => {
     const { claudeSessionId, turn, confirm } = payload;
+    // A rewind that puts back Claude Code's settings is the revert of one: near only (#3825).
+    const guard = () => requireVaultTransport(ws.data.origin, "rewind.apply", server.opts.log);
     return await server
       .needIn("checkpoints", "rewinder")
-      .apply(claudeSessionId, turn, confirm === true);
+      .apply(claudeSessionId, turn, confirm === true, guard);
   },
-  "rewind.undo": async (payload, { server }) => {
+  "rewind.undo": async (payload, { ws, server }) => {
     const { claudeSessionId, confirm } = payload;
-    return await server.needIn("checkpoints", "rewinder").undo(claudeSessionId, confirm === true);
+    const guard = () => requireVaultTransport(ws.data.origin, "rewind.undo", server.opts.log);
+    return await server
+      .needIn("checkpoints", "rewinder")
+      .undo(claudeSessionId, confirm === true, guard);
   },
   "history.get": async (payload, { server }) => {
     const { claudeSessionId, cursor, limit, tail } = payload;

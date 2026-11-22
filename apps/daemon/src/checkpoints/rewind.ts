@@ -8,7 +8,7 @@ import { lstat, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { gitBytes } from "../git/index.ts";
-import { FlightdeckError, resolveAllowedCwd } from "../kernel/index.ts";
+import { FlightdeckError, isClaudeConfig, resolveAllowedCwd } from "../kernel/index.ts";
 import type { RewindFilesResult } from "../runtime/index.ts";
 import { previewOf } from "./domain/rewind-preview.ts";
 import type { SnapshotRow, Snapshots } from "./snapshots.ts";
@@ -47,16 +47,30 @@ export class Rewinder {
     return sdk ?? (await this.snapshotDiff(target)).preview;
   }
 
-  async apply(claudeSessionId: string, turn: number, confirm: boolean): Promise<RewindPreview> {
+  /**
+   * `guard` runs, before anything is written, when the rewind would change a file that shapes Claude
+   * Code's sessions or one that another hard link shares (#3825): it throws to refuse.
+   */
+  async apply(
+    claudeSessionId: string,
+    turn: number,
+    confirm: boolean,
+    guard?: () => void,
+  ): Promise<RewindPreview> {
     this.allowed(claudeSessionId, confirm);
     const target = await this.inRoots(this.turn(claudeSessionId, turn));
+    if (guard) await this.guardFiles(target.repo, (await this.preview(claudeSessionId, turn)).files, guard);
     await this.safety(claudeSessionId, target.repo);
     const sdk = await this.sdk(claudeSessionId, target, false);
     return sdk ?? (await this.restore(target));
   }
 
   /** Goes back to the state saved before the last rewind. */
-  async undo(claudeSessionId: string, confirm: boolean): Promise<RewindPreview> {
+  async undo(
+    claudeSessionId: string,
+    confirm: boolean,
+    guard?: () => void,
+  ): Promise<RewindPreview> {
     this.allowed(claudeSessionId, confirm);
     const safety = this.opts.snapshots
       .list(claudeSessionId)
@@ -64,7 +78,19 @@ export class Rewinder {
       .find((s) => s.kind === "safety");
     if (!safety)
       throw new FlightdeckError("not_found", "no rewind to undo in this session", "rewind_nothing");
-    return this.restore(await this.inRoots(safety));
+    const row = await this.inRoots(safety);
+    if (guard) await this.guardFiles(row.repo, (await this.snapshotDiff(row)).preview.files, guard);
+    return this.restore(row);
+  }
+
+  private async guardFiles(
+    repo: string,
+    files: Array<{ path: string }>,
+    guard: () => void,
+  ): Promise<void> {
+    for (const { path } of files) {
+      if (isClaudeConfig(path) || (await hardLinked(join(repo, path)))) return guard();
+    }
   }
 
   /**
@@ -219,4 +245,10 @@ async function runsThroughLink(repo: string, rel: string, writing: boolean): Pro
     if (info.isSymbolicLink()) return true;
   }
   return false;
+}
+
+/** A regular file with another hard link: writing it in place changes that name's content too. */
+async function hardLinked(path: string): Promise<boolean> {
+  const info = await lstat(path).catch(() => null);
+  return info !== null && info.isFile() && info.nlink > 1;
 }
