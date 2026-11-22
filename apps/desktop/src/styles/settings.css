@@ -4,6 +4,14 @@
 }
 
 /* A setting's row (#588): one label column for every row, so the controls line up. */
+/* A group of controls named by its heading (a fieldset with no box of its own, #3864). */
+@utility setting-group {
+  margin: 0;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+}
+
 /* A setting: its label above its control when narrow, the two side by side from 30 rem (#641). */
 @utility setting-row {
   display: grid;

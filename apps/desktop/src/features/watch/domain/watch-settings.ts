@@ -36,6 +36,11 @@ export function watchDraftOf(settings: WatchSettings | null): WatchDraft {
   };
 }
 
+/** Whether the form holds something other than what the host has: a Save of the same draft sends nothing new (#3864). */
+export function watchDraftChanged(draft: WatchDraft, saved: WatchSettings): boolean {
+  return JSON.stringify(draft) !== JSON.stringify(watchDraftOf(saved));
+}
+
 const limit = (text: string): number | null => (text.trim() === "" ? null : Number(text));
 
 /** The variable names of the checks: the non-blank lines, each once. */
