@@ -7,6 +7,7 @@ import { CHANGES_RULES } from "./changes-risk.ts";
 import { DAEMON_RULES } from "./daemon-risk.ts";
 import { EXTERNAL_RULES } from "./external-risk.ts";
 import { FILE_RULES } from "./file-risk.ts";
+import { GITHUB_RULES } from "./github-risk.ts";
 import { HOST_RULES } from "./host-risk.ts";
 import { KNOWLEDGE_RULES } from "./knowledge-risk.ts";
 import { LOGS_RULES } from "./logs-risk.ts";
@@ -47,6 +48,7 @@ export const FLIGHTDECK_VERB_RULES = [
   ...REWIND_RULES,
   ...BG_RULES,
   ...FILE_RULES,
+  ...GITHUB_RULES,
   ...WORKTREE_RULES,
   ...SEND_RULES,
   ...KNOWLEDGE_RULES,

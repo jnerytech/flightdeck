@@ -135,6 +135,7 @@ export const CONFIRM_OWNERS = [
   "boardsync",
   "costs",
   "daemon",
+  "github",
   "harness",
   "host",
   "mcp",
