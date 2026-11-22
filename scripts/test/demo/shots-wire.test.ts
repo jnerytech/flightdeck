@@ -128,6 +128,69 @@ describe("shots-wire: the page's WebSocket", () => {
   });
 });
 
+describe("shots-wire: a held, a replied, a sequenced and a trimmed command (#4154)", () => {
+  test("the answer to a held command never reaches the app, and the others' answers do", () => {
+    const wire = wireRewriter([{ command: "approval.list", hold: true }]);
+    wire.fromApp(ask("r1", "approval.list"));
+    wire.fromApp(ask("r2", "project.list"));
+    expect([
+      wire.drops?.(ack("r1", { keys: [] })),
+      wire.drops?.(ack("r2", { projects: [] })),
+      wire.drops?.(JSON.stringify({ type: "board.updated" })),
+      wire.drops?.("{"),
+    ]).toEqual([true, false, false, false]);
+  });
+
+  test("a replied command is answered in the page with the rule's data, and any other frame is left to the host", () => {
+    const wire = wireRewriter([{ command: "approval.revoke", reply: { revoked: true } }]);
+    const revoke = ask("r1", "approval.revoke", { keyId: "k" });
+    expect([
+      wire.fromApp(revoke),
+      wire.answer?.(revoke),
+      wire.answer?.(ask("r2", "approval.list")),
+      wire.answer?.("not json"),
+    ]).toEqual([
+      revoke,
+      JSON.stringify({ type: "ack", id: "r1", ok: true, data: { revoked: true } }),
+      undefined,
+      undefined,
+    ]);
+  });
+
+  test("a rule with after answers the first read with its data and every later one with after", () => {
+    const wire = wireRewriter([
+      { command: "approval.list", data: { keys: ["a"] }, after: { keys: [] } },
+    ]);
+    const answers = ["r1", "r2", "r3"].map((id) => {
+      wire.fromApp(ask(id, "approval.list"));
+      return read(wire.fromHost(ack(id, { keys: ["real"] }))).data;
+    });
+    expect(answers).toEqual([{ keys: ["a"] }, { keys: [] }, { keys: [] }]);
+  });
+
+  test("without takes the named entries out of an array of the answer and keeps everything else", () => {
+    const wire = wireRewriter([{ command: "host.info", without: { features: ["b", "c"] } }]);
+    wire.fromApp(ask("r1", "host.info"));
+    expect(
+      read(wire.fromHost(ack("r1", { name: "alfa", features: ["a", "b", "c", "d"] }))),
+    ).toEqual({ type: "ack", id: "r1", ok: true, data: { name: "alfa", features: ["a", "d"] } });
+  });
+
+  test("the page's socket never sends a replied command and answers it to the app", async () => {
+    const page = { WebSocket: FakeSocket as unknown as typeof WebSocket };
+    new Function("window", wireScript([{ command: "approval.revoke", reply: {} }]))(page);
+    const socket = new page.WebSocket("ws://x") as unknown as FakeSocket;
+    const got: unknown[] = [];
+    socket.addEventListener("message", (event) => got.push(event.data));
+    socket.send(ask("r1", "approval.revoke"));
+    await Promise.resolve();
+    expect([socket.sent, got]).toEqual([
+      [],
+      [JSON.stringify({ type: "ack", id: "r1", ok: true, data: {} })],
+    ]);
+  });
+});
+
 describe("shots-wire: the states the table prints (#3982)", () => {
   const IDS = { rewindSession: "rw", waitingSession: "wt" } as DemoIds;
   const shots = () =>

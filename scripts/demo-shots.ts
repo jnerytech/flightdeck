@@ -30,6 +30,7 @@ import { sshScript } from "./lib/shots/ssh-frames.ts";
 import { agentShots } from "./lib/shots/table-agent.ts";
 import { automationShots } from "./lib/shots/table-automations.ts";
 import { boardShots } from "./lib/shots/table-board.ts";
+import { devicesShots } from "./lib/shots/table-devices.ts";
 import { harnessShots } from "./lib/shots/table-harness.ts";
 import { hostShots } from "./lib/shots/table-hosts.ts";
 import { issuesShots } from "./lib/shots/table-issues.ts";
@@ -83,6 +84,7 @@ function shots(ids: DemoIds): Shot[] {
     ...harnessShots(ids),
     ...automationShots(ids),
     ...issuesShots(ids),
+    ...devicesShots(ids),
     ...permissionShots(ids),
     ...snippetShots(ids),
     ...teleportShots(ids),

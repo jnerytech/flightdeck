@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { DEMO_THIS_KEY } from "../../src/demo/approval-keys.ts";
 import {
   applyDemoPrefs,
   DEMO_BACKUP_FOLDER,
@@ -213,6 +214,19 @@ describe("demo-prints", () => {
       (error: unknown) => (error instanceof Error ? error.message : String(error)),
     );
     expect(failure).toBe("The update server did not answer");
+  });
+
+  test("?approvalKeys=enrolled|empty gives the page a key store, and tells the print which host it asked about; without it the web build has none (#4154)", async () => {
+    const { platform } = memoryPlatform();
+    expect(demoPlatform(platform, "?route=%7B%7D").approvalKeys).toBeUndefined();
+    expect(demoPlatform(platform, "?approvalKeys=other").approvalKeys).toBeUndefined();
+    const enrolled = demoPlatform(platform, "?approvalKeys=enrolled").approvalKeys;
+    const empty = demoPlatform(platform, "?approvalKeys=empty").approvalKeys;
+    expect([(await enrolled?.get("daemon-9"))?.keyId, await empty?.get("daemon-9")]).toEqual([
+      DEMO_THIS_KEY.keyId,
+      null,
+    ]);
+    expect(document.documentElement.dataset.demoDaemonId).toBe("daemon-9");
   });
 
   test("?backupFolder=demo gives the page a backup folder that keeps its files across a reload; without it the web build has none", async () => {
