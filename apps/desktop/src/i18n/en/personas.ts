@@ -102,7 +102,8 @@ export const personas = {
     publish: "Publish",
     publishMessage:
       "Write {name} as .claude/agents/persona-{id}.md in the project? Then it holds for plain claude too.",
-    published: "Published at {path}",
+    published: "Published {name} at {path}",
+    actionFailed: "{name} was not changed: {reason}",
   },
   teamsUi: {
     notifyTitle: "Team {name}",
