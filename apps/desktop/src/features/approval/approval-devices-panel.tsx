@@ -28,6 +28,9 @@ const UNCHECKED_TEXT = {
   vaultRules: "approvalDevices.vaultRulesUnchecked",
 } as const satisfies Record<UncheckedCommand, string>;
 
+/** Where a result is said: by the list, by the add-device section, or by the remove-key block (#4156). */
+type Place = "list" | "add" | "key";
+
 type View = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; status: ApprovalStatus };
 
 /**
@@ -46,6 +49,10 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
   const [done, setDone] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Where the last change says its result, and a count of the changes that ended (the focus follows each).
+  const [where, setWhere] = useState<Place>("list");
+  const [ended, setEnded] = useState(0);
+  const resultBox = useRef<HTMLDivElement>(null);
   // Dropping this device's key is asked first: it cannot approve for the host after that (#4155).
   const [asking, setAsking] = useState(false);
   // A change the host announced that this device did not make (#3477), until the person dismisses it.
@@ -111,13 +118,25 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
       setDone(t("approvalDevices.enrolled"));
     }
   }, [request, view, t]);
+  // The control the person used may be gone once the list is read again (a revoked row, the removed
+  // key's button, the enroll form): the focus goes to the result, which is by the section that acted.
+  useEffect(() => {
+    const held = document.activeElement;
+    if (ended === 0 || (held?.isConnected && held !== document.body)) return;
+    resultBox.current?.focus();
+  }, [ended]);
   /**
    * Runs one change, one at a time: its refusal is shown here, its success is said once (not when the
-   * person declined the system's dialog), and the list is read again.
+   * person declined the system's dialog), and the list is read again. The result is said at `place`.
    */
-  const change = async (work: () => Promise<unknown>, success: string | null) => {
+  const change = async (
+    work: () => Promise<unknown>,
+    success: string | null,
+    place: Place = "list",
+  ) => {
     if (busy) return;
     setBusy(true);
+    setWhere(place);
     setDone(null);
     setProblem(null);
     try {
@@ -127,13 +146,16 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
     }
     await reload();
     setBusy(false);
+    setEnded((count) => count + 1);
   };
-  const notices = (
-    <>
-      {problem && <InlineNotice tone="error">{problem}</InlineNotice>}
-      {done && <InlineNotice tone="info">{done}</InlineNotice>}
-    </>
-  );
+  /** The result of the last change, in the section it belongs to; a box the focus can land on. */
+  const result = (place: Place) =>
+    where === place && (
+      <div ref={resultBox} tabIndex={-1}>
+        {problem && <InlineNotice tone="error">{problem}</InlineNotice>}
+        {done && <InlineNotice tone="info">{done}</InlineNotice>}
+      </div>
+    );
   const hint = <p className="text-muted-foreground text-xs">{t("approvalDevices.hint")}</p>;
   // First in the panel, and always mounted: it takes the focus back when the person dismisses.
   const heardNotices = (
@@ -179,7 +201,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
             </ActionButton>
           </Inline>
         )}
-        {notices}
+        {result("list")}
       </Panel>
     );
   }
@@ -234,6 +256,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
           ))}
         </Stack>
       )}
+      {result("list")}
       {!status.protectionOff && !hasKey && (
         <output className="block text-sm">{t("approvalDevices.noKeyHere")}</output>
       )}
@@ -292,14 +315,18 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
                 variant="panel"
                 aria-label={t("approvalDevices.addOfferTitle")}
                 onSubmit={() =>
-                  void change(async () => {
-                    const outcome = await store.approval.confirmAdd(host.id, offer);
-                    if (outcome === "done") {
-                      setOffer(null);
-                      setAddText("");
-                    } else setDone(t("approvalDevices.addDeclined"));
-                    return outcome;
-                  }, t("approvalDevices.addDone"))
+                  void change(
+                    async () => {
+                      const outcome = await store.approval.confirmAdd(host.id, offer);
+                      if (outcome === "done") {
+                        setOffer(null);
+                        setAddText("");
+                      } else setDone(t("approvalDevices.addDeclined"));
+                      return outcome;
+                    },
+                    t("approvalDevices.addDone"),
+                    "add",
+                  )
                 }
               >
                 <h4 className="font-medium text-sm">{t("approvalDevices.addOfferTitle")}</h4>
@@ -326,9 +353,13 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
                 variant="panel"
                 aria-label={t("approvalDevices.addTitle")}
                 onSubmit={() =>
-                  void change(async () => {
-                    setOffer(await store.approval.readAdd(host.id, addText.trim()));
-                  }, null)
+                  void change(
+                    async () => {
+                      setOffer(await store.approval.readAdd(host.id, addText.trim()));
+                    },
+                    null,
+                    "add",
+                  )
                 }
               >
                 <Field label={t("approvalDevices.addTextLabel")}>
@@ -350,6 +381,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
                 />
               </Form>
             )}
+            {result("add")}
           </div>
         </Panel>
       )}
@@ -382,10 +414,14 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
                   <ActionButton
                     variant="outline"
                     onClick={() =>
-                      change(async () => {
-                        await store.approval.removeLocalKey(host.id);
-                        setRequest(null);
-                      }, null)
+                      change(
+                        async () => {
+                          await store.approval.removeLocalKey(host.id);
+                          setRequest(null);
+                        },
+                        null,
+                        "add",
+                      )
                     }
                   >
                     {t("approvalDevices.addCancel")}
@@ -397,9 +433,13 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
                 variant="panel"
                 aria-label={t("approvalDevices.requestTitle")}
                 onSubmit={() =>
-                  void change(async () => {
-                    setRequest(await store.approval.requestAdd(host.id, addName.trim()));
-                  }, null)
+                  void change(
+                    async () => {
+                      setRequest(await store.approval.requestAdd(host.id, addName.trim()));
+                    },
+                    null,
+                    "add",
+                  )
                 }
               >
                 <Field label={t("approvalDevices.nameLabel")}>
@@ -420,6 +460,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
                 />
               </Form>
             )}
+            {result("add")}
           </div>
         </Panel>
       )}
@@ -444,11 +485,12 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
             void change(
               () => store.approval.removeLocalKey(host.id),
               t("approvalDevices.removedLocal"),
+              "key",
             );
           }}
         />
       )}
-      {notices}
+      {result("key")}
       <p className="text-muted-foreground text-xs">{t("approvalDevices.scope")}</p>
     </Panel>
   );
