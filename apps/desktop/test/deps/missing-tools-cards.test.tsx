@@ -86,7 +86,7 @@ describe("missing-tool cards: a person who cannot see the screen can use them (i
     setup("en", ["git", "claude", "gh"]);
     press(/Dismiss the note about Claude Code/);
     expect(dismissButtons(/Dismiss the note about Claude Code/).length).toBe(0);
-    expect(dismissButtons(/Dismiss the note about Git/).length).toBe(1);
+    expect(dismissButtons(/Dismiss the note about Git on/).length).toBe(1);
     expect(dismissButtons(/Dismiss the note about GitHub CLI/).length).toBe(1);
     const undo = screen.queryByRole("button", { name: /Undo.*Claude Code on alfa/ });
     expect(undo !== null).toBe(true);
@@ -107,7 +107,7 @@ describe("missing-tool cards: a person who cannot see the screen can use them (i
     const { show } = setup("en", ["git", "claude"]);
     press(/Dismiss the note about Claude Code/);
     press(/Undo.*Claude Code on alfa/);
-    const git = screen.queryByRole("button", { name: /Dismiss the note about Git/ });
+    const git = screen.queryByRole("button", { name: /Dismiss the note about Git on/ });
     expect(git).not.toBeNull();
     act(() => git?.focus());
     act(() => show(["git"]));
@@ -172,7 +172,7 @@ describe("missing-tool cards: a dismissed note has a way back, and a tool out of
   test("a note dismissed before the screen was shown is counted, and one press shows them all again", () => {
     const kept = memory();
     setup("en", ["git", "claude"], kept);
-    press(/Dismiss the note about Git/);
+    press(/Dismiss the note about Git on/);
     press(/Dismiss the note about Claude Code/);
     cleanup();
     setup("en", ["git", "claude"], kept);

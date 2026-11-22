@@ -186,9 +186,14 @@ export function setupProgress(steps: SetupStep[]): SetupProgress {
   return { done, total: core.length, complete: core.length > 0 && done === core.length };
 }
 
-/** The tools a host lacks, worth a quiet card: the required ones first, then the optional. */
+/**
+ * The tools a host lacks or has out of date, worth a quiet card: the required ones first, then
+ * the optional.
+ */
 export function missingTools(deps: { items: DepResult[] } | undefined): DepResult[] {
-  const missing = (deps?.items ?? []).filter((d) => d.state === "missing");
+  const missing = (deps?.items ?? []).filter(
+    (d) => d.state === "missing" || d.state === "outdated",
+  );
   return [
     ...missing.filter((d) => d.group === "required"),
     ...missing.filter((d) => d.group !== "required"),
@@ -197,10 +202,14 @@ export function missingTools(deps: { items: DepResult[] } | undefined): DepResul
 
 /** The dismissed notes whose tool a host now reports as in place: a later problem is a new note. */
 function installedDismissals(
-  _dismissed: readonly string[],
-  _deps: Record<string, { items: DepResult[] } | undefined>,
+  dismissed: readonly string[],
+  deps: Record<string, { items: DepResult[] } | undefined>,
 ): string[] {
-  return [];
+  return dismissed.filter((id) => {
+    const at = id.lastIndexOf("@");
+    const tool = deps[id.slice(at + 1)]?.items.find((d) => d.id === id.slice(0, at));
+    return tool?.state === "ok";
+  });
 }
 
 export const SETUP_HIDDEN_KEY = "flightdeck.setupHidden";
@@ -255,10 +264,17 @@ export class SetupSettings {
   }
 
   /** Several dismissed notes are wanted again, in one write. */
-  restoreTools(_ids: readonly string[]): void {}
+  restoreTools(ids: readonly string[]): void {
+    const kept = this.dismissedTools().filter((entry) => !ids.includes(entry));
+    this.storage.setItem(SETUP_TOOLS_KEY, JSON.stringify(kept));
+    this.emit();
+  }
 
   /** What the hosts report now: the notes dismissed for a tool that is in place are forgotten. */
-  clearInstalled(_deps: Record<string, { items: DepResult[] } | undefined>): void {}
+  clearInstalled(deps: Record<string, { items: DepResult[] } | undefined>): void {
+    const gone = installedDismissals(this.dismissedTools(), deps);
+    if (gone.length > 0) this.restoreTools(gone);
+  }
 
   private emit(): void {
     for (const listener of this.listeners) listener();

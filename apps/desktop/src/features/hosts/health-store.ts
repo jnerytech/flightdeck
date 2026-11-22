@@ -108,5 +108,6 @@ export class HealthSlice {
       healthError:
         failures.length > 0 ? { ...rest, [hostId]: [...new Set(failures)].join("; ") } : rest,
     });
+    if (got) this.core.onDeps?.(this.core.state().deps);
   }
 }
