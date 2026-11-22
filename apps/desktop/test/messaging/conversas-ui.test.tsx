@@ -146,7 +146,7 @@ describe("conversas-ui: the messages between sessions", () => {
     await settle(() => (list()?.children.length ?? 0) === 2);
     const oldest = list()?.children[1] as HTMLElement;
     await act(async () => {
-      fireEvent.click(within(oldest).getByRole("button", { name: "Abrir a sessão" }));
+      fireEvent.click(within(oldest).getByRole("button", { name: /^Abrir a sessão/ }));
     });
     expect(store.router.current).toMatchObject({ name: "external", claudeSessionId: "s2" });
     // A recipient that is a managed session of the host opens as one.
@@ -178,7 +178,9 @@ describe("conversas-ui: the messages between sessions", () => {
     await settle(() => (list()?.children.length ?? 0) === 1);
     await act(async () => {
       fireEvent.click(
-        within(list()?.children[0] as HTMLElement).getByRole("button", { name: "Abrir a sessão" }),
+        within(list()?.children[0] as HTMLElement).getByRole("button", {
+          name: /^Abrir a sessão/,
+        }),
       );
     });
     expect(store.router.current).toMatchObject({ name: "session", id: "s1" });
@@ -212,5 +214,41 @@ describe("conversas-ui: the timeline's states (#588)", () => {
     expect(screen.queryByText("Nenhuma mensagem corresponde ao filtro.")).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Abrir Times" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(list() === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+  });
+});
+
+describe("conversas-ui: the open button names its recipient (#4084)", () => {
+  const goToList = async (list: () => HTMLElement | null, count: number) => {
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
+    });
+    await settle(() => (list()?.children.length ?? 0) === count);
+  };
+
+  test("each row's button carries its recipient, so two rows to different sessions differ", async () => {
+    const { daemon, list } = await open();
+    daemon.messaging.messages = [
+      ...daemon.messaging.messages,
+      message({ id: "m3", toSession: "s3", createdAt: "2026-10-30T12:10:00.000Z" }),
+    ];
+    await goToList(list, 3);
+    expect(screen.queryByRole("button", { name: "Abrir a sessão de h/s3" })).not.toBeNull();
+    expect(screen.queryAllByRole("button", { name: "Abrir a sessão de h/s2" }).length).toBe(2);
+  });
+
+  test("a recipient on a host the app does not have is disabled and says why, and a press goes nowhere", async () => {
+    const { store, daemon, list } = await open();
+    daemon.messaging.messages = [message({ id: "m9", toHost: "fora", toSession: "s9" })];
+    await goToList(list, 1);
+    const button = screen.queryByRole("button", { name: "Abrir a sessão de fora/s9" });
+    expect(button).not.toBeNull();
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    const why = document.getElementById(button?.getAttribute("aria-describedby") ?? "");
+    expect(why?.textContent).toBe("Esse host não está conectado.");
+    const before = JSON.stringify(store.router.current);
+    await act(async () => {
+      fireEvent.click(button as HTMLElement);
+    });
+    expect(JSON.stringify(store.router.current)).toBe(before);
   });
 });
