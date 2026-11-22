@@ -34,6 +34,7 @@ const WORDS = {
     save: "Save",
     confirmSave: "Save to memory",
     unsaved: "Unsaved changes",
+    discard: "Discard",
     newFile: "New file: it exists after Save.",
     saved: "Memory saved.",
     user: "User",
@@ -52,6 +53,7 @@ const WORDS = {
     save: "Salvar",
     confirmSave: "Salvar na memória",
     unsaved: "Alterações não salvas",
+    discard: "Descartar",
     newFile: "Arquivo novo: ele passa a existir depois de Salvar.",
     saved: "Memória salva.",
     user: "Usuário",
@@ -188,6 +190,33 @@ describe.each(["en", "pt-BR"] as const)(
       await press(w.add);
       const empty = (screen.queryByLabelText(w.fileName) as HTMLInputElement).value;
       expect({ closed, empty }).toEqual({ closed: true, empty: "" });
+    });
+
+    test("opening another file after Discard puts the focus in the new file's editor", async () => {
+      await memory(seeded);
+      await press(w.open("user_role.md"));
+      await settle(() => textarea("user_role.md") !== null);
+      await fill(w.content("user_role.md"), `${typed("user")}More.\n`);
+      await press(w.open("feedback_tests.md"));
+      await press(w.discard);
+      await settle(() => textarea("feedback_tests.md") !== null);
+      await uiIdle();
+      expect(focused() === textarea("feedback_tests.md")).toBe(true);
+    });
+
+    test("Escape in the name field does not reach a parent that also closes on Escape", async () => {
+      await memory(seeded);
+      let reached = false;
+      const onKey = (event: KeyboardEvent) => {
+        if (event.key === "Escape") reached = true;
+      };
+      document.body.addEventListener("keydown", onKey);
+      cleanups.push(() => document.body.removeEventListener("keydown", onKey));
+      await press(w.add);
+      await act(async () => {
+        fireEvent.keyDown(screen.queryByLabelText(w.fileName) as HTMLElement, { key: "Escape" });
+      });
+      expect(reached).toBe(false);
     });
 
     test("a new file's editor has the focus and says it is new until it is saved", async () => {
