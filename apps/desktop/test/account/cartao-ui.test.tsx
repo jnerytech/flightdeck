@@ -473,6 +473,12 @@ describe("conta-cartao-ui: what the card says after a read and when the host is 
     expect(inCard().queryByRole("button", { name: "Try again" })).not.toBeNull();
   });
 
+  test("while Try again asks, the card says it is reading again instead of keeping the alert", () => {
+    show({ state: undefined, timedOut: true, refreshing: true });
+    expect(inCard().queryByRole("status")?.textContent).toBe("Reading the account…");
+    expect(inCard().queryByRole("alert")).toBeNull();
+  });
+
   test("a sign-in the app does not know has a Refresh button", () => {
     show({ state: state({ status: "unknown", name: null, plan: null, windows: [], error: null }) });
     expect(inCard().queryByRole("button", { name: REFRESH })).not.toBeNull();
