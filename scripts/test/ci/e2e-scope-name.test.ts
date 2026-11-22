@@ -2,8 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { projectScopeName } from "../../lib/e2e/scope-name.ts";
 
 const menu = (scope: string) => `Data from ${scope}`;
-const matches = (label: string, scope: string) =>
-  projectScopeName(menu, label).test(menu(scope));
+const matches = (label: string, scope: string) => projectScopeName(menu, label).test(menu(scope));
 
 describe("projectScopeName: the Data from button names the project Home showed (#3836)", () => {
   test("the same label matches", () => {
