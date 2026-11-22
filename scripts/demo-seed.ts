@@ -42,6 +42,7 @@ import {
   PROMPT_ONE,
   PROMPT_TWO,
   seedAutomations,
+  seedSnippets,
   sendTelemetry,
   until,
 } from "./lib/demo/seed-host.ts";
@@ -354,6 +355,8 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     projectId: project.id,
     db: join(alfa.dataDir, "flightdeck.db"),
   });
+  // Issue #3973: the Snippets prints' list, a project's trusted file and the shell history.
+  await seedSnippets(client, { projectPath: web, home });
   const card = (title: string, description: string) =>
     client.call<{ id: string }>("card.create", { projectId: project.id, title, description });
   await card("Documentar a API pública", "Escreva o guia de uso.");
