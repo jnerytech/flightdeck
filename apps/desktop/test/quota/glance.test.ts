@@ -78,4 +78,11 @@ describe("quota-glance: the plan window under most pressure, for the top bar (is
     expect(shortDuration(12 * 60_000)).toBe("12m");
     expect(shortDuration(-5000)).toBe("0m");
   });
+
+  // #4304: a rejected window is out whatever the guard, so the glance does not read it as fine.
+  test("a rejected window is reached with the guard off", () => {
+    const refused = { ...reading("five_hour", 0.4, null), status: "rejected" as const };
+    const glance = quotaGlance({ a: { windows: [refused], pauseAt: null } }, ["a"], NOW);
+    expect(glance?.level).toBe("reached");
+  });
 });

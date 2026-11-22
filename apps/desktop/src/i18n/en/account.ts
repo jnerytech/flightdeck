@@ -58,6 +58,10 @@ export const account = {
     resets: "resets at {time}",
     read: "read {ago}",
     hotNotice: "{host}: over {pct}%: new cards wait for the quota; manual sessions go on.",
+    out: {
+      full: "{window}: the plan is at 100%.",
+      rejected: "{window}: the plan refused this window.",
+    },
     guard: {
       label: "New cards wait from",
       labelFor: "New cards wait from, on {host}",

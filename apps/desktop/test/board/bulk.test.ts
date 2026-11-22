@@ -456,4 +456,27 @@ describe("board-bulk: the Start and Stop confirm's pieces (#1125)", () => {
       false,
     ]);
   });
+
+  // #4304: a rejected window the host gave no use for has no percent: the line must not make one up.
+  test("the Start quota line tells no 0% for a rejected window with no use", () => {
+    const quota = {
+      windows: [
+        {
+          window: "five_hour",
+          utilization: null,
+          status: "rejected",
+          resetsAt: null,
+          readAt: "2026-11-22T10:00:00.000Z",
+        },
+      ],
+      pauseAt: 0.9,
+    };
+    const { lines } = startQuotaLines(t, "pi", {
+      quota: quota as never,
+      account: undefined,
+      now: Date.now(),
+      formatTime: () => "15:00",
+    });
+    expect(lines).toEqual([]);
+  });
 });
