@@ -198,7 +198,7 @@ export const board = {
     prFailed: "Não consegui ler os comentários do PR.",
     prRetry: "Tentar de novo",
     prNote: "O Flightdeck só lê os comentários: nada é postado no PR.",
-    select: "Selecionar o comentário de {author}",
+    select: "Selecionar o comentário de {author} em {where}",
     review: "revisão",
     resolved: "Resolvido",
     external: "Autor externo",

@@ -203,7 +203,7 @@ export const board = {
     prFailed: "Could not read the PR comments.",
     prRetry: "Try again",
     prNote: "Flightdeck only reads the comments: nothing is posted to the PR.",
-    select: "Select the comment by {author}",
+    select: "Select the comment by {author} on {where}",
     review: "review",
     resolved: "Resolved",
     external: "External author",

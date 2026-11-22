@@ -85,40 +85,44 @@ export function PrComments(
       ) : (
         <>
           <ul aria-label={t("cardReview.prComments")} className="flex flex-col gap-2">
-            {comments.map((comment) => (
-              <li key={comment.id} className="flex items-start gap-2 rounded-md border p-3 text-sm">
-                <input
-                  type="checkbox"
-                  aria-label={t("cardReview.select", { author: comment.author })}
-                  checked={chosen.has(comment.id)}
-                  onChange={() => toggle(comment.id)}
-                />
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-xs">
-                      {comment.path ? location(comment) : t("cardReview.review")}
-                    </span>
-                    <span className="font-medium">{comment.author}</span>
-                    {comment.authorIdentity && (
-                      <span className="text-muted-foreground text-xs">{`(${comment.authorIdentity})`}</span>
-                    )}
-                    {comment.resolved && (
-                      <Badge variant="outline">{t("cardReview.resolved")}</Badge>
-                    )}
-                    {isExternalAuthor(comment) && (
-                      <Badge
-                        variant="outline"
-                        title={t("cardReview.externalHint")}
-                        className="text-status-needs-you"
-                      >
-                        {t("cardReview.external")}
-                      </Badge>
-                    )}
+            {comments.map((comment) => {
+              const where = comment.path ? location(comment) : t("cardReview.review");
+              return (
+                <li
+                  key={comment.id}
+                  className="flex items-start gap-2 rounded-md border p-3 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    aria-label={t("cardReview.select", { author: comment.author, where })}
+                    checked={chosen.has(comment.id)}
+                    onChange={() => toggle(comment.id)}
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-xs">{where}</span>
+                      <span className="font-medium">{comment.author}</span>
+                      {comment.authorIdentity && (
+                        <span className="text-muted-foreground text-xs">{`(${comment.authorIdentity})`}</span>
+                      )}
+                      {comment.resolved && (
+                        <Badge variant="outline">{t("cardReview.resolved")}</Badge>
+                      )}
+                      {isExternalAuthor(comment) && (
+                        <Badge
+                          variant="outline"
+                          title={t("cardReview.externalHint")}
+                          className="text-status-needs-you"
+                        >
+                          {t("cardReview.external")}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="whitespace-pre-wrap">{comment.body}</p>
                   </div>
-                  <p className="whitespace-pre-wrap">{comment.body}</p>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
           <div className="flex items-center gap-3">
             <ActionButton disabled={chosen.size === 0} onClick={() => send()}>

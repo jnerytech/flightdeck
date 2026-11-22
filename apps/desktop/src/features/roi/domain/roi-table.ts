@@ -67,7 +67,8 @@ const numberOf = (row: RoiRow, column: Exclude<RoiColumn, "project">): number | 
     case "costPerPr":
       return f.costPerPr;
     case "hours":
-      return f.hours;
+      // No hours entered is a missing figure, last in either direction like the other dashes.
+      return f.hours === 0 ? null : f.hours;
     case "value":
       return f.valueUsd;
     case "roi":
@@ -135,7 +136,7 @@ export function csvOf(
       String(f.prsMerged),
       money(f.costPerCard),
       money(f.costPerPr),
-      String(f.hours),
+      f.hours === 0 ? "" : String(f.hours),
       money(f.valueUsd),
       money(f.roi),
       derivation({ name, figures: f, ...rest }),
