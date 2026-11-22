@@ -397,6 +397,18 @@ describe("approval devices panel: the enrolled devices (#3439)", () => {
     expect(screen.queryByRole("button", { name: "Remove this device's key" })).not.toBeNull();
   });
 
+  test("a question left open is gone when the panel moves to another host, so it cannot remove that host's key", async () => {
+    const { calls, show } = panel([HERE, HERE]);
+    await settleMaybe(
+      () => screen.queryByRole("button", { name: "Remove this device's key" }) !== null,
+    );
+    await press("Remove this device's key");
+    expect(screen.queryByRole("alertdialog")).not.toBeNull();
+    await act(async () => show("h2"));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(calls).toEqual([]);
+  });
+
   test("confirming the question drops this device's key and the list is read again", async () => {
     const { calls } = panel([HERE, { ...HERE, thisKeyId: null }]);
     await settleMaybe(
