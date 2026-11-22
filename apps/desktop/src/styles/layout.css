@@ -90,6 +90,20 @@
 }
 
 /*
+ * A tab strip with more tabs than a narrow window holds (#4278: the Agent screen's six at 390 px):
+ * it wraps onto a second line instead of running past its container. The vendored list is a
+ * fixed-height inline flex row and sets its height through a group variant, so the rule carries
+ * the list's own attributes to outrank it.
+ */
+@utility tabs-wrap {
+  &[data-slot="tabs-list"][data-variant] {
+    height: auto;
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
+  }
+}
+
+/*
  * A button in a row of Fields aligned by the top: it starts below a Field's label (text-sm line
  * height 1.25rem plus the Field's gap of 0.25rem), so it sits level with the inputs.
  */

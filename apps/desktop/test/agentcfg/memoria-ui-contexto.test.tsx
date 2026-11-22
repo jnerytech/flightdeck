@@ -128,4 +128,64 @@ describe("memoria-ui: o orçamento de contexto", () => {
     await settle(() => screen.queryByText(/Só os primeiros 25 KB do MEMORY.md entram/) !== null);
     expect(screen.queryByText(/Só os primeiros 25 KB do MEMORY.md entram/)).not.toBeNull();
   });
+
+  // Issue #4268: the cut is a limit, not a failure; an empty budget says so; the sources list has a name.
+  test("o corte do MEMORY.md por linhas é um aviso em tom de status, não um alerta", async () => {
+    await open(({ put }) => {
+      const lines = Array.from({ length: 203 }, (_, i) => `- [Nota ${i + 1}](n${i + 1}.md) — n`);
+      put("MEMORY.md", `${lines.join("\n")}\n`);
+    });
+    await settle(
+      () => screen.queryByText(/Só as primeiras 200 linhas do MEMORY.md entram/) !== null,
+    );
+    const notice = screen.queryByText(/Só as primeiras 200 linhas do MEMORY.md entram/);
+    expect({
+      role: notice?.getAttribute("role"),
+      alerts: screen.queryAllByRole("alert").length,
+    }).toEqual({
+      role: "status",
+      alerts: 0,
+    });
+  });
+
+  test("o corte por tamanho também é um aviso em tom de status, não um alerta", async () => {
+    await open(({ put }) => {
+      const lines = Array.from(
+        { length: 30 },
+        (_, i) => `- ${String(i).padStart(2, "0")} ${"x".repeat(1020)}`,
+      );
+      put("MEMORY.md", `${lines.join("\n")}\n`);
+    });
+    await settle(() => screen.queryByText(/Só os primeiros 25 KB do MEMORY.md entram/) !== null);
+    const notice = screen.queryByText(/Só os primeiros 25 KB do MEMORY.md entram/);
+    expect({
+      role: notice?.getAttribute("role"),
+      alerts: screen.queryAllByRole("alert").length,
+    }).toEqual({
+      role: "status",
+      alerts: 0,
+    });
+  });
+
+  test("sem fonte nenhuma, a aba diz que nada entra no contexto e não mostra uma lista vazia", async () => {
+    await open(() => {});
+    await settle(() => budget() !== null);
+    expect({
+      says: screen.queryByText("Nada entra no contexto na partida deste projeto.") !== null,
+      lists: budget()?.querySelectorAll("ul").length,
+    }).toEqual({ says: true, lists: 0 });
+  });
+
+  test("com fontes, a lista delas tem um nome e a frase de vazio some", async () => {
+    await open(({ repo }) => {
+      writeFileSync(join(repo, "CLAUDE.md"), "p".repeat(400));
+    });
+    await settle(() => (budget()?.textContent ?? "").includes("CLAUDE.md"));
+    const list = screen.queryByRole("list", { name: "Fontes do contexto" });
+    expect({
+      named: list !== null,
+      rows: list?.querySelectorAll("li").length,
+      says: screen.queryByText("Nada entra no contexto na partida deste projeto.") !== null,
+    }).toEqual({ named: true, rows: 1, says: false });
+  });
 });

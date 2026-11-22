@@ -21,6 +21,8 @@ export const agent = {
     underOne: "under 1 KB",
     cutLines: "Only the first {limit} lines of MEMORY.md enter at the start. The rest stays out:",
     cutBytes: "Only the first {limit} KB of MEMORY.md enter at the start. The rest stays out:",
+    sources: "Sources of the context",
+    noSources: "Nothing enters the context at the start of this project.",
     leftOutLines: "Lines that stay out",
     leftOutFiles: "Files only those lines mention: {files}",
   },

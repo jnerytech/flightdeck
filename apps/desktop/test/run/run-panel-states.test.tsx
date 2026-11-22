@@ -53,12 +53,21 @@ async function panel(
   })) as unknown as typeof store.runEnv.config;
   store.runEnv.updated("h", state);
   const answers: Array<() => Promise<void>> = [];
+  // The host's side of Run and Stop: the slice's own start and stop run, so what it remembers is real.
+  const core = (store.runEnv as unknown as { core: Record<string, unknown> }).core;
+  // The host accepts: it answers with the run as the app holds it (a null answer is a refusal).
+  const held = () =>
+    (
+      store.runEnv as unknown as { core: { state: () => { runEnvs: Record<string, RunState> } } }
+    ).core.state().runEnvs[(core.key as (h: string, c: string) => string)("h", "c1")] ?? state;
   const asked = (what: string) => {
     calls.push(what);
-    return new Promise<void>((resolve) => answers.push(resolve as () => Promise<void>));
+    return new Promise<RunState>((resolve) =>
+      answers.push((() => resolve(held())) as unknown as () => Promise<void>),
+    );
   };
-  store.runEnv.start = (() => asked("start")) as unknown as typeof store.runEnv.start;
-  store.runEnv.stop = (() => asked("stop")) as unknown as typeof store.runEnv.stop;
+  core.start = () => asked("start");
+  core.stop = () => asked("stop");
   render(
     <TContext.Provider value={store.i18n.t}>
       <RunPanel store={store} hostId="h" card={{ id: "c1", projectId: "p" } as Card} />
@@ -182,6 +191,97 @@ describe("the run panel tells what happened to each process and what was pressed
       store.runEnv.updated("h", run({ status: "ended", processes: [proc({ exitCode: 137 })] })),
     );
     expect(cls().includes("text-status-error")).toBe(true);
+  });
+});
+
+describe("a Stop outlives the card page (#4284)", () => {
+  const ended137 = run({ status: "ended", processes: [proc({ exitCode: 137 })] });
+  const crashed = () =>
+    (screen.queryByText("ended (code 137)")?.className ?? "").includes("text-status-error");
+
+  test("a process the person stopped is not red after the panel mounts again, but a crash after the next Run is", async () => {
+    const { store, answers } = await panel(
+      "en",
+      run({ status: "running", processes: [proc({ status: "running", exitCode: null })] }),
+    );
+    await click("Stop");
+    await act(async () => answers[0]?.());
+    await act(async () => store.runEnv.updated("h", ended137));
+    cleanup();
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <RunPanel store={store} hostId="h" card={{ id: "c1", projectId: "p" } as Card} />
+      </TContext.Provider>,
+    );
+    await settle(() => screen.queryByRole("button", { name: "Run" }) !== null);
+    expect(crashed()).toBe(false);
+    await click("Run");
+    await act(async () => store.runEnv.updated("h", ended137));
+    expect(crashed()).toBe(true);
+  });
+
+  test("a run that ended with no Stop still reads as a crash after the panel mounts again", async () => {
+    const { store } = await panel("en", ended137);
+    cleanup();
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <RunPanel store={store} hostId="h" card={{ id: "c1", projectId: "p" } as Card} />
+      </TContext.Provider>,
+    );
+    await settle(() => screen.queryByRole("button", { name: "Run" }) !== null);
+    expect(crashed()).toBe(true);
+  });
+});
+
+describe("a refused Stop or Run leaves what the person pressed before as it was (#4284)", () => {
+  const slice = (answer: RunState | null) => {
+    const store = new AppStore(memoryPlatform(false, "en").platform);
+    const core = (store.runEnv as unknown as { core: Record<string, unknown> }).core;
+    core.start = async () => answer;
+    core.stop = async () => answer;
+    return store;
+  };
+
+  test("a refused Stop does not make a later crash read as a stop", async () => {
+    const store = slice(null);
+    await store.runEnv.stop("h", "c1");
+    expect(store.runEnv.stoppedByPerson("h", "c1")).toBe(false);
+  });
+
+  test("a refused Run keeps the last Stop, an accepted one clears it", async () => {
+    const refused = slice(null);
+    await slice(run({})).runEnv.stop("h", "c1");
+    const kept = slice(run({}));
+    await kept.runEnv.stop("h", "c1");
+    await kept.runEnv.start("h", "c1");
+    await refused.runEnv.stop("h", "c1");
+    const core = (refused.runEnv as unknown as { core: Record<string, unknown> }).core;
+    core.stop = async () => run({});
+    await refused.runEnv.stop("h", "c1");
+    core.start = async () => null;
+    await refused.runEnv.start("h", "c1");
+    expect({
+      refusedRun: refused.runEnv.stoppedByPerson("h", "c1"),
+      acceptedRun: kept.runEnv.stoppedByPerson("h", "c1"),
+    }).toEqual({ refusedRun: true, acceptedRun: false });
+  });
+});
+
+describe("a run the host starts after a Stop clears the Stop (#4284)", () => {
+  test("a run started from elsewhere is not muted when it crashes, and a Stop while it runs stays", async () => {
+    const store = new AppStore(memoryPlatform(false, "en").platform);
+    const core = (store.runEnv as unknown as { core: Record<string, unknown> }).core;
+    core.stop = async () => run({ status: "running" });
+    store.runEnv.updated("h", run({ status: "running" }));
+    await store.runEnv.stop("h", "c1");
+    store.runEnv.updated("h", run({ status: "running" }));
+    const whileRunning = store.runEnv.stoppedByPerson("h", "c1");
+    store.runEnv.updated("h", run({ status: "ended" }));
+    store.runEnv.updated("h", run({ status: "running" }));
+    expect({ whileRunning, afterNewRun: store.runEnv.stoppedByPerson("h", "c1") }).toEqual({
+      whileRunning: true,
+      afterNewRun: false,
+    });
   });
 });
 
@@ -333,5 +433,78 @@ describe("the run panel keeps the focus where the person pressed, and its lists 
     });
     const code = screen.queryByText(`bun run ${token}`);
     expect(code?.className.includes("[overflow-wrap:anywhere]")).toBe(true);
+  });
+});
+
+describe("Trust keeps the panel when the host refuses and hands the focus to Run when it accepts (#4283)", () => {
+  const untrusted = {
+    trusted: false,
+    config: {
+      exclusive: false,
+      setup: null,
+      run: [{ name: "web", cmd: ["bun", "dev"], env: {}, ports: [] }],
+      ports: [],
+    },
+  };
+  const REFUSED = {
+    en: /The host did not accept the trust/,
+    "pt-BR": /O host não aceitou a confiança/,
+  } as const;
+  const confirmTrust = async (store: InstanceType<typeof AppStore>) => {
+    await click(store.i18n.t("runEnv.trust"));
+    await settle(
+      () => screen.queryByRole("button", { name: store.i18n.t("runEnv.trustConfirm") }) !== null,
+    );
+    await click(store.i18n.t("runEnv.trustConfirm"));
+  };
+  const trustedInfo = { exists: true, hash: "h", errors: [], ...untrusted, trusted: true };
+  // The host's answer and the panel's follow-up reads are promises: act drains them, no timer.
+  const flush = () => act(async () => {});
+  const onRun = () => (document.activeElement as HTMLElement | null)?.dataset.action === "run";
+
+  test.each(["en", "pt-BR"] as const)(
+    "a refused Trust leaves the review and the Trust button and says so (%s)",
+    async (lang) => {
+      const { store } = await panel(lang, run({}), [], untrusted);
+      store.runEnv.trust = (async () => null) as typeof store.runEnv.trust;
+      await confirmTrust(store);
+      await flush();
+      expect({
+        review: screen.queryByText("bun dev") !== null,
+        trustButton: screen.queryByRole("button", { name: store.i18n.t("runEnv.trust") }) !== null,
+        said: REFUSED[lang].test(screen.queryByRole("alert")?.textContent ?? ""),
+      }).toEqual({ review: true, trustButton: true, said: true });
+    },
+  );
+
+  test("the refusal is gone once a second Trust is accepted", async () => {
+    const { store } = await panel("en", run({}), [], untrusted);
+    let answers = 0;
+    store.runEnv.trust = (async () =>
+      answers++ === 0 ? null : trustedInfo) as unknown as typeof store.runEnv.trust;
+    await confirmTrust(store);
+    await flush();
+    await confirmTrust(store);
+    await flush();
+    expect(REFUSED.en.test(document.body.textContent ?? "")).toBe(false);
+  });
+
+  test("an answer that is not trusted counts as a refusal: the line shows and the focus stays off Run", async () => {
+    const { store } = await panel("en", run({}), [], untrusted);
+    store.runEnv.trust = (async () => ({
+      ...trustedInfo,
+      trusted: false,
+    })) as unknown as typeof store.runEnv.trust;
+    await confirmTrust(store);
+    await flush();
+    expect(REFUSED.en.test(screen.queryByRole("alert")?.textContent ?? "")).toBe(true);
+  });
+
+  test("an accepted Trust puts the focus on Run, not on the page body", async () => {
+    const { store } = await panel("en", run({}), [], untrusted);
+    store.runEnv.trust = (async () => trustedInfo) as unknown as typeof store.runEnv.trust;
+    await confirmTrust(store);
+    await flush();
+    expect(onRun()).toBe(true);
   });
 });

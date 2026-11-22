@@ -23,7 +23,19 @@ export interface RunEnvCore {
 
 /** A card's run environment: its run.yaml, its trust, and its processes started and stopped (#1596: a slice of the store). */
 export class RunEnvSlice {
+  /**
+   * The cards whose run the person stopped, by `core.key`: Stop kills the processes, so their exit
+   * codes are not a crash. Run clears it. It lives here, not in the panel, so it survives the card
+   * page being left and opened again (#4284); an app restart forgets it.
+   */
+  private readonly stopped = new Set<string>();
+
   constructor(private readonly core: RunEnvCore) {}
+
+  /** Whether the card's last run ended because the person pressed Stop (and no Run came after). */
+  stoppedByPerson(hostId: string, cardId: string): boolean {
+    return this.stopped.has(this.core.key(hostId, cardId));
+  }
 
   /** The run.yaml of a project on its base branch, with its validation and trust. */
   config(hostId: string, projectId: string): Promise<RunConfigInfo | null> {
@@ -37,19 +49,34 @@ export class RunEnvSlice {
 
   /** Run: the card's setup (once) and processes. A refusal goes to the banner. */
   async start(hostId: string, cardId: string): Promise<void> {
+    const key = this.core.key(hostId, cardId);
+    const was = this.stopped.delete(key);
     const state = await this.core.start(hostId, cardId);
+    // A refused Run changes nothing: the last Stop still explains the ended processes.
+    if (!state && was) this.stopped.add(key);
     if (state) this.updated(hostId, state);
   }
 
   /** Stop: ends the card's processes and everything they started. */
   async stop(hostId: string, cardId: string): Promise<void> {
+    const key = this.core.key(hostId, cardId);
+    const was = this.stopped.has(key);
+    // Set before the host answers: its update may arrive first and must not read as a crash.
+    this.stopped.add(key);
     const state = await this.core.stop(hostId, cardId);
+    // A refused Stop stopped nothing: a later crash is still a crash.
+    if (!state && !was) this.stopped.delete(key);
     if (state) this.updated(hostId, state);
   }
 
   /** A card's run as the host now tells it. */
   updated(hostId: string, state: RunState): void {
     const { runEnvs } = this.core.state();
-    this.core.update({ runEnvs: { ...runEnvs, [this.core.key(hostId, state.cardId)]: state } });
+    const key = this.core.key(hostId, state.cardId);
+    // A run the host starts (the CLI, another app) is a new run: the Stop before it explains nothing.
+    const before = runEnvs[key]?.status;
+    const live = state.status === "setup" || state.status === "running";
+    if (live && before !== "setup" && before !== "running") this.stopped.delete(key);
+    this.core.update({ runEnvs: { ...runEnvs, [key]: state } });
   }
 }
