@@ -4,6 +4,7 @@ import {
   type TerminalFailure,
   TerminalSession,
 } from "../../src/features/terminal/terminal-session.ts";
+import { waitFor } from "../fixtures.ts";
 
 const attached: TerminalAttachResult = {
   terminalId: "t1",
@@ -44,9 +45,6 @@ function setup() {
   return { session, failures, writes, host };
 }
 
-/** Lets the write's promise callbacks run, however many hops they take. */
-const afterWrite = () => new Promise((resolve) => setTimeout(resolve, 0));
-
 // Issue #3950: an attach or a write the host refuses is told to the screen with its reason, and it is
 // told again, as `null`, once the next one is accepted, so the screen can show and clear it.
 describe("terminal-ui: what the host refuses an attach or a write with", () => {
@@ -65,11 +63,11 @@ describe("terminal-ui: what the host refuses an attach or a write with", () => {
     await session.start();
     host.refuseWrite = new Error("No room left");
     session.input("a");
-    await afterWrite();
+    await waitFor(() => failures.some(([kind]) => kind === "write"));
     expect(failures.filter(([kind]) => kind === "write")).toEqual([["write", host.refuseWrite]]);
     host.refuseWrite = null;
     session.input("b");
-    await afterWrite();
+    await waitFor(() => failures.at(-1)?.[1] === null && failures.at(-1)?.[0] === "write");
     expect(writes).toEqual(["b"]);
     expect(failures.at(-1)).toEqual(["write", null]);
   });
@@ -77,7 +75,6 @@ describe("terminal-ui: what the host refuses an attach or a write with", () => {
   test("keys typed while the terminal is not live are not sent and report no failure", async () => {
     const { session, failures, writes } = setup();
     session.input("a");
-    await afterWrite();
     expect(writes).toEqual([]);
     expect(failures).toEqual([]);
   });

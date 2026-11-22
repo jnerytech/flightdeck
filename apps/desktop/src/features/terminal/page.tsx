@@ -5,7 +5,7 @@ import { SnippetPicker } from "@/features/snippets/ui.ts";
 import { refusalText } from "@/i18n/errors.ts";
 import type { T } from "@/i18n/index.ts";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
-import { Page } from "@/shared/layout/index.ts";
+import { Page, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { useStoreState } from "../../lib/use-store.ts";
 import { LazyFileViewer } from "../files/ui.ts";
@@ -300,7 +300,7 @@ export function TerminalPage(
       }
     >
       {/* One block for the notices, so they have air between them and the terminal, and none when there is none. */}
-      <div className="flex flex-col gap-2 pb-2 empty:hidden">
+      <Stack gap={2} className="empty:hidden">
         {(state.state === "detached" || state.state === "ended") && !attachFailed && (
           <InlineNotice tone="info">{t(`terminalUi.notLive.${state.state}`)}</InlineNotice>
         )}
@@ -319,7 +319,7 @@ export function TerminalPage(
             {t("terminalUi.closeFailed", { reason: closeFailed })}
           </InlineNotice>
         )}
-      </div>
+      </Stack>
       <div
         ref={area}
         data-terminal-area
