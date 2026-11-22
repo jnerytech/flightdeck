@@ -222,7 +222,7 @@ describe("memoria: ramos do orçamento e dos nomes", () => {
     const ctx = setup();
     const budget = (await ctx.memory.budget(ctx.repo)) as { root?: string; home?: string };
     expect([budget.root, budget.home]).toEqual([
-      displayPath(realpathSync(ctx.repo), sep),
+      displayPath(realpathSync.native(ctx.repo), sep),
       displayPath(userHome(), sep),
     ]);
   });
