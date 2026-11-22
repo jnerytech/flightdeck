@@ -223,6 +223,15 @@ describe("projetos-lista-ui: the Projects overview", () => {
     ).not.toBeNull();
   });
 
+  test("a host that answered with no projects ends the wait even while another one connects", async () => {
+    const { store, view, state } = setup();
+    store.palette.load = async () => {};
+    const hosts = [host("h1", "alfa"), { ...host("h2", "beta"), status: "connecting" }];
+    render(view({ ...state, projects: {}, hosts } as never));
+    await waitFor(() => expect(screen.queryByText("No projects yet.")).not.toBeNull());
+    expect(screen.queryByRole("status", { name: "Loading projects" })).toBeNull();
+  });
+
   test("once the cards are there a host that reconnects never brings the loading state back", async () => {
     const { store, view, state } = setup();
     const { rerender } = render(view());

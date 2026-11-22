@@ -52,7 +52,10 @@ export function ProjectsOverview(
   // No cards yet is "no projects" only once the lists were read: before that, or while a shown
   // host still connects, the person is waiting. A host that is offline says so at once (#3922).
   const inView = props.host ? state.hosts.filter((h) => h.id === props.host) : switcher;
-  const connecting = inView.some((host) => host.status === "connecting");
+  // A host that already answered with no projects settles it: only a view with no host online waits on one connecting.
+  const connecting =
+    inView.some((host) => host.status === "connecting") &&
+    !inView.some((host) => host.status === "online");
   const offline = one !== undefined && one.status !== "online" && one.status !== "connecting";
   const loading = useMinLoading(scoped.length === 0 && (connecting || (!read && !offline)));
 
