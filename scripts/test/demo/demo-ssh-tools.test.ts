@@ -99,6 +99,20 @@ describe("demo-ssh-tools: the fake ssh the demo's SSH journey connects with", ()
     });
   });
 
+  test("the module loads under Node, which is what the e2e step files run on (Bun-only import.meta.dir is undefined there)", () => {
+    const module = join(import.meta.dirname, "../../lib/demo/fake-ssh.ts");
+    const node = Bun.spawnSync(
+      ["node", "--input-type=module", "-e", `await import(${JSON.stringify(module)})`],
+      {
+        stderr: "pipe",
+      },
+    );
+    expect({ code: node.exitCode, error: node.stderr.toString().split("\n")[0] }).toEqual({
+      code: 0,
+      error: "",
+    });
+  });
+
   test("only ssh and ssh-keyscan are put on the PATH: the demo's other ssh tools stay the machine's", () => {
     const { ssh } = fake();
     expect(readdirSync(dirname(ssh.ssh)).sort()).toEqual(
