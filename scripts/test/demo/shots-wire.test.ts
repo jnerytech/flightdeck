@@ -166,9 +166,11 @@ describe("shots-wire: the states the table prints (#3982)", () => {
     ]).toEqual(["wt", "rw", "rw", "rw", "rw"]);
   });
 
-  test("the applied rewind is sent as a preview, the refused and the empty read change the list", () => {
+  test("the applied rewind is sent as a preview, and so is the undo preview that offers the Undo (#4036), the refused and the empty read change the list", () => {
     expect(named("linha-do-tempo-desfeito")?.wire).toEqual([
       { command: "rewind.apply", as: "rewind.preview" },
+      // The Undo comes from the host's undo preview, and the demo's host has no rewind to undo.
+      { command: "rewind.undoPreview", as: "rewind.preview" },
     ]);
     expect(named("linha-do-tempo-falhou")?.wire).toEqual([
       { command: "snapshots.list", refuse: expect.stringContaining("snapshot") },
