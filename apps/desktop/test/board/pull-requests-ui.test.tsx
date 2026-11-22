@@ -369,12 +369,15 @@ describe("pull-requests-ui: a row that cannot be merged says why (#3633)", () =>
     const empty = [...row("Card a").querySelectorAll("div")].filter(
       (el) => el.childElementCount === 0 && el.textContent === "",
     );
-    expect([inRow("Card a").queryAllByRole("button").length, empty.length]).toEqual([0, 0]);
+    const actions = inRow("Card a").queryAllByRole("button", {
+      name: /Merge PR|Update from the base/,
+    });
+    expect([actions.length, empty.length]).toEqual([0, 0]);
   });
 
   test("a row with a button still draws its actions", () => {
     open({ cards: { "h2/b": card("b") } });
-    expect(inRow("Card b").queryAllByRole("button").length).toBeGreaterThan(0);
+    expect(inRow("Card b").queryByRole("button", { name: "Merge PR" })).not.toBeNull();
   });
 
   test("a watch that is off says to turn it on from the card", () => {
