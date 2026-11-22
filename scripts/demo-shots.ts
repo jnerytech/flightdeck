@@ -39,6 +39,7 @@ import { changesShots } from "./lib/shots/table-changes.ts";
 import { costsShots } from "./lib/shots/table-costs.ts";
 import { devicesShots } from "./lib/shots/table-devices.ts";
 import { harnessShots } from "./lib/shots/table-harness.ts";
+import { healthShots } from "./lib/shots/table-health.ts";
 import { hostShots } from "./lib/shots/table-hosts.ts";
 import { issuesShots } from "./lib/shots/table-issues.ts";
 import { knowledgeShots, memoryShots } from "./lib/shots/table-knowledge.ts";
@@ -99,6 +100,7 @@ function shots(ids: DemoIds): Shot[] {
     ...contextShots(ids),
     ...timelineShots(ids),
     ...hostShots(ids),
+    ...healthShots(ids),
     ...harnessShots(ids),
     ...automationShots(ids),
     ...knowledgeShots(ids),
