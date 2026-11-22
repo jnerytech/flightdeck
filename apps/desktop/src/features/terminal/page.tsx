@@ -131,7 +131,11 @@ export function TerminalPage(
         terminalId,
         host,
         screen: xterm,
-        onState: (next, exitCode) => setState({ state: next, exitCode }),
+        onState: (next, exitCode) => {
+          setState({ state: next, exitCode });
+          // A refused write is about the live terminal it was typed into: not one that was left or attached again.
+          if (next !== "live") setWriteFailed(null);
+        },
         onFailure: (kind, error) => {
           const failure = error === null ? null : { error };
           if (kind === "attach") setAttachFailed(failure);
@@ -295,24 +299,27 @@ export function TerminalPage(
         )
       }
     >
-      {(state.state === "detached" || state.state === "ended") && (
-        <InlineNotice tone="info">{t(`terminalUi.notLive.${state.state}`)}</InlineNotice>
-      )}
-      {attachFailed && (
-        <InlineNotice tone="error">
-          {t("terminalUi.attachFailed", { reason: reasonText(attachFailed.error, t) })}
-        </InlineNotice>
-      )}
-      {writeFailed && (
-        <InlineNotice tone="error">
-          {t("terminalUi.writeFailed", { reason: reasonText(writeFailed.error, t) })}
-        </InlineNotice>
-      )}
-      {closeFailed && (
-        <InlineNotice tone="error">
-          {t("terminalUi.closeFailed", { reason: closeFailed })}
-        </InlineNotice>
-      )}
+      {/* One block for the notices, so they have air between them and the terminal, and none when there is none. */}
+      <div className="flex flex-col gap-2 pb-2 empty:hidden">
+        {(state.state === "detached" || state.state === "ended") && !attachFailed && (
+          <InlineNotice tone="info">{t(`terminalUi.notLive.${state.state}`)}</InlineNotice>
+        )}
+        {attachFailed && (
+          <InlineNotice tone="error">
+            {t("terminalUi.attachFailed", { reason: reasonText(attachFailed.error, t) })}
+          </InlineNotice>
+        )}
+        {writeFailed && (
+          <InlineNotice tone="error">
+            {t("terminalUi.writeFailed", { reason: reasonText(writeFailed.error, t) })}
+          </InlineNotice>
+        )}
+        {closeFailed && (
+          <InlineNotice tone="error">
+            {t("terminalUi.closeFailed", { reason: closeFailed })}
+          </InlineNotice>
+        )}
+      </div>
       <div
         ref={area}
         data-terminal-area
