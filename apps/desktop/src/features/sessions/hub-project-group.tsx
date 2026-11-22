@@ -139,7 +139,7 @@ export function ProjectGroup(
         ))}
         {/* A terminal session says so on its own row, as a chip (#583). */}
         {shared.origin && shared.origin !== "terminal" && (
-          <span data-slot="group-meta" className="min-w-0 truncate text-muted-foreground/80">
+          <span data-slot="group-meta" className="min-w-0 truncate text-muted-foreground">
             {t(`hub.originTags.${shared.origin}` as Key)}
           </span>
         )}
