@@ -127,6 +127,134 @@ describe("notify-prefs-ui: Settings has a Notifications section (issue #149)", (
   });
 });
 
+describe("notify-prefs-ui: the master switch and what it governs (issue #4005)", () => {
+  const described = (el: HTMLElement) =>
+    (el.getAttribute("aria-describedby") ?? "")
+      .split(" ")
+      .map((id) => document.getElementById(id)?.textContent ?? "")
+      .filter(Boolean);
+  const OFF_NOTE =
+    "Show notifications is off, so there is no system notification and no sound. What you choose under Tell me about, Fold and Mute still decides what the bell keeps.";
+
+  test("the master switch is read with its hint", () => {
+    settings();
+    expect(described(box("Show notifications"))).toEqual([
+      "System notifications and the sound. The bell keeps its entries.",
+    ]);
+  });
+
+  test("with it off the sound, volume, file and test are disabled with a reason, and the bell's own choices stay live", async () => {
+    settings();
+    await pickSound("file");
+    const state = () => {
+      const select = within(panel()).getByLabelText("Sound") as HTMLSelectElement;
+      const volume = within(panel()).getByLabelText("Volume") as HTMLInputElement;
+      const file = within(panel()).getByLabelText("Choose a sound file") as HTMLInputElement;
+      const test = within(panel()).getByRole("button", { name: "Send test notification" });
+      return {
+        disabled: [select, volume, file, test].map((el) => (el as HTMLInputElement).disabled),
+        reasons: [select, volume, file].map((el) => described(el).includes(OFF_NOTE)),
+        note: within(panel()).queryByText(OFF_NOTE) !== null,
+        testReason:
+          within(panel()).queryByText("Turn on Show notifications to send a test.") !== null,
+        bell: [
+          box("Needs you").disabled,
+          box("Fold a team's finished workers into one message").disabled,
+        ],
+      };
+    };
+    const on = state();
+    await click(box("Show notifications"));
+    const off = state();
+    await click(box("Show notifications"));
+    expect([on, off, state()]).toEqual([
+      {
+        disabled: [false, false, false, false],
+        reasons: [false, false, false],
+        note: false,
+        testReason: false,
+        bell: [false, false],
+      },
+      {
+        disabled: [true, true, true, true],
+        reasons: [true, true, true],
+        note: true,
+        testReason: true,
+        bell: [false, false],
+      },
+      {
+        disabled: [false, false, false, false],
+        reasons: [false, false, false],
+        note: false,
+        testReason: false,
+        bell: [false, false],
+      },
+    ]);
+  });
+
+  test("it reads in Portuguese", async () => {
+    settings("pt-BR");
+    await click(
+      within(screen.getByRole("region", { name: "Notificações" })).getByRole("checkbox", {
+        name: "Mostrar notificações",
+      }),
+    );
+    expect(
+      within(screen.getByRole("region", { name: "Notificações" })).queryByText(
+        "Ligue Mostrar notificações para enviar um teste.",
+      ) !== null,
+    ).toBe(true);
+  });
+});
+
+describe("notify-prefs-ui: the mutes the lists cannot show (issue #4007)", () => {
+  const rows = () =>
+    [...panel().querySelectorAll("button")]
+      .map((b) => b.getAttribute("aria-label") ?? "")
+      .filter((name) => name.startsWith("Unmute"));
+
+  test("a mute for a host or project that is not in the lists shows with a button that clears it", async () => {
+    const { store } = settings();
+    act(() => {
+      store.notifyPrefs.muteHost("gone", true);
+      store.notifyPrefs.muteProject("h2/p9", true);
+    });
+    const before = rows();
+    for (const name of ["Unmute gone", "Unmute h2/p9"]) {
+      const button = within(panel()).queryByRole("button", { name });
+      if (button) await click(button);
+    }
+    expect([
+      before,
+      rows(),
+      store.notifyPrefs.value.mutedHosts,
+      store.notifyPrefs.value.mutedProjects,
+    ]).toEqual([["Unmute gone", "Unmute h2/p9"], [], [], []]);
+  });
+
+  test("with no host and nothing muted a line says there is nothing to mute", () => {
+    const { store } = settings();
+    const line = () =>
+      within(panel()).queryByText("Nothing to mute yet: add a host first.") !== null;
+    const withHosts = line();
+    act(() =>
+      (store as unknown as { update(patch: object): void }).update({ hosts: [], projects: {} }),
+    );
+    expect([withHosts, line()]).toEqual([false, true]);
+  });
+
+  test("each host has a group of its own, its own mute first, then its projects", () => {
+    settings();
+    const group = within(panel()).queryByRole("group", { name: "alfa" });
+    expect(
+      [...(group?.querySelectorAll("input") ?? [])].map(
+        (input) => input.closest("label")?.textContent ?? "",
+      ),
+    ).toEqual(["Mute alfa", "Mute api (alfa)"]);
+    expect(within(panel()).queryByRole("group", { name: "beta" }) !== null).toBe(true);
+  });
+});
+
 const pickSound = (mode: "off" | "system" | "file") =>
   act(async () => {
     fireEvent.change(within(panel()).getByLabelText("Sound"), { target: { value: mode } });
@@ -268,11 +396,37 @@ describe("notify-prefs-ui: the sound (issue #149)", () => {
   });
 });
 
+describe("notify-prefs-ui: the test notification answers each press (issue #4006)", () => {
+  const testButton = () => within(panel()).getByRole("button", { name: "Send test notification" });
+  const result = () => within(panel()).getByRole("status").textContent;
+
+  test("the button is busy until the test answers, a second press sends nothing, and each answer is announced again", async () => {
+    const { store } = settings();
+    const answers: Array<(v: "delivered" | "blocked") => void> = [];
+    store.inbox.sendTest = () => new Promise((resolve) => answers.push(resolve));
+    await click(testButton());
+    await click(testButton());
+    const busy = [(testButton() as HTMLButtonElement).disabled, answers.length];
+    await act(async () => answers[0]?.("delivered"));
+    await settle(() => result() === "Delivered.");
+    await click(testButton());
+    const cleared = result();
+    await act(async () => answers[1]?.("delivered"));
+    await settle(() => result() === "Delivered.");
+    expect([busy, cleared, result(), (testButton() as HTMLButtonElement).disabled]).toEqual([
+      [true, 1],
+      "",
+      "Delivered.",
+      false,
+    ]);
+  });
+});
+
 describe("notify-prefs-ui: the test notification (issue #149)", () => {
   test("delivered", async () => {
     settings();
     await click(within(panel()).getByRole("button", { name: "Send test notification" }));
-    await settle(() => within(panel()).queryByRole("status") !== null);
+    await settle(() => within(panel()).getByRole("status").textContent === "Delivered.");
     expect(within(panel()).getByRole("status").textContent).toBe("Delivered.");
   });
 
@@ -285,7 +439,7 @@ describe("notify-prefs-ui: the test notification (issue #149)", () => {
     api.permission = "denied";
     api.requestPermission = async () => "denied";
     await click(within(panel()).getByRole("button", { name: "Send test notification" }));
-    await settle(() => within(panel()).queryByRole("status") !== null);
+    await settle(() => (within(panel()).getByRole("status").textContent ?? "") !== "");
     const text = within(panel()).getByRole("status").textContent ?? "";
     expect(text).toContain("Not displayed.");
     expect(text).toContain("Notifications are blocked for Flightdeck");
