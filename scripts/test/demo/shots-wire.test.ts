@@ -191,6 +191,51 @@ describe("shots-wire: a held, a replied, a sequenced and a trimmed command (#415
   });
 });
 
+describe("shots-wire: a denied and a pending command never reach the host (#4236)", () => {
+  test("a denied command is answered in the page with a refusal and the text, and any other frame is left to the host", () => {
+    const wire = wireRewriter([{ command: "knowledge.create", deny: "Already there." }]);
+    const create = ask("r1", "knowledge.create", { title: "x" });
+    expect([
+      wire.fromApp(create),
+      wire.answer?.(create),
+      wire.answer?.(ask("r2", "knowledge.list")),
+    ]).toEqual([
+      create,
+      JSON.stringify({
+        type: "ack",
+        id: "r1",
+        ok: false,
+        error: { code: "unavailable", message: "Already there." },
+      }),
+      undefined,
+    ]);
+  });
+
+  test("a pending command is swallowed with no answer at all, and any other frame is left to the host", () => {
+    const wire = wireRewriter([{ command: "knowledge.setStatus", pending: true }]);
+    expect([
+      wire.answer?.(ask("r1", "knowledge.setStatus", { status: "obsolete" })),
+      wire.answer?.(ask("r2", "knowledge.list")),
+    ]).toEqual([null, undefined]);
+  });
+
+  test("the page's socket sends neither a denied nor a pending command: the app hears the refusal of the first and nothing of the second", async () => {
+    const page = { WebSocket: FakeSocket as unknown as typeof WebSocket };
+    const rules: WireRule[] = [
+      { command: "knowledge.create", deny: "Already there." },
+      { command: "knowledge.setStatus", pending: true },
+    ];
+    new Function("window", wireScript(rules))(page);
+    const socket = new page.WebSocket("ws://x") as unknown as FakeSocket;
+    const got: unknown[] = [];
+    socket.addEventListener("message", (event) => got.push(event.data));
+    socket.send(ask("r1", "knowledge.create"));
+    socket.send(ask("r2", "knowledge.setStatus"));
+    await Promise.resolve();
+    expect([socket.sent, got.map((frame) => read(String(frame)).id)]).toEqual([[], ["r1"]]);
+  });
+});
+
 describe("shots-wire: the states the table prints (#3982)", () => {
   const IDS = { rewindSession: "rw", waitingSession: "wt" } as DemoIds;
   const shots = () =>

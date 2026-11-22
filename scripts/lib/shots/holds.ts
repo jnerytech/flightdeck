@@ -9,7 +9,7 @@ export interface FrameRewriter {
   /** Frames the host seems to send right after `frame`, which the app hears once it heard `frame` (#3943). */
   followUp?(frame: string): string[];
   /** The host's answer to a frame the app sends, when the print answers for it: the frame then never leaves the page (#3987). */
-  answer?(frame: string): string | undefined;
+  answer?(frame: string): string | null | undefined;
 }
 
 type Data = Record<string, unknown> & { memory?: { totalBytes?: number }; budgets?: unknown[] };

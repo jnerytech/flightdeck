@@ -15,6 +15,8 @@ export type WireRule =
   | { command: string; as: string; data?: unknown }
   | { command: string; reply: unknown }
   | { command: string; hold: true }
+  | { command: string; deny: string }
+  | { command: string; pending: true }
   | { command: string; without: Record<string, string[]> };
 
 /**
