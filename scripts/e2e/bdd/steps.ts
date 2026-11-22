@@ -319,56 +319,25 @@ const cardMenuButton = (c: Context) =>
     exact: true,
   });
 
-/** How many times a card menu step opens the menu before it gives up (#4288). */
-const MENU_OPENINGS = 4;
-
 /**
- * Finish… sits under the card page's menu (#1197). The menu is not modal (#4173): a person who clicks its button
- * right after a dialog closes sees it open and close again within 20 ms, because the dialog's late focus return
- * dismisses it (the app bug of #4288, first seen as the flaky #4247). Until #4288 fixes the app and removes this
- * retry, the step waits for the dialog to be gone from the page (not only from the accessibility tree, where it
- * leaves as its exit animation starts) and for the focus to be back on the button (#4262), then opens the menu
- * and clicks the item of the open menu, opening it again, up to MENU_OPENINGS times, when it closed on the way.
- * `afterDialog` is for a step that follows a dialog; the first one on a card page has none to wait for.
+ * Finish… sits under the card page's menu (#1197). The step clicks Actions and then the item of the open menu,
+ * with no wait for a dialog to be gone or for the focus to be back, and no second try: a person clicks Actions the
+ * moment a card dialog closes, and the menu stays open (#4288). Only the open menu's item counts: one in the menu's
+ * closing animation takes a click that selects nothing.
  */
-const fromCardMenu = async (c: Context, item: string, afterDialog: boolean) => {
-  const button = cardMenuButton(c);
-  // Only the open menu's item: one in the menu's closing animation takes a click that selects nothing.
-  const entry = c.page
+const fromCardMenu = async (c: Context, item: string) => {
+  await cardMenuButton(c).click();
+  await c.page
     .locator('[role="menu"][data-state="open"]')
-    .getByRole("menuitem", { name: item, exact: true });
-  if (afterDialog) {
-    await c.page.waitForFunction(() => !document.querySelector('[role="dialog"]'), undefined, {
-      timeout: WAIT,
-    });
-    await waitFor(
-      () => button.evaluate((el) => el === document.activeElement),
-      "the focus back on the card's Actions button",
-    );
-  }
-  let lastError = "";
-  for (let opening = 1; opening <= MENU_OPENINGS; opening++) {
-    // A click on a button whose menu is open would close it.
-    if ((await button.getAttribute("aria-expanded", { timeout: 2000 })) !== "true") {
-      await button.click({ timeout: 2000 });
-    }
-    try {
-      await entry.click({ timeout: 2000 });
-      return;
-    } catch (error) {
-      lastError = error instanceof Error ? (error.message.split("\n")[0] ?? "") : String(error);
-    }
-  }
-  throw new Error(
-    `the ${item} item was not clickable after ${MENU_OPENINGS} openings of the card's Actions menu (#4288): ${lastError}`,
-  );
+    .getByRole("menuitem", { name: item, exact: true })
+    .click();
 };
 
 step(When, "I open the card and read the three ways to finish it", async (c) => {
   await tile(c)
     .getByRole("button", { name: mine(c).card ?? "", exact: true })
     .click();
-  await fromCardMenu(c, c.t("cardUi.finish"), false);
+  await fromCardMenu(c, c.t("cardUi.finish"));
   const dialog = c.page.getByRole("dialog", { name: c.t("cardUi.finishTitle") });
   for (const key of ["finishMove", "finishComplete", "finishMerge"] as const) {
     await dialog.getByText(c.t(`cardUi.${key}`), { exact: true }).waitFor({ timeout: WAIT });
@@ -380,14 +349,14 @@ step(When, "I open the card and read the three ways to finish it", async (c) => 
 });
 
 step(When, "I finish the card by moving it to Done", async (c) => {
-  await fromCardMenu(c, c.t("cardUi.finish"), true);
+  await fromCardMenu(c, c.t("cardUi.finish"));
   const dialog = c.page.getByRole("dialog", { name: c.t("cardUi.finishTitle") });
   await dialog.getByRole("button", { name: c.t("cardUi.finishMoveButton"), exact: true }).click();
   await dialog.waitFor({ state: "detached", timeout: WAIT });
 });
 
 step(Then, "the card says it is already done", async (c) => {
-  await fromCardMenu(c, c.t("cardUi.finish"), true);
+  await fromCardMenu(c, c.t("cardUi.finish"));
   await c.page
     .getByRole("dialog", { name: c.t("cardUi.finishTitle") })
     .getByText(c.t("cardUi.alreadyDone"), { exact: true })
