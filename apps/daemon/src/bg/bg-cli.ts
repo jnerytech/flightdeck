@@ -6,6 +6,7 @@
  */
 import {
   type CliResult,
+  type DaemonClient,
   json,
   type RemoteTarget,
   runOnLocalDaemon,
@@ -35,6 +36,30 @@ const WRITE_TIMEOUT_MS = 60_000;
 const UNSURE =
   "; the command may or may not have run on the host: run `flightdeckd bg list` and look before you run it again";
 
+type BgWrite = Exclude<BgCliArgs, { action: "list" }>;
+
+/** The request that ends or replaces a session: both answer the list the host holds then. */
+const SESSION_REQUEST = { stop: "bg.stop", respawn: "bg.respawn" } as const;
+
+/** The four writes: `start` answers the new id, the others the list the host holds afterwards. */
+async function bgWrite(args: BgWrite, daemon: DaemonClient): Promise<CliResult> {
+  if (args.action === "start") {
+    const { id } = await daemon.call("bg.start", {
+      ...(args.cwd === undefined ? {} : { cwd: args.cwd }),
+      ...(args.prompt === undefined ? {} : { prompt: args.prompt }),
+      ...(args.card === undefined ? {} : { cardId: args.card }),
+      ...(args.name === undefined ? {} : { name: args.name }),
+      ...(args.persona === undefined ? {} : { persona: args.persona }),
+    });
+    return args.json ? json({ id }) : said(bgDoneLine("start", id));
+  }
+  const list =
+    args.action === "message"
+      ? await daemon.call("bg.message", { id: args.id, text: args.text })
+      : await daemon.call(SESSION_REQUEST[args.action], { id: args.id });
+  return args.json ? json(bgJson(list)) : said(bgDoneLine(args.action, args.id));
+}
+
 export function runBgCli(
   args: BgCliArgs,
   config: { bind: string; port: number; token: string },
@@ -52,21 +77,7 @@ export function runBgCli(
         return shown(args.json, bgJson(list), () => bgLines(list));
       }
       note.wrote = true;
-      if (args.action === "start") {
-        const { id } = await daemon.call("bg.start", {
-          ...(args.cwd === undefined ? {} : { cwd: args.cwd }),
-          ...(args.prompt === undefined ? {} : { prompt: args.prompt }),
-          ...(args.card === undefined ? {} : { cardId: args.card }),
-          ...(args.name === undefined ? {} : { name: args.name }),
-          ...(args.persona === undefined ? {} : { persona: args.persona }),
-        });
-        return args.json ? json({ id }) : said(bgDoneLine("start", id));
-      }
-      const list =
-        args.action === "message"
-          ? await daemon.call("bg.message", { id: args.id, text: args.text })
-          : await daemon.call(args.action === "stop" ? "bg.stop" : "bg.respawn", { id: args.id });
-      return args.json ? json(bgJson(list)) : said(bgDoneLine(args.action, args.id));
+      return bgWrite(args, daemon);
     },
   });
 }

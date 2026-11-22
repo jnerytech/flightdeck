@@ -51,6 +51,7 @@ export type ActionVerbCliArgs =
   | { action: "remove"; project?: string; name: string; json?: boolean };
 
 type Config = { bind: string; port: number; token: string };
+type Scope = { projectId?: string };
 type Daemon = Parameters<Parameters<typeof runOnLocalDaemon>[0]["perform"]>[0];
 
 const Definition = z.record(z.string(), z.unknown());
@@ -78,7 +79,7 @@ async function changedRefusal(
   refusal: DaemonRefusal,
   daemon: Daemon,
   name: string,
-  scope: { projectId?: string },
+  scope: Scope,
 ): Promise<CliResult> {
   try {
     const { actions } = await daemon.call("actions.list", scope);
@@ -89,6 +90,55 @@ async function changedRefusal(
     // The trust was refused, so nothing changed: a lookup that failed must not read as an unsure write.
     return failure(1, refusal.detail);
   }
+}
+
+/** The verb the person typed, asked of the daemon within `scope`; a write sets `note.wrote` before it goes out. */
+async function actionVerb(
+  args: ActionVerbCliArgs,
+  daemon: Daemon,
+  scope: Scope,
+  note: { wrote: boolean },
+  file: { definition: Record<string, unknown> } | undefined,
+): Promise<CliResult> {
+  if (args.action === "runs") {
+    const { runs } = await daemon.call("actions.runs", {
+      ...scope,
+      ...(args.name === undefined ? {} : { name: args.name }),
+      ...(args.limit === undefined ? {} : { limit: args.limit }),
+    });
+    return shown(args.json, runsJson(runs), () => runsLines(runs));
+  }
+  if (args.action === "save" && file !== undefined) {
+    note.wrote = true;
+    const saved = await daemon.call("actions.save", {
+      ...scope,
+      definition: file.definition,
+      ...(args.secretIds === undefined ? {} : { secretIds: args.secretIds }),
+    });
+    return shown(args.json, actionJson(saved), () => [changedLine("saved", saved)]);
+  }
+  if (args.action === "trust") {
+    note.wrote = true;
+    try {
+      const trusted = await daemon.call("actions.trust", {
+        ...scope,
+        name: args.name,
+        hash: args.hash,
+      });
+      return shown(args.json, actionJson(trusted), () => [changedLine("trusted", trusted)]);
+    } catch (error) {
+      if (error instanceof DaemonRefusal && error.reason === CHANGED)
+        return changedRefusal(error, daemon, args.name, scope);
+      throw error;
+    }
+  }
+  if (args.action === "remove") {
+    note.wrote = true;
+    const left = await daemon.call("actions.remove", { ...scope, name: args.name });
+    return shown(args.json, listJson(left), () => removedLines(args.name, left));
+  }
+  const list = await daemon.call("actions.list", scope);
+  return shown(args.json, listJson(list), () => listLines(list));
 }
 
 export async function runActionVerbCli(
@@ -106,52 +156,14 @@ export async function runActionVerbCli(
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     unsure: UNSURE,
     perform: async (daemon, note) => {
-      let scope = {};
+      let scope: Scope = {};
       if (args.project !== undefined) {
         const { projects } = await daemon.call("project.list", {});
         const chosen = resolveProject(projects, args.project);
         if ("refusal" in chosen) return chosen.refusal;
         scope = { projectId: chosen.id };
       }
-      if (args.action === "runs") {
-        const { runs } = await daemon.call("actions.runs", {
-          ...scope,
-          ...(args.name === undefined ? {} : { name: args.name }),
-          ...(args.limit === undefined ? {} : { limit: args.limit }),
-        });
-        return shown(args.json, runsJson(runs), () => runsLines(runs));
-      }
-      if (args.action === "save" && file !== undefined) {
-        note.wrote = true;
-        const saved = await daemon.call("actions.save", {
-          ...scope,
-          definition: file.definition,
-          ...(args.secretIds === undefined ? {} : { secretIds: args.secretIds }),
-        });
-        return shown(args.json, actionJson(saved), () => [changedLine("saved", saved)]);
-      }
-      if (args.action === "trust") {
-        note.wrote = true;
-        try {
-          const trusted = await daemon.call("actions.trust", {
-            ...scope,
-            name: args.name,
-            hash: args.hash,
-          });
-          return shown(args.json, actionJson(trusted), () => [changedLine("trusted", trusted)]);
-        } catch (error) {
-          if (error instanceof DaemonRefusal && error.reason === CHANGED)
-            return changedRefusal(error, daemon, args.name, scope);
-          throw error;
-        }
-      }
-      if (args.action === "remove") {
-        note.wrote = true;
-        const left = await daemon.call("actions.remove", { ...scope, name: args.name });
-        return shown(args.json, listJson(left), () => removedLines(args.name, left));
-      }
-      const list = await daemon.call("actions.list", scope);
-      return shown(args.json, listJson(list), () => listLines(list));
+      return actionVerb(args, daemon, scope, note, file);
     },
   });
 }
