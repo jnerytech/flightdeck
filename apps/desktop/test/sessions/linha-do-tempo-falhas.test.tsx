@@ -643,4 +643,24 @@ describe("linha-do-tempo-falhas", () => {
     await click("Try again");
     expect(document.activeElement?.textContent).toBe("Try again");
   });
+
+  test("a refusal that answers an older load does not replace the list a newer load brought", async () => {
+    const older = pending();
+    let loads = 0;
+    const { names } = await timeline("en", {
+      "snapshots.list": () => (++loads === 2 ? older.promise : Promise.resolve(SAFETY)),
+      "rewind.undoPreview": async () => PREVIEW,
+      "rewind.undo": async () => PREVIEW,
+      "rewind.preview": async () => PREVIEW,
+      "rewind.apply": async () => PREVIEW,
+    });
+    await click("Undo rewind");
+    await click("Restore files");
+    await click(names.rewind);
+    await click("Rewind files");
+    expect(loads).toBe(3);
+    await act(async () => older.settle(TURN_RUNNING));
+    expect(alerts()).toEqual([]);
+    expect(screen.queryByText("fix the README")).not.toBeNull();
+  });
 });
