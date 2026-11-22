@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import type { AppStore } from "../../lib/app-store.ts";
 import { SHORTCUTS, type ShortcutGroup } from "./domain/shortcuts.ts";
@@ -12,21 +13,43 @@ const GROUPS: ShortcutGroup[] = [
   "lists",
   "approvals",
   "board",
+  "palette",
 ];
 
-/** The `?` sheet: every shortcut of the registry, by group. */
+/**
+ * The `?` sheet: every shortcut of the registry, by group. It takes the focus when it opens, closes
+ * on Escape from wherever the focus is, and gives the focus back to what had it, however it closes.
+ */
 export function ShortcutsSheet(
   props: Readonly<{ store: AppStore; mac: boolean; onClose(): void }>,
 ) {
   const { t } = props.store.i18n;
+  const ref = useRef<HTMLDialogElement>(null);
+  const close = useRef(props.onClose);
+  close.current = props.onClose;
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    const dialog = ref.current;
+    dialog?.focus();
+    const onEscape = (e: KeyboardEvent) => {
+      // An Escape a screen already used (a session's interrupt) is not meant for the sheet.
+      if (e.key === "Escape" && !e.defaultPrevented && !e.isComposing) close.current();
+    };
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      document.removeEventListener("keydown", onEscape);
+      // The sheet is non-modal: the focus goes back only if it is still in the sheet or nowhere.
+      const now = document.activeElement;
+      if (now === document.body || now === null || dialog?.contains(now)) opener?.focus();
+    };
+  }, []);
   return (
     <dialog
+      ref={ref}
+      tabIndex={-1}
       open
       className="fixed top-16 left-1/2 z-50 sheet-box -translate-x-1/2 overflow-y-auto rounded-xl border bg-popover text-popover-foreground shadow-lg"
       aria-label={t("shortcuts.title")}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") props.onClose();
-      }}
     >
       <div className="row-spread">
         <h2 className="font-semibold text-lg">{t("shortcuts.title")}</h2>

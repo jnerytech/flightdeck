@@ -78,6 +78,16 @@ export function addEntry(
   return [entry, ...list].slice(0, cap);
 }
 
+/** The entries a Clear dropped, put back behind the ones that arrived since; each id once, within the cap. */
+export function restoreEntries(
+  current: InboxEntry[],
+  cleared: InboxEntry[],
+  cap: number = INBOX_CAP,
+): InboxEntry[] {
+  const have = new Set(current.map((e) => e.id));
+  return [...current, ...cleared.filter((e) => !have.has(e.id))].slice(0, cap);
+}
+
 export function markRead(list: InboxEntry[], id: string): InboxEntry[] {
   return list.map((e) => (e.id === id ? { ...e, read: true } : e));
 }

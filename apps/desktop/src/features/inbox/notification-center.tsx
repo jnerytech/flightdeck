@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { PopoverContent } from "@/components/ui/popover";
 import { ApprovalActions, RiskSeal } from "@/features/permissions/ui.ts";
 import type { Key } from "@/i18n";
+import { Inline } from "@/shared/layout/index.ts";
 import { formatWhen } from "../../i18n/format.ts";
 import type { T } from "../../i18n/index.ts";
 import { type InboxEntry, type InboxRow, inboxRows } from "./domain/inbox.ts";
@@ -157,6 +158,8 @@ const reason = (request: RowRequest) => (request.reason ? { reason: request.reas
 /** The panel under the bell: unread first, Today then Earlier, a session's repeats as one row. */
 export function NotificationCenter(
   props: Readonly<{
+    /** Whether the panel is open: closing it ends the offer to undo a Clear. */
+    open: boolean;
     entries: InboxEntry[];
     /** How many entries are unread, for Mark all as read. */
     unread: number;
@@ -173,6 +176,8 @@ export function NotificationCenter(
     onDismiss(row: InboxRow): void;
     onMarkAll(): void;
     onClear(): void;
+    /** Puts back what Clear dropped. */
+    onRestore(entries: InboxEntry[]): void;
   }>,
 ) {
   const { t, unread } = props;
@@ -182,6 +187,22 @@ export function NotificationCenter(
   const list = useRef<HTMLDivElement>(null);
   /** What the last answer was, said once its row has left (a region that is in the panel before). */
   const [said, setSaid] = useState("");
+  /**
+   * What the last Clear dropped, kept for its Undo. It lives with the open panel: closing the panel ends
+   * the offer and the clear stands.
+   */
+  const [cleared, setCleared] = useState<InboxEntry[] | null>(null);
+  const { open } = props;
+  useEffect(() => {
+    if (open) return;
+    setCleared(null);
+    setSaid("");
+  }, [open]);
+  /** Says what a head button did and moves the focus off it (it is disabled now), to the heading. */
+  const announce = (words: string) => {
+    setSaid(words);
+    heading.current?.focus();
+  };
   /**
    * The row being answered: when it leaves, the answer is said and the focus goes to the row now in
    * its place. An answer that never took (the host refused it) is let go after a while, so a later
@@ -233,19 +254,47 @@ export function NotificationCenter(
           {t("inbox.title")}
         </h2>
         <div className="inbox-head-actions">
-          <Button variant="ghost" size="sm" disabled={unread === 0} onClick={props.onMarkAll}>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={unread === 0}
+            onClick={() => {
+              props.onMarkAll();
+              announce(t("inbox.allRead"));
+            }}
+          >
             {t("inbox.markAll")}
           </Button>
           <Button
             variant="ghost"
             size="sm"
             disabled={props.entries.length === 0}
-            onClick={props.onClear}
+            onClick={() => {
+              setCleared((before) => [...props.entries, ...(before ?? [])]);
+              props.onClear();
+              announce(t("inbox.cleared"));
+            }}
           >
             {t("inbox.clear")}
           </Button>
         </div>
       </div>
+      {cleared && (
+        <Inline gap={2}>
+          <span>{t("inbox.cleared")}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              props.onRestore(cleared);
+              setCleared(null);
+              announce(t("inbox.restored"));
+            }}
+          >
+            {t("inbox.undoClear")}
+          </Button>
+        </Inline>
+      )}
       <output data-slot="inbox-live" className="sr-only">
         {said}
       </output>
