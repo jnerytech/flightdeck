@@ -188,6 +188,23 @@ describe("projetos-lista-ui: the Projects overview", () => {
     expect(screen.queryByRole("status", { name: "Loading projects" })).toBeNull();
   });
 
+  test("a slow earlier load that settles after a newer one does not bring the loading state back", async () => {
+    const { store, view, state } = setup();
+    const settles: Array<() => void> = [];
+    store.palette.load = () => new Promise<void>((resolve) => settles.push(resolve));
+    const empty = { ...state, projects: {} };
+    const { rerender } = render(view(empty as never));
+    // The first load is still out when a host changes: a second load starts for the new set.
+    const changed = empty.hosts.map((h) => (h.id === "h2" ? { ...h, status: "offline" } : h));
+    rerender(view({ ...empty, hosts: changed } as never));
+    expect(settles.length).toBe(2);
+    await act(async () => settles[1]?.());
+    await waitFor(() => expect(screen.queryByText("No projects yet.")).not.toBeNull());
+    await act(async () => settles[0]?.());
+    expect(screen.queryByText("No projects yet.")).not.toBeNull();
+    expect(screen.queryByRole("status", { name: "Loading projects" })).toBeNull();
+  });
+
   test("a host still connecting shows the loading state, an offline one says so", async () => {
     const { view, state } = setup();
     const only = (status: string) =>
