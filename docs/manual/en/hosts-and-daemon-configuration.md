@@ -214,7 +214,7 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   `status: transitional`, and is left uncommitted. It never replaces a file that is there, and it
   is refused when `docs/<kind>` is a link or lies outside the project.
   **Draft ADR**, in a session's summary, starts a decision record from what the session did: the
-  summary is the first text, the assistant's wand can write an ADR (Context, Decision,
+  summary is the first text, the assistant's AI button can write an ADR (Context, Decision,
   Consequences) from it, you edit it and give it a title, and **Save as ADR** writes it to
   `docs/adr` of the project as a draft, uncommitted, the same way as above.
 - Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own

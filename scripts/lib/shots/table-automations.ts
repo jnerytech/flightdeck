@@ -80,7 +80,9 @@ export function automationShots(ids: DemoIds): Shot[] {
       prepare: async (page) => {
         await listLoaded(page);
         await page
-          .getByRole("switch", { name: new RegExp(`^(Turn on|Ligar) ${DEMO_OFF_AUTOMATION}$`) })
+          .getByRole("switch", {
+            name: new RegExp(`^(Automation|Automação) ${DEMO_OFF_AUTOMATION}$`),
+          })
           .click();
         await page.getByRole("alertdialog").waitFor();
       },

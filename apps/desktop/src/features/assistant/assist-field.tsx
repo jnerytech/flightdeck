@@ -1,4 +1,10 @@
-import { type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useEffect } from "react";
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import type { T } from "@/i18n/index";
 import { Stack } from "@/shared/layout/index.ts";
 import { useWand, type WandBinding } from "./use-wand.ts";
@@ -26,6 +32,12 @@ export function AssistField(
 ) {
   const { binding, value, onChange, t } = props;
   const wand = useWand(binding, value, onChange);
+  const fieldBox = useRef<HTMLDivElement>(null);
+  /** Where the focus goes when the wand's panel goes away with it. */
+  const focusField = useCallback(
+    () => fieldBox.current?.querySelector<HTMLElement>("textarea, input")?.focus(),
+    [],
+  );
   const open = wand !== null && wand.state.kind !== "idle" && wand.state.kind !== "undo";
   // Esc closes the wand's preview first. A dialog around the field listens for it before the field
   // does, so the key is claimed here, ahead of the dialog, while the wand has something to close.
@@ -40,7 +52,7 @@ export function AssistField(
   return (
     <Stack gap={1} {...(props.className ? { className: props.className } : {})}>
       <div className="assist-field">
-        <div>
+        <div ref={fieldBox}>
           {props.children({
             onKeyDown: (event) => {
               wand?.onKeyDown(event);
@@ -49,7 +61,7 @@ export function AssistField(
         </div>
         {wand && <WandButton wand={wand} t={t} />}
       </div>
-      {wand && <WandPanel wand={wand} t={t} />}
+      {wand && <WandPanel wand={wand} t={t} focusField={focusField} />}
     </Stack>
   );
 }

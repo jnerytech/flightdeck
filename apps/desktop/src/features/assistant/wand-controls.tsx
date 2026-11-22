@@ -1,5 +1,5 @@
 import { WandSparkles } from "lucide-react";
-import { useContext, useMemo } from "react";
+import { type ReactNode, useContext, useLayoutEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { T } from "@/i18n/index";
@@ -7,6 +7,7 @@ import { IconActionButton, Spinner } from "@/shared/feedback/index.ts";
 import { Inline, ShortArea, Stack } from "@/shared/layout/index.ts";
 import { isMac } from "../shortcuts/index.ts";
 import { refusalText } from "./domain/refusal-text.ts";
+import { UNDO_WINDOW_MS } from "./domain/wand-state.ts";
 import { wordDiff } from "./domain/word-diff.ts";
 import type { Wand } from "./use-wand.ts";
 
@@ -21,11 +22,16 @@ export function WandButton(props: Readonly<{ wand: Wand; t: T }>) {
   let label = wand.writes ? t("assistantWand.write") : t("assistantWand.improve");
   if (wand.needsText) label = t("assistantWand.writeFirst");
   if (wand.otherRunning) label = t("assistantWand.busy");
+  // Off for a reason the person can fix: aria-disabled, not disabled, so Tab reaches the button and
+  // its tooltip and accessible name give the reason (#4167). While this wand runs, Cancel has the focus.
+  const off = wand.needsText || wand.otherRunning;
   return (
     <IconActionButton
       type="button"
       label={label}
-      disabled={wand.needsText || wand.otherRunning || wand.state.kind === "running"}
+      disabled={wand.state.kind === "running"}
+      aria-disabled={off || undefined}
+      className={off ? "opacity-50" : undefined}
       aria-keyshortcuts={mac ? "Meta+I" : "Control+I"}
       onClick={wand.start}
     >
@@ -63,68 +69,118 @@ function Changes(props: Readonly<{ before: string; after: string; t: T }>) {
   );
 }
 
-/** The wand's progress, failure and preview, above the field (issue #158). */
-export function WandPanel(props: Readonly<{ wand: Wand; t: T }>) {
-  const { wand, t } = props;
+/**
+ * The element of a view the wand shows for a while. When the view goes away (a click, Escape, the
+ * Undo timer) with the focus inside it, the focus goes back to the field instead of falling to the page.
+ */
+function useReturnFocus<E extends HTMLElement>(focusField: () => void) {
+  const ref = useRef<E>(null);
+  const back = useRef(focusField);
+  back.current = focusField;
+  // A layout effect: its cleanup runs before the view's elements leave the page, while the focus is still on one.
+  useLayoutEffect(
+    () => () => {
+      if (ref.current?.contains(document.activeElement)) back.current();
+    },
+    [],
+  );
+  return ref;
+}
+
+type PanelProps = Readonly<{ wand: Wand; t: T; focusField: () => void }>;
+
+function Running({ wand, t, focusField }: PanelProps) {
+  const ref = useReturnFocus<HTMLOutputElement>(focusField);
+  const cancel = useRef<HTMLButtonElement>(null);
+  // The AI button had the focus and is off now: Cancel takes it. A person typing in the field (Ctrl+I, or
+  // Retry, whose button handed the focus to the field) keeps it there, so the next key never cancels (#4166).
+  useLayoutEffect(() => {
+    const at = document.activeElement;
+    if (!(at instanceof HTMLTextAreaElement || at instanceof HTMLInputElement))
+      cancel.current?.focus();
+  }, []);
+  return (
+    <output ref={ref} className="block">
+      <Inline>
+        <Spinner />
+        <span className="text-sm">{t("assistantWand.running")}</span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          ref={cancel}
+          onClick={wand.cancel}
+          onKeyDown={(event) => {
+            if (event.key !== "Escape") return;
+            event.stopPropagation();
+            wand.cancel();
+          }}
+        >
+          {t("common.cancel")}
+        </Button>
+      </Inline>
+    </output>
+  );
+}
+
+function Failed({ wand, t, focusField }: PanelProps) {
+  const ref = useReturnFocus<HTMLDivElement>(focusField);
   const { state } = wand;
-  if (state.kind === "running") {
-    return (
-      <output className="block">
-        <Inline>
-          <Spinner />
-          <span className="text-sm">{t("assistantWand.running")}</span>
-          <Button type="button" variant="outline" size="sm" onClick={wand.cancel}>
-            {t("common.cancel")}
-          </Button>
-        </Inline>
-      </output>
-    );
-  }
-  if (state.kind === "failed") {
-    return (
-      <div role="alert">
-        <Inline>
-          <span className="text-sm">
-            {refusalText(t, {
-              reason: state.reason,
-              ...(state.params ? { params: state.params } : {}),
+  if (state.kind !== "failed") return null;
+  return (
+    <div ref={ref} role="alert">
+      <Inline>
+        <span className="text-sm">
+          {refusalText(t, {
+            reason: state.reason,
+            ...(state.params ? { params: state.params } : {}),
+          })}
+        </span>
+        {wand.others.map(({ provider, hostName }) => (
+          <Button
+            type="button"
+            key={provider.provider === "host" ? provider.hostId : provider.provider}
+            variant="outline"
+            size="sm"
+            onClick={() => wand.tryWith(provider)}
+          >
+            {t("assistantWand.tryWith", {
+              provider: hostName ?? t(`assistantSettings.${provider.provider}`),
             })}
-          </span>
-          {wand.others.map(({ provider, hostName }) => (
-            <Button
-              type="button"
-              key={provider.provider === "host" ? provider.hostId : provider.provider}
-              variant="outline"
-              size="sm"
-              onClick={() => wand.tryWith(provider)}
-            >
-              {t("assistantWand.tryWith", {
-                provider: hostName ?? t(`assistantSettings.${provider.provider}`),
-              })}
-            </Button>
-          ))}
-          <Button type="button" variant="outline" size="sm" onClick={wand.discard}>
-            {t("assistantWand.dismiss")}
           </Button>
-        </Inline>
-      </div>
-    );
-  }
-  if (state.kind === "undo") {
-    return (
-      <output className="block">
-        <Inline>
-          <span className="text-sm">{t("assistantWand.replaced")}</span>
-          <Button type="button" variant="outline" size="sm" onClick={wand.undo}>
-            {t("assistantWand.undo")}
-          </Button>
-        </Inline>
-      </output>
-    );
-  }
+        ))}
+        <Button type="button" variant="outline" size="sm" onClick={wand.discard}>
+          {t("assistantWand.dismiss")}
+        </Button>
+      </Inline>
+    </div>
+  );
+}
+
+function Undoable({ wand, t, focusField }: PanelProps) {
+  const ref = useReturnFocus<HTMLOutputElement>(focusField);
+  return (
+    <output ref={ref} className="block">
+      <Inline>
+        <span className="text-sm">{t("assistantWand.replaced")}</span>
+        <Button type="button" variant="outline" size="sm" onClick={wand.undo}>
+          {t("assistantWand.undo")}
+        </Button>
+        <span className="text-muted-foreground text-xs">
+          {t("assistantWand.undoFor", { seconds: UNDO_WINDOW_MS / 1000 })}
+        </span>
+      </Inline>
+    </output>
+  );
+}
+
+function Preview({ wand, t, focusField }: PanelProps) {
+  const ref = useReturnFocus<HTMLDivElement>(focusField);
+  const { state } = wand;
   if (state.kind !== "preview") return null;
   return (
     <div // NOSONAR: a non-modal preview; <dialog> would bring the browser's own box and focus rules, and Esc is the keyboard way out
+      ref={ref}
       role="dialog"
       aria-label={t("assistantWand.preview")}
       onKeyDown={(event) => {
@@ -147,6 +203,7 @@ export function WandPanel(props: Readonly<{ wand: Wand; t: T }>) {
               {state.editing ? (
                 <Textarea
                   aria-label={t("assistantWand.after")}
+                  autoFocus
                   value={state.proposal}
                   onChange={(event) => wand.setProposal(event.target.value)}
                 />
@@ -159,7 +216,7 @@ export function WandPanel(props: Readonly<{ wand: Wand; t: T }>) {
         <Notices notices={state.notices} t={t} />
         {state.stale && <p className="text-sm">{t("assistantWand.stale")}</p>}
         <Inline>
-          <Button type="button" size="sm" autoFocus onClick={wand.accept}>
+          <Button type="button" size="sm" onClick={wand.accept}>
             {state.stale ? t("assistantWand.acceptAnyway") : t("assistantWand.accept")}
           </Button>
           {!state.editing && (
@@ -176,6 +233,30 @@ export function WandPanel(props: Readonly<{ wand: Wand; t: T }>) {
         </Inline>
       </Stack>
     </div>
+  );
+}
+
+/**
+ * The wand's progress, failure and preview, above the field (issue #158). It never takes the focus
+ * from the field while the person types there: a suggestion is announced, and Accept is reached by
+ * Tab. What was focused in a view that goes away hands the focus to the field, or to the control
+ * of the next view that asks for it (Cancel when the AI button had the focus, the After text when editing) (#4166).
+ */
+export function WandPanel(props: PanelProps) {
+  const { state } = props.wand;
+  let view: ReactNode = null;
+  if (state.kind === "running") view = <Running {...props} />;
+  else if (state.kind === "failed") view = <Failed {...props} />;
+  else if (state.kind === "undo") view = <Undoable {...props} />;
+  else if (state.kind === "preview") view = <Preview {...props} />;
+  return (
+    <>
+      {/* Fixed to the window, not absolute: an absolute line sits where it falls in a long page and makes the page scroll (#4166). */}
+      <div aria-live="polite" className="sr-only" style={{ position: "fixed" }}>
+        {state.kind === "preview" ? props.t("assistantWand.ready") : ""}
+      </div>
+      {view}
+    </>
   );
 }
 

@@ -12,7 +12,7 @@ import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
 import { hostsWith } from "@/lib/version";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
-import { NativeSelect, Panel } from "@/shared/layout/index.ts";
+import { NativeSelect, Panel, Stack } from "@/shared/layout/index.ts";
 import {
   type AssistantPrefs,
   confirmHost,
@@ -109,6 +109,7 @@ export function AssistantSettings(props: Readonly<{ store: AppStore; t: T }>) {
   const apiSupported = store.assistant.supported;
   const [confirming, setConfirming] = useState<{ hostId: string; provider: boolean } | null>(null);
   const [advanced, setAdvanced] = useState(false);
+  const advancedId = useId();
   const pickerId = useId();
   const privacyId = useId();
   // A wand that found no provider sent the person here: say why, once.
@@ -304,43 +305,46 @@ export function AssistantSettings(props: Readonly<{ store: AppStore; t: T }>) {
           variant="outline"
           size="sm"
           aria-expanded={advanced}
+          aria-controls={advancedId}
           onClick={() => setAdvanced((open) => !open)}
         >
           {t("assistantSettings.advanced")}
         </Button>
         {advanced && (
-          <>
-            <p className="text-muted-foreground text-xs">{t("assistantSettings.advancedHint")}</p>
-            <table className="text-sm">
-              <thead>
-                <tr>
-                  <th className="text-left">{t("assistantSettings.kind")}</th>
-                  <th className="text-left">{t("assistantSettings.profile")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(Object.keys(KIND_SPECS) as AssistantKind[]).map((kind) => (
-                  <tr key={kind}>
-                    <th scope="row" className="text-left font-normal">
-                      {kindLabel(t, kind)}
-                    </th>
-                    <td>
-                      <NativeSelect
-                        inline
-                        compact
-                        aria-label={kindLabel(t, kind)}
-                        value={profileFor(prefs, kind)}
-                        onChange={(e) => setProfile(kind, e.target.value as AssistantProfile)}
-                      >
-                        <option value="quick">{t("assistantSettings.profileQuick")}</option>
-                        <option value="careful">{t("assistantSettings.profileCareful")}</option>
-                      </NativeSelect>
-                    </td>
+          <div id={advancedId}>
+            <Stack gap={2}>
+              <p className="text-muted-foreground text-xs">{t("assistantSettings.advancedHint")}</p>
+              <table className="text-sm">
+                <thead>
+                  <tr>
+                    <th className="text-left">{t("assistantSettings.kind")}</th>
+                    <th className="text-left">{t("assistantSettings.profile")}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
+                </thead>
+                <tbody>
+                  {(Object.keys(KIND_SPECS) as AssistantKind[]).map((kind) => (
+                    <tr key={kind}>
+                      <th scope="row" className="text-left font-normal">
+                        {kindLabel(t, kind)}
+                      </th>
+                      <td>
+                        <NativeSelect
+                          inline
+                          compact
+                          aria-label={kindLabel(t, kind)}
+                          value={profileFor(prefs, kind)}
+                          onChange={(e) => setProfile(kind, e.target.value as AssistantProfile)}
+                        >
+                          <option value="quick">{t("assistantSettings.profileQuick")}</option>
+                          <option value="careful">{t("assistantSettings.profileCareful")}</option>
+                        </NativeSelect>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Stack>
+          </div>
         )}
       </div>
       {confirming && (

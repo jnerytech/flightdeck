@@ -47,7 +47,7 @@ Two more things come with it:
 - **Open PR** on a card first shows the **PR description**, made from the card's sessions, to edit.
   Lines that look like a secret are taken out and counted. Nothing is opened until you click **Open
   the PR with this text**. The **PR title** starts from the card's title; the title and the description each have
-  the wand, which writes from the card's repository.
+  the AI button, which writes from the card's repository.
 - **Ctrl+K**: paste a PR link (Azure DevOps or GitHub) and choose **Open the PR from the link**. The
   hosts are asked: the card opens if the PR is from one; otherwise the transcript of the first
   session the history knows for it; otherwise a message says nothing has it.

@@ -190,7 +190,7 @@ export const chrome = {
       backup:
         "backup restore export import encrypted file passphrase vault hosts personas snippets",
       assistant:
-        "wand magic ai assistant improve write provider anthropic openrouter claude key api model",
+        "wand magic ai button assistant improve write provider anthropic openrouter claude key api model",
     },
   },
 };
