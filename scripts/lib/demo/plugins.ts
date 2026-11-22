@@ -46,7 +46,8 @@ export function writeDemoPlugins(work: string): DemoPluginFiles {
   const root = join(work, "plugins");
   const market = join(root, "acme");
   const installed = join(root, "installed");
-  const refusedFolder = join(root, "broken");
+  // The host previews a folder only inside its allowed roots: alfa's projects folder (see `host`).
+  const refusedFolder = join(work, "alfa", "projects", "broken-plugin");
   const guard = hooks({ PreToolUse: "guard.sh" });
   write(market, {
     ".claude-plugin/marketplace.json": JSON.stringify({
