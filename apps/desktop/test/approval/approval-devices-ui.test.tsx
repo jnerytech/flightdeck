@@ -443,6 +443,7 @@ describe("approval devices panel: when the host cannot be read, and in Portugues
       </TContext.Provider>,
     );
     await settleMaybe(() => screen.queryByText("The host's devices could not be read.") !== null);
+    expect(screen.queryByRole("alert")?.textContent).toContain("could not be read");
     await press("Try again");
     await settleMaybe(() => screen.queryByText(/Protection is off/) !== null);
     expect(screen.queryByText(/Protection is off/)).not.toBeNull();
@@ -627,5 +628,38 @@ describe("approval devices panel: a result sits by its section and the focus sta
     expect(before(said, screen.queryByText("Add another device"))).toBe(true);
     const held = document.activeElement as HTMLElement;
     expect(held !== document.body && held.contains(said)).toBe(true); // NOSONAR: a failed not.toBe(body) prints the whole DOM node
+  });
+});
+
+describe("approval devices panel: a read that fails after the list was shown (#4157)", () => {
+  test("the list stays and an alert says the refresh failed, with a way to try again", async () => {
+    const gone: Status = { ...HERE, keys: [{ ...KEY, keyId: "k1" }] };
+    panel([HERE, undefined as never, gone]);
+    await settleMaybe(() => screen.queryByRole("button", { name: "Revoke Laptop" }) !== null);
+    await press("Revoke Laptop");
+    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    expect(screen.queryByRole("alert")?.textContent).toContain("could not be read");
+    expect(screen.queryByText("Laptop · Another device")).not.toBeNull();
+    await press("Try again");
+    await settleMaybe(() => screen.queryByRole("alert") === null);
+    expect(screen.queryByText("Laptop · Another device")).toBeNull();
+  });
+
+  test("the failed read is in Portuguese too", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 600_000 });
+    store.i18n.start();
+    (store.approval as unknown as Record<string, unknown>).status = async () => {
+      throw new Error("offline");
+    };
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <ApprovalDevicesPanel
+          store={store}
+          host={{ id: "h1", name: "pi" } as Parameters<typeof ApprovalDevicesPanel>[0]["host"]}
+        />
+      </TContext.Provider>,
+    );
+    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    expect(screen.queryByRole("alert")?.textContent).toContain("Não foi possível");
   });
 });
