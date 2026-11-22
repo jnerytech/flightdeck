@@ -42,7 +42,7 @@ export function draftProblems(draft: Draft): { name: boolean; max: boolean } {
   const max = Number(draft.max.trim());
   return {
     name: draft.name.trim() === "",
-    max: draft.max.trim() === "" || !Number.isInteger(max) || max < 1,
+    max: draft.max.trim() === "" || !Number.isSafeInteger(max) || max < 1,
   };
 }
 
