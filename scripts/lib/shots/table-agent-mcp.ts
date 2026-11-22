@@ -1,4 +1,6 @@
 /** Part of the print table (scripts/demo-shots.ts), in print order: the MCP tab of the Agent screen (#4269). */
+
+import type { McpServerView } from "@flightdeck/protocol";
 import type { Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
 import { agentRoute, type Shot } from "./shot.ts";
@@ -8,7 +10,7 @@ const ECO = { command: "node", args: ["eco-server.js"], env: { ECO_MODE: "demo" 
 const MASKED = "••••••";
 
 /** A server as the host lists it: the project's, on, with its secrets masked. */
-const server = (name: string, over: Record<string, unknown> = {}) => ({
+const server = (name: string, over: Partial<McpServerView> = {}): McpServerView => ({
   name,
   transport: "stdio",
   origin: "project",
@@ -38,7 +40,7 @@ const SEEDED = listing(
 const TEST_ANSWER: WireRule = {
   command: "mcp.test",
   reply: {
-    preview: { command: "npx", args: ["-y", "@demo/eco-server", "--stdio"] },
+    preview: { command: ECO.command, args: ECO.args },
     tools: ["echo", "ping", "read_file"],
     resources: ["demo://readme"],
   },
@@ -52,6 +54,10 @@ const LONG = server("a-server-whose-name-is-long-enough-to-need-a-break-inside-t
     "/usr/local/lib/node_modules/@demo/mcp-server-with-a-very-long-package-name/node_modules/@demo/another-nested-package/bin/serve.js",
   args: ["--workspace", "/home/demo/projects/flightdeck-web", "--log-level", "debug", "--stdio"],
 });
+
+/** A save or a removal the print opens a form or a dialog for is answered with a refusal in the page: nothing reaches the host. */
+const NO_SAVE: WireRule = { command: "mcp.save", reject: "A print does not save." };
+const NO_REMOVE: WireRule = { command: "mcp.remove", reject: "A print does not remove." };
 
 const button = (page: Page, name: RegExp) => page.getByRole("button", { name });
 
@@ -102,10 +108,11 @@ export function mcpShots(ids: DemoIds): Shot[] {
           .waitFor({ timeout: 15_000 });
       },
     },
-    { name: "agente-mcp-novo", route, prepare: openAdd },
+    { name: "agente-mcp-novo", route, wire: [SEEDED, NO_SAVE], prepare: openAdd },
     {
       name: "agente-mcp-novo-url",
       route,
+      wire: [SEEDED, NO_SAVE],
       prepare: async (page) => {
         await openAdd(page);
         await page.getByLabel(/^(Transport|Transporte)$/).selectOption("http");
@@ -115,7 +122,7 @@ export function mcpShots(ids: DemoIds): Shot[] {
     {
       name: "agente-mcp-segredo",
       route,
-      wire: [SEEDED],
+      wire: [SEEDED, NO_SAVE],
       prepare: async (page) => {
         await listed(page);
         await button(page, /^(Edit github|Editar github)$/).click();
@@ -132,13 +139,13 @@ export function mcpShots(ids: DemoIds): Shot[] {
       prepare: async (page) => {
         await testDialog(page);
         await button(page, /^(Run and test|Executar e testar)$/).click();
-        await page.getByRole("status").waitFor({ timeout: 15_000 });
+        await page.getByText("read_file").waitFor({ timeout: 15_000 });
       },
     },
     {
       name: "agente-mcp-remover",
       route,
-      wire: [SEEDED],
+      wire: [SEEDED, NO_REMOVE],
       prepare: async (page) => {
         await listed(page);
         await button(page, /^(Remove eco|Remover eco)$/).click();

@@ -54,7 +54,7 @@ describe("the MCP tab prints (#4269)", () => {
       command: rule?.reply.preview.command,
       tools: (rule?.reply.tools.length ?? 0) > 0,
       resources: Array.isArray(rule?.reply.resources),
-    }).toEqual({ command: "npx", tools: true, resources: true });
+    }).toEqual({ command: "node", tools: true, resources: true });
   });
 
   test("the long row's list holds one server whose command and badges are long", () => {
@@ -68,16 +68,15 @@ describe("the MCP tab prints (#4269)", () => {
     }).toEqual({ count: 1, longCommand: true, readOnly: true });
   });
 
-  test("the prints that open a form or a dialog on the seeded servers leave the host's answers alone, and never write", () => {
-    for (const name of [
-      "agente-mcp-novo",
-      "agente-mcp-novo-url",
-      "agente-mcp-segredo",
-      "agente-mcp-remover",
-    ]) {
-      const rules = wire(name) ?? [];
-      expect(rules.some((rule) => ["mcp.save", "mcp.remove"].includes(rule.command))).toBe(false);
-    }
+  test("the prints that open a form or a dialog refuse its write in the page, so a click can never reach the host", () => {
+    const refused = (name: string, command: string) =>
+      wire(name)?.some((rule) => rule.command === command && "reject" in rule);
+    expect({
+      novo: refused("agente-mcp-novo", "mcp.save"),
+      url: refused("agente-mcp-novo-url", "mcp.save"),
+      segredo: refused("agente-mcp-segredo", "mcp.save"),
+      remover: refused("agente-mcp-remover", "mcp.remove"),
+    }).toEqual({ novo: true, url: true, segredo: true, remover: true });
   });
 
   test("the form, the test dialog and the long row are re-measured narrow", () => {
