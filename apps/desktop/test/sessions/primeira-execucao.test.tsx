@@ -64,6 +64,18 @@ describe("primeira execução", () => {
     expect(copies).toEqual(["flightdeckd doctor"]);
   });
 
+  test("below the steps, a lost pairing link has its own command to copy (#3885)", async () => {
+    const { copies } = firstRun();
+    await act(async () => {});
+    expect(screen.queryByText(/Perdeu o link\?/)).not.toBeNull();
+    const copy = screen.queryByRole("button", { name: "Copiar flightdeckd pair" });
+    expect(copy).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(copy as HTMLElement);
+    });
+    expect(copies).toEqual(["flightdeckd pair"]);
+  });
+
   // #728 (journey pass #168): the screen centered its content in a box that scrolls, so when it
   // was taller than the window its top (the intro and step 1) sat above it, out of reach, and it
   // had no title. It is a page now: a title, the intro under it, and a body that scrolls from its top.

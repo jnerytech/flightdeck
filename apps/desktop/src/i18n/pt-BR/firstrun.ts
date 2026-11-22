@@ -27,6 +27,7 @@ export const firstrun = {
       "Pronto: o app abre a página do host, onde você verifica o host e escolhe as pastas de projetos.",
     trouble:
       "Não conectou? No mesmo computador, rode o comando abaixo: ele diz o que falta e como consertar.",
+    lost: "Perdeu o link? No mesmo computador, rode o comando abaixo e copie o novo:",
     copy: "Copiar {command}",
   },
   setup: {

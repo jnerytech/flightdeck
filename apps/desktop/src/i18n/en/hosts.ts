@@ -269,10 +269,10 @@ export const hosts = {
     pairElsewhere: "The token is not carried to another address: paste that host's link.",
     pairRefused: "Pairing link refused. {reason}",
     probeTimeout:
-      "The host did not answer in time: check that the daemon is running and that the address matches. On the host, run flightdeckd doctor",
-    probeRefused: "token refused: run flightdeckd pair on the host and paste the new link",
+      "The host did not answer in time: check that the daemon is running and that the address matches. On the host, run flightdeckd doctor.",
+    probeRefused: "Token refused: run flightdeckd pair on the host and paste the new link.",
     probeUnreachable:
-      "could not connect: check that the daemon is running and that the address matches. On the host, run flightdeckd doctor",
+      "Could not connect: check that the daemon is running and that the address matches. On the host, run flightdeckd doctor.",
   },
   hostHealth: {
     title: "Health & dependencies",
