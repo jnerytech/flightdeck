@@ -60,11 +60,11 @@ The Claude account of the host, as the app's account card shows it.
   ``signed out of Claude on this host: run `claude auth login` there to sign in``: Flightdeck never runs the login for
   you. A host that uses an API key or another provider says so. Then one line per plan window (`five_hour  42%
   allowed  resets 2026-11-20T15:00:00Z`) and `read <time>`, or `not read yet`. When the last read failed, a line says
-  so and the lines above are the previous reading.
+  so: after a good reading the lines above are that previous reading, and on a host never read they are empty.
 - **`refresh`:** asks the host to read the account again and prints what it got, as `get` does. The daemon refuses a
   refresh that comes too soon after the last one, exit `1`, with its text.
-- **`watch`:** prints a line for each update the host pushes, the lines of `get` joined with ` | `, until Ctrl-C (exit
-  `0`). With `--json` each line is the account's state as JSON.
+- **`watch`:** prints the current state at once, then a line for each update the host pushes, the lines of `get`
+  joined with ` | `, until Ctrl-C (exit `0`). With `--json` each line is the account's state as JSON.
 - **`--json` of `get` and `refresh`:** the daemon's state whole, with its windows and the login command.
 
 `--host`, `--json` and the exit codes are as for the other commands: `0` done, `1` refused, `2` no daemon. A `watch`

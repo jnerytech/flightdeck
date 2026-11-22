@@ -37,7 +37,9 @@ describe("conta-sem-segredo: the account module touches no secret", () => {
         .map((s) => s.file)
         .sort(),
     ).toEqual([
+      "account-cli.ts",
       "account.ts",
+      "domain/account-cli-view.ts",
       "domain/account-status.ts",
       "domain/demo.ts",
       "domain/readings.ts",

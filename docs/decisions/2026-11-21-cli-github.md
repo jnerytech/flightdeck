@@ -12,6 +12,9 @@ verbs are a second change.
   two domains may not import each other.
 - `--query` is a flag of `github repos` only and takes 1 to 100 characters, the protocol's own limit. The repository of
   `github issues` is not checked while parsing: the daemon owns what a repository name looks like.
+- `account watch` prints the current state (an `account.get` after the watch is acknowledged) before the pushes, since
+  the host pushes nothing until its next read when the app already watches. The default timeout is 45 s, above the
+  host's two reads of up to 20 s each, so a slow `claude` is not reported as no daemon.
 - `account watch` is a read, so a lost connection is exit `2` with no "may or may not" text, and Ctrl-C ends it with
   `0`. A signed-out host prints the command to run on that host and never runs it: the app shows it the same way.
 - The risk rules need no new rule: the reads stay ordinary. The write verbs of the second change are the ones that

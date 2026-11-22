@@ -21,7 +21,7 @@ function headline(state: AccountState): string {
         state.plan,
         state.provider,
       ]
-        .filter((part) => part !== null)
+        .filter((part) => part != null)
         .join("  ");
     case "signed_out":
       return `signed out of Claude on this host: run \`${state.loginCommand}\` there to sign in`;
@@ -33,6 +33,10 @@ function headline(state: AccountState): string {
       return "the account of this host is not known";
   }
 }
+
+/** The last read failed: a stale state still holds the reading before it, a first read holds nothing. */
+const failedRead = (state: AccountState) =>
+  `the last read failed (${state.error})${state.stale ? ": this is the previous reading" : ""}`;
 
 /** The headline, one line per plan window, a warning when the last read failed, and when it was read. */
 export function accountLines(state: AccountState): string[] {
@@ -46,9 +50,7 @@ export function accountLines(state: AccountState): string[] {
         ...(w.resetsAt === null ? [] : [`resets ${w.resetsAt}`]),
       ].join("  "),
     ),
-    ...(state.stale
-      ? [`the last read failed (${state.error ?? "unknown"}): this is the previous reading`]
-      : []),
+    ...(state.error === null ? [] : [failedRead(state)]),
     state.readAt === null ? "not read yet" : `read ${state.readAt}`,
   ];
 }

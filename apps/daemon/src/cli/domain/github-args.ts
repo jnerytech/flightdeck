@@ -23,12 +23,14 @@ export function readAccount(args: CliArgs, reader: ArgReader): void {
   args.action = subAction(reader, ["get", "refresh", "watch"] as const, "invalid account action");
 }
 
-/** What is wrong with the `github` flags: `--query` outside `repos`, or an empty one. */
+/** What is wrong with the `github` and `account` flags: `--query` outside `github repos`, or a bad one. */
 export function githubProblem(args: CliArgs): string | undefined {
-  if (args.command !== "github" || args.query === undefined) return undefined;
-  if (args.action !== "repos")
-    return "--query: on github this flag only applies to flightdeckd github repos";
+  if ((args.command !== "github" && args.command !== "account") || args.query === undefined)
+    return undefined;
+  if (args.command !== "github" || args.action !== "repos")
+    return "--query: this flag only applies to flightdeckd github repos";
   if (args.query.trim() === "") return "--query: the text to look for, not empty";
+  if (/\p{Cc}/u.test(args.query)) return "--query: no control character";
   return args.query.length > QUERY_MAX ? `--query: at most ${QUERY_MAX} characters` : undefined;
 }
 

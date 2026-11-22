@@ -14,7 +14,7 @@ export interface GithubCliArgs {
   json?: boolean;
 }
 
-const SOURCES: Record<NonNullable<GithubStatusResult["source"]>, string> = {
+const SOURCES: Record<string, string> = {
   keyring: "keyring",
   file: "file",
   env: "environment token",
@@ -24,7 +24,7 @@ const SOURCES: Record<NonNullable<GithubStatusResult["source"]>, string> = {
 export function statusLines(status: GithubStatusResult): string[] {
   if (!status.installed) return ["gh is not installed on this host"];
   if (!status.loggedIn) return ["gh is not signed in on this host"];
-  const source = status.source === null ? "" : ` (${SOURCES[status.source]})`;
+  const source = status.source === null ? "" : ` (${SOURCES[status.source] ?? status.source})`;
   return [
     `signed in as ${status.login ?? "an unnamed account"}${source}`,
     ...(status.scopes.length === 0 ? [] : [`scopes: ${status.scopes.join(", ")}`]),

@@ -59,11 +59,12 @@ A conta Claude do host, como o cartão de conta do app a mostra.
   ``signed out of Claude on this host: run `claude auth login` there to sign in``: o Flightdeck nunca roda o login por
   você. Um host que usa uma chave de API ou outro provedor também diz isso. Depois vem uma linha por janela do plano
   (`five_hour  42%  allowed  resets 2026-11-20T15:00:00Z`) e `read <hora>`, ou `not read yet`. Quando a última leitura
-  falhou, uma linha avisa e as linhas acima são a leitura anterior.
+  falhou, uma linha avisa: depois de uma leitura boa, as linhas acima são essa leitura anterior; num host nunca lido,
+  elas estão vazias.
 - **`refresh`:** pede ao host que leia a conta de novo e mostra o que veio, como o `get`. O daemon recusa uma
   atualização que chega logo depois da anterior, saída `1`, com o texto dele.
-- **`watch`:** mostra uma linha a cada atualização que o host envia, as linhas do `get` unidas por ` | `, até Ctrl-C
-  (saída `0`). Com `--json` cada linha é o estado da conta em JSON.
+- **`watch`:** mostra o estado atual na hora e depois uma linha a cada atualização que o host envia, as linhas do
+  `get` unidas por ` | `, até Ctrl-C (saída `0`). Com `--json` cada linha é o estado da conta em JSON.
 - **`--json` do `get` e do `refresh`:** o estado do daemon inteiro, com as janelas e o comando de login.
 
 `--host`, `--json` e os códigos de saída são os dos outros comandos: `0` feito, `1` recusado, `2` sem daemon. Um `watch`
