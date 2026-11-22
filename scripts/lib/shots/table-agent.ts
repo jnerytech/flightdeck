@@ -220,8 +220,22 @@ export function agentShots(ids: DemoIds): Shot[] {
       route: { name: "session", host: ALFA, id: ids.rewindSession },
       wire: [
         { command: "rewind.apply", as: "rewind.preview" },
-        // The Undo comes from the host's undo preview, and the demo's host has no rewind to undo.
-        { command: "rewind.undoPreview", as: "rewind.preview" },
+        // The Undo comes from the host's undo preview, and the demo's host has no rewind to undo. The
+        // request goes out as a read (a rewind.preview needs a turn it does not carry) and comes back
+        // as the files an undo would change.
+        {
+          command: "rewind.undoPreview",
+          as: "snapshots.list",
+          data: {
+            via: "snapshot",
+            files: [
+              { path: "README.md", change: "modified" },
+              { path: "src/cart.ts", change: "deleted" },
+            ],
+            insertions: 3,
+            deletions: 1,
+          },
+        },
       ],
       prepare: async (page) => {
         await openTimeline(page);
