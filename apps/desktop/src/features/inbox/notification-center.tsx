@@ -40,6 +40,8 @@ function InboxItem(
   props: Readonly<{
     row: InboxRow;
     gone: boolean;
+    /** A click on a gone row with nothing to open was made: its line says why (#4200). */
+    noted: boolean;
     /** Set when the row is a request that can be answered here (Approve, Deny, A and N). */
     request: RowRequest | null;
     t: T;
@@ -106,6 +108,13 @@ function InboxItem(
         <span className="text-muted-foreground text-xs">{says}</span>
         {gone && <span className="text-muted-foreground text-xs">{t("inbox.gone")}</span>}
       </button>
+      {/* Outside the button, whose children a screen reader reads as part of its name: the live region
+          of a gone row says why its click opened nothing (#4200). */}
+      {gone && (
+        <span role="status" className="inbox-note text-muted-foreground text-xs">
+          {props.noted ? t("inbox.goneClick") : ""}
+        </span>
+      )}
       {request && (
         <fieldset className="inbox-request" aria-label={title}>
           <span id={keysId} className="sr-only">
@@ -185,6 +194,8 @@ export function NotificationCenter(
     t: T;
     /** Whether what an entry is about no longer exists. */
     gone(entry: InboxEntry): boolean;
+    /** The id of the gone row whose click found nothing to open. */
+    noted: string | null;
     /** What the row is when it is a request that can be answered here, else null. */
     request(entry: InboxEntry): RowRequest | null;
     onPick(row: InboxRow): void;
@@ -374,6 +385,7 @@ export function NotificationCenter(
                     key={row.entry.id}
                     row={row}
                     gone={props.gone(row.entry)}
+                    noted={props.noted === row.entry.id}
                     request={props.request(row.entry)}
                     t={t}
                     onPick={props.onPick}

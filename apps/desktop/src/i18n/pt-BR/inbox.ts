@@ -32,6 +32,7 @@ export const inbox = {
     markUnread: "Marcar {title} como não lida",
     count: "Aconteceu {n} vezes",
     gone: "O que isto citava não existe mais.",
+    goneClick: "Nada a abrir: este pedido não espera mais resposta. Descarte-o para limpar.",
     dismiss: "Descartar",
     dismissRow: "Descartar {title}",
     markedRead: "Marcada como lida: {title}",
