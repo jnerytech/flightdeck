@@ -18,7 +18,7 @@ const item = (requestId: string, over: Partial<PendingItem> = {}) =>
   }) as PendingItem;
 
 /** A tray over stand-ins: what the platform was told, what the store was asked, and a timer by hand. */
-function tray() {
+function tray(language: "en" | "pt-BR" = "en") {
   const log: unknown[] = [];
   const waits: number[] = [];
   const world = {
@@ -49,7 +49,7 @@ function tray() {
     {
       state: () => ({ hosts: world.hosts, sessions: world.sessions }) as never,
       needsYou: () => world.items,
-      t: () => t,
+      t: () => translator(language),
       uiHostId: () => world.uiHost,
       isSimple: (hostId) => world.simple.has(hostId),
       answer: (hostId, requestId, decision) =>
@@ -91,6 +91,16 @@ const withPermissions = (n: number) => [
 ];
 
 describe("tray (#1596)", () => {
+  test("the first change sends the menu even when it equals the one the shell has no text for, in either language (#4120)", () => {
+    for (const language of ["pt-BR", "en"] as const) {
+      const { slice, log, waiting, fire } = tray(language);
+      slice.changed({ hosts: [] });
+      expect([language, waiting()]).toEqual([language, true]);
+      fire();
+      expect(log).toContainEqual({ menu: ["needs-you:none"] });
+    }
+  });
+
   test("the badge follows the hosts, and the platform is told only when it changes", () => {
     const { slice, log, world } = tray();
     world.hosts = [{ id: "h1", name: "pc", sessions: withPermissions(2) }];
