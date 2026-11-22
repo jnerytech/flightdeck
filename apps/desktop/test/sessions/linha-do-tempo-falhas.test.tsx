@@ -138,8 +138,8 @@ const click = async (name: string | RegExp) => {
   });
 };
 
-const tick = async (name: string) => {
-  const box = screen.queryByRole("checkbox", { name });
+const tick = async (name: string, role = "checkbox") => {
+  const box = screen.queryByRole(role, { name });
   expect(box).not.toBeNull();
   await act(async () => {
     fireEvent.click(box as HTMLElement);
@@ -814,7 +814,7 @@ describe("linha-do-tempo-falhas", () => {
       return true;
     }) as never;
     await click(names.fork);
-    await tick("Open in the terminal");
+    await tick("Open in the terminal", "radio");
     await click("Fork");
     await click("Copy the command");
     expect(copied).toEqual(["claude --resume c2"]);
@@ -831,7 +831,7 @@ describe("linha-do-tempo-falhas", () => {
         formatDateTime("2026-11-21T10:00:00.000Z", store.i18n.lang),
       ),
     ).not.toBeNull();
-    await tick("Abrir no terminal");
+    await tick("Abrir no terminal", "radio");
     await click("Bifurcar");
     expect(screen.queryByRole("button", { name: "Copiar o comando" })).not.toBeNull();
   });
