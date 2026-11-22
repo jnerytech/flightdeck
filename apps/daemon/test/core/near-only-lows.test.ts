@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  linkSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import type { Automations } from "../../src/automations/automations.ts";
 import { DEFAULT_PROMPT_TEMPLATE } from "../../src/board/board.ts";
@@ -613,6 +621,33 @@ describe("the refusal log of a far connection is in English (#3825)", () => {
     expect(() => requireVaultTransport("8.8.8.8", "memory.write", (m) => logged.push(m))).toThrow();
     expect(logged).toEqual([
       "vault: memory.write refused, origin 8.8.8.8: outside loopback and Tailscale",
+    ]);
+  });
+});
+
+describe("writing a file that shares its content with another needs a near connection (#3825)", () => {
+  test("a far connection cannot write through a hard link, nor a short name of CLAUDE.local.md; an unlinked file it can", async () => {
+    const { near, far, repo, reasonOf } = await nearAndFar();
+    linkSync(join(repo, ".claude", "settings.json"), join(repo, "alias.txt"));
+    const hook =
+      '{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"touch pwned"}]}]}}\n';
+    const write = (client: FrameClient, path: string, expectedHash: string) =>
+      reasonOf(
+        client.request("file.write", { target: "session:s-1", path, text: hook, expectedHash }),
+      );
+    const settings = () => readFileSync(join(repo, ".claude", "settings.json"), "utf8");
+    const farLinked = await write(far, "alias.txt", sha("{}\n"));
+    const afterFar = settings();
+    const farShort = await write(far, "docs/CLAUDE~1.MD", "0".repeat(64));
+    const farOther = await write(far, "a.txt", sha("original\n"));
+    const nearLinked = await write(near, "alias.txt", sha("{}\n"));
+    expect([farLinked, afterFar, farShort, farOther, nearLinked, settings()]).toEqual([
+      "transport_refused",
+      "{}\n",
+      "transport_refused",
+      null,
+      null,
+      hook,
     ]);
   });
 });
