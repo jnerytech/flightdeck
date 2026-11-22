@@ -4,7 +4,7 @@ import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
-const { cleanup, render, within } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
@@ -290,11 +290,129 @@ describe("conta-cartao-ui: the refresh button", () => {
     const { unmount } = show({ state: state() });
     const button = inCard().queryByRole("button", { name: "Refresh the account of alfa" });
     expect(button).not.toBeNull();
-    expect((button as HTMLButtonElement).disabled).toBe(false);
+    expect(button?.getAttribute("aria-disabled")).toBeNull();
     unmount();
     show({ state: state(), refreshing: true });
     const busy = inCard().queryByRole("button", { name: "Refresh the account of alfa" });
-    expect((busy as HTMLButtonElement).disabled).toBe(true);
+    expect(busy?.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  test("while a read runs it stays focusable, ignores a press and keeps its visible name in its accessible one (issue #4068)", () => {
+    const reads: string[] = [];
+    render(
+      <TContext.Provider value={translator("en")}>
+        <AccountCard
+          hostName="alfa"
+          online
+          state={state()}
+          now={NOW}
+          formatTime={utcTime}
+          refreshing
+          copied={false}
+          onRefresh={() => reads.push("read")}
+          onCopy={noop}
+          onTerminal={noop}
+        />
+      </TContext.Provider>,
+    );
+    const button = inCard().queryByRole("button", { name: /^Refresh/ }) as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    expect(button.textContent).toBe("Refresh");
+    expect(button.getAttribute("aria-label")?.includes("Refresh")).toBe(true);
+    act(() => button.focus());
+    fireEvent.click(button);
+    expect(reads).toEqual([]);
+    expect(document.activeElement === button).toBe(true);
+  });
+
+  test("the live region says a read is running, then when it was last read", () => {
+    const { unmount } = show({ state: state(), refreshing: true });
+    expect(inCard().queryByRole("status")?.textContent).toBe("Reading…");
+    unmount();
+    show({ state: state() });
+    expect(inCard().queryByRole("status")?.textContent).toBe("Last read 2 min ago");
+  });
+});
+
+describe("conta-cartao-ui: what a screen reader and a colour-blind person get (issue #4068)", () => {
+  const near = () =>
+    state({
+      windows: [win("five_hour", 0.92, 1, "allowed_warning"), win("seven_day", 1, 48, "rejected")],
+    });
+
+  test("a window close to its limit or at it says so in words, on the line and on the meter; a healthy one does not", () => {
+    show({ state: near() });
+    expect(inBar("five_hour").queryByText("Close to the limit")).not.toBeNull();
+    expect(inBar("seven_day").queryByText("Limit reached")).not.toBeNull();
+    expect(
+      inCard().queryByRole("meter", { name: "5 hours of alfa" })?.getAttribute("aria-valuetext"),
+    ).toBe("92%, resets in 1 h, close to the limit");
+    expect(
+      inCard().queryByRole("meter", { name: "7 days of alfa" })?.getAttribute("aria-valuetext"),
+    ).toBe("100%, resets in 48 h, limit reached");
+    cleanup();
+    show({ state: state() });
+    expect(inCard().queryByText("Close to the limit")).toBeNull();
+    expect(inCard().queryByText("Limit reached")).toBeNull();
+    expect(
+      inCard().queryByRole("meter", { name: "5 hours of alfa" })?.getAttribute("aria-valuetext"),
+    ).toBe("42%, resets in 3 h");
+  });
+
+  test("the status words read in Portuguese", () => {
+    show({ state: near() }, "pt-BR");
+    expect(inBar("five_hour").queryByText("Perto do limite")).not.toBeNull();
+    expect(inBar("seven_day").queryByText("Limite atingido")).not.toBeNull();
+    expect(
+      inCard().queryByRole("meter", { name: "5 horas de alfa" })?.getAttribute("aria-valuetext"),
+    ).toBe("92%, reinicia em 1 h, perto do limite");
+  });
+
+  test("an unknown usage reads Unknown, not 0%, and claims no meter value", () => {
+    show({
+      state: state({
+        windows: [{ ...win("five_hour", 0, 3), utilization: null }, win("seven_day", 0.5, 48)],
+      }),
+    });
+    expect(inBar("five_hour").queryByText("Unknown")).not.toBeNull();
+    expect(inBar("five_hour").queryByText("0%")).toBeNull();
+    expect(inBar("five_hour").queryAllByRole("meter")).toHaveLength(0);
+    expect(inCard().queryAllByRole("meter")).toHaveLength(1);
+    cleanup();
+    show(
+      { state: state({ windows: [{ ...win("five_hour", 0, 3), utilization: null }] }) },
+      "pt-BR",
+    );
+    expect(inBar("five_hour").queryByText("Desconhecido")).not.toBeNull();
+  });
+
+  test("the loading line is a status and the unavailable text is an alert", () => {
+    const { unmount } = show({ state: undefined });
+    expect(inCard().queryByRole("status")?.textContent).toBe("Reading the account…");
+    unmount();
+    show({
+      state: state({
+        status: "unknown",
+        name: null,
+        organization: null,
+        plan: null,
+        windows: [],
+        readAt: null,
+        error: "account_unavailable",
+      }),
+    });
+    const alert = inCard().queryByRole("alert");
+    expect(alert?.textContent?.includes("The account could not be read.")).toBe(true);
+    expect(alert?.textContent?.includes("Check that `claude` is installed")).toBe(true);
+  });
+
+  test("Copy: its result is said in a status that is on screen before the press", () => {
+    const signedOut = state({ status: "signed_out", windows: [] });
+    const { unmount } = show({ state: signedOut });
+    expect(inCard().queryByRole("status")?.textContent).toBe("");
+    unmount();
+    show({ state: signedOut, copied: true });
+    expect(inCard().queryByRole("status")?.textContent).toBe("Command copied");
   });
 });
 
