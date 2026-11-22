@@ -41,7 +41,22 @@ const POLICY = {
   exceptions: [{ id: "e1", from: { host: "pc" }, to: { project: "app" } }],
 };
 
-async function open() {
+/** A managed session as `session.list` gives it (#4085: the names the paused pairs read). */
+const managed = (id: string, name: string | null) => ({
+  id,
+  name,
+  cwd: `/r/${id}`,
+  status: "idle",
+  permissionMode: "default",
+  model: null,
+  claudeSessionId: null,
+  lastSeq: 0,
+  createdAt: "2026-10-30T10:00:00.000Z",
+  updatedAt: "2026-10-30T11:00:00.000Z",
+  projectKey: "app",
+});
+
+async function open(setup?: (daemon: ReturnType<typeof legacyDaemon>) => void) {
   const mem = memoryPlatform();
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
@@ -49,6 +64,7 @@ async function open() {
   daemon.features.push("messaging");
   daemon.messaging.policy = structuredClone(POLICY);
   daemon.messaging.paused = ["h/s1|h/s2"];
+  setup?.(daemon);
   render(<App store={store} />);
   await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
@@ -236,6 +252,65 @@ describe("regras-mensagens-ui: who may message whom, retention and paused pairs 
     await settle(() => (lastSet()?.policy as typeof POLICY | undefined)?.retentionDays === 9);
     expect((lastSet()?.policy as typeof POLICY | undefined)?.retentionDays).toBe(9);
   });
+
+  // #4085: the paused pairs and the exceptions are rows a person acts on, so each says who it is, answers a press and fails where it was pressed.
+  test("a paused pair names the host's sessions where it knows them and keeps the address for the rest", async () => {
+    await open((daemon) => {
+      daemon.hub.managed = [managed("s1", "builder")];
+    });
+    await settleMaybe(
+      () => screen.queryByRole("button", { name: "Soltar o par builder e h/s2" }) !== null,
+    );
+    expect(screen.queryByText("builder e h/s2")).not.toBeNull();
+  });
+
+  test("a pair the host refuses to free says so next to its row, and the button works again", async () => {
+    const { daemon } = await open();
+    daemon.refuse.set("messaging.rules.set", "sem acesso");
+    await click("Soltar o par h/s1 e h/s2");
+    await settleMaybe(
+      () => screen.queryByText("Não foi possível soltar o par h/s1 e h/s2.") !== null,
+    );
+    const row = screen.queryByRole("button", { name: "Soltar o par h/s1 e h/s2" })?.closest("li");
+    expect(row?.querySelector('[role="alert"]')?.textContent).toBe(
+      "Não foi possível soltar o par h/s1 e h/s2.",
+    );
+    expect(
+      (screen.queryByRole("button", { name: "Soltar o par h/s1 e h/s2" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
+  });
+
+  test("an exception the host refuses to remove shows the refusal next to its row, not at the top of the panel", async () => {
+    const { daemon } = await open();
+    daemon.refuse.set("messaging.rules.set", "sem acesso");
+    await click("Remover a exceção de host pc para projeto app");
+    await settleMaybe(() => document.querySelector("li [role='alert']") !== null);
+    const alert = document.querySelector("li [role='alert']");
+    expect(alert?.textContent).toBe(
+      "A exceção não pôde ser removida. O host recusou o pedido. sem acesso",
+    );
+    expect(document.querySelectorAll('[role="alert"]')).toHaveLength(1);
+  });
+
+  test("freeing a pair moves the focus to the next pair's button, and to the heading after the last one", async () => {
+    await open((daemon) => {
+      daemon.messaging.paused = ["h/s1|h/s2", "h/s3|h/s4"];
+    });
+    await click("Soltar o par h/s1 e h/s2");
+    await settleMaybe(
+      () => screen.queryByRole("button", { name: "Soltar o par h/s1 e h/s2" }) === null,
+    );
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Soltar o par h/s3 e h/s4");
+    await click("Soltar o par h/s3 e h/s4");
+    await settleMaybe(
+      () => screen.queryByRole("button", { name: "Soltar o par h/s3 e h/s4" }) === null,
+    );
+    expect([document.activeElement?.tagName, document.activeElement?.textContent]).toEqual([
+      "H3",
+      "Pares pausados por laço",
+    ]);
+  });
 });
 
 /** Settings with a host whose messaging.rules.get the daemon refuses, in one language. */
@@ -248,7 +323,7 @@ async function openRules(lang: "en" | "pt-BR", refused: boolean) {
   if (refused) daemon.refuse.set("messaging.rules.get", "the rules file is unreadable");
   render(<App store={store} />);
   await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
-  await settle(() => store.getState().hosts[0]?.hostInfo != null);
+  await settleMaybe(() => store.getState().hosts[0]?.hostInfo != null);
   await act(async () => {
     store.router.push({ name: "settings" });
   });
@@ -276,7 +351,7 @@ for (const [lang, t] of [
       expect(screen.queryByRole("button", { name: t.messagingRulesUi.retry })).not.toBeNull();
       daemon.refuse.delete("messaging.rules.get");
       await click(t.messagingRulesUi.retry);
-      await settle(() => screen.queryByLabelText(t.messagingRulesUi.retention) !== null);
+      await settleMaybe(() => screen.queryByLabelText(t.messagingRulesUi.retention) !== null);
       expect(document.body.textContent).not.toContain(failed);
       expect(screen.queryByLabelText(t.messagingRulesUi.retention)).not.toBeNull();
       expect(screen.queryByRole("button", { name: t.messagingRulesUi.retry })).toBeNull();
@@ -284,7 +359,7 @@ for (const [lang, t] of [
 
     test("under each value field a hint says what the chosen kind expects", async () => {
       await openRules(lang, false);
-      await settle(() => screen.queryByLabelText(t.messagingRulesUi.fromValue) !== null);
+      await settleMaybe(() => screen.queryByLabelText(t.messagingRulesUi.fromValue) !== null);
       const hints = t.messagingRulesUi.hints;
       // Both sides start as "host".
       expect(screen.queryAllByText(hints.host)).toHaveLength(2);
