@@ -25,6 +25,13 @@ const CLEAN = /^(Clean|Limpar|Clean up old data|Limpar dados antigos)$/;
 const BACKUP =
   /^(Back up now|Fazer backup agora|Back up this host's database|Fazer backup do banco deste host)$/;
 
+/** The panel's outcome line once it says something: other `<output>` elements (counters) are on the page. */
+const outcomeLine = (page: Page) =>
+  page
+    .getByRole("region", { name: /^(Maintenance|Manutenção)$/ })
+    .getByRole("status")
+    .filter({ hasText: /\S/ });
+
 /** The host's Maintenance panel, then the step that brings one of its states up. */
 function maintenancePanel(then?: NonNullable<Shot["prepare"]>): NonNullable<Shot["prepare"]> {
   return async (page) => {
@@ -77,7 +84,7 @@ export function hostShots(ids: DemoIds): Shot[] {
       maintenance: {},
       prepare: maintenancePanel(async (page) => {
         await page.getByRole("button", { name: SIMULATE }).click();
-        await page.getByRole("status").getByText(/\S/).waitFor();
+        await outcomeLine(page).waitFor();
       }),
     },
     {
@@ -110,7 +117,7 @@ export function hostShots(ids: DemoIds): Shot[] {
       maintenance: {},
       prepare: maintenancePanel(async (page) => {
         await page.getByRole("button", { name: BACKUP }).click();
-        await page.getByRole("status").getByText(/\S/).waitFor();
+        await outcomeLine(page).waitFor();
       }),
     },
     // #3943: SSH Connections. The hosts' answers are replaced in the page (`sshScript`): the demo's real
