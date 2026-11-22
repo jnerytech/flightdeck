@@ -262,7 +262,6 @@ describe("board-ui: projects, columns, filters, drag and the card menu", () => {
     await click("Cancelar");
     await settle(() => dialog() === null);
     expect(insideBoard()).toBe(true);
-    expect(document.activeElement?.closest("li")?.getAttribute("data-card") ?? "").not.toBe("");
     await cardMenu("Sobrando", "Excluir…");
     await click("Excluir card");
     await settle(() => cardItem("Sobrando") === null);

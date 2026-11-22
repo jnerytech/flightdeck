@@ -171,12 +171,14 @@ describe("deps-ui: the board", () => {
     await cardMenu("B", "Iniciar card");
     // The menu's Start asks for the workflow and persona first (issue #188).
     await settle(() => screen.queryByRole("dialog", { name: "Iniciar card" }) !== null);
+    const go = () =>
+      within(screen.getByRole("dialog", { name: "Iniciar card" })).getByRole("button", {
+        name: "Iniciar",
+      }) as HTMLButtonElement;
+    // Start waits for the project's workflows (#3827).
+    await settle(() => !go().disabled);
     await act(async () => {
-      fireEvent.click(
-        within(screen.getByRole("dialog", { name: "Iniciar card" })).getByRole("button", {
-          name: "Iniciar",
-        }),
-      );
+      fireEvent.click(go());
     });
     await settle(() => screen.queryByText(/Este card está bloqueado por: A\./) !== null);
     expect(screen.queryByText(/Este card está bloqueado por: A\./)).not.toBeNull();

@@ -10,7 +10,15 @@ import { discardCommand, hasStartedWork } from "./bulk-discard-dialog.tsx";
  * existing discard.
  */
 export function DeleteCardDialog(
-  props: Readonly<{ t: T; store: AppStore; hostId: string; card: Card; onClose(): void }>,
+  props: Readonly<{
+    t: T;
+    store: AppStore;
+    hostId: string;
+    card: Card;
+    onClose(): void;
+    /** The dialog closed: the card may be gone, so the focus goes to the board (#3827). */
+    onRestoreFocus(): void;
+  }>,
 ) {
   const { t, card } = props;
   const started = hasStartedWork(card);
@@ -24,6 +32,7 @@ export function DeleteCardDialog(
       confirmLabel={started ? t("board.discardInstead") : t("board.deleteConfirm")}
       destructive
       onCancel={props.onClose}
+      onRestoreFocus={props.onRestoreFocus}
       onConfirm={() => {
         props.onClose();
         void props.store.hostCommand(props.hostId, discardCommand(card), {
