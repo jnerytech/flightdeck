@@ -1,5 +1,5 @@
 import type { RewindPreview } from "@flightdeck/protocol";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -252,6 +252,7 @@ export function ForkDialog(
 ) {
   const { store, hostId, claudeSessionId, turn, cwd } = props;
   const { t } = store.i18n;
+  const busyId = useId();
   const [open, setOpen] = useState<"flightdeck" | "terminal">("flightdeck");
   const [withFiles, setWithFiles] = useState(false);
   // A refused preview says why in its place, and Try again asks the host once more.
@@ -346,11 +347,16 @@ export function ForkDialog(
                 className="hit-control"
                 checked={withFiles}
                 disabled={props.busy}
+                aria-describedby={props.busy ? busyId : undefined}
                 onChange={(e) => setWithFiles(e.target.checked)}
               />
               {t("timeline.forkFiles")}
             </label>
-            {props.busy && <p className="text-muted-foreground text-xs">{t("timeline.busy")}</p>}
+            {props.busy && (
+              <p id={busyId} className="text-muted-foreground text-xs">
+                {t("timeline.busy")}
+              </p>
+            )}
             {forkRefused !== null && (
               <InlineNotice tone="error">
                 <span>{t("timeline.forkFailed", { reason: refusedText(forkRefused) })}</span>

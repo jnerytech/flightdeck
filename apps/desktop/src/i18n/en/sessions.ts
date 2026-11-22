@@ -617,6 +617,7 @@ export const sessions = {
     showFiles: "Show files of turn {n}",
     filesFailed: "Could not read the files of turn {n}.",
     hideFiles: "Hide files of turn {n}",
+    filesOf: "Files of turn {n}",
     lines: "+{added} −{removed}",
     change: { modified: "changed", created: "created", deleted: "deleted" },
     rewind: "Rewind files to here",

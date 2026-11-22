@@ -621,6 +621,7 @@ export const sessions = {
     showFiles: "Ver arquivos do turno {n}",
     filesFailed: "Não deu para ler os arquivos do turno {n}.",
     hideFiles: "Esconder arquivos do turno {n}",
+    filesOf: "Arquivos do turno {n}",
     lines: "+{added} −{removed}",
     change: { modified: "alterado", created: "criado", deleted: "apagado" },
     rewind: "Voltar arquivos até aqui",
