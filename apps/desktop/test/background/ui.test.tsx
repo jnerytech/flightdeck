@@ -278,7 +278,7 @@ describe("bg-ui: the actions of a session", () => {
 
   test("a refused Reiniciar says so next to the buttons and the button is usable again (#4169)", async () => {
     const { daemon } = await openPanel();
-    daemon.bg.refused.set("bg.respawn", { reason: "bg_cli_failed", message: "boom" });
+    daemon.bg.refused.set("bg.respawn", { reason: "bg_cli_failed", params: { message: "boom" } });
     await click("Reiniciar");
     const said = () => within(panel() as HTMLElement).queryAllByText(/Não foi possível reiniciar/);
     await settle(() => said().length > 0);
