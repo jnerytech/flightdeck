@@ -86,6 +86,7 @@ const WORDS = {
   en: {
     favorite: "Favorite eco",
     remove: "Remove",
+    cancel: "Cancel",
     removeFor: "Remove eco",
     search: "Search snippet",
     project: "Project",
@@ -98,6 +99,7 @@ const WORDS = {
   "pt-BR": {
     favorite: "Favoritar eco",
     remove: "Remover",
+    cancel: "Cancelar",
     removeFor: "Remover eco",
     search: "Buscar snippet",
     project: "Projeto",
@@ -158,6 +160,32 @@ describe.each(["en", "pt-BR"] as const)("snippets-ui: busy actions (%s)", (langu
     await settle(() => rowNames().join() === "status");
     await afterAnswer();
     expect(document.activeElement === screen.getByLabelText(w.search)).toBe(true);
+  });
+
+  test("cancelling the removal gives the focus back to that row's Remove", async () => {
+    await open(language);
+    await press(w.removeFor);
+    await press(w.cancel);
+    await settle(() => screen.queryByRole("alertdialog") === null);
+    await afterAnswer();
+    expect(document.activeElement === button(w.removeFor)).toBe(true);
+  });
+
+  test("a removed row's Remove stays busy until the list is read again", async () => {
+    const d = await open(language);
+    let listed = 0;
+    d.hooks.intercept = async (type, _payload, next) => {
+      if (type === "snippets.list") {
+        listed++;
+        return never();
+      }
+      return next();
+    };
+    await press(w.removeFor);
+    await press(w.remove);
+    await settle(() => listed === 1);
+    await afterAnswer();
+    expect(button(w.removeFor)?.getAttribute("aria-busy")).toBe("true");
   });
 
   test("Trust the file is busy while the signing waits and a second press asks nothing more", async () => {
