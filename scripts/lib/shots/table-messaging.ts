@@ -118,7 +118,7 @@ export function messagingShots(ids: DemoIds): Shot[] {
     {
       name: "sessao-mensagens-carregando",
       route: session,
-      wire: [{ command: "messages.list", stall: true }],
+      wire: [{ command: "messages.list", hold: true }],
       prepare: async (page) => {
         await page.getByRole("tab", { name: /^(Mensagens|Messages)$/ }).click();
         // The loading state has an accessible name and no text.
