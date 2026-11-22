@@ -191,18 +191,23 @@ export function GlobalSearch(
     setActiveId(null);
   };
   /**
-   * What a screen reader hears as the list changes: how many rows the text left, or, when it left
-   * none and no history search was asked for, that nothing matches and what Enter does then.
+   * What a screen reader hears as the list changes, and what a sighted person reads when it holds
+   * nothing: how many rows and history hits are listed; that the text matches nothing and Enter
+   * searches the history; or that the history search for this very text found nothing. A search
+   * for other text is not this text's answer, so it only adds its hits to the count.
    */
   const rowCount = stops.filter((stop) => stop.kind === "item").length;
+  const hitCount = search?.hits.length ?? 0;
   const typed = query.trim() !== "" && !actionsOf;
-  const noMatch = typed && rowCount === 0 && !search;
+  const current = search !== null && search.query.trim() === query.trim();
+  const searching = current && search.waiting.length > 0;
+  const noMatch = typed && rowCount + hitCount === 0 && !current;
   const historyNone =
-    search && search.waiting.length === 0 && search.hits.length === 0 && !actionsOf;
+    typed && current && !searching && hitCount === 0 && search.silent.length === 0;
   let status = "";
-  if (historyNone) status = t("searchUi.historyNone", { query: search.query });
+  if (historyNone) status = t("searchUi.historyNone", { query: query.trim() });
   else if (noMatch) status = t("searchUi.noMatch", { query: query.trim() });
-  else if (typed) status = t("searchUi.found", { n: rowCount });
+  else if (typed && !searching) status = t("searchUi.found", { n: rowCount + hitCount });
 
   /** Opens an entry and remembers it for the Recent section (an action of the Tab list is not one). */
   const choose = (item: PaletteItem) => {
@@ -324,7 +329,7 @@ export function GlobalSearch(
       </form>
       <output
         data-slot="palette-status"
-        className={noMatch ? "text-muted-foreground text-sm" : "sr-only"}
+        className={noMatch || historyNone ? "text-muted-foreground text-sm" : "sr-only"}
       >
         {status}
       </output>
