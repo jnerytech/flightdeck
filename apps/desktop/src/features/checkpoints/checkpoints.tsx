@@ -199,6 +199,8 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
     setFailure(null);
     setLoading(true);
     const result = await store.hostRequest(hostId, "snapshots.list", { claudeSessionId });
+    // An answer to an older load must not overwrite a newer one (a rewind or an undo reloads).
+    if (id !== loads.current) return;
     if (!result.ok) {
       setFailure(result);
       setLoading(false);
@@ -208,7 +210,6 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
     setLoading(false);
     // A refusal (an older host, a session with no rewind) is no error: there is just no Undo.
     const preview = await store.hostRequest(hostId, "rewind.undoPreview", { claudeSessionId });
-    // An answer to an older load must not overwrite a newer one (a rewind or an undo reloads).
     if (id === loads.current) setUndoPreview(preview.ok ? preview.data : null);
   }, [store, hostId, claudeSessionId]);
 
