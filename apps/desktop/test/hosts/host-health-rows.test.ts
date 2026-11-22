@@ -126,7 +126,7 @@ describe("host-health-rows: a dependency row", () => {
     });
     const can = env({ canInstallService: true });
     const row = depRow(install, can.env);
-    expect(row.action?.label).toBe(t("hostHealth.service.turnOn"));
+    expect(row.action?.label).toBe(t("hostHealth.service.turnOnRow"));
     row.action?.run();
     expect(can.calls).toEqual(["confirm:service"]);
     expect(depRow(install, env().env).action).toBeNull();
