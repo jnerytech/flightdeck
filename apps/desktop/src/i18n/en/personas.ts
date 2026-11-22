@@ -206,7 +206,6 @@ export const personas = {
     closeMessage: "Close the team {name}? Its sessions are told to stop.",
     menu: "Actions for {name}",
     delete: "Delete team",
-    deleteOpen: "Close the team first",
     deleteMessage:
       "Delete the team {name}? The team record and its card on this page go. The sessions of its members stay, with their transcripts and history, and so do their board cards: they are only taken out of the team.",
   },

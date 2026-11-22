@@ -205,7 +205,6 @@ export const personas = {
     closeMessage: "Encerrar o time {name}? As sessões recebem o aviso para parar.",
     menu: "Ações de {name}",
     delete: "Excluir time",
-    deleteOpen: "Encerre o time primeiro",
     deleteMessage:
       "Excluir o time {name}? O registro do time e o card dele nesta página saem. As sessões dos membros ficam, com as transcrições e o histórico, e os cards delas no board também: só deixam de ser do time.",
   },
