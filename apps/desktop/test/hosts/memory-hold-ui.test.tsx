@@ -124,12 +124,16 @@ function resources(features: string[], memoryPauseAt: number | null | undefined)
     }
     return {};
   }) as never;
+  const said: string[] = [];
+  store.success = (text: string) => {
+    said.push(text);
+  };
   render(
     <TContext.Provider value={store.i18n.t}>
       <HostResources store={store} host={hostRow(features) as never} active everyMs={600_000} />
     </TContext.Provider>,
   );
-  return { asked };
+  return { asked, said, store };
 }
 
 describe("memory hold on the board and the host (#1343)", () => {
@@ -190,6 +194,35 @@ describe("memory hold on the board and the host (#1343)", () => {
       ["resources.setPauseAt", { pauseAt: 0.8 }],
       ["resources.setPauseAt", { pauseAt: null }],
     ]);
+  });
+
+  test("a share the host accepts says it was saved, naming the host (#3871)", async () => {
+    const { said } = resources(["resources", "memoryPause"], 0.9);
+    const select = () =>
+      screen.queryByLabelText("New cards wait from memory at, on pi") as HTMLSelectElement | null;
+    await settleMaybe(() => select() !== null);
+    await act(async () => {
+      fireEvent.change(select() as HTMLSelectElement, { target: { value: "0.8" } });
+    });
+    await settleMaybe(() => said.length > 0);
+    expect(said).toEqual(["Memory hold saved on pi."]);
+  });
+
+  test("a share the host refuses shows no success and the select goes back (#3871)", async () => {
+    const { said, store } = resources(["resources", "memoryPause"], 0.9);
+    const select = () =>
+      screen.queryByLabelText("New cards wait from memory at, on pi") as HTMLSelectElement | null;
+    await settleMaybe(() => select() !== null);
+    let asked = 0;
+    store.hostCommand = (async () => {
+      asked += 1;
+      return null;
+    }) as never;
+    await act(async () => {
+      fireEvent.change(select() as HTMLSelectElement, { target: { value: "0.8" } });
+    });
+    await settleMaybe(() => asked > 0);
+    expect([said, select()?.value]).toEqual([[], "0.9"]);
   });
 
   test("a host without the setting shows no picker", async () => {

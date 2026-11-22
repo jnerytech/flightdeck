@@ -199,13 +199,17 @@ describe("dormindo-ui: asleep sessions in the hub (issue #157)", () => {
 });
 
 describe("dormindo-ui: the host's setting", () => {
-  function setting(minutes?: number) {
+  function setting(minutes?: number, answer: object | null = {}) {
     const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
     store.i18n.start();
     const asked: Array<[string, unknown]> = [];
+    const said: string[] = [];
+    store.success = (text: string) => {
+      said.push(text);
+    };
     store.hostCommand = (async (_h: string, type: string, payload: unknown) => {
       asked.push([type, payload]);
-      return {};
+      return answer;
     }) as never;
     store.reloadHostInfo = (async () => {
       asked.push(["reload", null]);
@@ -215,7 +219,7 @@ describe("dormindo-ui: the host's setting", () => {
         <SleepSetting store={store} host={host(minutes) as never} />
       </TContext.Provider>,
     );
-    return { asked };
+    return { asked, said };
   }
 
   test("it shows the delay the host has, and a change is sent and read back", async () => {
@@ -234,6 +238,35 @@ describe("dormindo-ui: the host's setting", () => {
     });
     await settle(() => w.asked.some(([t]) => t === "reload"));
     expect(w.asked[0]).toEqual(["host.sleep", { minutes: 240 }]);
+  });
+
+  test("the select is the shared NativeSelect, like the memory guard's (#3871)", () => {
+    setting(30);
+    const select = screen.getByLabelText("Sleep idle sessions after");
+    expect(select.getAttribute("data-slot")).toBe("native-select");
+  });
+
+  test("a change the host accepts says it was saved, naming the host (#3871)", async () => {
+    const w = setting(30);
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Sleep idle sessions after"), {
+        target: { value: "240" },
+      });
+    });
+    await settle(() => w.said.length > 0);
+    expect(w.said).toEqual(["Sleep setting saved on alfa."]);
+  });
+
+  test("a change the host refuses shows no success and leaves the delay as it was (#3871)", async () => {
+    const w = setting(30, null);
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Sleep idle sessions after"), {
+        target: { value: "240" },
+      });
+    });
+    await settle(() => w.asked.length > 0);
+    const value = (screen.getByLabelText("Sleep idle sessions after") as HTMLSelectElement).value;
+    expect([w.said, value]).toEqual([[], "30"]);
   });
 
   test("a host without the switch shows nothing, and Off reads as off", () => {
