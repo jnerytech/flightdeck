@@ -39,9 +39,11 @@ export function KeyField(
   /** Where the focus goes once that control exists: the one that had it is gone with the view it was in. */
   const focusNext = useRef<"key" | "replace" | null>(null);
 
+  // Runs after every render: a disabled control (a call is still running) keeps the request until it is enabled.
   useEffect(() => {
+    if (focusNext.current === null) return;
     const target = focusNext.current === "key" ? keyBox.current : replaceButton.current;
-    if (focusNext.current === null || target === null) return;
+    if (target === null || target.disabled) return;
     target.focus();
     focusNext.current = null;
   });
@@ -53,6 +55,8 @@ export function KeyField(
       setSaved(status.saved ? { ...(status.last4 ? { last4: status.last4 } : {}) } : null);
     } catch (error_) {
       focusNext.current = null;
+      // What was on screen may no longer be true (a key was just stored or removed): say so, not the old row.
+      setSaved("unknown");
       setUnread(failureOf(error_));
     }
   }, [store, provider]);
@@ -81,6 +85,7 @@ export function KeyField(
 
   const test = async () => {
     setDoing("test");
+    setError(null);
     setSaid(null);
     try {
       const result = await store.assistant.testKey(provider);
@@ -149,9 +154,6 @@ export function KeyField(
             )}
           </Field>
           <div className="flex gap-2">
-            <Button type="submit" disabled={busy || key.trim() === ""}>
-              {t(doing === "save" ? "assistantSettings.keySaving" : "assistantSettings.keySave")}
-            </Button>
             {replacing && (
               <Button
                 type="button"
@@ -166,6 +168,9 @@ export function KeyField(
                 {t("common.cancel")}
               </Button>
             )}
+            <Button type="submit" disabled={busy || key.trim() === ""}>
+              {t(doing === "save" ? "assistantSettings.keySaving" : "assistantSettings.keySave")}
+            </Button>
           </div>
         </Form>
       ) : (
@@ -178,6 +183,7 @@ export function KeyField(
             disabled={busy}
             onClick={() => {
               focusNext.current = "key";
+              setError(null);
               setReplacing(true);
             }}
           >
@@ -198,7 +204,6 @@ export function KeyField(
           {error}
         </p>
       )}
-      {unreadNotice}
       {said && <output className="text-sm">{said}</output>}
       {removing && (
         <ConfirmDialog

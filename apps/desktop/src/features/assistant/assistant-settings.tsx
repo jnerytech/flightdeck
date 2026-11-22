@@ -64,7 +64,13 @@ const onLinux = () =>
   !/android/i.test(navigator.userAgent);
 
 /** The models of an API provider, from the provider through the shell (null while loading). */
-function useModels(store: AppStore, t: T, provider: AssistantProvider | null) {
+function useModels(
+  store: AppStore,
+  t: T,
+  provider: AssistantProvider | null,
+  /** Whether the provider has a key: a key saved or removed asks for the list again. */
+  keyed: boolean,
+) {
   const [state, setState] = useState<{ options: ModelOption[] | null; error?: string }>({
     options: null,
   });
@@ -90,7 +96,7 @@ function useModels(store: AppStore, t: T, provider: AssistantProvider | null) {
     return () => {
       current = false;
     };
-  }, [store, t, provider, attempt]);
+  }, [store, t, provider, attempt, keyed]);
   return { ...state, retry: () => setAttempt((n) => n + 1) };
 }
 
@@ -98,8 +104,7 @@ function useModels(store: AppStore, t: T, provider: AssistantProvider | null) {
 export function AssistantSettings(props: Readonly<{ store: AppStore; t: T }>) {
   const { store, t } = props;
   const prefs = useSyncExternalStore(store.assistant.subscribe, () => store.assistant.prefs());
-  // Read for the redraw only: the keys saved or removed change what the screen shows.
-  useSyncExternalStore(store.assistant.subscribe, () => store.assistant.keys());
+  const keys = useSyncExternalStore(store.assistant.subscribe, () => store.assistant.keys());
   const { hosts } = useStoreSlice(store, HOSTS_KEYS);
   const apiSupported = store.assistant.supported;
   const [confirming, setConfirming] = useState<{ hostId: string; provider: boolean } | null>(null);
@@ -111,7 +116,14 @@ export function AssistantSettings(props: Readonly<{ store: AppStore; t: T }>) {
   useEffect(() => {
     if (setupNotice) store.assistant.setupShown();
   }, [setupNotice, store]);
-  const models = useModels(store, t, prefs.provider);
+  const models = useModels(
+    store,
+    t,
+    prefs.provider,
+    prefs.provider === "anthropic" || prefs.provider === "openrouter"
+      ? keys[prefs.provider]
+      : false,
+  );
 
   const able = hostsWith(hosts, "assistant");
   const hostId = able.find((host) => host.id === prefs.hostId)?.id ?? able[0]?.id ?? null;
@@ -268,9 +280,11 @@ export function AssistantSettings(props: Readonly<{ store: AppStore; t: T }>) {
                   ? { error: models.error, onRetry: models.retry }
                   : {})}
               />
-              <p className="text-muted-foreground text-xs">
-                {t("assistantSettings.usedFor", { kinds: kindsOf(t, prefs, profile) })}
-              </p>
+              {kindsOf(t, prefs, profile) !== "" && (
+                <p className="text-muted-foreground text-xs">
+                  {t("assistantSettings.usedFor", { kinds: kindsOf(t, prefs, profile) })}
+                </p>
+              )}
               <p className="text-muted-foreground text-xs">
                 {t("assistantSettings.modelInUse", {
                   model: modelInUse(
