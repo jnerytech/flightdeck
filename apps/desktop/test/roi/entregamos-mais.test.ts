@@ -56,6 +56,14 @@ describe("roi-entregamos-mais: did we deliver more?", () => {
     });
   });
 
+  test("the headline carries the cost with its currency, in the marks of each language", () => {
+    const cost = (lang: string) =>
+      headline(period({ cards: 7, costUsd: 0.53 }), period({ cards: 4, costUsd: 31 }), lang).vars
+        .cost;
+    expect(cost("en")).toBe("US$ 0.53");
+    expect(cost("pt-BR")).toBe("US$ 0,53");
+  });
+
   test("the headline is a dictionary key with the numbers, for each situation", () => {
     expect(
       headline(
@@ -65,7 +73,7 @@ describe("roi-entregamos-mais: did we deliver more?", () => {
       ),
     ).toEqual({
       key: "roiUi.headline.more",
-      vars: { n: 7, planned: 5, unplanned: 2, cost: "28.00", previous: 4, moved: "lower" },
+      vars: { n: 7, planned: 5, unplanned: 2, cost: "US$ 28.00", previous: 4, moved: "lower" },
     });
     expect(
       headline(period({ cards: 10, costUsd: 5 }), period({ cards: 10, costUsd: 5 }), "en").key,
@@ -77,7 +85,7 @@ describe("roi-entregamos-mais: did we deliver more?", () => {
       headline(period({ cards: 0, costUsd: 6 }), period({ cards: 0, costUsd: 0 }), "en"),
     ).toEqual({
       key: "roiUi.headline.none",
-      vars: { cost: "6.00" },
+      vars: { cost: "US$ 6.00" },
     });
     expect(
       headline(period({ cards: 0, costUsd: 6 }), period({ cards: 3, costUsd: 3 }), "en").key,

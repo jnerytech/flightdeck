@@ -192,21 +192,21 @@ describe("roi-calculo: the arithmetic and where each number comes from", () => {
     ]);
     const by = (key: string) => f.derivation.find((line) => line.key === key)?.vars;
     expect(by("roiUi.derive.cost")).toEqual({
-      total: "12.00",
-      agents: "12.00",
-      plan: "0.00",
-      review: "0.00",
+      total: "US$ 12.00",
+      agents: "US$ 12.00",
+      plan: "US$ 0.00",
+      review: "US$ 0.00",
     });
-    expect(by("roiUi.derive.costPerCard")).toEqual({ cost: "12.00", n: 3, each: "4.00" });
+    expect(by("roiUi.derive.costPerCard")).toEqual({ cost: "US$ 12.00", n: 3, each: "US$ 4.00" });
     expect(by("roiUi.derive.hours")).toEqual({ hours: 6 });
     expect(by("roiUi.derive.noEstimate")).toEqual({ n: 2 });
     expect(by("roiUi.derive.value")).toEqual({
       hours: 6,
-      rate: "60.00",
-      billed: "0.00",
-      value: "360.00",
+      rate: "US$ 60.00",
+      billed: "US$ 0.00",
+      value: "US$ 360.00",
     });
-    expect(by("roiUi.derive.roi")).toEqual({ value: "360.00", cost: "12.00", roi: "29.0" });
+    expect(by("roiUi.derive.roi")).toEqual({ value: "US$ 360.00", cost: "US$ 12.00", roi: "29.0" });
   });
 
   test("without a rate the derivation stops at the cost per unit and says nothing about value", () => {
