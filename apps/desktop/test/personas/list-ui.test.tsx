@@ -26,10 +26,13 @@ const qa = {
 type Reply = (type: string, payload: unknown) => unknown | Promise<unknown>;
 
 /** The Personas page of a host whose daemon is a fake: `reply` answers each request, null is a refusal. */
-function mount(reply: Reply, language: "en" | "pt-BR") {
+function mount(reply: Reply, language: "en" | "pt-BR", online = true) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
-  seedHosts(store, [{ id: "h1", name: "alfa", features: ["personas"] }]);
+  (store as unknown as { update(p: object): void }).update({
+    projects: { h1: [{ id: "p1", name: "api", path: "/work/api", baseBranch: "main" }] },
+  });
+  seedHosts(store, [{ id: "h1", name: "alfa", online, features: ["personas"] }]);
   const sent: string[] = [];
   store.hostCommand = (async (_host: string, type: string, payload: unknown) => {
     sent.push(type);
@@ -66,6 +69,7 @@ describe.each([
       failed: "Could not read this host's personas.",
       retry: "Try again",
       empty: "No persona.",
+      project: "Project",
     },
   ],
   [
@@ -75,6 +79,7 @@ describe.each([
       failed: "Não foi possível ler as personas deste host.",
       retry: "Tentar de novo",
       empty: "Nenhuma persona.",
+      project: "Projeto",
     },
   ],
 ] as const)("personas list (%s)", (language, words) => {
@@ -88,6 +93,48 @@ describe.each([
     mount(() => ({ personas: [] }), language);
     await settle(() => hasText(words.empty));
     expect(has("status", words.loading)).toBe(false);
+  });
+
+  test("with no host online there is nothing to wait for: the empty state shows", async () => {
+    mount(() => new Promise(() => {}), language, false);
+    await settle(() => hasText(words.empty));
+    expect(has("status", words.loading)).toBe(false);
+  });
+
+  test("another project's read in flight does not show the last project's cards", async () => {
+    mount(
+      (_type, payload) =>
+        (payload as { scope: string }).scope === "host"
+          ? { personas: [qa] }
+          : new Promise(() => {}),
+      language,
+    );
+    await settle(() => hasText("QA"));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText(words.project), { target: { value: "/work/api" } });
+    });
+    await settle(() => has("status", words.loading));
+    expect(hasText("QA")).toBe(false);
+  });
+
+  test("the retry after a failed refresh is loading again, not the old cards", async () => {
+    let calls = 0;
+    mount(
+      () => (++calls === 1 ? { personas: [qa] } : calls === 2 ? null : new Promise(() => {})),
+      language,
+    );
+    await settle(() => hasText("QA"));
+    // The page reads again once the person changes language-independent state: a project round trip.
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText(words.project), { target: { value: "@app" } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText(words.project), { target: { value: "" } });
+    });
+    await settle(() => alerted(words.failed));
+    await press(words.retry);
+    await settle(() => has("status", words.loading));
+    expect(hasText("QA")).toBe(false);
   });
 
   test("a refused read says so with a retry, and no empty state", async () => {
