@@ -202,7 +202,7 @@ export const hosts = {
     cardReady: "Flightdeck v{version} is ready.",
     cardSafe: "Your sessions will not be interrupted.",
     cardNotes: "Release notes",
-    cardUpdate: "Update",
+    cardUpdate: "Update and restart",
     cardClose: "Close the update notice",
     label: "App update",
     available: "Flightdeck {version} available",

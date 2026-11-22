@@ -128,7 +128,7 @@ export class AppUpdateSlice {
 
   /** Hides the error line of the banner; the next failure shows its own. */
   dismissError(): void {
-    // Stub: the error stays (red).
+    this.patch({ error: null });
   }
 
   /**

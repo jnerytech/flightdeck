@@ -143,7 +143,7 @@ describe("app-updater", () => {
     await start(mem);
     await waitFor(() =>
       expect(text()).toContain(
-        "não consegui procurar atualização: sem rede. Confira a rede e tente de novo em Configurações.",
+        "A verificação de atualização não terminou: sem rede. Confira a rede e tente de novo em Configurações.",
       ),
     );
   });

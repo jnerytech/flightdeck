@@ -438,7 +438,7 @@ export const en: Dictionary = {
     terminalFailed:
       "The terminal did not open: {error}. Use Copy command and paste it into your terminal.",
     updateCheckFailed:
-      "could not check for updates: {error}. Check the network and try again in Settings.",
+      "The update check did not finish: {error}. Check the network and try again in Settings.",
     updateDownloadFailed:
       "The new version did not download: {error}. It is tried again at the next check, or install it from Settings.",
     updateInstallFailed:

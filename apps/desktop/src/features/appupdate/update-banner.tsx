@@ -41,7 +41,23 @@ export const UpdateBanner = memo(function UpdateBanner(props: { store: AppStore 
           </Inline>
         </>
       )}
-      {error && <p className="text-status-needs-you">{error}</p>}
+      {error && (
+        <div role="alert" className="flex flex-col gap-2">
+          <p className="text-status-needs-you">{error}</p>
+          <Inline gap={2}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => store.router.push({ name: "settings", section: "updates" })}
+            >
+              {t("update.openSettings")}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => store.appUpdates.dismissError()}>
+              {t("update.dismissError")}
+            </Button>
+          </Inline>
+        </div>
+      )}
     </section>
   );
 });
