@@ -2,10 +2,10 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { HubRow } from "../../src/features/sessions/domain/hub.ts";
 import { shortcutOf } from "../../src/features/shortcuts/domain/shortcuts.ts";
 import { formatAgo } from "../../src/i18n/format.ts";
-import { ROUTE_NAMES } from "../../src/lib/router.ts";
+import { ROUTE_NAMES, type Route } from "../../src/lib/router.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, seedHosts } from "../fixtures.ts";
-import { settle } from "../wait.ts";
+import { settle, settleMaybe } from "../wait.ts";
 import { activityState, HOUR, MIN, NOW } from "./fixtures.ts";
 
 registerDom();
@@ -23,29 +23,52 @@ afterEach(cleanup);
 type Specs = Parameters<typeof activityState>[0];
 
 /** Puts the fixture's hosts, hub and unread marks in the store, as a daemon's answers would. */
-function feed(store: InstanceType<typeof AppStore>, specs: Specs) {
+function feed(store: InstanceType<typeof AppStore>, specs: Specs, hostsAre: HostsAre = "online") {
   const { hosts, hub, unread } = activityState(specs, store.getState());
-  (store as unknown as { update(patch: object): void }).update({ hosts, hub, unread });
+  let shown = hosts;
+  if (hostsAre === "none" || hostsAre === "unloaded") shown = [];
+  else if (hostsAre === "connecting") shown = hosts.map((h) => ({ ...h, status: "connecting" }));
+  else if (hostsAre === "one-online") {
+    shown = hosts.map((h, i) => ({ ...h, status: i === 0 ? "online" : "connecting" }));
+  } else if (hostsAre === "one-offline") {
+    shown = hosts.map((h, i) => ({ ...h, status: i === 0 ? "offline" : "connecting" }));
+  }
+  (store as unknown as { update(patch: object): void }).update({
+    hosts: shown,
+    hostsLoaded: hostsAre !== "unloaded",
+    hub,
+    unread,
+  });
 }
 
-function setup(_specs: Specs, options: { language?: "en" | "pt-BR"; platform?: never } = {}) {
+/** What the roster holds: no host, hosts being reached, or hosts that answered. */
+type HostsAre = "none" | "unloaded" | "connecting" | "one-offline" | "one-online" | "online";
+
+function setup(
+  _specs: Specs,
+  options: { language?: "en" | "pt-BR"; hosts?: HostsAre; platform?: never } = {},
+) {
   const mem = memoryPlatform(false, options.language ?? "en");
   const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   store.now = () => NOW;
   const responded: Array<[string, string, string]> = [];
+  /** What the store answers to the next Approve or Deny: the host took it, or it failed and says why. */
+  const answers: { next: { ok: true } | { ok: false; reason: string } } = { next: { ok: true } };
+  const routes: Route[] = [];
   store.respondTo = (async (hostId: string, requestId: string, decision: string) => {
     responded.push([hostId, requestId, decision]);
+    return answers.next;
   }) as never;
   const opened: Array<[string, boolean]> = [];
   /** The sessions the board shows are the store's: the fixture's state replaces it. */
   const view = (next: Specs) => {
-    feed(store, next);
+    feed(store, next, options.hosts ?? "online");
     return (
       <TContext.Provider value={store.i18n.t}>
         <ActivityBoard
           store={store}
-          go={() => {}}
+          go={(route) => void routes.push(route)}
           onOpen={(row: HubRow, newTab: boolean) => void opened.push([row.title, newTab])}
           holdMs={30}
           tickMs={20}
@@ -53,7 +76,7 @@ function setup(_specs: Specs, options: { language?: "en" | "pt-BR"; platform?: n
       </TContext.Provider>
     );
   };
-  return { store, mem, responded, opened, view };
+  return { store, mem, responded, answers, routes, opened, view };
 }
 
 const SPECS: Specs = [
@@ -283,6 +306,75 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     });
     expect(said().some((text) => text?.includes("Approved"))).toBe(false);
     expect(document.activeElement?.textContent).toBe("Approve");
+  });
+
+  const alerts = () => screen.queryAllByRole("alert").map((el) => el.textContent ?? "");
+  const SEND_FAILED = { ok: false, reason: "the host is not reachable" } as const;
+
+  test("a failed Approve or Deny says why on the card and keeps the focus on the button (#4240)", async () => {
+    const w = setup(SPECS);
+    w.answers.next = SEND_FAILED;
+    render(w.view(SPECS));
+    const approve = control(column("Needs you"), "Approve Fix login");
+    approve.focus();
+    await act(async () => {
+      fireEvent.click(approve);
+    });
+    expect(await settleMaybe(() => alerts().length === 1)).toBe(true);
+    expect(alerts()).toEqual(["Could not send the answer: the host is not reachable"]);
+    expect(document.activeElement?.textContent).toBe("Approve");
+    await act(async () => {
+      fireEvent.click(control(column("Needs you"), "Deny Fix login"));
+    });
+    expect(await settleMaybe(() => alerts().length === 1)).toBe(true);
+    expect(alerts()).toEqual(["Could not send the answer: the host is not reachable"]);
+  });
+
+  test("a held high-risk Approve that fails says why too (#4240)", async () => {
+    const specs: Specs = [{ id: "ask", status: "awaiting_permission", agoMs: MIN, risk: "high" }];
+    const w = setup(specs);
+    w.answers.next = SEND_FAILED;
+    render(w.view(specs));
+    await act(async () => {
+      fireEvent.pointerDown(control(column("Needs you"), "Hold to approve ask"));
+    });
+    expect(await settleMaybe(() => alerts().length === 1)).toBe(true);
+    expect(alerts()).toEqual(["Could not send the answer: the host is not reachable"]);
+  });
+
+  test("the failure line goes when the next answer works, and when the request leaves (#4240)", async () => {
+    const w = setup(SPECS);
+    w.answers.next = SEND_FAILED;
+    const view = render(w.view(SPECS));
+    await act(async () => {
+      fireEvent.click(control(column("Needs you"), "Approve Fix login"));
+    });
+    expect(await settleMaybe(() => alerts().length === 1)).toBe(true);
+    w.answers.next = { ok: true };
+    await act(async () => {
+      fireEvent.click(control(column("Needs you"), "Deny Fix login"));
+    });
+    expect(await settleMaybe(() => alerts().length === 0)).toBe(true);
+    w.answers.next = SEND_FAILED;
+    await act(async () => {
+      fireEvent.click(control(column("Needs you"), "Approve Fix login"));
+    });
+    expect(await settleMaybe(() => alerts().length === 1)).toBe(true);
+    await act(async () => {
+      view.rerender(w.view(TAKEN));
+    });
+    expect(alerts()).toEqual([]);
+  });
+
+  test("a failed answer reads in Portuguese (#4240)", async () => {
+    const w = setup(SPECS, { language: "pt-BR" });
+    w.answers.next = SEND_FAILED;
+    render(w.view(SPECS));
+    await act(async () => {
+      fireEvent.click(control(column("Precisa de você"), "Aprovar Fix login"));
+    });
+    expect(await settleMaybe(() => alerts().length === 1)).toBe(true);
+    expect(alerts()).toEqual(["Não foi possível enviar a resposta: the host is not reachable"]);
   });
 
   test("a card that moved column after the answer still gets the focus back on its title (#2675)", async () => {
@@ -517,6 +609,214 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     const w = setup(SPECS, { language: "pt-BR" });
     render(w.view(SPECS));
     expect(columnNames()).toEqual(["Precisa de você", "Trabalhando", "Concluídas"]);
+  });
+
+  test("the Done column says what Done is (#4241)", () => {
+    const w = setup(SPECS);
+    render(w.view(SPECS));
+    expect(
+      has(
+        within(column("Done")).queryByText(
+          "A finished turn you did not open, for 2 hours. After that it is Idle.",
+        ),
+      ),
+    ).toBe(true);
+    expect(has(within(column("Working")).queryByText(/2 hours/))).toBe(false);
+  });
+
+  const IDLE_SPECS: Specs = [
+    ...SPECS,
+    { id: "old1", name: "Old one", status: "idle", agoMs: 3 * HOUR },
+    { id: "old2", name: "Old two", status: "idle", agoMs: 4 * HOUR, unread: true },
+  ];
+
+  test("with Idle off the board counts the idle sessions it hides, and the count goes with Show idle (#4241)", async () => {
+    const w = setup(IDLE_SPECS);
+    render(w.view(IDLE_SPECS));
+    expect(has(screen.queryByText("3 idle sessions hidden"))).toBe(true);
+    await act(async () => {
+      fireEvent.click(idleSwitch());
+    });
+    expect(has(screen.queryByText(/idle sessions? hidden/))).toBe(false);
+  });
+
+  test("one hidden idle session reads in the singular, and none says nothing (#4241)", () => {
+    const one: Specs = [
+      ...SPECS.slice(0, 3),
+      { id: "seen", name: "Old chat", status: "idle", agoMs: MIN },
+    ];
+    const w = setup(one);
+    render(w.view(one));
+    expect(has(screen.queryByText("1 idle session hidden"))).toBe(true);
+    cleanup();
+    const none: Specs = SPECS.slice(0, 3);
+    render(setup(none).view(none));
+    expect(has(screen.queryByText(/idle sessions? hidden/))).toBe(false);
+  });
+
+  test("with only idle sessions hidden it does not say there is nothing yet (#4241)", () => {
+    const only: Specs = [{ id: "seen", name: "Old chat", status: "idle", agoMs: HOUR * 3 }];
+    const w = setup(only);
+    render(w.view(only));
+    expect(has(screen.queryByText("1 idle session hidden"))).toBe(true);
+    expect(
+      has(screen.queryByText("Nothing here yet. Start a session and it shows on this board.")),
+    ).toBe(false);
+  });
+
+  test("the hidden count and the Done hint read in Portuguese (#4241)", () => {
+    const w = setup(IDLE_SPECS, { language: "pt-BR" });
+    render(w.view(IDLE_SPECS));
+    expect(has(screen.queryByText("3 sessões ociosas ocultas"))).toBe(true);
+    expect(
+      has(
+        within(column("Concluídas")).queryByText(
+          "Um turno terminado que você não abriu, por 2 horas. Depois disso vai para Ociosas.",
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  test("with no host it offers Add a host, not four columns of None (#4241)", async () => {
+    const w = setup(SPECS, { hosts: "none" });
+    render(w.view(SPECS));
+    expect(columnNames()).toEqual([]);
+    expect(has(screen.queryByText("No host yet. Add one to see its sessions here."))).toBe(true);
+    await act(async () => {
+      fireEvent.click(control(document.body, "Add a host"));
+    });
+    expect(w.routes).toEqual([{ name: "add-host" }]);
+  });
+
+  test("until a host has answered it says it is loading, then the columns show (#4241)", async () => {
+    const w = setup(SPECS, { hosts: "connecting" });
+    render(w.view([]));
+    expect(columnNames()).toEqual([]);
+    expect(has(screen.queryByText("Reaching your hosts…"))).toBe(true);
+    cleanup();
+    render(setup(SPECS).view(SPECS));
+    expect(columnNames().length).toBe(3);
+    expect(has(screen.queryByText("Reaching your hosts…"))).toBe(false);
+  });
+
+  test("before the saved hosts are read it is loading, not No host yet (#4241)", () => {
+    const w = setup(SPECS, { hosts: "unloaded" });
+    render(w.view([]));
+    expect(has(screen.queryByText("Reaching your hosts…"))).toBe(true);
+    expect(has(screen.queryByText("No host yet. Add one to see its sessions here."))).toBe(false);
+  });
+
+  test("one host offline and another still being reached is still loading (#4241)", () => {
+    const w = setup(SPECS, { hosts: "one-offline" });
+    render(w.view([]));
+    expect(has(screen.queryByText("Reaching your hosts…"))).toBe(true);
+  });
+
+  test("a host that answered with no session is a quiet day even while another is still being reached (#4241)", () => {
+    const w = setup(SPECS, { hosts: "one-online" });
+    render(w.view([]));
+    expect(has(screen.queryByText("Reaching your hosts…"))).toBe(false);
+    expect(columnNames().length).toBe(3);
+  });
+
+  test("sessions that Idle hides are known sessions: no loading line while a host is still being reached (#4241)", () => {
+    const idleOnly: Specs = [{ id: "seen", name: "Old chat", status: "idle", agoMs: 40 * MIN }];
+    const w = setup(idleOnly, { hosts: "connecting" });
+    render(w.view(idleOnly));
+    expect(has(screen.queryByText("Reaching your hosts…"))).toBe(false);
+    expect(has(screen.queryByText("1 idle session hidden"))).toBe(true);
+  });
+
+  test("a failed answer does not disarm another answer still in flight (#4240)", async () => {
+    const two: Specs = [
+      ...SPECS,
+      { id: "ask2", name: "Second", status: "awaiting_permission", agoMs: 2 * MIN, request: "x" },
+    ];
+    const w = setup(two);
+    const pending: Array<(answer: { ok: boolean; reason?: string }) => void> = [];
+    w.store.respondTo = ((hostId: string, requestId: string, decision: string) => {
+      w.responded.push([hostId, requestId, decision]);
+      return new Promise((resolve) => void pending.push(resolve));
+    }) as never;
+    const view = render(w.view(two));
+    await act(async () => {
+      fireEvent.click(control(column("Needs you"), "Approve Fix login"));
+      fireEvent.click(control(column("Needs you"), "Approve Second"));
+    });
+    await act(async () => {
+      pending[0]?.({ ok: false, reason: "the host is not reachable" });
+    });
+    const second: Specs = two.map((s) =>
+      s.id === "ask2" ? { id: "ask2", name: "Second", status: "running", agoMs: 0 } : s,
+    );
+    await act(async () => {
+      pending[1]?.({ ok: true });
+      view.rerender(w.view(second));
+    });
+    expect(await settleMaybe(() => said().includes("Approved Second"))).toBe(true);
+  });
+
+  test("the focus is not pulled back to the button when the person has moved it to the page (#4240)", async () => {
+    const w = setup(SPECS);
+    w.answers.next = SEND_FAILED;
+    const view = render(w.view(SPECS));
+    const approve = control(column("Needs you"), "Approve Fix login");
+    approve.focus();
+    await act(async () => {
+      fireEvent.click(approve);
+    });
+    expect(await settleMaybe(() => alerts().length === 1)).toBe(true);
+    (document.activeElement as HTMLElement | null)?.blur();
+    await act(async () => {
+      view.rerender(w.view(SPECS));
+    });
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  test("an answer that failed does not announce, or take the focus, when the request later leaves (#4240)", async () => {
+    const w = setup(SPECS);
+    w.answers.next = SEND_FAILED;
+    const view = render(w.view(SPECS));
+    await act(async () => {
+      fireEvent.click(control(column("Needs you"), "Approve Fix login"));
+    });
+    expect(await settleMaybe(() => alerts().length === 1)).toBe(true);
+    await act(async () => {
+      view.rerender(w.view(TAKEN));
+    });
+    expect(said().some((text) => text?.includes("Approved"))).toBe(false);
+  });
+
+  test("when the browser drops the focus of the button that was disabled while sending, a failed answer puts it back (#4240)", async () => {
+    const w = setup(SPECS);
+    w.answers.next = SEND_FAILED;
+    const send = w.store.respondTo;
+    w.store.respondTo = (async (...args: Parameters<typeof send>) => {
+      // What Chromium does to a focused button that becomes disabled: the focus falls to the page.
+      (document.activeElement as HTMLElement | null)?.blur();
+      return send(...args);
+    }) as never;
+    render(w.view(SPECS));
+    const deny = control(column("Needs you"), "Deny Fix login");
+    deny.focus();
+    await act(async () => {
+      fireEvent.click(deny);
+    });
+    expect(await settleMaybe(() => alerts().length === 1)).toBe(true);
+    expect(document.activeElement?.textContent).toBe("Deny");
+  });
+
+  test("the no-host and loading states read in Portuguese (#4241)", () => {
+    const none = setup(SPECS, { hosts: "none", language: "pt-BR" });
+    render(none.view(SPECS));
+    expect(
+      has(screen.queryByText("Nenhum host ainda. Adicione um para ver as sessões aqui.")),
+    ).toBe(true);
+    expect(has(screen.queryByRole("button", { name: "Adicionar um host" }))).toBe(true);
+    cleanup();
+    const loading = setup(SPECS, { hosts: "connecting", language: "pt-BR" });
+    render(loading.view([]));
+    expect(has(screen.queryByText("Conectando aos seus hosts…"))).toBe(true);
   });
 });
 

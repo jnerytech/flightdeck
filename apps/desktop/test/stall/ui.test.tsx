@@ -28,7 +28,12 @@ function setup(language: "en" | "pt-BR" = "en", specs: Specs = SPECS) {
   store.i18n.start();
   store.now = () => NOW;
   const { hosts, hub, unread } = activityState(specs, store.getState());
-  (store as unknown as { update(p: object): void }).update({ hosts, hub, unread });
+  (store as unknown as { update(p: object): void }).update({
+    hosts,
+    hostsLoaded: true,
+    hub,
+    unread,
+  });
   const sent: Array<[string, string, string?]> = [];
   store.commands.interruptOn = (async (host: string, id: string) => {
     sent.push(["interrupt", `${host}/${id}`]);

@@ -33,11 +33,13 @@ import { assistantShots, demoAssistantPrefs } from "./lib/shots/table-assistant.
 import { automationShots } from "./lib/shots/table-automations.ts";
 import { backgroundShots } from "./lib/shots/table-background.ts";
 import { boardShots } from "./lib/shots/table-board.ts";
+import { changesShots } from "./lib/shots/table-changes.ts";
 import { costsShots } from "./lib/shots/table-costs.ts";
 import { devicesShots } from "./lib/shots/table-devices.ts";
 import { harnessShots } from "./lib/shots/table-harness.ts";
 import { hostShots } from "./lib/shots/table-hosts.ts";
 import { issuesShots } from "./lib/shots/table-issues.ts";
+import { knowledgeShots, memoryShots } from "./lib/shots/table-knowledge.ts";
 import { permissionShots } from "./lib/shots/table-permissions.ts";
 import { personaShots } from "./lib/shots/table-personas.ts";
 import { shellShots } from "./lib/shots/table-shell.ts";
@@ -84,10 +86,13 @@ function shots(ids: DemoIds): Shot[] {
   return [
     ...shellShots(ids),
     ...boardShots(ids),
+    ...changesShots(ids),
     ...agentShots(ids),
     ...hostShots(ids),
     ...harnessShots(ids),
     ...automationShots(ids),
+    ...knowledgeShots(ids),
+    ...memoryShots(ids),
     ...issuesShots(ids),
     ...devicesShots(ids),
     ...permissionShots(ids),
