@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, sep } from "node:path";
+import { userHome } from "../../src/config.ts";
 import { displayPath } from "../../src/memory/domain/display-path.ts";
 import { ProjectMemory } from "../../src/memory/memory.ts";
 import { tempDir } from "../support/helpers.ts";
@@ -216,5 +217,13 @@ describe("memoria: ramos do orçamento e dos nomes", () => {
       ),
     ).toBe("bad_request");
     expect(readFileSync(outside, "utf8")).toBe("fora\n");
+  });
+  test("the budget names the project's root and the user's home, so a screen can show the paths short (#3986)", async () => {
+    const ctx = setup();
+    const budget = (await ctx.memory.budget(ctx.repo)) as { root?: string; home?: string };
+    expect([budget.root, budget.home]).toEqual([
+      displayPath(realpathSync(ctx.repo), sep),
+      displayPath(userHome(), sep),
+    ]);
   });
 });
