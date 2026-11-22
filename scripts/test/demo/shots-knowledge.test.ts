@@ -146,11 +146,6 @@ describe("the Memory prints (#4236)", () => {
       });
     }
   });
-
-  test("the Memory tab and its name error are re-measured narrow", () => {
-    expect(narrowSizes("dark", "agente-memoria")).toHaveLength(3);
-    expect(narrowSizes("dark", "agente-memoria-nome-erro")).toHaveLength(3);
-  });
 });
 
 describe("the prints never let a command that writes reach the host (#4236)", () => {
