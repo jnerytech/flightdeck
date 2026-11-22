@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
-import { Field, Inline, Panel, Stack } from "@/shared/layout/index.ts";
+import { Field, Form, Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import { basename } from "@/shared/lib/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -38,6 +38,11 @@ export const BgPanel = memo(function BgPanel(props: {
   const [acting, setActing] = useState<"stop" | "respawn" | null>(null);
   const [failed, setFailed] = useState<"stop" | "respawn" | null>(null);
   const [asking, setAsking] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState<"ok" | "refused" | null>(null);
+  const field = useRef<HTMLInputElement>(null);
+  // A ref too: two submits in the same event see the first one before React renders it.
+  const inFlight = useRef(false);
   const region = useRef<HTMLElement>(null);
   if (!session) return null;
   const name = session.name || basename(session.cwd);
@@ -51,8 +56,17 @@ export const BgPanel = memo(function BgPanel(props: {
   const host = state.hosts.find((h) => h.id === hostId);
   const terminal = hasFeature(host?.hostInfo?.features, "terminal", false);
   const send = async () => {
-    if (!text.trim()) return;
-    if (await store.background.message(hostId, session.id, text.trim())) setText("");
+    if (!text.trim() || inFlight.current) return;
+    inFlight.current = true;
+    setSending(true);
+    setSent(null);
+    const accepted = await store.background.message(hostId, session.id, text.trim());
+    inFlight.current = false;
+    setSending(false);
+    setSent(accepted ? "ok" : "refused");
+    if (accepted) setText("");
+    // The button is off again once the box is empty: the focus stays where the person types.
+    field.current?.focus();
   };
   return (
     <section ref={region} tabIndex={-1} aria-label={t("bg.region", { name })}>
@@ -105,16 +119,37 @@ export const BgPanel = memo(function BgPanel(props: {
           <output className="text-destructive text-sm empty:sr-only">
             {failed ? t(failed === "stop" ? "bg.stopFailed" : "bg.respawnFailed") : ""}
           </output>
-          <Inline>
-            <Field label={t("bg.message")}>
-              {(control) => (
-                <Input {...control} value={text} onChange={(e) => setText(e.target.value)} />
-              )}
-            </Field>
-            <Button variant="outline" size="sm" onClick={() => void send()}>
-              {t("bg.send")}
-            </Button>
-          </Inline>
+          <Form variant="inline" onSubmit={() => void send()}>
+            <Inline>
+              <Field label={t("bg.message")}>
+                {(control) => (
+                  <Input
+                    {...control}
+                    ref={field}
+                    value={text}
+                    onChange={(e) => {
+                      setText(e.target.value);
+                      setSent(null);
+                    }}
+                  />
+                )}
+              </Field>
+              <ActionButton
+                type="submit"
+                variant="outline"
+                size="sm"
+                pending={sending}
+                disabled={!text.trim()}
+              >
+                {t("bg.send")}
+              </ActionButton>
+            </Inline>
+            <output
+              className={`text-sm empty:sr-only ${sent === "refused" ? "text-destructive" : ""}`}
+            >
+              {sent === "ok" ? t("bg.sent") : sent === "refused" ? t("bg.sendFailed") : ""}
+            </output>
+          </Form>
         </Stack>
       </Panel>
       {asking && (

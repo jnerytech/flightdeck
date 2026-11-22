@@ -309,6 +309,8 @@ export const ptBR = {
     attach: "Trazer para o terminal",
     message: "Mensagem",
     send: "Enviar",
+    sent: "Mensagem enviada.",
+    sendFailed: "A mensagem não foi enviada. Seu texto continua no campo.",
     start: "Iniciar em segundo plano",
     startHint: "A sessão roda sem terminal, com o canal do Flightdeck, e aparece em Sessões.",
     startItem: "Iniciar em segundo plano, sem terminal",

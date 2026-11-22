@@ -308,6 +308,8 @@ export const en: Dictionary = {
     attach: "Bring to the terminal",
     message: "Message",
     send: "Send",
+    sent: "Message sent.",
+    sendFailed: "The message was not sent. Your text is still in the field.",
     start: "Start in the background",
     startHint:
       "The session runs with no terminal, with Flightdeck's channel, and shows up in Sessions.",
