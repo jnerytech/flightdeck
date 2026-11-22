@@ -210,6 +210,9 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
         {phase.at === "confirm" && (
           <Form variant="dialog" onSubmit={() => reply(true)}>
             <p>
+              {t("teleportUi.to")} {host} · <span className="font-mono">{repo.trim()}</span>
+            </p>
+            <p>
               {t("teleportUi.branch")}{" "}
               {phase.summary.branch ? (
                 <bdi className="font-mono">{phase.summary.branch}</bdi>
@@ -220,7 +223,9 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
             <p>{t("teleportUi.ahead", { n: phase.summary.ahead })}</p>
             <p>{t("teleportUi.changed", { n: phase.summary.changed })}</p>
             <p>{t("teleportUi.size", { size: formatBytes(phase.summary.bytes) })}</p>
-            <p>{t("teleportUi.secrets", { n: phase.summary.secretLines })}</p>
+            <p className={phase.summary.secretLines > 0 ? "text-status-needs-you" : undefined}>
+              {t("teleportUi.secrets", { n: phase.summary.secretLines })}
+            </p>
             <FormActions
               submit={t("teleportUi.move")}
               cancel={t("teleportUi.back")}
