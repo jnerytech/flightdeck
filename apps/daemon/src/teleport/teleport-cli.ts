@@ -213,10 +213,11 @@ export function runTeleportCli(
         if (outcome.kind === "cancelled") return failure(1, CANCELLED);
         if (outcome.kind === "declined")
           return notConfirmed(args, found.id, target.name, manifest, lines);
+        // What the target answers is its own text: its token never reaches a line.
         const landed = {
-          sessionId: outcome.sessionId,
-          worktree: outcome.worktree,
-          branch: outcome.branch,
+          sessionId: hideTarget(outcome.sessionId),
+          worktree: hideTarget(outcome.worktree),
+          branch: hideTarget(outcome.branch),
         };
         if (args.json) {
           return json({
