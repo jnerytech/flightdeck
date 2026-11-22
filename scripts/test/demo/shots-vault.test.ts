@@ -14,6 +14,10 @@ describe("the vault's prints (#3602)", () => {
       "cofre-vazio",
       "cofre-novo",
       "cofre-revelar",
+      "cofre-copiar",
+      "cofre-editar",
+      "cofre-regras",
+      "cofre-remover",
       "cofre-uso",
       "cofre-backup",
       "cofre-relatorio",
@@ -25,7 +29,15 @@ describe("the vault's prints (#3602)", () => {
     const seeded = vaultShots()
       .filter((shot) => shot.secrets === true)
       .map((shot) => shot.name);
-    expect(seeded).toEqual(["cofre-segredos", "cofre-novo", "cofre-revelar", "cofre-uso"]);
+    expect(seeded).toEqual([
+      "cofre-segredos",
+      "cofre-novo",
+      "cofre-revelar",
+      "cofre-editar",
+      "cofre-regras",
+      "cofre-remover",
+      "cofre-uso",
+    ]);
   });
 
   test("the seeded list is valid secrets of every type, with no value in it", () => {
@@ -48,5 +60,29 @@ describe("the vault's prints (#3602)", () => {
     expect(new Set(lines.map((l) => l.kind))).toEqual(new Set(["delivered", "denied"]));
     for (const l of lines) expect(Object.keys(l)).not.toContain("value");
     expect(vaultShots().find((s) => s.name === "cofre-uso")?.vaultUsage).toBe(true);
+  });
+
+  // #3944: every row of the print read "Unknown" because the seed's requester was "session", which
+  // is none of the requesters the log knows.
+  test("the Usage print seeds each requester the log knows, one line each, and none reads Unknown", () => {
+    const lines = JSON.parse(demoVaultUsage("demo-alfa")) as { requester: string }[];
+    expect(lines.map((l) => l.requester).sort((a, b) => a.localeCompare(b))).toEqual([
+      "automation",
+      "claude",
+      "workflow",
+      "you",
+    ]);
+  });
+
+  test("the Usage lines name a purpose and a secret of the list, delivered or denied", () => {
+    const lines = JSON.parse(demoVaultUsage("demo-alfa")) as { purpose: string; kind: string }[];
+    expect(lines.every((l) => l.purpose !== "" && ["delivered", "denied"].includes(l.kind))).toBe(
+      true,
+    );
+  });
+
+  test("the Copy print starts with no secret in the list: it adds one, so there is a value to copy", () => {
+    const copy = vaultShots().find((s) => s.name === "cofre-copiar");
+    expect([copy?.secrets, copy?.prepare === undefined]).toEqual([undefined, false]);
   });
 });

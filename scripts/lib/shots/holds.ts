@@ -4,6 +4,8 @@ export interface FrameRewriter {
   fromApp(frame: string): void;
   /** A frame the host sends: the answer to a noted request comes back rewritten. */
   fromHost(frame: string): string;
+  /** Frames the host seems to send right after `frame`, which the app hears once it heard `frame` (#3943). */
+  followUp?(frame: string): string[];
 }
 
 type Data = Record<string, unknown> & { memory?: { totalBytes?: number }; budgets?: unknown[] };
