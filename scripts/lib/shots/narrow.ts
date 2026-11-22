@@ -41,6 +41,10 @@ export const NARROW_SHOTS: readonly string[] = [
   // #1244: Merge PR's confirmation on a card with an open PR.
   "card-merge-pr",
   "workflows-modelos",
+  // #4203: the bell's panel, its rows and their buttons, at every width.
+  "sino-painel",
+  "sino-recusa",
+  "sino-alto-risco",
   "board-contrato",
   // #1052: the onboarding journey, the first screens a new person sees.
   "primeira-execucao",

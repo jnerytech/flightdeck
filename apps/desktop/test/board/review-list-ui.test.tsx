@@ -71,3 +71,21 @@ describe("review-list-ui: the quote of a blank line (#1497)", () => {
     expect(quotes()).toEqual(["total += price"]);
   });
 });
+
+// #4228: "Outdated" says what it means, in both languages, as the External badge does.
+describe("review-list-ui: what Outdated means (#4228)", () => {
+  const HINT = {
+    en: ["Outdated", "The code this comment was made on has changed since."],
+    "pt-BR": ["Desatualizado", "O código em que o comentário foi feito mudou depois."],
+  } as const;
+  for (const lang of ["en", "pt-BR"] as const) {
+    test(`${lang}: the badge carries its explanation, and a current comment has no badge`, () => {
+      list([comment({ outdated: true })], lang);
+      const [word, hint] = HINT[lang];
+      expect(screen.queryByText(word)?.getAttribute("title")).toBe(hint);
+      cleanup();
+      list([comment({ outdated: false })], lang);
+      expect(screen.queryByText(word)).toBeNull();
+    });
+  }
+});

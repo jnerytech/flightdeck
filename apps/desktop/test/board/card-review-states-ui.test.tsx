@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { translator } from "../../src/i18n/index.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { fakeHostStore, onWire } from "../fake-host.ts";
-import { settle, uiIdle } from "../wait.ts";
+import { settle, settleMaybe, uiIdle } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -24,6 +24,7 @@ const WORDS = {
     upToDate: "Already up to date with main.",
     nothing: "Nothing ahead of main to merge.",
     empty: "No comments on the PR.",
+    loading: "Reading the PR comments…",
     failed: "Could not read the PR comments.",
     retry: "Try again",
   },
@@ -33,6 +34,7 @@ const WORDS = {
     upToDate: "Já está em dia com main.",
     nothing: "Nada à frente de main para entrar no merge.",
     empty: "Nenhum comentário no PR.",
+    loading: "Lendo os comentários do PR…",
     failed: "Não consegui ler os comentários do PR.",
     retry: "Tentar de novo",
   },
@@ -106,6 +108,23 @@ describe("the PR comments say when the read failed (#3894)", () => {
       await settle(() => screen.queryByText("ajuste") !== null);
       expect(screen.queryByText(w.failed)).toBeNull();
       expect(screen.queryByText("ajuste")).not.toBeNull();
+    });
+  }
+
+  // #4228: the first read shows a loading line in place of nothing.
+  for (const lang of ["en", "pt-BR"] as const) {
+    const w = WORDS[lang];
+    test(`${lang}: while the first read is out a loading line shows, then the comments`, async () => {
+      let release = () => {};
+      const held = new Promise<unknown>((resolve) => {
+        release = () => resolve({ comments: [comment] });
+      });
+      await comments(lang, [held as never]);
+      expect(screen.queryByRole("status", { name: w.loading })).not.toBeNull();
+      expect(screen.queryByText(w.empty)).toBeNull();
+      await act(async () => release());
+      expect(await settleMaybe(() => screen.queryByText("ajuste") !== null)).toBe(true);
+      expect(screen.queryByRole("status", { name: w.loading })).toBeNull();
     });
   }
 
