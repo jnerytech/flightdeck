@@ -30,7 +30,7 @@ afterEach(async () => {
 });
 const waitFor = <T,>(fn: () => T) => rtlWaitFor(fn, { timeout: 3000 });
 
-async function setup(options: { canBrowse?: boolean } = {}) {
+async function setup(options: { canBrowse?: boolean; projects?: string[] } = {}) {
   const alfa = makeDaemon(cleanups, { teleport: true });
   const beta = makeDaemon(cleanups, { teleport: true });
   mkdirSync(join(beta.root, "app"), { recursive: true });
@@ -42,6 +42,10 @@ async function setup(options: { canBrowse?: boolean } = {}) {
   await waitFor(() =>
     expect(store.getState().hosts.every((h) => h.status === "online")).toBe(true),
   );
+  for (const name of options.projects ?? []) {
+    mkdirSync(join(beta.root, name), { recursive: true });
+    await store.hostCommand(to, "project.add", { path: join(beta.root, name) });
+  }
   if (options.canBrowse === false) {
     // An older daemon: it announces teleport but not the folder listing.
     // biome-ignore lint/suspicious/noExplicitAny: the test narrows the target's announced features
@@ -66,6 +70,7 @@ async function setup(options: { canBrowse?: boolean } = {}) {
 }
 
 const repoBox = () => screen.getByRole("textbox", { name: "Repository on that host" });
+const known = () => screen.queryByRole("combobox", { name: "Known projects on that host" });
 const browse = () => screen.queryByRole("button", { name: "Browse…" });
 const picker = () => screen.queryByRole("dialog", { name: "Choose folder" });
 const inPicker = (name: string | RegExp) =>
@@ -129,5 +134,40 @@ describe("teleport-picker-ui: the repository on the target is picked from its fo
   test("a target that cannot list folders keeps the typed field alone", async () => {
     await setup({ canBrowse: false });
     expect([repoBox() !== null, browse()]).toEqual([true, null]);
+  });
+
+  test("the projects the target already knows are offered, and picking one fills the field and enables Continue (#3988)", async () => {
+    const { beta } = await setup({ projects: ["web", "api"] });
+    await waitFor(() => expect(known() !== null).toBe(true)); // NOSONAR: not.toBeNull on a DOM element inside waitFor formats the DOM tree on each retry (docs/TDD.md)
+    const options = [...(known() as HTMLSelectElement).options].map((o) => o.textContent ?? "");
+    expect(options.some((text) => text.includes(join(beta.root, "web")))).toBe(true);
+    expect(options.some((text) => text.includes(join(beta.root, "api")))).toBe(true);
+    expect(screen.queryByRole("button", { name: "Continue" })?.hasAttribute("disabled")).toBe(true);
+    await act(async () => {
+      fireEvent.change(known() as HTMLSelectElement, { target: { value: join(beta.root, "web") } });
+    });
+    expect((repoBox() as HTMLInputElement).value).toBe(join(beta.root, "web"));
+    expect(screen.queryByRole("button", { name: "Continue" })?.hasAttribute("disabled")).toBe(
+      false,
+    );
+  });
+
+  test("a target that knows no project shows the field and Browse as before (#3988)", async () => {
+    await setup();
+    await waitFor(() => expect(browse() !== null).toBe(true)); // NOSONAR: not.toBeNull on a DOM element inside waitFor formats the DOM tree on each retry (docs/TDD.md)
+    expect(known()).toBeNull();
+  });
+
+  test("a path typed after picking a project replaces it, and the list follows the field (#3988)", async () => {
+    const { beta } = await setup({ projects: ["web"] });
+    await waitFor(() => expect(known() !== null).toBe(true)); // NOSONAR: not.toBeNull on a DOM element inside waitFor formats the DOM tree on each retry (docs/TDD.md)
+    await act(async () => {
+      fireEvent.change(known() as HTMLSelectElement, { target: { value: join(beta.root, "web") } });
+    });
+    await act(async () => {
+      fireEvent.change(repoBox(), { target: { value: "/typed/app" } });
+    });
+    expect((repoBox() as HTMLInputElement).value).toBe("/typed/app");
+    expect((known() as HTMLSelectElement).value).toBe("");
   });
 });
