@@ -342,7 +342,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
                         {t(`personas.origin.${originKey(p)}`)}
                       </span>
                       {!p.trusted && (
-                        <span className="rounded bg-destructive/10 px-1.5 text-destructive text-xs">
+                        <span className="rounded bg-destructive/10 px-1.5 text-status-error text-xs">
                           {t("personas.untrusted")}
                         </span>
                       )}
