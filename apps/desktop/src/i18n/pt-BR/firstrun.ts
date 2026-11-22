@@ -92,6 +92,10 @@ export const firstrun = {
       text: "Alguns recursos precisam dele.",
       fix: "Como instalar",
       dismiss: "Dispensar",
+      dismissNamed: "Dispensar o aviso sobre {tool} em {host}",
+      dismissed: "Aviso sobre {tool} em {host} dispensado.",
+      undo: "Desfazer",
+      undoNamed: "Desfazer: mostrar de novo o aviso sobre {tool} em {host}",
     },
   },
 } as const;

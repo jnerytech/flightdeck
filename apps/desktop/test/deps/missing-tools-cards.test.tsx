@@ -104,6 +104,6 @@ describe("missing-tool cards: a person who cannot see the screen can use them (i
   test("dismissing is announced too, in Portuguese as well", () => {
     setup("pt-BR", ["git"]);
     press(/Dispensar o aviso sobre git/);
-    expect(statusText()).toContain("aviso sobre git em alfa");
+    expect(statusText()).toContain("Aviso sobre git em alfa dispensado");
   });
 });

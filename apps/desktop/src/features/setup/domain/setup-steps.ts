@@ -240,7 +240,9 @@ export class SetupSettings {
   }
 
   /** A dismissed missing-tool note is wanted again. */
-  restoreTool(_id: string): void {
+  restoreTool(id: string): void {
+    const kept = this.dismissedTools();
+    this.storage.setItem(SETUP_TOOLS_KEY, JSON.stringify(kept.filter((entry) => entry !== id)));
     this.emit();
   }
 
