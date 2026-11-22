@@ -91,8 +91,12 @@ export function ChangesPanel(
     if (result) setComments(result.comments);
   }, [store, hostId, target]);
 
+  // Counts the answers the screen took, so a read that was slow does not undo a newer one.
+  const latest = useRef(0);
   const refresh = useCallback(async () => {
+    const mine = ++latest.current;
     const result = await store.hostRequest(hostId, "changes.get", { target });
+    if (mine !== latest.current) return;
     if (result.ok) {
       setChanges(result.data);
       setUnavailable(null);
@@ -106,6 +110,7 @@ export function ChangesPanel(
   useEffect(() => {
     void refresh();
     return store.watchChanges(hostId, target, (update) => {
+      latest.current++;
       setChanges(update);
       setUnavailable(null);
       void loadComments();
