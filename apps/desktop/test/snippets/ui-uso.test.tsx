@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { RequestError } from "../../src/features/hosts/host-connection.ts";
 import { liveScreen, registerDom } from "../dom.ts";
+import { interceptWire } from "../fake-host.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { settle, uiIdle } from "../wait.ts";
 import { snippetsHost } from "./ui-setup.ts";
@@ -283,4 +285,98 @@ describe("snippets-uso: the palette", () => {
       expect(text).toContain("motivo do daemon");
     });
   }
+});
+
+/** An alert is named by its author, not its content: look at what it says. */
+const alertSays = (text: string) =>
+  screen.queryAllByRole("alert").some((node) => node.textContent?.includes(text));
+
+// Issue #3968: a global snippet goes through the terminal client, whose refusal is said in the dialog
+// like a host snippet's, and a press that is not answered yet sends nothing more.
+describe("snippets-uso: a global snippet the terminal refuses", () => {
+  const refuse = (d: Awaited<ReturnType<typeof open>>, wire: string) =>
+    interceptWire(d.store, d.hostId, (type, _payload, next) =>
+      type === wire ? Promise.reject(new RequestError("bad_thing", "No room left")) : next(),
+    );
+
+  for (const [button, wire] of [
+    ["Colar no terminal", "terminal.write"],
+    ["Colar e rodar", "terminal.write"],
+  ] as const) {
+    test(`${button} refused says the host's reason and keeps the dialog open`, async () => {
+      const d = await open();
+      await palette("eco");
+      await choose("Snippet: eco");
+      refuse(d, wire);
+      await click(button);
+      await settle(() => alertSays("No room left"));
+      expect(alertSays("No room left")).toBe(true);
+      expect(screen.queryByLabelText("msg")).not.toBeNull();
+    });
+  }
+
+  test("Rodar numa aba nova refused on open says the host's reason and opens no tab", async () => {
+    const d = await open(false);
+    await palette("eco");
+    await choose("Snippet: eco");
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("Pasta") as HTMLElement, {
+        target: { value: d.d.project },
+      });
+    });
+    refuse(d, "terminal.open");
+    await click("Rodar numa aba nova");
+    await settle(() => alertSays("No room left"));
+    expect(alertSays("No room left")).toBe(true);
+    expect(d.store.router.current.name).not.toBe("terminal");
+    expect(screen.queryByLabelText("msg")).not.toBeNull();
+  });
+
+  test("a second press of Colar e rodar while the first waits sends nothing more", async () => {
+    const d = await open();
+    await palette("eco");
+    await choose("Snippet: eco");
+    let writes = 0;
+    interceptWire(d.store, d.hostId, (type, _payload, next) => {
+      if (type !== "terminal.write") return next();
+      writes++;
+      return new Promise(() => {});
+    });
+    const press = async () => {
+      await act(async () => {
+        fireEvent.click(screen.queryByRole("button", { name: "Colar e rodar" }) as HTMLElement);
+      });
+    };
+    await press();
+    await settle(
+      () =>
+        screen.queryByRole("button", { name: "Colar e rodar" })?.getAttribute("aria-busy") ===
+        "true",
+    );
+    await press();
+    expect(writes).toBe(1);
+  });
+
+  test("Copiar is busy while the host renders the text, and a second press copies once", async () => {
+    const d = await open(false);
+    await palette("testes");
+    await choose("Snippet: testes");
+    let renders = 0;
+    interceptWire(d.store, d.hostId, (type, _payload, next) => {
+      if (type !== "snippets.render") return next();
+      renders++;
+      return new Promise(() => {});
+    });
+    const press = async () => {
+      await act(async () => {
+        fireEvent.click(screen.queryByRole("button", { name: "Copiar" }) as HTMLElement);
+      });
+    };
+    await press();
+    await settle(
+      () => screen.queryByRole("button", { name: "Copiar" })?.getAttribute("aria-busy") === "true",
+    );
+    await press();
+    expect(renders).toBe(1);
+  });
 });
