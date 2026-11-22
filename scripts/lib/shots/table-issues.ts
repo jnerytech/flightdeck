@@ -49,7 +49,8 @@ async function startScreen(page: Page): Promise<void> {
   await close.waitFor({ state: "attached", timeout: 15_000 });
   await close.click({ force: true });
   await page
-    .getByRole("note", { name: /GitHub CLI|Git\b/ })
+    .getByRole("note")
+    .filter({ hasText: /GitHub CLI|Git\b/ })
     .first()
     .waitFor({ timeout: 15_000 });
 }
