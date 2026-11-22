@@ -49,8 +49,6 @@ export interface Located {
   realRoot: string;
   /** Where the file is, or would be created, links resolved. */
   landing: string;
-  /** The file is there and has another hard link: a write changes that name's content too. */
-  linked: boolean;
 }
 
 /**
@@ -66,6 +64,12 @@ async function wouldBe(path: string): Promise<string | null> {
   if (parent === path) return null;
   const above = await wouldBe(parent);
   return above && join(above, basename(path));
+}
+
+/** A regular file that has another hard link: writing it in place changes that name's content too. */
+export async function sharesContent({ real }: Located): Promise<boolean> {
+  const info = real === null ? null : await lstat(real).catch(() => null);
+  return info !== null && info.isFile() && info.nlink > 1;
 }
 
 /** A file of the repository and where it really is: refused when a link takes it out of the repository. */
@@ -91,8 +95,7 @@ export async function located(root: string, realRoot: string, path: string): Pro
       { path },
     );
   }
-  const linked = real !== null && ((await lstat(real).catch(() => null))?.nlink ?? 1) > 1;
-  return { full, real, realRoot, landing: where, linked };
+  return { full, real, realRoot, landing: where };
 }
 
 /**

@@ -12,6 +12,8 @@ import {
 import { join } from "node:path";
 import type { Automations } from "../../src/automations/automations.ts";
 import { DEFAULT_PROMPT_TEMPLATE } from "../../src/board/board.ts";
+import { Rewinder } from "../../src/checkpoints/rewind.ts";
+import { Snapshots } from "../../src/checkpoints/snapshots.ts";
 import { ProjectMemory } from "../../src/memory/memory.ts";
 import { personaHash } from "../../src/personas/domain/model.ts";
 import { Personas } from "../../src/personas/store.ts";
@@ -97,6 +99,12 @@ async function nearAndFar() {
       return { id, enabled };
     },
   } as unknown as Automations;
+  const snapshots = new Snapshots({ db: store.db });
+  const rewinder = new Rewinder({
+    snapshots,
+    sessions: { busy: () => false, rewindFiles: async () => null },
+    allowedRoots: [root],
+  });
   const claudeDir = tempDir("fd-claude-");
   const memoryDir = join(claudeDir, "projects", slugOf(repo), "memory");
   const base = {
@@ -104,6 +112,7 @@ async function nearAndFar() {
     board,
     agentSetup: { memory: new ProjectMemory({ claudeDir }) },
     review: { files },
+    checkpoints: { snapshots, rewinder },
     ssh: { targets: ssh },
     personas: { store: personas },
     updates: { apply: updater },
@@ -135,6 +144,7 @@ async function nearAndFar() {
     memoryDir,
     applied,
     toggled,
+    snapshots,
     personas,
     published,
     reasonOf,
@@ -641,13 +651,53 @@ describe("writing a file that shares its content with another needs a near conne
     const farShort = await write(far, "docs/CLAUDE~1.MD", "0".repeat(64));
     const farOther = await write(far, "a.txt", sha("original\n"));
     const nearLinked = await write(near, "alias.txt", sha("{}\n"));
-    expect([farLinked, afterFar, farShort, farOther, nearLinked, settings()]).toEqual([
+    // A revert replaces the file by a new one (or removes the name), so it never writes through the link.
+    const farRevert = await reasonOf(
+      far.request("changes.revert", { target: "session:s-1", path: "alias.txt", confirm: true }),
+    );
+    expect([farLinked, afterFar, farShort, farOther, nearLinked, farRevert, settings()]).toEqual([
       "transport_refused",
       "{}\n",
       "transport_refused",
       null,
       null,
+      null,
       hook,
     ]);
+  });
+});
+
+describe("rewinding files that shape Claude Code's sessions needs a near connection (#3825)", () => {
+  test("a far connection cannot rewind them, by apply or by undo; any other file it can", async () => {
+    const { near, far, repo, snapshots, reasonOf } = await nearAndFar();
+    const settings = join(repo, ".claude", "settings.json");
+    const hook =
+      '{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"touch pwned"}]}]}}\n';
+    const taken = await snapshots.take({ cwd: repo, claudeSessionId: "cs-1", kind: "before" });
+    const turn = "row" in taken ? taken.row.n : -1;
+    writeFileSync(settings, hook);
+    writeFileSync(join(repo, "a.txt"), "edited\n");
+    const ask = { claudeSessionId: "cs-1", turn, confirm: true };
+    const farApply = await reasonOf(far.request("rewind.apply", ask));
+    const afterFar = readFileSync(settings, "utf8");
+    // Only the ordinary file differs now: the far connection may put it back.
+    writeFileSync(settings, "{}\n");
+    const farOther = await reasonOf(far.request("rewind.apply", ask));
+    const nearApply = await reasonOf(near.request("rewind.apply", ask));
+    writeFileSync(join(repo, ".claude", "settings.json"), "{}\n");
+    const safety = await snapshots.take({ cwd: repo, claudeSessionId: "cs-1", kind: "safety" });
+    writeFileSync(settings, hook);
+    const farUndo = await reasonOf(
+      far.request("rewind.undo", { claudeSessionId: "cs-1", confirm: true }),
+    );
+    expect([
+      farApply,
+      afterFar,
+      farOther,
+      nearApply,
+      "row" in safety,
+      farUndo,
+      readFileSync(settings, "utf8"),
+    ]).toEqual(["transport_refused", hook, null, null, true, "transport_refused", hook]);
   });
 });
