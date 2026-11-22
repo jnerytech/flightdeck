@@ -161,7 +161,7 @@ Os dólares seguem o idioma do app onde quer que um custo apareça: `US$ 1.234,5
   - as sessões mais caras, e clicar numa abre a sessão;
   - o custo estimado também aparece na lista de sessões, na sessão aberta, no card e na execução
     de workflow.
-- **Exportar CSV:** salva, pelo diálogo do sistema, uma linha por dia, projeto, modelo e origem.
+- **Exportar CSV:** salva, pelo diálogo do sistema, uma linha por dia, projeto, modelo e origem. Uma linha sob o título diz qual arquivo foi salvo. Com vários hosts, ela também nomeia o host que não deu arquivo e ficou de fora; quando nenhum host deu arquivo, diz que nada foi salvo. Fechar o diálogo não diz nada.
 - **Avisos:**
   - modelos sem preço aparecem como "sem preço", com o nome;
   - nas sessões gerenciadas, o daemon compara o custo calculado com o que o próprio Claude Code
