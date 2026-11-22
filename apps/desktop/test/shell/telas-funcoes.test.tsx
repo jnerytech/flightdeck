@@ -69,6 +69,7 @@ function setup(route: Route, hostCommand?: (type: string) => unknown) {
           density="comfortable"
           go={(r) => void went.push(r)}
           onOpenRequest={() => {}}
+          onShortcuts={() => {}}
         />
       </TooltipProvider>
     </TContext.Provider>

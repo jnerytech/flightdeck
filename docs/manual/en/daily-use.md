@@ -197,7 +197,8 @@ the title bar and the sidebar to the screen itself (#1430).
 
 `Ctrl+Alt+F` brings the app to the front with the global search open, even with it in the
 background or in the tray. To change it, open **Settings → Global shortcut**, type the
-combination and click **Save shortcut**.
+combination in the **Key combination** field and click **Save shortcut**. **Show the keyboard
+shortcuts** opens the list of the app's shortcuts.
 
 - Format `Modifiers+Key`, for example `Ctrl+Shift+Y`. The key is a letter, a digit or `F1` to
   `F24`, and at least `Ctrl`, `Alt` or `Super` is required.

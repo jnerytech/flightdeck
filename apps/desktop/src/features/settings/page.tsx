@@ -48,6 +48,8 @@ export const Settings = memo(function Settings(props: {
   onCloseToTray(enabled: boolean): void;
   onAutostart(enabled: boolean): void;
   onGlobalShortcut(text: string): void;
+  /** Opens the keyboard shortcut list (the `?` sheet). */
+  onShortcuts(): void;
   appUpdate: AppUpdateState;
   onCheckUpdate(): Promise<void> | void;
   onNotifyUpdates(enabled: boolean): void;
@@ -167,6 +169,7 @@ export const Settings = memo(function Settings(props: {
           draft={shortcut}
           onDraft={setShortcut}
           onGlobalShortcut={props.onGlobalShortcut}
+          onShortcuts={props.onShortcuts}
         />
       ),
     },

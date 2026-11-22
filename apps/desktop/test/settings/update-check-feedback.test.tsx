@@ -31,6 +31,7 @@ function setup(
       onCloseToTray={() => {}}
       onAutostart={() => {}}
       onGlobalShortcut={() => {}}
+      onShortcuts={() => {}}
       appUpdate={appUpdate as never}
       onCheckUpdate={onCheckUpdate as never}
       onNotifyUpdates={(enabled) => report.notify?.(enabled)}

@@ -61,6 +61,7 @@ function routeScreen(props: ScreenProps): ReactNode {
         section={route.section}
         host={route.host}
         {...settingsActions(store)}
+        onShortcuts={props.onShortcuts}
         appUpdate={state.appUpdate}
         theme={props.theme}
         density={props.density}

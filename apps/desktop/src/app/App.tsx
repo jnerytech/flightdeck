@@ -375,6 +375,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
                 density,
                 go,
                 onOpenRequest: openRequest,
+                onShortcuts: showHelp,
               }}
             />
           </div>
