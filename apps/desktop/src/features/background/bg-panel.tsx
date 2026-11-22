@@ -149,7 +149,11 @@ export const BgPanel = memo(function BgPanel(props: {
               </ActionButton>
             </Inline>
             <output
-              className={`text-sm empty:sr-only ${sent === "refused" ? "text-destructive" : ""}`}
+              className={
+                sent === "refused"
+                  ? "text-destructive text-sm empty:sr-only"
+                  : "text-sm empty:sr-only"
+              }
             >
               {sent === "ok" ? t("bg.sent") : sent === "refused" ? t("bg.sendFailed") : ""}
             </output>
