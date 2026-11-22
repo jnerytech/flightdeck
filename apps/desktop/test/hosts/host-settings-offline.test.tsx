@@ -76,54 +76,49 @@ function settings(status: string, language: "en" | "pt-BR" = "en", withInfo = tr
   return store;
 }
 
-/** True when a browser would refuse a click on `control`: an ancestor fieldset is disabled. */
-const off = (control: HTMLElement | null) => control?.closest("fieldset[disabled]") != null;
+/** What a person can do with `control`: "off" when an ancestor fieldset is disabled (a browser refuses the click). */
+function state(control: HTMLElement | null) {
+  if (control === null) return "missing";
+  return control.closest("fieldset[disabled]") === null ? "live" : "off";
+}
 
-/** Each control of the seven panels the issue names, by its accessible name (English). */
-const controls = () => ({
-  sleep: screen.queryByRole("combobox", { name: "Sleep idle sessions after" }),
-  keepAwake: screen.queryByRole("button", { name: "Turn off" }),
-  pause: screen.queryByRole("button", { name: "Pause new runs" }),
-  resume: screen.queryByRole("switch", { name: "Resume automatically after a restart" }),
-  bypass: screen.queryByRole("button", { name: "Allow sessions without prompts" }),
-  autoUpdate: screen.queryByRole("checkbox", { name: "Update this host automatically" }),
-  daemonUpdate: screen.queryByRole("button", { name: "Update daemon to 9.9.9" }),
+/** The state of each control of the panels the issue names, by its accessible name (English). */
+const report = () => ({
+  sleep: state(screen.queryByRole("combobox", { name: "Sleep idle sessions after" })),
+  keepAwake: state(screen.queryByRole("button", { name: "Turn off" })),
+  pause: state(screen.queryByRole("button", { name: "Pause new runs" })),
+  resume: state(screen.queryByRole("switch", { name: "Resume automatically after a restart" })),
+  bypass: state(screen.queryByRole("button", { name: "Allow sessions without prompts" })),
+  autoUpdate: state(screen.queryByRole("checkbox", { name: "Update this host automatically" })),
+  daemonUpdate: state(screen.queryByRole("button", { name: "Update daemon to 9.9.9" })),
+});
+
+const everyControl = (value: "off" | "live") => ({
+  sleep: value,
+  keepAwake: value,
+  pause: value,
+  resume: value,
+  bypass: value,
+  autoUpdate: value,
+  daemonUpdate: value,
 });
 
 describe("the Settings tab of a host that is not online (#3870)", () => {
   test("every panel that acts on the host is disabled, so a click sends no command", () => {
     settings("offline");
-    const c = controls();
-    expect(
-      Object.fromEntries(Object.entries(c).map(([k, v]) => [k, v === null || off(v)])),
-    ).toEqual({
-      sleep: true,
-      keepAwake: true,
-      pause: true,
-      resume: true,
-      bypass: true,
-      autoUpdate: true,
-      daemonUpdate: true,
-    });
-    expect(Object.values(c).every((v) => v !== null)).toBe(true);
+    expect(report()).toEqual(everyControl("off"));
   });
 
   test("Reconnect and Remove host stay live", () => {
     settings("offline");
-    expect([
-      off(screen.queryByRole("button", { name: "Reconnect" })),
-      off(screen.queryByRole("button", { name: "Remove host" })),
-    ]).toEqual([false, false]);
+    const reconnect = state(screen.queryByRole("button", { name: "Reconnect" }));
+    const remove = state(screen.queryByRole("button", { name: "Remove host" }));
+    expect({ reconnect, remove }).toEqual({ reconnect: "live", remove: "live" });
   });
 
   test("an online host has no panel disabled", () => {
     settings("online");
-    const c = controls();
-    expect(
-      Object.entries(c)
-        .filter(([, v]) => v === null || off(v))
-        .map(([k]) => k),
-    ).toEqual([]);
+    expect(report()).toEqual(everyControl("live"));
   });
 
   test.each([
@@ -139,8 +134,7 @@ describe("the Settings tab of a host that is not online (#3870)", () => {
 
   test("an incompatible host keeps Update the daemon live, the other panels off", () => {
     settings("incompatible");
-    const c = controls();
-    expect([off(c.daemonUpdate), off(c.sleep), off(c.pause)]).toEqual([false, true, true]);
+    expect(report()).toEqual({ ...everyControl("off"), daemonUpdate: "live" });
     expect(document.body.textContent?.includes("Update the daemon on pi to change this.")).toBe(
       true,
     );
