@@ -58,14 +58,16 @@ describe("a DOM node in a test failure (#3854)", () => {
   });
 
   test("the document and its body print as short names", () => {
-    expect([printed(document), printed(document.body)]).toEqual(["#document", "<body>"]);
+    const names = [printed(document), printed(document.body)];
+    expect(names).toEqual(["#document", "<body>"]);
   });
 
   test("a fragment and a comment print as what they are, not as an empty tag", () => {
-    expect([
+    const names = [
       printed(document.createDocumentFragment()),
       printed(document.createComment("note")),
-    ]).toEqual(["#document-fragment", "<!-- note -->"]);
+    ];
+    expect(names).toEqual(["#document-fragment", "<!-- note -->"]);
   });
 
   test("a text with a line break or a quote stays on one line and keeps its meaning", () => {
