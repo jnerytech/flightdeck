@@ -3225,6 +3225,56 @@ export async function layout(c: Context, problems: string[]) {
   // The geometry guards (issue #192) name what they find by data-slot path; the heuristic rules fail
   // only when new against the baseline.
   await geometryGuards(c, screens, problems);
+  for (const issue of await historyFormProblems(c))
+    problems.push(`${c.lang} 1280x800 histórico: ${issue}`);
+}
+
+/**
+ * The History filter form (#3966): the labels of Folder, From, To and Origin share one top, and
+ * the Filter button is level with the inputs of the last row of fields, or a row of its own under them.
+ */
+async function historyFormProblems(c: Context): Promise<string[]> {
+  await c.page.setViewportSize({ width: 1280, height: 800 });
+  await open(c, { name: "history", host: ALFA });
+  await c.page.locator("form[data-variant='inline'] label").first().waitFor({ timeout: WAIT });
+  return c.page.evaluate(() => {
+    const found: string[] = [];
+    const form = document.querySelector("form[data-variant='inline']");
+    const labels = [...(form?.querySelectorAll("label") ?? [])];
+    const tops = labels.map((label) => Math.round(label.getBoundingClientRect().top));
+    const sorted = [...tops].sort((a, b) => a - b);
+    // The pane is narrow, so the form may wrap: labels on one row share a top, and a row is a whole
+    // line below the one before (a gap of a few pixels is a ragged row, not a new one). Two rows at most.
+    const ragged = sorted.some(
+      (top, i) =>
+        i > 0 && top - (sorted[i - 1] as number) > 1 && top - (sorted[i - 1] as number) < 16,
+    );
+    if (labels.length !== 4 || ragged || new Set(tops).size > 2) {
+      found.push(`the labels of the filter form sit at tops ${tops.join(", ")}`);
+    }
+    const button = form?.querySelector<HTMLElement>("button[type='submit']");
+    const lastRow = labels.filter(
+      (label) => Math.round(label.getBoundingClientRect().top) === sorted[sorted.length - 1],
+    );
+    const inputs = lastRow
+      .map((label) => label.control)
+      .filter((control): control is HTMLElement => control instanceof HTMLElement);
+    if (!button || inputs.length === 0)
+      return [...found, "the filter form has no Filter button or input"];
+    const at = button.getBoundingClientRect();
+    // A pane too narrow for the button beside Origin wraps it to a row of its own, under every field:
+    // that is a row, not a misalignment. Beside the fields, it must be level with their inputs.
+    const below = inputs.every((input) => at.top >= input.getBoundingClientRect().bottom - 1);
+    for (const input of inputs) {
+      const row = input.getBoundingClientRect();
+      if (!below && Math.abs(at.top + at.height / 2 - (row.top + row.height / 2)) > 2) {
+        found.push(
+          `the Filter button is not level with the inputs (button centre ${Math.round(at.top + at.height / 2)}, input centre ${Math.round(row.top + row.height / 2)})`,
+        );
+      }
+    }
+    return found;
+  });
 }
 
 /**
