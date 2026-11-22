@@ -156,6 +156,7 @@ describe("session messages: the write form (#3852)", () => {
       await uiIdle();
       expect(sends.length).toBe(1);
       expect(box.value === "").toBe(true);
+      expect(document.activeElement === box).toBe(true);
       expect((button(view.container, SEND[language]) as HTMLButtonElement).disabled).toBe(true);
       expect(view.container.querySelector("output")).not.toBeNull();
     });
