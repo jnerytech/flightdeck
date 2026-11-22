@@ -312,35 +312,39 @@ step(When, "I move it anyway", async (c) =>
     .click(),
 );
 
-/**
- * Finish… sits under the card page's menu (#1197). The menu is not modal (#4173), so the focus a closing
- * dialog hands back to its button can land just after a click that opened the menu, and closes it again:
- * the open-and-choose is tried again, up to three times, and says so when the menu never stays open (#4247).
- */
-const fromCardMenu = async (c: Context, item: string) => {
-  const trigger = c.page.getByRole("button", {
+/** The card page's Actions button. */
+const cardMenuButton = (c: Context) =>
+  c.page.getByRole("button", {
     name: c.t("board.cardActions", { title: mine(c).card ?? "" }),
     exact: true,
   });
-  const entry = c.page.getByRole("menuitem", { name: item, exact: true });
-  for (let attempt = 0; attempt < 3; attempt++) {
-    // A click toggles: only a menu that is not open gets one.
-    if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
-    try {
-      await entry.click({ timeout: 2000 });
-      return;
-    } catch {
-      // The menu closed again, or never opened: look at it once more.
-    }
+
+/**
+ * Finish… sits under the card page's menu (#1197). The menu is not modal (#4173): a click on its button while a
+ * closing dialog is still handing the focus back opens the menu and the late focus closes it again. The step
+ * waits for the dialog to be gone and for the focus to be back on the button (#4262), then clicks once (#4247).
+ * `afterDialog` is for a step that follows a dialog; the first one on a card page has none to wait for.
+ */
+const fromCardMenu = async (c: Context, item: string, afterDialog: boolean) => {
+  const button = cardMenuButton(c);
+  if (afterDialog) {
+    await c.page
+      .getByRole("dialog", { name: c.t("cardUi.finishTitle") })
+      .waitFor({ state: "detached", timeout: WAIT });
+    await waitFor(
+      () => button.evaluate((el) => el === document.activeElement),
+      "the focus back on the card's Actions button",
+    );
   }
-  throw new Error(`the card menu did not stay open for "${item}" after 3 tries`);
+  await button.click();
+  await c.page.getByRole("menuitem", { name: item, exact: true }).click();
 };
 
 step(When, "I open the card and read the three ways to finish it", async (c) => {
   await tile(c)
     .getByRole("button", { name: mine(c).card ?? "", exact: true })
     .click();
-  await fromCardMenu(c, c.t("cardUi.finish"));
+  await fromCardMenu(c, c.t("cardUi.finish"), false);
   const dialog = c.page.getByRole("dialog", { name: c.t("cardUi.finishTitle") });
   for (const key of ["finishMove", "finishComplete", "finishMerge"] as const) {
     await dialog.getByText(c.t(`cardUi.${key}`), { exact: true }).waitFor({ timeout: WAIT });
@@ -352,14 +356,14 @@ step(When, "I open the card and read the three ways to finish it", async (c) => 
 });
 
 step(When, "I finish the card by moving it to Done", async (c) => {
-  await fromCardMenu(c, c.t("cardUi.finish"));
+  await fromCardMenu(c, c.t("cardUi.finish"), true);
   const dialog = c.page.getByRole("dialog", { name: c.t("cardUi.finishTitle") });
   await dialog.getByRole("button", { name: c.t("cardUi.finishMoveButton"), exact: true }).click();
   await dialog.waitFor({ state: "detached", timeout: WAIT });
 });
 
 step(Then, "the card says it is already done", async (c) => {
-  await fromCardMenu(c, c.t("cardUi.finish"));
+  await fromCardMenu(c, c.t("cardUi.finish"), true);
   await c.page
     .getByRole("dialog", { name: c.t("cardUi.finishTitle") })
     .getByText(c.t("cardUi.alreadyDone"), { exact: true })
