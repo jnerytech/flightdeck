@@ -201,6 +201,14 @@ describe("describeDefinition: what the person reads in the request (#3752)", () 
     expect(out.includes("\u00ad") || out.includes("\u{e0041}")).toBe(false);
   });
 
+  test("a character outside the BMP stays whole beside a hidden mark that does not", () => {
+    const out = describeDefinition(
+      "d.json",
+      JSON.stringify({ name: "a\u{1f680}b\u202ec\u{1d11e}d", run: ["x"], env: {} }),
+    );
+    expect(out.includes("a\u{1f680}b?c\u{1d11e}d")).toBe(true);
+  });
+
   test("a run that is not a list of text is said, not hidden", () => {
     expect(
       describeDefinition("d.json", JSON.stringify({ name: "a", run: "rm -rf /", env: {} })),
