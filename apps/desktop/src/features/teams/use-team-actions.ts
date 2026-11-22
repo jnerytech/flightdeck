@@ -82,7 +82,8 @@ export function useTeamActions(
     if (!target) return;
     const timer = setTimeout(() => {
       target.focus();
-      setFocus(null);
+      // A newer request that came in meanwhile is not ours to clear.
+      setFocus((now) => (now === focus ? null : now));
     }, 0);
     return () => clearTimeout(timer);
   }, [focus, team]);
