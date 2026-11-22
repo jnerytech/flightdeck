@@ -393,7 +393,8 @@ export function hostShots(ids: DemoIds): Shot[] {
       route: { name: "teams", host: ALFA },
       async prepare(page) {
         const team = page.getByRole("listitem", { name: /^(Team|Time) checkout-crew$/ });
-        await team.getByRole("button", { name: /^(Add worker|Adicionar executora)$/ }).click();
+        // The button's name is its aria-label ("Add worker to <team>"), so the footer's own marker finds it.
+        await team.locator("[data-action='add']").click();
         await team.locator("[data-slot='team-footer']").scrollIntoViewIfNeeded();
       },
     },
