@@ -9,19 +9,12 @@ import { createHash } from "node:crypto";
  * a password destino gets its password from the app through `flightdeckd askpass`; and a server
  * whose key changed is blocked with both fingerprints. No real ssh, key or server is involved.
  */
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { delimiter, join, resolve } from "node:path";
 import { type Ack, parseServerMessage } from "@flightdeck/protocol";
 import { readListenUrl } from "./lib/smoke/daemon.ts";
+import { installSshTools } from "./lib/smoke/ssh-tools.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -45,7 +38,6 @@ const TIMEOUT_MS = 30_000;
 const WIN = process.platform === "win32";
 const ROOT = resolve(import.meta.dir, "..");
 const BIN = join(ROOT, "apps/daemon/src/bin.ts");
-const TOOLS = join(ROOT, "scripts/test/fake-ssh-tools.ts");
 
 // Keys made for the smoke (the first is the one `ssh-keygen` printed this fingerprint for).
 const KEY_VAULT =
@@ -133,27 +125,6 @@ async function freePort(): Promise<number> {
 }
 
 /** The fake tools, each a small wrapper that runs `fake-ssh-tools.ts` with bun. */
-function installTools(bin: string): { ssh: string } {
-  mkdirSync(bin, { recursive: true });
-  const tools = ["ssh", "ssh-keyscan", ...(WIN ? [] : ["ssh-agent", "ssh-add"])];
-  const mode: Record<string, string> = {
-    ssh: "ssh",
-    "ssh-keyscan": "keyscan",
-    "ssh-agent": "agent",
-    "ssh-add": "add",
-  };
-  for (const name of tools) {
-    const call = `"${process.execPath}" "${TOOLS}" ${mode[name]}`;
-    if (WIN) {
-      writeFileSync(join(bin, `${name}.cmd`), `@echo off\r\n${call} %*\r\n`);
-    } else {
-      writeFileSync(join(bin, name), `#!/bin/sh\nexec ${call} "$@"\n`);
-      chmodSync(join(bin, name), 0o755);
-    }
-  }
-  return { ssh: join(bin, WIN ? "ssh.cmd" : "ssh") };
-}
-
 const fingerprintOf = (key: string) =>
   `SHA256:${createHash("sha256")
     .update(Buffer.from(key.split(" ")[1] ?? "", "base64"))
@@ -407,7 +378,7 @@ async function run(work: string): Promise<void> {
   publishKeys();
   const fakeLog = join(work, "fake.log");
   const bin = join(work, "bin");
-  const tools = installTools(bin);
+  const tools = installSshTools(bin);
 
   const token = crypto.randomUUID().replaceAll("-", "");
   const port = await freePort();
