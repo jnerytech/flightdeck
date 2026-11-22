@@ -223,6 +223,7 @@ export function TeamMemberRow(
             <Button
               variant="outline"
               aria-label={t("teamsUi.remove", { name: label })}
+              data-action="remove"
               disabled={props.removing}
               aria-busy={props.removing || undefined}
               onClick={() => props.onRemove(label)}

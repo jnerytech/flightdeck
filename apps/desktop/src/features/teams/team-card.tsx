@@ -120,7 +120,7 @@ export function Team(
             member={member}
             report={reportOf(member.name)}
             open={open}
-            removing={removing === member.name}
+            removing={removing.has(member.name)}
             onPersona={(persona, label) =>
               act(
                 store.hostRequest(hostId, "teams.update", {

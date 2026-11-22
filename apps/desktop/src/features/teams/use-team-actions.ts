@@ -11,8 +11,8 @@ type AfterFocus =
   | "row"
   | "add"
   | { gone: string; next: string | null }
-  /** A member's row, or its Change persona button when `control` is set (#4020). */
-  | { member: string; control?: "persona" };
+  /** A member's row, or one of its buttons when `control` is set (#4020). */
+  | { member: string; control?: "persona" | "remove" };
 
 /** The element the focus goes to, or null while the answer has not reached the row yet. */
 function focusTarget(
@@ -31,7 +31,7 @@ function focusTarget(
   if ("member" in focus) {
     const member = memberRow(focus.member);
     return focus.control
-      ? (member?.querySelector<HTMLElement>(`[data-action="persona"]`) ?? null)
+      ? (member?.querySelector<HTMLElement>(`[data-action="${focus.control}"]`) ?? null)
       : (member ?? null);
   }
   // A removed worker's row is gone once the host's answer is in the list.
@@ -57,8 +57,15 @@ export function useTeamActions(
   /** What the last action did, or why the host refused it: a polite line, not silence (#2650). */
   const [notice, setNotice] = useState<{ text: string; refused: boolean } | null>(null);
   const [focus, setFocus] = useState<AfterFocus | null>(null);
-  /** The worker whose removal the host is working on: its Remove button waits (#4020). */
-  const [removing, setRemoving] = useState<string | null>(null);
+  /** The workers whose removal the host is working on: their Remove buttons wait (#4020). */
+  const [removing, setRemoving] = useState<ReadonlySet<string>>(new Set());
+  const markRemoving = (name: string, on: boolean) =>
+    setRemoving((now) => {
+      const next = new Set(now);
+      if (on) next.add(name);
+      else next.delete(name);
+      return next;
+    });
   /** A text a worker took is sent; one every worker refused stays, to be sent again. */
   const sending = useRef(false);
   const sendAll = async () => {
@@ -121,14 +128,15 @@ export function useTeamActions(
     }
     const workers = team.members.filter((m) => m.role === "worker");
     const next = workers[workers.findIndex((m) => m.name === c.member) + 1]?.name ?? null;
-    setRemoving(c.member);
+    markRemoving(c.member, true);
     return act(
       store.hostRequest(hostId, "teams.update", { team: team.id, removeMember: c.member }),
       {
         text: t("teamsUi.done.removed", { name: c.label ?? c.member }),
         focus: { gone: c.member, next },
+        retry: { member: c.member, control: "remove" },
       },
-    ).finally(() => setRemoving(null));
+    ).finally(() => markRemoving(c.member, false));
   };
   return { rowRef, text, setText, notice, removing, act, sendAll, runConfirmed };
 }
