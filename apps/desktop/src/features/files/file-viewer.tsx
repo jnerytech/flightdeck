@@ -51,8 +51,11 @@ export function FileViewer(
     /** Opens at this line (1-based) and column, selected and in view: a `path:line` from a terminal (#506). */
     line?: number;
     col?: number;
-    /** Takes the focus and comes into view when it opens (the explorer asks, #3850). */
-    focusOnOpen?: boolean;
+    /**
+     * Takes the focus and comes into view each time this number changes, and when it opens: the
+     * explorer counts its opens, so a second match of the open file moves the focus too (#3850).
+     */
+    focusToken?: number;
     onClose(): void;
   }>,
 ) {
@@ -63,12 +66,12 @@ export function FileViewer(
   const region = useRef<HTMLElement>(null);
   // A file opened in a long tree lands below the fold: bring it into view and name it to the
   // keyboard and the screen reader (the viewer is its own region, "File {path}").
-  const focusOnOpen = props.focusOnOpen === true;
+  const { focusToken } = props;
   useEffect(() => {
-    if (!focusOnOpen) return;
+    if (focusToken === undefined) return;
     region.current?.focus({ preventScroll: true });
     region.current?.scrollIntoView?.({ block: "nearest" });
-  }, [focusOnOpen]);
+  }, [focusToken]);
   const [showDiff, setShowDiff] = useState(false);
   // The newest hunk stays in view while the session edits, until the person scrolls up (#315).
   const follow = useFollow(props.diff?.hunks.length ?? 0);

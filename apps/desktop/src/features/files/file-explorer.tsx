@@ -38,8 +38,11 @@ export function FileExplorer(
   /** The button that opened the viewer: Close gives the focus back to it (#3850). */
   const opener = useRef<HTMLElement | null>(null);
   const region = useRef<HTMLElement>(null);
+  /** How many times a file was opened: the viewer takes the focus on each, even for the same file. */
+  const [opens, setOpens] = useState(0);
   const openFile = (path: string, line: number | undefined, from: HTMLElement | null) => {
     opener.current = from;
+    setOpens((n) => n + 1);
     setViewing(line === undefined ? { path } : { path, line });
   };
   const closeFile = () => {
@@ -222,7 +225,7 @@ export function FileExplorer(
               line={viewing.line}
               diff={changes.find((file) => file.path === viewing.path)}
               full={root === null ? null : `${root}/${viewing.path}`}
-              focusOnOpen
+              focusToken={opens}
               onClose={closeFile}
             />
           </Suspense>

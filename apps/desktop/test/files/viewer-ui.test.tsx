@@ -12,7 +12,12 @@ const { translator } = await import("../../src/i18n/index.ts");
 
 import type { AppStore } from "../../src/lib/app-store.ts";
 
-afterEach(cleanup);
+const proto = Element.prototype as { scrollIntoView?: (options?: unknown) => void };
+const originalScroll = proto.scrollIntoView;
+afterEach(() => {
+  cleanup();
+  proto.scrollIntoView = originalScroll;
+});
 
 const ROOT: FileListing = {
   dir: "",
@@ -30,8 +35,29 @@ function host(local = false) {
   const read: string[] = [];
   const opened: string[] = [];
   const store = {
-    hostRequest: async (_host: string, type: string, payload: { path?: string }) => {
+    hostRequest: async (
+      _host: string,
+      type: string,
+      payload: { path?: string; query?: string },
+    ) => {
       if (type === "file.list") return { ok: true, data: ROOT };
+      if (type === "file.search") {
+        return {
+          ok: true,
+          data: {
+            mode: "content",
+            query: payload.query,
+            matches:
+              payload.query === "line"
+                ? [
+                    { path: "README.md", line: 1, text: "first line" },
+                    { path: "README.md", line: 2, text: "second line" },
+                  ]
+                : [],
+            truncated: false,
+          },
+        };
+      }
       if (type === "file.read") {
         read.push(payload.path ?? "");
         if (payload.path === "logo.png") {
@@ -50,6 +76,7 @@ function host(local = false) {
       return { ok: true, data: { target: "session:abc", root: "/r", base: null, files: [] } };
     },
     watchChanges: () => () => {},
+    scan: { values: () => [], subscribe: () => () => {}, version: 0 },
     system: {
       canOpenPaths: () => local,
       openPath: async (_host: string, path: string) => {
@@ -65,10 +92,10 @@ function host(local = false) {
   return { store, read, opened };
 }
 
-const show = async (store: AppStore, language: "en" | "pt-BR" = "en") => {
+const show = async (store: AppStore, language: "en" | "pt-BR" = "en", search = false) => {
   render(
     <TContext.Provider value={translator(language)}>
-      <FileExplorer store={store} hostId="h" target="session:abc" />
+      <FileExplorer store={store} hostId="h" target="session:abc" search={search} />
     </TContext.Provider>,
   );
   await uiIdle();
@@ -102,7 +129,6 @@ describe("file-viewer-ui: a file of the tree, read only, with line numbers (#506
 
   test("a file that opens takes the focus and comes into view; Close gives the focus back to its button (#3850)", async () => {
     const scrolled: unknown[] = [];
-    const proto = Element.prototype as { scrollIntoView?: (options?: unknown) => void };
     proto.scrollIntoView = function (this: Element, options?: unknown) {
       if ((this as HTMLElement).getAttribute("aria-label") === "File README.md") {
         scrolled.push(options);
@@ -140,6 +166,63 @@ describe("file-viewer-ui: a file of the tree, read only, with line numbers (#506
     const viewer = screen.queryByRole("region", { name: "Arquivo README.md" });
     expect(viewer).not.toBeNull();
     expect(document.activeElement === viewer).toBe(true);
+  });
+
+  test("a second match of the open file takes the focus again, and Close returns to that match (#3850)", async () => {
+    const scrolled: unknown[] = [];
+    proto.scrollIntoView = function (this: Element, options?: unknown) {
+      if ((this as HTMLElement).getAttribute("aria-label") === "File README.md") {
+        scrolled.push(options);
+      }
+    };
+    const { store } = host();
+    await show(store, "en", true);
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("button", { name: "Content" }) as HTMLElement);
+    });
+    await act(async () => {
+      fireEvent.change(
+        screen.queryByRole("searchbox", { name: "Search contents" }) as HTMLElement,
+        {
+          target: { value: "line" },
+        },
+      );
+    });
+    await settleMaybe(() => screen.queryByRole("button", { name: "README.md:2" }) !== null);
+    await press("README.md:1");
+    const viewer = screen.queryByRole("region", { name: "File README.md" });
+    expect(viewer).not.toBeNull();
+    expect(document.activeElement === viewer).toBe(true);
+    (screen.queryByRole("button", { name: "README.md:2" }) as HTMLElement).focus();
+    await press("README.md:2");
+    expect(document.activeElement === viewer).toBe(true);
+    expect(scrolled.length).toBe(2);
+    await press("Close");
+    expect(document.activeElement === screen.queryByRole("button", { name: "README.md:2" })).toBe(
+      true,
+    );
+  });
+
+  test("when the button that opened the file is gone, Close gives the focus to the Files region (#3850)", async () => {
+    const { store } = host();
+    await show(store, "en", true);
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("button", { name: "Content" }) as HTMLElement);
+    });
+    const field = screen.queryByRole("searchbox", { name: "Search contents" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.change(field, { target: { value: "line" } });
+    });
+    await settleMaybe(() => screen.queryByRole("button", { name: "README.md:1" }) !== null);
+    await press("README.md:1");
+    await act(async () => {
+      fireEvent.change(field, { target: { value: "nothing" } });
+    });
+    await settleMaybe(() => screen.queryByRole("button", { name: "README.md:1" }) === null);
+    await press("Close");
+    expect(
+      document.activeElement === screen.queryByRole("region", { name: "Files of the repository" }),
+    ).toBe(true);
   });
 
   test("a credential cannot be opened, and a file that is not text says so", async () => {
