@@ -104,6 +104,48 @@ describe.each([
   });
 });
 
+describe("host projects page: a failed read next to the rest of the page", () => {
+  test("while the limit is unknown the button is disabled and blames no field", async () => {
+    mount((kind) => (kind === "project.list" ? null : {}));
+    await settle(() => screen.queryByRole("alert") !== null);
+    expect(screen.getByRole("button", { name: "Save limit" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByText("The limit is a whole number of at least 1.")).toBeNull();
+  });
+
+  test("a later read that fails over an empty list does not also say there are no projects", async () => {
+    let calls = 0;
+    mount((kind) => {
+      if (kind === "project.list")
+        return ++calls === 1 ? { projects: [], maxParallelRuns: 3 } : null;
+      return { id: "p2" };
+    });
+    await settle(() => screen.queryByText("No projects yet.") !== null);
+    await type("Repository path", "/work/web");
+    await press(screen.getByRole("button", { name: "Register project" }));
+    await settle(() => screen.queryByRole("alert") !== null);
+    expect(screen.queryByText("No projects yet.")).toBeNull();
+  });
+
+  test("a read that answers late does not overrule a newer one", async () => {
+    let calls = 0;
+    let lateRefusal: (value: unknown) => void = () => {};
+    mount((kind) => {
+      if (kind !== "project.list") return { id: "p2" };
+      calls += 1;
+      if (calls === 1) return null;
+      return calls === 2 ? new Promise((resolve) => (lateRefusal = resolve)) : listOf();
+    });
+    await settle(() => screen.queryByRole("alert") !== null);
+    await press(screen.getByRole("button", { name: "Try again" }));
+    await type("Repository path", "/work/web");
+    await press(screen.getByRole("button", { name: "Register project" }));
+    await settle(() => listed());
+    await act(async () => lateRefusal(null));
+    expect(listed()).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
 describe("host projects page: reading the list again", () => {
   test("a retry that works takes the notice away and shows the list", async () => {
     let calls = 0;

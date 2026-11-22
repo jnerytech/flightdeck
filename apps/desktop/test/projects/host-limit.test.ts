@@ -10,7 +10,19 @@ describe("parseLimit: the host limit as typed", () => {
   });
 
   test("empty, 0, negative, decimal, exponent and text are no limit, so an empty field never becomes 0", () => {
-    for (const text of ["", " ", "0", "00", "-1", "2.5", "1e2", "+3", "abc", "3 4"]) {
+    for (const text of [
+      "",
+      " ",
+      "0",
+      "00",
+      "-1",
+      "2.5",
+      "1e2",
+      "+3",
+      "abc",
+      "3 4",
+      "99999999999999999999",
+    ]) {
       expect(parseLimit(text)).toBeNull();
     }
   });
