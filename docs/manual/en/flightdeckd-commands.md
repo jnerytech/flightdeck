@@ -332,7 +332,7 @@ fd persona trust local --project-path ~/work/api --hash abcdef012345
 - **`reset <id>`:** puts a pack persona back as it came; the host's edit goes away.
 - **`publish-agent <id> --project-path <folder>`:** writes the persona as the project agent
   `.claude/agents/persona-<id>.md`. It changes a file in the project, so it refuses with exit `1` and sends
-  nothing until you pass `--confirm`.
+  nothing until you pass `--confirm`. It needs a near connection (this computer or Tailscale): over a far one the daemon refuses with `transport_refused`.
 - **`trust <id> --project-path <folder> --hash <hash>`:** trusts a versioned project persona, so its text
   reaches every session of the project. `--hash` is the start (12 or more hex characters) of the hash
   `persona list` showed: if the file was edited since, the command refuses with exit `1` and says the new

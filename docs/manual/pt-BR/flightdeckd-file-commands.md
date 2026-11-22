@@ -38,9 +38,9 @@ caminho, o tamanho e o novo hash, que a próxima escrita repete; `--json` imprim
 fechar depois de a escrita ser enviada, o comando sai com `2` e diz que o arquivo pode ou não ter mudado: leia de novo
 antes de escrever. `read` não é uma cópia para editar e devolver, pois limpa caracteres de controle do que imprime:
 escreva a partir do seu próprio arquivo. O shell de uma sessão não roda `write` sem a pessoa aprovar, pois o app pede
-que a pessoa abra o arquivo e salve. Escrever um arquivo de configuração do Claude Code (`.claude/settings.json` ou
-`.claude/settings.local.json`, de qualquer forma que o caminho seja escrito ou ligado) exige uma conexão próxima (este
-computador ou a Tailscale), pois ele pode declarar hooks que rodam em toda sessão: por uma distante o daemon recusa com
+que a pessoa abra o arquivo e salve. Escrever o que orienta uma sessão (um arquivo dentro de qualquer pasta `.claude`, como as configurações, os agentes,
+as skills, os comandos e as regras, ou um `CLAUDE.md` ou `CLAUDE.local.md`, de qualquer forma que o caminho seja escrito
+ou ligado) exige uma conexão próxima (este computador ou a Tailscale), pois ele pode declarar hooks que rodam em toda sessão: por uma distante o daemon recusa com
 `transport_refused`. Qualquer outro arquivo escreve de qualquer lugar.
 
 `search <alvo> --mode name|content --query <texto>` procura arquivos pelo nome ou pelo que guardam. O texto tem de 1
