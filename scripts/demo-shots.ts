@@ -31,6 +31,7 @@ import { sshScript } from "./lib/shots/ssh-frames.ts";
 import { agentShots } from "./lib/shots/table-agent.ts";
 import { assistantShots, demoAssistantPrefs } from "./lib/shots/table-assistant.ts";
 import { automationShots } from "./lib/shots/table-automations.ts";
+import { backgroundShots } from "./lib/shots/table-background.ts";
 import { boardShots } from "./lib/shots/table-board.ts";
 import { devicesShots } from "./lib/shots/table-devices.ts";
 import { harnessShots } from "./lib/shots/table-harness.ts";
@@ -91,6 +92,7 @@ function shots(ids: DemoIds): Shot[] {
     ...snippetShots(ids),
     ...teleportShots(ids),
     ...assistantShots(ids),
+    ...backgroundShots(ids),
   ];
 }
 

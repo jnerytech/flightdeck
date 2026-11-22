@@ -30,6 +30,7 @@ export const ENTRY_POINTS: ReadonlySet<string> = new Set([
   "scripts/lib/shots/table-agent.ts",
   "scripts/lib/shots/table-assistant.ts",
   "scripts/lib/shots/table-automations.ts",
+  "scripts/lib/shots/table-background.ts",
   "scripts/lib/shots/table-board.ts",
   "scripts/lib/shots/table-devices.ts",
   "scripts/lib/shots/table-harness.ts",
