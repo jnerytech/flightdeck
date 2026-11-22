@@ -9,6 +9,7 @@ const screen = liveScreen(within);
 const { ActionsPage } = await import("../../src/features/actions/page.tsx");
 const { en } = await import("../../src/i18n/en.ts");
 const { ptBR } = await import("../../src/i18n/pt-BR.ts");
+const { formatDateTime } = await import("../../src/i18n/format.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -41,7 +42,7 @@ const runOf = (name: string) => ({
   id: `run-${name}`,
   name,
   projectId: "p1",
-  requestedBy: "user",
+  requestedBy: "you",
   startedAt: "2026-11-13T10:00:00.000Z",
   durationMs: 1200,
   exitCode: 0,
@@ -112,11 +113,12 @@ describe("runs-concurrent", () => {
         page.answers.build?.();
       });
       await settleMaybe(() => shows("output of build"), 3000);
+      const dictionary = language === "en" ? en : ptBR;
+      // The page shows the start in this machine's zone, so the expected name asks for it the same way.
       const output = screen.queryByRole("region", {
-        name: (language === "en" ? en : ptBR).actionsUi.runOutput.replace(
-          "{time}",
-          language === "en" ? "Nov 13, 2026, 10:00 AM" : "13/11/2026, 10:00",
-        ),
+        name: dictionary.actionsUi.runOutput
+          .replace("{time}", formatDateTime(runOf("build").startedAt, language))
+          .replace("{requester}", dictionary.actionsUi.requester.you),
       });
       expect(output).not.toBeNull();
       const text = output?.querySelector("pre");

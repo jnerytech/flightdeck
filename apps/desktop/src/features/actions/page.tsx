@@ -67,7 +67,10 @@ function Runs(
             // A named region whose text a keyboard can scroll: a long unbroken line overflows the
             // row, and a screen reader says which run the text belongs to (a bare pre takes no name).
             <section
-              aria-label={t("actionsUi.runOutput", { time: store.formatDateTime(run.startedAt) })}
+              aria-label={t("actionsUi.runOutput", {
+                time: store.formatDateTime(run.startedAt),
+                requester: t(`actionsUi.requester.${run.requestedBy}`),
+              })}
             >
               <pre
                 // biome-ignore lint/a11y/noNoninteractiveTabindex: a long line scrolls sideways; focus lets the keyboard do it
