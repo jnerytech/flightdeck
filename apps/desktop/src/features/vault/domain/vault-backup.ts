@@ -7,7 +7,7 @@ import { BackupError, MIN_PASSPHRASE } from "./backup-error.ts";
 import { type SecretMeta, SecretMetaSchema } from "./vault-types.ts";
 
 // The error lives apart so the store can tell it without loading `age` (see backup-error.ts).
-export { BackupError, MIN_PASSPHRASE } from "./backup-error.ts";
+export { BackupError } from "./backup-error.ts";
 
 export interface BackupOptions {
   /** scrypt work factor (log2 N); tests lower it to stay fast. */
