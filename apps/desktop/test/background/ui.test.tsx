@@ -187,6 +187,7 @@ describe("bg-ui: the actions of a session", () => {
   test("Parar and Reiniciar ask the host, Trazer para o terminal opens claude attach in a tab", async () => {
     const { daemon, store } = await openPanel();
     await click("Parar");
+    await click("Parar a sessão");
     await click("Reiniciar");
     await click("Trazer para o terminal");
     const asked = daemon.commands.filter(
@@ -258,9 +259,16 @@ describe("bg-ui: the actions of a session", () => {
 
   test("the state line is a status region: a new state reaches a screen reader (#4169)", async () => {
     const { store, hostId, daemon } = await openPanel();
-    const said = () => within(panel() as HTMLElement).queryByRole("status")?.textContent ?? "";
+    const said = () =>
+      within(panel() as HTMLElement)
+        .queryAllByRole("status")
+        .map((n) => n.textContent)
+        .join(" ");
     expect(said()).toContain("esperando você");
-    daemon.bg.list = { supported: true, sessions: [{ ...BLOCKED, state: "working", waitingFor: null }] };
+    daemon.bg.list = {
+      supported: true,
+      sessions: [{ ...BLOCKED, state: "working", waitingFor: null }],
+    };
     await act(async () => {
       await store.background.load(hostId);
     });
@@ -285,16 +293,16 @@ describe("bg-ui: the actions of a session", () => {
     const stop = () => screen.queryByRole("button", { name: "Parar" }) as HTMLButtonElement;
     expect(stop().disabled).toBe(true);
     expect(screen.queryAllByText("A sessão não está rodando.").length).toBeGreaterThan(0);
-    expect((screen.queryByRole("button", { name: "Reiniciar" }) as HTMLButtonElement).disabled).toBe(
-      false,
-    );
+    expect(
+      (screen.queryByRole("button", { name: "Reiniciar" }) as HTMLButtonElement).disabled,
+    ).toBe(false);
   });
 
   test("Reiniciar is off with its reason while the session works (#4169)", async () => {
     await openPanel(undefined, [{ ...BLOCKED, state: "working" }]);
-    expect((screen.queryByRole("button", { name: "Reiniciar" }) as HTMLButtonElement).disabled).toBe(
-      true,
-    );
+    expect(
+      (screen.queryByRole("button", { name: "Reiniciar" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
     expect(screen.queryAllByText("A sessão ainda está trabalhando.").length).toBeGreaterThan(0);
     expect((screen.queryByRole("button", { name: "Parar" }) as HTMLButtonElement).disabled).toBe(
       false,
@@ -324,7 +332,9 @@ describe("bg-ui: the actions of a session", () => {
     await act(async () => {
       store.i18n.setLang("en");
     });
-    await settle(() => screen.queryByRole("region", { name: "Background session faxina" }) !== null);
+    await settle(
+      () => screen.queryByRole("region", { name: "Background session faxina" }) !== null,
+    );
     expect(screen.queryByRole("region", { name: "Background session faxina" })).not.toBeNull();
   });
 
@@ -340,6 +350,12 @@ describe("bg-ui: a row with no Claude session (#4171)", () => {
     await act(async () => {
       await store.background.load(hostId);
       store.router.push({ name: "hub" });
+    });
+    await sidebar.openFilters();
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("Origem") as HTMLSelectElement, {
+        target: { value: "background" },
+      });
     });
     await settle(() => screen.queryByRole("listitem", { name: "relatorio" }) !== null);
     const row = screen.queryByRole("listitem", { name: "relatorio" }) as HTMLElement;
