@@ -35,10 +35,11 @@ export const UI_FLAGS: Record<string, Handler> = {
 
 /** What is wrong with the `ui` words and flags, or undefined: one change at least, and the confirm. */
 export function uiProblem(args: CliArgs): string | undefined {
-  if (args.command !== "ui")
-    return args.uiLock === undefined
-      ? undefined
-      : `${args.uiLock ? "--lock" : "--unlock"}: this flag only applies to flightdeckd ui set`;
+  if (args.command !== "ui") {
+    if (args.uiLock === undefined) return undefined;
+    const flag = args.uiLock ? "--lock" : "--unlock";
+    return `${flag}: this flag only applies to flightdeckd ui set`;
+  }
   if (args.uiMode === undefined && args.uiLock === undefined)
     return "ui set: needs --mode, --lock or --unlock";
   if (args.confirm !== true)

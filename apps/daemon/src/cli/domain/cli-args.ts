@@ -225,7 +225,6 @@ export interface CliArgs {
     | "files"
     | "dirs"
     | "interrupt"
-    | "sleep"
     | "set-model"
     | "set-effort"
     | "meta-set"
