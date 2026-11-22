@@ -233,7 +233,7 @@ describe("conversas-ui: the open button names its recipient (#4084)", () => {
     ];
     await goToList(list, 3);
     expect(screen.queryByRole("button", { name: "Abrir a sessão de h/s3" })).not.toBeNull();
-    expect(screen.queryAllByRole("button", { name: "Abrir a sessão de h/s2" }).length).toBe(2);
+    expect(screen.queryAllByRole("button", { name: "Abrir a sessão de h/s2" })).toHaveLength(2);
   });
 
   test("a recipient on a host the app does not have is disabled and says why, and a press goes nowhere", async () => {
@@ -310,17 +310,17 @@ describe("conversas-ui: a paused pair (#4086)", () => {
     const { list } = await withLoop(true);
     expect(within(rowOf(list, "de novo")).queryByRole("button", { name: RULES })).not.toBeNull();
     expect(
-      within(rowOf(list, "outra recusa")).queryAllByRole("button", { name: RULES }).length,
-    ).toBe(0);
+      within(rowOf(list, "outra recusa")).queryAllByRole("button", { name: RULES }),
+    ).toHaveLength(0);
     expect(
-      within(rowOf(list, "pode revisar")).queryAllByRole("button", { name: RULES }).length,
-    ).toBe(0);
+      within(rowOf(list, "pode revisar")).queryAllByRole("button", { name: RULES }),
+    ).toHaveLength(0);
   });
 
   test("with no paused pair there is no notice and no link", async () => {
     await withLoop(false);
-    expect(screen.queryAllByRole("button", { name: RULES }).length).toBe(0);
-    expect(screen.queryAllByText(/estão pausadas/).length).toBe(0);
+    expect(screen.queryAllByRole("button", { name: RULES })).toHaveLength(0);
+    expect(screen.queryAllByText(/estão pausadas/)).toHaveLength(0);
   });
 });
 
