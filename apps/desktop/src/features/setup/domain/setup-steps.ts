@@ -239,6 +239,11 @@ export class SetupSettings {
     this.emit();
   }
 
+  /** A dismissed missing-tool note is wanted again. */
+  restoreTool(_id: string): void {
+    this.emit();
+  }
+
   private emit(): void {
     for (const listener of this.listeners) listener();
   }
