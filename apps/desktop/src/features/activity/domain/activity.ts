@@ -62,6 +62,20 @@ export interface ActivityBoardData {
   /** Cards that pass the filter, and all the cards of the columns on show. */
   shown: number;
   total: number;
+  /** The idle sessions that pass the filter and are left out because Idle is off (#4241). */
+  hiddenIdle: number;
+}
+
+/** What the board is: waiting for a first answer, empty of hosts, or the columns. */
+export type ActivityStage = "no_host" | "loading" | "board";
+
+/**
+ * With no host there is nothing to read; while every host is still being reached and nothing is
+ * known yet the board is not a quiet day either (#4241).
+ */
+export function activityStage(hosts: readonly { status: string }[], total: number): ActivityStage {
+  if (hosts.length === 0) return "no_host";
+  return total === 0 && hosts.every((host) => host.status === "connecting") ? "loading" : "board";
 }
 
 /** The rows the board is about: live sessions, not the history and not what was archived. */
@@ -110,8 +124,7 @@ export function activityBoard(
         pending,
         changedAt,
       };
-    })
-    .filter((card) => showIdle || card.column !== "idle");
+    });
   const text = filter.text.trim().toLowerCase();
   const passes = (card: ActivityCard) =>
     (text === "" ||
@@ -121,7 +134,10 @@ export function activityBoard(
     (!filter.host || card.row.hostName === filter.host) &&
     (!filter.project || card.project === filter.project) &&
     (!filter.persona || card.row.persona?.id === filter.persona);
-  const kept = cards.filter(passes).sort((a, b) => b.changedAt - a.changedAt);
+  const onShow = (card: ActivityCard) => showIdle || card.column !== "idle";
+  const kept = cards
+    .filter((card) => onShow(card) && passes(card))
+    .sort((a, b) => b.changedAt - a.changedAt);
   const columns: Record<ActivityColumn, ActivityCard[]> = {
     needs_you: [],
     working: [],
@@ -129,7 +145,12 @@ export function activityBoard(
     idle: [],
   };
   for (const card of kept) columns[card.column].push(card);
-  return { columns, shown: kept.length, total: cards.length };
+  return {
+    columns,
+    shown: kept.length,
+    total: cards.filter(onShow).length,
+    hiddenIdle: cards.filter((card) => !onShow(card) && passes(card)).length,
+  };
 }
 
 /** What the filters can pick: the hosts, projects and personas of the live sessions. */

@@ -35,6 +35,8 @@ export function ActivityCardView(
     onRespond(request: PendingItem, decision: "allow" | "deny", held?: boolean): unknown;
     /** Test seam: the hold time of a high-risk approval. */
     holdMs?: number;
+    /** Why the last Approve or Deny did not go through, while its request still waits here (#4240). */
+    failure?: string;
     /** Hands the title button to the board, which returns the focus to it after an answer (#2675). */
     titleRef?(button: HTMLButtonElement | null): void;
   }>,
@@ -121,6 +123,11 @@ export function ActivityCardView(
               {t("activityBoard.deny")}
             </ActionButton>
           </div>
+          {props.failure && (
+            <p role="alert" className="text-destructive text-xs">
+              {props.failure}
+            </p>
+          )}
         </div>
       )}
     </li>

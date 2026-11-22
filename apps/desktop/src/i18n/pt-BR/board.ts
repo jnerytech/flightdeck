@@ -627,5 +627,11 @@ export const board = {
     emptyAll: "Nada por aqui ainda. Inicie uma sessão e ela aparece neste quadro.",
     emptyFiltered: "Nenhuma sessão atende a estes filtros.",
     clearFilters: "Limpar filtros",
+    answerFailed: "Não foi possível enviar a resposta: {reason}",
+    doneHint: "Um turno terminado que você não abriu, por 2 horas. Depois disso fica Ociosa.",
+    idleHiddenOne: "1 sessão ociosa oculta",
+    idleHidden: "{n} sessões ociosas ocultas",
+    noHost: "Nenhum host ainda. Adicione um para ver as sessões aqui.",
+    loading: "Conectando aos seus hosts…",
   },
 } as const;
