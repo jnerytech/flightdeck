@@ -21,6 +21,7 @@ import {
   type TeamConfirm,
 } from "./domain/new-team.ts";
 import { NewMember } from "./new-member.tsx";
+import { TeamGoal } from "./team-goal.tsx";
 import { TeamMemberRow } from "./team-member-row.tsx";
 import { TeamOutcome } from "./team-outcome.tsx";
 import { useModes } from "./use-modes.ts";
@@ -94,22 +95,29 @@ export function Team(
         {team.pausedBy === "quota" && (
           <span className="text-status-needs-you text-xs">{t("teamsUi.pausedByQuota")}</span>
         )}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label={t("teamsUi.menu", { name: team.name })}>
-              <MoreHorizontal aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {/* Only a closed team can be deleted; an open one says what to do first. */}
-            <DropdownMenuItem disabled={open} onSelect={() => setConfirm({ kind: "delete" })}>
-              {open ? `${t("teamsUi.delete")} · ${t("teamsUi.deleteOpen")}` : t("teamsUi.delete")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Only a closed team can be deleted, so the menu has nothing to offer an open one (#4021):
+            Pause, Close and Add worker are in the footer. */}
+        {!open && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t("teamsUi.menu", { name: team.name })}
+              >
+                <MoreHorizontal aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => setConfirm({ kind: "delete" })}>
+                {t("teamsUi.delete")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
+      <TeamGoal t={t} name={team.name} goal={team.goal} />
       {props.status?.outcome && <TeamOutcome t={t} outcome={props.status.outcome} />}
-      <p className="text-muted-foreground whitespace-pre-wrap">{team.goal}</p>
       <ul className="flex flex-col gap-1">
         {team.members.map((member) => (
           <TeamMemberRow

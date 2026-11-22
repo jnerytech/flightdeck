@@ -18,6 +18,8 @@ const PAIRS = [
   ["pauseButton", "pause"],
   ["resumeButton", "resume"],
   ["closeButton", "close"],
+  ["goalMore", "goalMoreOf"],
+  ["goalLess", "goalLessOf"],
   ["addMemberButton", "addMember"],
 ] as const;
 
