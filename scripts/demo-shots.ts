@@ -33,6 +33,7 @@ import { assistantShots, demoAssistantPrefs } from "./lib/shots/table-assistant.
 import { automationShots } from "./lib/shots/table-automations.ts";
 import { backgroundShots } from "./lib/shots/table-background.ts";
 import { boardShots } from "./lib/shots/table-board.ts";
+import { costsShots } from "./lib/shots/table-costs.ts";
 import { devicesShots } from "./lib/shots/table-devices.ts";
 import { harnessShots } from "./lib/shots/table-harness.ts";
 import { hostShots } from "./lib/shots/table-hosts.ts";
@@ -92,6 +93,7 @@ function shots(ids: DemoIds): Shot[] {
     ...snippetShots(ids),
     ...teleportShots(ids),
     ...assistantShots(ids),
+    ...costsShots(ids),
     ...backgroundShots(ids),
   ];
 }
@@ -258,7 +260,13 @@ function storageSeed(shot: Shot, lang: string, ids: DemoIds): StorageSeed {
   return {
     clients: shot.clients ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" } : null,
     roi: shot.roi ? DEMO_ROI : null,
-    inbox: shot.inbox ? demoInbox(lang, { hostId: ALFA, requestId: ids.waitingRequest }) : null,
+    inbox: shot.inbox
+      ? demoInbox(
+          lang,
+          { hostId: ALFA, requestId: ids.waitingRequest },
+          shot.inbox === "danger" ? { hostId: ALFA, requestId: ids.dangerRequest } : undefined,
+        )
+      : null,
     finished: shot.finished
       ? demoFinished(
           { hostId: ALFA, sessionId: ids.idleSession, name: "Revisão do PR 128" },

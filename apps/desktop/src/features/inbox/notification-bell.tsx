@@ -40,6 +40,8 @@ export function NotificationBell(
 ) {
   const { store, t } = props;
   const [open, setOpen] = useState(false);
+  /** The gone row whose click found nothing to open (#4200). */
+  const [noted, setNoted] = useState<string | null>(null);
   /** The requests an answer is on its way for, by `host/request`. */
   const [answering, setAnswering] = useState<ReadonlySet<string>>(new Set());
   /** Why an answer from a row was not done, by `host/request`, until the next try. */
@@ -114,6 +116,13 @@ export function NotificationBell(
     }
   };
   const pick = (row: InboxRow) => {
+    setNoted(null);
+    // A request that ended has nothing to open and no route kept: the panel stays, and the row says
+    // why (#4200). A gone card still opens its page (#4035).
+    if (gone(row.entry) && !row.entry.route) {
+      setNoted(row.entry.id);
+      return;
+    }
     store.inbox.markRead(row.ids);
     setOpen(false);
     const target = inboxTarget(row.entry, cardExists, requestOpen);
@@ -122,7 +131,13 @@ export function NotificationBell(
     else if (target?.kind === "route") props.go(target.route);
   };
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        setNoted(null);
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
@@ -140,6 +155,7 @@ export function NotificationBell(
         unread={unreadCount(inbox)}
         t={t}
         gone={gone}
+        noted={noted}
         request={requestOf}
         onPick={pick}
         onApprove={(row, held) => void respond(row, "allow", held)}

@@ -1,11 +1,18 @@
 import type { DiffFile, ReviewComment } from "@flightdeck/protocol";
-import { MessageSquarePlus } from "lucide-react";
+import { MessageSquare, MessageSquarePlus } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { Inline } from "@/shared/layout/index.ts";
 import { formatBytes } from "@/shared/lib/index.ts";
-import { type DiffRow, diffRows, type Selection, selected } from "./domain/review.ts";
+import {
+  type DiffRow,
+  diffRows,
+  type PrCommentsByPath,
+  type Selection,
+  selected,
+} from "./domain/review.ts";
 
 type LineRow = Extract<DiffRow, { kind: "line" }>;
 
@@ -239,6 +246,8 @@ export function DiffView(
     composer: ReactNode;
     /** Shows a file in the system's file manager; absent where the app cannot (a browser, a remote host). */
     onShowInFolder?: (file: DiffFile) => void;
+    /** The PR's comments by file (a card's): a file that has some shows how many, and leads to the first. */
+    prComments?: PrCommentsByPath;
   }>,
 ) {
   const t = useT();
@@ -251,9 +260,15 @@ export function DiffView(
       {props.onPick && props.files.length > 0 && (
         <p className="text-muted-foreground text-xs">{t("changes.commentHint")}</p>
       )}
-      {props.files.map((file) => (
+      {props.files.map((file, index) => (
         <div key={`${file.path}:${file.uncommitted}`} className="flex flex-col gap-2">
-          <h4 className="font-medium font-mono text-xs">{file.path}</h4>
+          <Inline>
+            <h4 className="font-medium font-mono text-xs">{file.path}</h4>
+            {/* A path can be listed twice (committed and not): its comments are marked once. */}
+            {props.files.findIndex((f) => f.path === file.path) === index && (
+              <PrCommentsMark path={file.path} marks={props.prComments} />
+            )}
+          </Inline>
           <FileDiff
             file={file}
             mode={props.mode}
@@ -265,5 +280,30 @@ export function DiffView(
         </div>
       ))}
     </section>
+  );
+}
+
+/** The count of PR comments on a file, beside its name: it moves to the first of them (#4228). */
+function PrCommentsMark(props: Readonly<{ path: string; marks: PrCommentsByPath | undefined }>) {
+  const t = useT();
+  const mark = props.marks?.[props.path];
+  if (!mark) return null;
+  const label = t("changes.prCommentsOn", { n: mark.count, path: props.path });
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      aria-label={label}
+      title={label}
+      className="tabular-nums"
+      onClick={() => {
+        const target = document.getElementById(`prc:${mark.firstId}`);
+        target?.scrollIntoView({ block: "center" });
+        target?.focus({ preventScroll: true });
+      }}
+    >
+      <MessageSquare aria-hidden="true" className="size-3.5" />
+      {mark.count}
+    </Button>
   );
 }

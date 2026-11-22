@@ -1,4 +1,4 @@
-import type { ChangesResult, DiffFile, ReviewComment } from "@flightdeck/protocol";
+import type { ChangesResult, DiffFile, PrComment, ReviewComment } from "@flightdeck/protocol";
 import { reviewMessage } from "@flightdeck/protocol";
 import { Pencil, RotateCcw } from "lucide-react";
 import {
@@ -22,7 +22,7 @@ import { Stack } from "@/shared/layout/index.ts";
 import { formatBytes } from "@/shared/lib/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { DiffView } from "./diff-view.tsx";
-import { type Selection, select } from "./domain/review.ts";
+import { prCommentsByPath, type Selection, select } from "./domain/review.ts";
 import { FileSessions } from "./file-sessions.tsx";
 import { ReviewList } from "./review-list.tsx";
 
@@ -62,6 +62,8 @@ export function ChangesPanel(
     ) => ReactNode;
     /** Where the collected review can be put to be edited and sent (a session's message box). */
     onCompose?: (text: string) => void;
+    /** The PR's comments (a card's): the files that have some show how many, and lead to the first (#4228). */
+    prComments?: readonly PrComment[];
   }>,
 ) {
   const t = useT();
@@ -453,6 +455,7 @@ export function ChangesPanel(
             selection={selection}
             onPick={onPick}
             composer={composer}
+            prComments={prCommentsByPath(props.prComments ?? [])}
             {...folder}
           />
         </>

@@ -6,9 +6,9 @@ export const EFFORTS: readonly EffortLevel[] = ["low", "medium", "high", "xhigh"
 /** The models the menu lists first: the aliases, which always mean the latest of the family. */
 export const MAIN_MODELS: readonly string[] = ["opus", "sonnet", "haiku"];
 
-/** The models under "More models": a specific version each. */
+/** The models under "More models": a specific version each, the current ones; every list of models in the app is built from these and `MAIN_MODELS`. */
 export const MORE_MODELS: readonly string[] = [
-  "claude-fable-5-1",
+  "claude-fable-5-2",
   "claude-opus-5-5",
   "claude-sonnet-5-5",
   "claude-haiku-5-5",

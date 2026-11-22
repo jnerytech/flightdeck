@@ -26,7 +26,12 @@ const qa = {
 type Reply = (type: string, payload: unknown) => unknown | Promise<unknown>;
 
 /** The Personas page of a host whose daemon is a fake: `reply` answers each request, null is a refusal. */
-function mount(reply: Reply, language: "en" | "pt-BR", online = true) {
+function mount(
+  reply: Reply,
+  language: "en" | "pt-BR",
+  online = true,
+  go: (route: unknown) => void = () => {},
+) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   (store as unknown as { update(p: object): void }).update({
@@ -40,7 +45,7 @@ function mount(reply: Reply, language: "en" | "pt-BR", online = true) {
   }) as never;
   render(
     <TContext.Provider value={store.i18n.t}>
-      <PersonasPage store={store} go={() => {}} />
+      <PersonasPage store={store} go={go} />
     </TContext.Provider>,
   );
   return { count: (type: string) => sent.filter((s) => s === type).length };
@@ -69,6 +74,8 @@ describe.each([
       failed: "Could not read this host's personas.",
       retry: "Try again",
       empty: "No persona.",
+      noHost: "No connected host with personas",
+      addHost: "Add a host",
       project: "Project",
       add: "New persona",
       edit: "Edit QA",
@@ -83,6 +90,8 @@ describe.each([
       failed: "Não foi possível ler as personas deste host.",
       retry: "Tentar de novo",
       empty: "Nenhuma persona.",
+      noHost: "Nenhum host conectado com personas",
+      addHost: "Adicionar host",
       project: "Projeto",
       add: "Nova persona",
       edit: "Editar QA",
@@ -103,10 +112,27 @@ describe.each([
     expect(has("status", words.loading)).toBe(false);
   });
 
-  test("with no host online there is nothing to wait for: the empty state shows", async () => {
+  test("with no host online there is nothing to wait for: the page names the missing host and the project choice is off", async () => {
     mount(() => new Promise(() => {}), language, false);
-    await settle(() => hasText(words.empty));
+    // The page has settled once it says either of the two things; only the first is the right one.
+    await settle(() => hasText(words.noHost) || hasText(words.empty));
+    expect(hasText(words.noHost)).toBe(true);
     expect(has("status", words.loading)).toBe(false);
+    expect(hasText(words.empty)).toBe(false);
+    expect(screen.queryByLabelText(words.project)).toBeNull();
+  });
+
+  test("with no host online, the page's link goes to Add host", async () => {
+    const routes: unknown[] = [];
+    mount(
+      () => new Promise(() => {}),
+      language,
+      false,
+      (route) => routes.push(route),
+    );
+    await settle(() => hasText(words.noHost) || hasText(words.empty));
+    await press(words.addHost);
+    expect(routes).toEqual([{ name: "add-host" }]);
   });
 
   test("another project's read in flight does not show the last project's cards", async () => {

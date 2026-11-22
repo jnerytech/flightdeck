@@ -1,4 +1,5 @@
-import type { Card, ChangesResult, StepRun } from "@flightdeck/protocol";
+import type { Card, ChangesResult, PrComment, StepRun } from "@flightdeck/protocol";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
@@ -121,6 +122,8 @@ export function CardWork(
   const t = useT();
   const { store, hostId, card, tab, openedStep, stepSession, session } = props;
   const cardId = card.id;
+  // The PR's comments, read by their own list: the diff marks the files that have some (#4228).
+  const [prComments, setPrComments] = useState<PrComment[]>([]);
   const tabButton = (name: CardTab, label: string) => (
     <Button
       variant="outline"
@@ -143,12 +146,14 @@ export function CardWork(
               hostId={hostId}
               cardId={cardId}
               moment={`${card.updatedAt}/${card.prState}`}
+              onRead={setPrComments}
             />
           )}
           <ChangesPanel
             store={store}
             hostId={hostId}
             target={`card:${cardId}`}
+            prComments={prComments}
             extra={reviewPanel(store, hostId, card, props.withSecondOpinion)}
           />
         </div>
