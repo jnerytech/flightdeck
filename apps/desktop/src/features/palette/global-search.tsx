@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { pendingText, pendingWhere } from "@/features/needs-you/index.ts";
 import { basename } from "@/shared/lib/index.ts";
@@ -43,10 +43,18 @@ function Snippet({ text }: Readonly<{ text: string }>) {
 const SECTION_CAP = 8;
 const SECTION_MORE = 20;
 
+/** One place the arrows stop at: a row, the "more" button of a section, or a history hit. */
+type Stop =
+  | { id: string; kind: "item"; item: PaletteItem }
+  | { id: string; kind: "more"; section: PaletteSection }
+  | { id: string; kind: "hit"; hit: GlobalHit };
+
 /**
  * The Ctrl+K palette: live sessions, cards, projects, hosts and actions filtered as you type, then
  * the history search across every host (Enter with nothing chosen), merged by date as each host
- * answers. Arrows choose, Enter opens, Tab shows the chosen entry's actions.
+ * answers. Arrows choose (a row, a "more" button or a history hit), Enter opens it, Tab shows the
+ * chosen entry's actions, or, with nothing chosen, goes on to the scope chips. The focus stays in
+ * the text field: the input is a combobox over the lists and names the chosen entry.
  */
 export function GlobalSearch(
   props: Readonly<{
@@ -61,6 +69,7 @@ export function GlobalSearch(
   }>,
 ) {
   const t = props.store.i18n.t;
+  const uid = useId();
   const { search, hosts } = props.state;
   const { store } = props;
   const [query, setQuery] = useState(search?.query ?? "");
@@ -142,11 +151,39 @@ export function GlobalSearch(
     section.uncapped ? section.items.length : (limits[section.title] ?? SECTION_CAP);
   const shown = (section: PaletteSection) =>
     actionsOf ? section.items : section.items.slice(0, capOf(section));
-  const visible = sections.flatMap(shown);
+  const hiddenOf = (section: PaletteSection) =>
+    actionsOf ? 0 : Math.max(0, section.items.length - capOf(section));
   const recentItems = sections.find((section) => section.recent)?.items ?? [];
-  /** Where the chosen entry is in the visible list; -1 is the text field (or an entry that left). */
-  const cursor = visible.findIndex((item) => item.id === activeId);
-  const setCursor = (at: number) => setActiveId(visible[at]?.id ?? null);
+  /** The arrows' walk: each section's rows and its "more" button, then the history hits. */
+  const stops: Stop[] = [
+    ...sections.flatMap((section): Stop[] => [
+      ...shown(section).map((item): Stop => ({ id: item.id, kind: "item", item })),
+      ...(hiddenOf(section) > 0
+        ? [{ id: `more:${section.title}`, kind: "more" as const, section }]
+        : []),
+    ]),
+    ...(actionsOf ? [] : (search?.hits ?? [])).map(
+      (hit): Stop => ({
+        id: `hit:${hit.hostId}/${hit.claudeSessionId}/${hit.uuid}`,
+        kind: "hit",
+        hit,
+      }),
+    ),
+  ];
+  /** Where the chosen entry is in the walk; -1 is the text field (or an entry that left). */
+  const cursor = stops.findIndex((stop) => stop.id === activeId);
+  const setCursor = (at: number) => setActiveId(stops[at]?.id ?? null);
+  /** The DOM id of a stop, which the input names in `aria-activedescendant`. */
+  const domId = (stopId: string) => `${uid}-${stops.findIndex((stop) => stop.id === stopId)}`;
+  const activeDomId = cursor >= 0 ? domId(stops[cursor]?.id ?? "") : undefined;
+  const listIds = [
+    ...sections.map((_, i) => `${uid}-list-${i}`),
+    ...(search && !actionsOf ? [`${uid}-hits`] : []),
+  ];
+  useEffect(() => {
+    // The window scrolls: a chosen entry further down comes into view.
+    if (activeDomId) document.getElementById(activeDomId)?.scrollIntoView?.({ block: "nearest" });
+  }, [activeDomId]);
   const back = () => {
     setActionsOf(null);
     setActiveId(null);
@@ -158,6 +195,20 @@ export function GlobalSearch(
     props.onGo(item.target);
   };
 
+  /** More rows of a section show (a click on its button, or Enter on it). */
+  const expand = (section: PaletteSection) =>
+    setLimits((before) => ({ ...before, [section.title]: capOf(section) + SECTION_MORE }));
+
+  /** Enter on a stop: opens a row or a hit, or shows more rows and keeps the walk at the first new one. */
+  const activate = (stop: Stop) => {
+    if (stop.kind === "item") choose(stop.item);
+    else if (stop.kind === "hit") props.onOpenHit(stop.hit);
+    else {
+      setActiveId(stop.section.items[capOf(stop.section)]?.id ?? null);
+      expand(stop.section);
+    }
+  };
+
   /** Tab: into the chosen entry's actions, or back from them to the list. */
   const toggleActions = (chosen: PaletteItem | undefined) => {
     if (actionsOf) back();
@@ -165,32 +216,6 @@ export function GlobalSearch(
       setActionsOf(chosen);
       // The actions are their own list: its first one is chosen.
       setActiveId("action:0");
-    }
-  };
-
-  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    const chosen = visible[cursor];
-    const alt = /^[1-6]$/.test(e.key) && e.altKey && query.trim() === "" && !actionsOf;
-    if (alt) {
-      // Alt+1…6 open the recent entries; nowhere outside the palette do they mean anything.
-      e.preventDefault();
-      const recent = recentItems[Number(e.key) - 1];
-      if (recent) choose(recent);
-    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      e.preventDefault();
-      const step = e.key === "ArrowDown" ? 1 : -1;
-      setCursor(Math.max(-1, Math.min(visible.length - 1, cursor + step)));
-    } else if (e.key === "Enter" && chosen) {
-      // With nothing chosen, Enter submits the form: the history search.
-      e.preventDefault();
-      choose(chosen);
-    } else if (e.key === "Tab") {
-      e.preventDefault();
-      toggleActions(chosen);
-    } else if (e.key === "Escape" && actionsOf) {
-      // Back to the list; the dialog only closes from there.
-      e.stopPropagation();
-      back();
     }
   };
 
@@ -214,6 +239,36 @@ export function GlobalSearch(
     setScope((before) =>
       key === "host" ? { hostId: null, projectId: null } : { ...before, projectId: null },
     );
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    const chosen = stops[cursor];
+    const alt = /^[1-6]$/.test(e.key) && e.altKey && query.trim() === "" && !actionsOf;
+    if (alt) {
+      // Alt+1…6 open the recent entries; nowhere outside the palette do they mean anything.
+      e.preventDefault();
+      const recent = recentItems[Number(e.key) - 1];
+      if (recent) choose(recent);
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const step = e.key === "ArrowDown" ? 1 : -1;
+      setCursor(Math.max(-1, Math.min(stops.length - 1, cursor + step)));
+    } else if (e.key === "Enter" && chosen) {
+      // With nothing chosen, Enter submits the form: the history search.
+      e.preventDefault();
+      activate(chosen);
+    } else if (e.key === "Tab") {
+      // With nothing chosen, Tab goes on to the scope chips (the rows are out of the tab order).
+      const leaves = !chosen && !actionsOf && !e.shiftKey && chips.length > 0;
+      if (!leaves) {
+        e.preventDefault();
+        toggleActions(chosen?.kind === "item" ? chosen.item : undefined);
+      }
+    } else if (e.key === "Escape" && actionsOf) {
+      // Back to the list; the dialog only closes from there.
+      e.stopPropagation();
+      back();
+    }
+  };
+
   return (
     <dialog
       open
@@ -232,6 +287,11 @@ export function GlobalSearch(
       >
         <Input
           ref={inputRef}
+          role="combobox"
+          aria-expanded="true"
+          aria-autocomplete="list"
+          aria-controls={listIds.join(" ")}
+          aria-activedescendant={activeDomId}
           aria-label={t("searchUi.input")}
           placeholder={t("searchUi.placeholder")}
           value={query}
@@ -248,21 +308,20 @@ export function GlobalSearch(
         onRemove={removeChip}
         onClear={() => setScope({ hostId: null, projectId: null })}
       />
-      {sections.map((section) => (
+      {sections.map((section, i) => (
         <PaletteSectionView
           key={section.title}
           section={section}
+          listId={`${uid}-list-${i}`}
           rows={shown(section)}
-          selected={(item) => visible.indexOf(item) === cursor}
-          hidden={actionsOf ? 0 : Math.max(0, section.items.length - capOf(section))}
+          idOf={(item) => domId(item.id)}
+          selected={(item) => stops[cursor]?.id === item.id}
+          hidden={hiddenOf(section)}
+          moreId={domId(`more:${section.title}`)}
+          moreSelected={stops[cursor]?.id === `more:${section.title}`}
           t={t}
           onChoose={choose}
-          onMore={() =>
-            setLimits((before) => ({
-              ...before,
-              [section.title]: capOf(section) + SECTION_MORE,
-            }))
-          }
+          onMore={() => expand(section)}
         />
       ))}
       {search && (
@@ -278,15 +337,19 @@ export function GlobalSearch(
               <li key={id}>{t("searchUi.silent", { host: name(id) })}</li>
             ))}
           </ul>
-          <ul aria-label={t("searchUi.results")} className="flex flex-col">
+          <ul id={`${uid}-hits`} aria-label={t("searchUi.results")} className="flex flex-col">
             {search.hits.map((hit) => {
               const when = props.store.formatDateTime(hit.ts ?? "");
               const where = `${hit.hostName} · ${basename(hit.cwd)} · ${when}`;
+              const stopId = `hit:${hit.hostId}/${hit.claudeSessionId}/${hit.uuid}`;
               return (
                 <li key={`${hit.hostId}/${hit.claudeSessionId}/${hit.uuid}`}>
                   <button
                     type="button"
-                    className="flex w-full min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-accent"
+                    id={domId(stopId)}
+                    tabIndex={-1}
+                    aria-current={stops[cursor]?.id === stopId ? "true" : undefined}
+                    className="palette-row flex w-full min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5 text-left"
                     onClick={() => props.onOpenHit(hit)}
                   >
                     {/* A long title or path ends in an ellipsis; the whole text is in the tooltip. */}

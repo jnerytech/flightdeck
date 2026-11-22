@@ -86,7 +86,7 @@ function open(w: ReturnType<typeof world>, route?: object) {
   return { went, view, rendered };
 }
 
-const input = () => within(screen.getByRole("dialog")).getByRole("textbox") as HTMLInputElement;
+const input = () => within(screen.getByRole("dialog")).getByRole("combobox") as HTMLInputElement;
 const options = () => within(screen.getByRole("dialog")).queryAllByRole("option");
 const labels = () => options().map((o) => o.getAttribute("aria-label"));
 const type = (text: string) =>
