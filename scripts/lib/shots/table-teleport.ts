@@ -11,7 +11,7 @@ const REPO = "/srv/projects/flightdeck-web";
 const text = (en: string, pt: string) => new RegExp(`^(${en}|${pt})$`);
 
 /**
- * The dialog open on a session of alfa: the rows are expanded and each row's menu is tried until one
+ * The dialog open on a session of beta: the rows are expanded and each row's menu is tried until one
  * offers "Move to another host" (only an idle session of the app's own is movable).
  */
 async function openMove(page: Page): Promise<void> {

@@ -71,10 +71,10 @@ describe("the Teleport prints (#3987)", () => {
     });
   });
 
-  test("the no-target print keeps only alfa, and the plain ws print reaches beta over a name that is not this machine's", () => {
+  test("the no-target print keeps only beta, and the plain ws print reaches beta over a name that is not this machine's", () => {
     const query = (name: string) => teleportShots(IDS).find((shot) => shot.name === name)?.query;
     expect([query("teleporte-sem-destino"), query("teleporte-ws-aberto")]).toEqual([
-      { hosts: "demo-alfa" },
+      { hosts: "demo-beta" },
       { plain: "demo-beta" },
     ]);
   });
