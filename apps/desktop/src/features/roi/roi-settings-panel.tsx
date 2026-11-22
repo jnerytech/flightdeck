@@ -83,9 +83,9 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
           {message}
         </p>
       )}
-      <p role="status" className="text-muted-foreground text-sm empty:hidden">
+      <output className="text-muted-foreground text-sm empty:hidden">
         {saved ? t("roiUi.settingsPanel.saved") : ""}
-      </p>
+      </output>
       <div data-slot="setting-row" className="setting-row">
         <label htmlFor={ids.rate}>{t("roiUi.settingsPanel.defaultRate")}</label>
         <div className="team-row">

@@ -159,7 +159,8 @@ for (const [lang, t] of [
     test("a saved rate or cap says so in a status line, a refusal does not, and an edit clears it (#3767)", async () => {
       await costsPage(lang);
       await settle(() => screen.queryByLabelText(S.defaultRate) !== null);
-      const saidSaved = () => Boolean(screen.queryByText(S.saved)?.closest("[role='status']"));
+      const saidSaved = () =>
+        screen.queryAllByRole("status").some((line) => line.textContent === S.saved);
       expect(saidSaved()).toBe(false);
       await type(S.defaultRate, "42.5");
       await press(S.saveRate);
