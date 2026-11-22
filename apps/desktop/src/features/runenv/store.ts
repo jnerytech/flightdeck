@@ -49,21 +49,34 @@ export class RunEnvSlice {
 
   /** Run: the card's setup (once) and processes. A refusal goes to the banner. */
   async start(hostId: string, cardId: string): Promise<void> {
-    this.stopped.delete(this.core.key(hostId, cardId));
+    const key = this.core.key(hostId, cardId);
+    const was = this.stopped.delete(key);
     const state = await this.core.start(hostId, cardId);
+    // A refused Run changes nothing: the last Stop still explains the ended processes.
+    if (!state && was) this.stopped.add(key);
     if (state) this.updated(hostId, state);
   }
 
   /** Stop: ends the card's processes and everything they started. */
   async stop(hostId: string, cardId: string): Promise<void> {
-    this.stopped.add(this.core.key(hostId, cardId));
+    const key = this.core.key(hostId, cardId);
+    const was = this.stopped.has(key);
+    // Set before the host answers: its update may arrive first and must not read as a crash.
+    this.stopped.add(key);
     const state = await this.core.stop(hostId, cardId);
+    // A refused Stop stopped nothing: a later crash is still a crash.
+    if (!state && !was) this.stopped.delete(key);
     if (state) this.updated(hostId, state);
   }
 
   /** A card's run as the host now tells it. */
   updated(hostId: string, state: RunState): void {
     const { runEnvs } = this.core.state();
-    this.core.update({ runEnvs: { ...runEnvs, [this.core.key(hostId, state.cardId)]: state } });
+    const key = this.core.key(hostId, state.cardId);
+    // A run the host starts (the CLI, another app) is a new run: the Stop before it explains nothing.
+    const before = runEnvs[key]?.status;
+    const live = state.status === "setup" || state.status === "running";
+    if (live && before !== "setup" && before !== "running") this.stopped.delete(key);
+    this.core.update({ runEnvs: { ...runEnvs, [key]: state } });
   }
 }
