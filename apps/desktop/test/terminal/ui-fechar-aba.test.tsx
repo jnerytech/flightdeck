@@ -40,6 +40,12 @@ async function setup() {
   return { ...d, store, hostId, terminalId: terminalId as string };
 }
 
+/** The close button of the terminal's tab, named after the terminal's folder (issue #3951). */
+const closeButton = (store: InstanceType<typeof AppStore>, hostId: string, terminalId: string) => {
+  const cwd = store.getState().terminalCwds[`${hostId}/${terminalId}`] ?? "";
+  return screen.queryByLabelText(`Fechar aba ${cwd.split("/").findLast(Boolean)}`);
+};
+
 const dialog = () => screen.queryByRole("alertdialog");
 const inDialog = (name: string) =>
   dialog() ? within(dialog() as HTMLElement).queryByRole("button", { name }) : null;
@@ -52,8 +58,8 @@ const click = async (target: HTMLElement | null) => {
 
 describe("terminal-ui: fechar a aba de um terminal", () => {
   test("closing a terminal tab asks; Cancelar keeps it", async () => {
-    const { store } = await setup();
-    await click(screen.queryByLabelText("Fechar aba Terminal"));
+    const { store, hostId, terminalId } = await setup();
+    await click(closeButton(store, hostId, terminalId));
     expect(dialog()).not.toBeNull();
     expect(inDialog("Desanexar")).not.toBeNull();
     expect(inDialog("Encerrar processo")).not.toBeNull();
@@ -65,15 +71,15 @@ describe("terminal-ui: fechar a aba de um terminal", () => {
   });
 
   test("the dialog opens with Desanexar focused, so Enter keeps the process running", async () => {
-    await setup();
-    await click(screen.queryByLabelText("Fechar aba Terminal"));
+    const { store, hostId, terminalId } = await setup();
+    await click(closeButton(store, hostId, terminalId));
     await waitFor(() => expect(document.activeElement).toBe(inDialog("Desanexar")));
     expect(document.activeElement).not.toBe(inDialog("Encerrar processo"));
   });
 
   test("Desanexar closes the tab and keeps the terminal running on the host", async () => {
     const { store, hostId, ptys, terminalId } = await setup();
-    await click(screen.queryByLabelText("Fechar aba Terminal"));
+    await click(closeButton(store, hostId, terminalId));
     await click(inDialog("Desanexar"));
     await waitFor(() => expect(store.tabs.tabs).toHaveLength(1));
     expect(ptys.spawned[0]?.killed).toBe(false);

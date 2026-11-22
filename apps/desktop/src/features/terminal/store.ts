@@ -84,6 +84,10 @@ export interface TerminalsCore {
   spawnFailed(error: unknown): void;
 }
 
+/** The folder of each terminal, under `host/terminal`: what names its tab and crumb. */
+const cwdsOf = (hostId: string, terminals: TerminalInfo[]): Record<string, string> =>
+  Object.fromEntries(terminals.map((one) => [`${hostId}/${one.terminalId}`, one.cwd]));
+
 /**
  * The terminals of every host (#1596: a slice of the store): the commands of a host's terminals,
  * the tab a terminal opens in, "Claude aqui", the launch of the person's own terminal, the
@@ -107,7 +111,11 @@ export class TerminalsSlice {
       write: (terminalId, data) => request("terminal.write", { terminalId, data }),
       resize: (terminalId, cols, rows) => request("terminal.resize", { terminalId, cols, rows }),
       close: (terminalId, kill) => request("terminal.close", { terminalId, kill }),
-      list: async () => (await request("terminal.list", {})).terminals,
+      list: async () => {
+        const { terminals } = await request("terminal.list", {});
+        this.core.setCwds(cwdsOf(hostId, terminals));
+        return terminals;
+      },
     };
   }
 
@@ -117,6 +125,7 @@ export class TerminalsSlice {
     if (!folder) return null;
     const opened = await this.core.open(hostId, { cwd: folder, cols: 80, rows: 24 });
     if (!opened) return null;
+    this.core.setCwds(cwdsOf(hostId, [opened]));
     this.core.showTab(hostId, opened.terminalId);
     return opened.terminalId;
   }
@@ -137,6 +146,7 @@ export class TerminalsSlice {
       },
     });
     if (!opened) return null;
+    this.core.setCwds(cwdsOf(hostId, [opened]));
     this.core.showTab(hostId, opened.terminalId);
     return opened.terminalId;
   }

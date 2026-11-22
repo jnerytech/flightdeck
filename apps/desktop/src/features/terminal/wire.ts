@@ -31,7 +31,7 @@ export function wireTerminals(
     close: (hostId, terminalId, kill) =>
       kernel.hostCommand(hostId, "terminal.close", { terminalId, kill }),
     showTab: deps.showTab,
-    setCwds: () => undefined,
+    setCwds: (cwds) => kernel.update({ terminalCwds: { ...kernel.state().terminalCwds, ...cwds } }),
     closing: () => kernel.state().closingTerminal,
     setClosing: (closingTerminal) => kernel.update({ closingTerminal }),
     closingTab: (closing) => {

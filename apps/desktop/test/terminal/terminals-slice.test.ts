@@ -167,7 +167,7 @@ describe("terminals (#1596)", () => {
 
   test("Claude here remembers the folder of its terminal too", async () => {
     const { slice, cwds } = terminals();
-    await slice.openClaude("h", { cwd: "/work/api" });
+    await slice.openClaude("h", { cwd: "/work/api", claudeSessionId: null });
     expect(cwds).toEqual([{ "h/t-1": "/work" }]);
   });
 

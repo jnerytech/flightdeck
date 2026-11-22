@@ -45,6 +45,7 @@ const state = (over: object = {}) =>
     externals: {},
     meta: {},
     hub: {},
+    terminalCwds: {},
     ...over,
   }) as unknown as AppState;
 
