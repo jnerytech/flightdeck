@@ -5,10 +5,16 @@ import { Inline } from "@/shared/layout/index.ts";
 import type { SecretInfo } from "./domain/vault-types.ts";
 import type { SecretMeta } from "./vault.ts";
 
-/** What describes a secret on its row, without revealing it. */
-function infoText(info: SecretInfo, fingerprint: (value: string) => string): string {
-  if (info.fingerprint) return fingerprint(info.fingerprint);
-  return info.hint ?? info.names?.join(", ") ?? "";
+/** What describes a secret on its row, without revealing it, and the word that says what it is. */
+function infoLine(
+  info: SecretInfo,
+  words: { fingerprint(value: string): string; hint: string; variables: string },
+): { label?: string; text: string } {
+  // A fingerprint carries its own word.
+  if (info.fingerprint) return { text: words.fingerprint(info.fingerprint) };
+  if (info.hint) return { label: words.hint, text: info.hint };
+  const names = info.names?.join(", ");
+  return names ? { label: words.variables, text: names } : { text: "" };
 }
 
 export function SecretRow(
@@ -35,7 +41,11 @@ export function SecretRow(
 ) {
   const t = useT();
   const { secret, info } = props;
-  const detail = infoText(info, (value) => t("vault.fingerprint", { value }));
+  const detail = infoLine(info, {
+    fingerprint: (value) => t("vault.fingerprint", { value }),
+    hint: t("vault.hintLabel"),
+    variables: t("vault.variablesLabel"),
+  });
   const revealButton = useRef<HTMLButtonElement>(null);
   // A value that leaves takes its Hide now button along: when the focus was on it, or has nowhere
   // to be, it goes back to Reveal, where the person started.
@@ -52,13 +62,22 @@ export function SecretRow(
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium">{secret.name}</span>
         <span className="text-muted-foreground text-sm">{t(`vault.type.${secret.type}`)}</span>
-        {secret.tags.map((tag) => (
-          <span key={tag} className="rounded bg-muted px-1.5 text-xs">
-            {tag}
-          </span>
-        ))}
+        {secret.tags.length > 0 && (
+          <Inline as="ul" label={t("vault.tagList")}>
+            {secret.tags.map((tag) => (
+              <li key={tag} className="rounded bg-muted px-1.5 text-xs">
+                {tag}
+              </li>
+            ))}
+          </Inline>
+        )}
       </div>
-      {detail && <p className="font-mono text-muted-foreground text-sm">{detail}</p>}
+      {detail.text && (
+        <p className="font-mono text-muted-foreground text-sm">
+          {detail.label && <span className="sr-only">{detail.label} </span>}
+          {detail.text}
+        </p>
+      )}
       <p className="flex flex-wrap gap-x-3 text-muted-foreground text-xs">
         <span>
           {secret.lastUsedAt === null

@@ -19,7 +19,8 @@ nome, o tipo, as etiquetas e uma descrição do segredo.
   linha dele passa a dizer isso; você ainda pode salvar.
 - Cada linha mostra só o que é seguro mostrar: a impressão digital da chave pública, o começo e o
   fim de um token (`ghp_…WXYZ`, e nada para um token curto) ou os nomes de um conjunto de
-  variáveis. Uma senha não mostra nada.
+  variáveis. Uma senha não mostra nada. Um leitor de tela lê "Dica:" ou "Variáveis:" antes dessa
+  linha, e as etiquetas de uma linha como uma lista chamada "Etiquetas".
 - **Revelar** pede que você digite a palavra `revelar` e então mostra o valor por 10 segundos,
   na própria linha, com um aviso que cita o segredo e um botão **Ocultar agora**. **Copiar** coloca
   o valor na área de transferência e a limpa 30 segundos depois. **Remover** pede que você digite o
