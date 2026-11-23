@@ -150,7 +150,7 @@
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
-  align-items: center;
+  align-items: start;
   padding: 0.25rem 0;
   border-top: 1px solid var(--border);
   & svg {
@@ -166,14 +166,20 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    /* The fixed columns are wider than a narrow row: name and word share one line, the text is under. */
+    @media (max-width: 640px) {
+      grid-template-columns: 1rem minmax(0, 1fr) auto;
+    }
   }
 }
 
 @utility dep-compact-found {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  /* The column the name and the word leave is nearly empty here: the text takes its own line. */
+  @media (max-width: 640px) {
+    grid-column: 2 / -1;
+  }
   color: var(--muted-foreground);
   font-size: 0.75rem;
 }

@@ -101,6 +101,10 @@ export const NARROW_SHOTS: readonly string[] = [
   "novidades",
   // #4243: the Activity board stacks its columns below 640 px.
   "atividade",
+  // #4269: the MCP tab's form, test dialog and a long row must wrap at 390.
+  "agente-mcp-novo",
+  "agente-mcp-testar",
+  "agente-mcp-linha-longa",
   // #4297: Conversations (also cut), and the Messaging rules with a long project path and long session ids, at 390.
   "conversas",
   "conversas-cortada",
