@@ -94,6 +94,7 @@ export const hosts = {
       title: { password: "Password for {name}", passphrase: "Key passphrase for {name}" },
       label: { password: "Password", passphrase: "Passphrase" },
       send: "Send",
+      show: "Show what was typed",
     },
     hostKey: {
       confirmTitle: "Server key of {name}",
