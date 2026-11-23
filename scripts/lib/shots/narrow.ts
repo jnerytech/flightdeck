@@ -44,6 +44,13 @@ export const NARROW_SHOTS: readonly string[] = [
   "cota-cartao-conta-compartilhada",
   // #4308: the status bar's quota popover, its guards and buttons, at 390.
   "cota-popover",
+  // #4348: Settings > Backup's Restore a backup with Google Drive: the source choice and the long file names.
+  "configuracoes-restaurar-fonte",
+  "configuracoes-restaurar-drive-entrar",
+  "configuracoes-restaurar-drive-lista",
+  "configuracoes-restaurar-drive-vazio",
+  "configuracoes-restaurar-drive-auth",
+  "configuracoes-restaurar-drive-falhou",
   // #1244: Merge PR's confirmation on a card with an open PR.
   "card-merge-pr",
   "workflows-modelos",

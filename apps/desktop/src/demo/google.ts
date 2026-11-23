@@ -2,7 +2,7 @@ import type { GoogleConfig } from "../features/backup/google-oauth.ts";
 import type { Platform } from "../platform/types.ts";
 
 /** How the demo's Google answers: the `?google=` of the demo's address. */
-export type DemoGoogleMode = "files" | "empty" | "refused" | "revoked" | "down";
+type DemoGoogleMode = "files" | "empty" | "refused" | "revoked" | "down";
 
 /** What the store gets from `google`: the client and the fake Google behind its `fetch`. */
 export interface DemoGoogle {
