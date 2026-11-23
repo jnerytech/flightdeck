@@ -88,7 +88,9 @@ export function clientsShots(): Shot[] {
       clients: {},
       prepare: async (page) => {
         await page.getByRole("button", { name: RENAME }).click();
-        await show(page.getByRole("button", { name: /^(Save name|Salvar nome)$/ }));
+        const save = page.getByRole("button", { name: /^(Save name|Salvar nome)$/ });
+        await save.waitFor();
+        await show(save);
       },
     },
     {
@@ -134,7 +136,9 @@ export function clientsShots(): Shot[] {
       clients: {},
       prepare: async (page) => {
         await page.getByRole("button", { name: EXPORT }).click();
-        await show(page.getByLabel(EXPORT_BOX));
+        const box = page.getByLabel(EXPORT_BOX);
+        await box.waitFor();
+        await show(box);
       },
     },
     {
