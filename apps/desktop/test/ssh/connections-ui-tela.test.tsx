@@ -176,4 +176,122 @@ describe("conexoes-ui: the screen", () => {
     ).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Cadastrar o primeiro destino" })).toBeNull();
   });
+
+  test("until ssh.list answers the page shows a loading line, not the empty state or the filters (#4334)", async () => {
+    const d = sshDaemon(cleanups, { targets: TARGETS, hold: ["ssh.list"] });
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    await store.roster.add({ name: "pc", url: d.url, token: TOKEN });
+    await settle(() => store.getState().hosts[0]?.hostInfo != null);
+    render(<App store={store} />);
+    await settle(() => screen.queryByRole("button", { name: "SSH" }) !== null);
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("button", { name: "SSH" }) as HTMLElement);
+    });
+    await settle(() => d.commands.some((c) => c.type === "ssh.list"));
+    await uiIdle();
+    expect(screen.queryByText("Carregando os destinos…")).not.toBeNull();
+    expect(screen.queryByText("Nenhum destino SSH cadastrado.")).toBeNull();
+    expect(screen.queryByLabelText("Buscar destino")).toBeNull();
+    await act(async () => {
+      d.release("ssh.list");
+    });
+    await settle(() => rows().length === 3);
+    expect(screen.queryByText("Carregando os destinos…")).toBeNull();
+  });
+
+  test("a refused ssh.list says so with a Retry, and Retry shows the list (#4334)", async () => {
+    const refuse = ["ssh.list"];
+    await open({ targets: TARGETS, refuse });
+    expect(screen.queryByText("Não foi possível ler os destinos.")).not.toBeNull();
+    expect(screen.queryByText("Nenhum destino SSH cadastrado.")).toBeNull();
+    refuse.length = 0;
+    const retry = screen.queryByRole("button", { name: "Tentar de novo" });
+    expect(retry).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(retry as HTMLElement);
+    });
+    await settle(() => rows().length === 3);
+    expect(screen.queryByText("Não foi possível ler os destinos.")).toBeNull();
+  });
+
+  test("with no destination the filter row is not rendered (#4334)", async () => {
+    await open({ targets: [] });
+    expect(screen.queryByText("Nenhum destino SSH cadastrado.")).not.toBeNull();
+    expect(screen.queryByLabelText("Buscar destino")).toBeNull();
+    expect(screen.queryByLabelText("Etiqueta")).toBeNull();
+  });
+
+  test("the no-host and the offline-host states have a button that opens the host (#4334)", async () => {
+    const { d, store, hostId } = await open({ targets: [] });
+    d.stop();
+    await settle(() => store.getState().hosts.every((h) => h.status !== "online"));
+    await uiIdle();
+    const goHost = screen.queryByRole("button", { name: "Abrir o host pc" });
+    expect(goHost).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(goHost as HTMLElement);
+    });
+    expect(store.router.current).toEqual({ name: "host", host: hostId });
+  });
+
+  test("Duplicar is busy until ssh.save answers, and a second click saves nothing more (#4334)", async () => {
+    const { d } = await open({ targets: TARGETS, hold: ["ssh.save"] });
+    const duplicate = screen.queryByRole("button", { name: "Duplicar vps" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.click(duplicate);
+      fireEvent.click(duplicate);
+    });
+    await settle(() => d.sent("ssh.save").length > 0);
+    expect(duplicate.getAttribute("aria-busy")).toBe("true");
+    await act(async () => {
+      d.release("ssh.save");
+    });
+    await settle(() => rows().length === 4);
+    expect(d.sent("ssh.save")).toHaveLength(1);
+    expect(duplicate.getAttribute("aria-busy")).toBeNull();
+  });
+
+  test("Conectar is busy while the key is checked, and a second click starts no second connection (#4334)", async () => {
+    const { d } = await open({ targets: TARGETS, hold: ["ssh.hostkey.check"] });
+    const connect = screen.queryByRole("button", { name: "Conectar vps" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.click(connect);
+      fireEvent.click(connect);
+    });
+    await settle(() => d.sent("ssh.hostkey.check").length > 0);
+    expect(connect.getAttribute("aria-busy")).toBe("true");
+    await act(async () => {
+      d.release("ssh.hostkey.check");
+    });
+    await settle(() => d.sent("ssh.connect").length > 0);
+    expect(d.sent("ssh.hostkey.check")).toHaveLength(1);
+    expect(d.sent("ssh.connect")).toHaveLength(1);
+  });
+
+  test("when the host that keeps the destinations goes away, the next host's failed read shows no rows of the first (#4334)", async () => {
+    const { d, store } = await open();
+    expect(rows()).toHaveLength(3);
+    const next = sshDaemon(cleanups, { targets: [], refuse: ["ssh.list"] });
+    await store.roster.add({ name: "pc2", url: next.url, token: TOKEN });
+    await settle(() => store.getState().hosts.some((h) => h.name === "pc2" && h.hostInfo != null));
+    d.stop();
+    await settle(() => store.getState().hosts.some((h) => h.status !== "online"));
+    await settle(() => screen.queryByText("Não foi possível ler os destinos.") !== null);
+    expect(rows()).toHaveLength(0);
+  });
+
+  test("a failed reload after a change keeps the list the person was looking at (#4334)", async () => {
+    const refuse: string[] = [];
+    const { d } = await open({ targets: TARGETS, refuse });
+    refuse.push("ssh.list");
+    const duplicate = screen.queryByRole("button", { name: "Duplicar vps" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.click(duplicate);
+    });
+    await settle(() => d.sent("ssh.save").length > 0);
+    await uiIdle();
+    expect(rows()).toHaveLength(3);
+    expect(screen.queryByText("Não foi possível ler os destinos.")).toBeNull();
+  });
 });
