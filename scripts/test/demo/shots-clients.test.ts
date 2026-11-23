@@ -81,3 +81,68 @@ describe("the Clients screen's prints (#4345)", () => {
     expect(narrow.filter((name) => narrowSizes("dark", name).length === 0)).toEqual([]);
   });
 });
+
+/** Runs a print's `prepare` on a page that records each call and answers with itself. */
+async function calls(name: string): Promise<string> {
+  const seen: string[] = [];
+  const text = (arg: unknown): string => {
+    if (arg instanceof RegExp || typeof arg === "string") return String(arg);
+    if (typeof arg === "object" && arg !== null) return Object.values(arg).map(text).join(",");
+    return typeof arg;
+  };
+  const member = (call: string): unknown =>
+    new Proxy(
+      (...args: unknown[]) => {
+        seen.push(`${call}(${args.map(text).join(",")})`);
+        return recorder;
+      },
+      { get: (_target, prop) => (recorder as Record<string | symbol, unknown>)[prop] },
+    );
+  const recorder: unknown = new Proxy(() => recorder, {
+    // `then` stays undefined, or awaiting the recorder would wait for it forever.
+    get: (_target, prop) => (prop === "then" ? undefined : member(String(prop))),
+  });
+  await shot(name)?.prepare?.(recorder as never);
+  return seen.join(" ");
+}
+
+describe("what each Clients print does on the page (#4345)", () => {
+  test("every print waits for what it shows before the shot", async () => {
+    const waited = await Promise.all(
+      STATES.map(async (name) => [name, (await calls(name)).includes("waitFor")] as const),
+    );
+    expect(waited.filter(([, ok]) => !ok).map(([name]) => name)).toEqual([]);
+  });
+
+  test("rename and delete press the client's own button, delete only asks", async () => {
+    expect(await calls("clientes-renomear")).toMatch(/Rename.*click.*Save name.*scrollIntoView/);
+    expect(await calls("clientes-apagar")).toMatch(/Delete.*click.*alertdialog.*waitFor/);
+    expect(await calls("clientes-apagar")).not.toMatch(/click\(\).*click\(\)/);
+  });
+
+  test("the suggestion prints press the button and wait for the list or for the line saying there is none", async () => {
+    expect(await calls("clientes-sugestoes")).toMatch(
+      /Suggest from what I have.*click.*Client suggestions/,
+    );
+    expect(await calls("clientes-sugestoes-nada")).toMatch(/click.*Nothing to suggest.*waitFor/);
+  });
+
+  test("the transfer prints export, refuse a text that is not an export, or paste an export back", async () => {
+    expect(await calls("clientes-exportado")).toMatch(/Export clients.*click.*Clients export/);
+    expect(await calls("clientes-importar-erro")).toMatch(
+      /Paste an export.*fill.*Import.*click.*alert/,
+    );
+    expect(await calls("clientes-importar-erro")).toContain("this is not an export");
+    expect(await calls("clientes-importar-ok")).toMatch(
+      /Paste an export.*fill.*Import.*click.*Imported/,
+    );
+  });
+
+  test("the vault prints turn the switch on and wait for the dialog, or wait for the findings", async () => {
+    expect(await calls("clientes-cofre-confirmar")).toMatch(/switch.*click.*alertdialog.*waitFor/);
+    expect(await calls("clientes-cofre-achados")).toMatch(
+      /Secrets that could leave the client.*waitFor/,
+    );
+    expect(await calls("clientes-longo")).toMatch(/data-client-name.*waitFor.*data-rule-value/);
+  });
+});
