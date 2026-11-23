@@ -202,8 +202,10 @@ export function sshDaemon(cleanups: Array<() => unknown>, options: SshDaemonOpti
     },
     /** Answers what `hold` kept of this type, and stops holding it. */
     release: (type: string) => {
-      options.hold = (options.hold ?? []).filter((held) => held !== type);
-      for (const pending of held.splice(0).filter((one) => one.type === type)) pending.send();
+      options.hold = (options.hold ?? []).filter((kind) => kind !== type);
+      const now = held.filter((one) => one.type === type);
+      held.splice(0, held.length, ...held.filter((one) => one.type !== type));
+      for (const pending of now) pending.send();
     },
     sent: (type: string) => commands.filter((c) => c.type === type).map((c) => c.payload),
     /** Closes the daemon and every connection to it: the host goes offline. */

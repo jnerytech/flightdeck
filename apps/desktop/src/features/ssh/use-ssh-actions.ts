@@ -31,9 +31,20 @@ export function useSshActions(props: {
 }) {
   const t = useT();
   const { store, hosts, hostId, go } = props;
-  const [targets, setTargets] = useState<SshTarget[]>([]);
-  /** Whether the list is in: the empty state is only true once `ssh.list` answered. */
-  const [listing, setListing] = useState<"loading" | "failed" | "ready">("loading");
+  /**
+   * The list as one host answered it. The empty state is only true once `ssh.list` answered, and a list
+   * is only ever shown for the host it came from.
+   */
+  const [list, setList] = useState<{
+    hostId: string | undefined;
+    status: "loading" | "failed" | "ready";
+    targets: SshTarget[];
+  }>({ hostId: undefined, status: "loading", targets: [] });
+  const current = list.hostId === hostId ? list : { status: "loading" as const, targets: [] };
+  const { targets } = current;
+  const listing = current.status;
+  const latest = useRef(hostId);
+  latest.current = hostId;
   const [importing, setImporting] = useState<SshImportEntry[] | null>(null);
   const [importMessage, setImportMessage] = useState<string[]>([]);
   const [removing, setRemoving] = useState<SshTarget | null>(null);
@@ -43,17 +54,20 @@ export function useSshActions(props: {
   const reload = useCallback(async () => {
     if (!hostId) return;
     const result = await store.hostCommand(hostId, "ssh.list", {});
-    if (result) setTargets(result.targets);
-    setListing(result ? "ready" : "failed");
+    // The answer of a host the page has left says nothing about the one it shows now.
+    if (latest.current !== hostId) return;
+    setList((before) => {
+      if (result) return { hostId, status: "ready", targets: result.targets };
+      // A reload after a change that fails keeps the list the person was looking at.
+      if (before.hostId === hostId && before.status === "ready") return before;
+      return { hostId, status: "failed", targets: [] };
+    });
   }, [store, hostId]);
   useEffect(() => {
-    setListing("loading");
     void reload();
   }, [reload]);
-  const retry = async () => {
-    setListing("loading");
-    await reload();
-  };
+  // Retry keeps the failed state on screen, so its button stays and shows busy until the host answers.
+  const retry = reload;
 
   const open = async (runner: string, target: SshTarget) => {
     // A vault key goes to the host that runs ssh now, in the connect command and nowhere else.

@@ -216,11 +216,13 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
         </p>
       )}
       {hostId && listing === "failed" && (
-        <EmptyState
-          icon={Network}
-          title={t("connections.loadFailed")}
-          action={<ActionButton onClick={retry}>{t("connections.retry")}</ActionButton>}
-        />
+        <div role="alert">
+          <EmptyState
+            icon={Network}
+            title={t("connections.loadFailed")}
+            action={<ActionButton onClick={retry}>{t("connections.retry")}</ActionButton>}
+          />
+        </div>
       )}
       {hostId && listing === "ready" && targets.length === 0 && (
         <EmptyState
@@ -262,8 +264,8 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
                       // The promise of Connect and Duplicate keeps the button busy until the host answered.
                       if (verb === "connect") return connect(target);
                       if (verb === "duplicate") return duplicate(target);
-                      if (verb === "edit") setEditing(target);
-                      else setRemoving(target);
+                      if (verb === "edit") return setEditing(target);
+                      return setRemoving(target);
                     }}
                   >
                     {t(`connections.${verb}`)}
