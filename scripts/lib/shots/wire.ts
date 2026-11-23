@@ -9,7 +9,7 @@ import { type FrameRewriter, installHolds } from "./holds.ts";
  * unheard, so the panel stays loading; `reply` answers in the page and never sends the command (a
  * change the host would really make; a `"{in 30s}"` in it is the time 30 s from the answer, #4229, and a `"{in -90s}"` the time 90 s before it, #4287); `reject` answers in the page with a refusal and `stall` leaves
  * the command unanswered, both without sending it (an answer to a request the host would really
- * take, #4203); `without` takes entries out of an array of the answer (a feature the host announces) and `with` adds them (one it does not). The demo's hosts are never left in the state the print shows.
+ * take, #4203); `without` takes entries out of an array of the answer (a feature the host announces; `"*"` takes every entry, #4388) and `with` adds them (one it does not). The demo's hosts are never left in the state the print shows.
  * #4194: every rule applies on the socket of every host, unless it names a `port`: then only the host that listens there is touched, so the others answer (a page read by some hosts and refused by one).
  */
 export type WireRule = (
@@ -93,7 +93,8 @@ export function wireRewriter(allRules: WireRule[], url = ""): FrameRewriter {
         if ("without" in rule) {
           for (const [field, gone] of Object.entries(rule.without)) {
             const list = data[field];
-            if (Array.isArray(list)) data[field] = list.filter((item) => !gone.includes(item));
+            if (Array.isArray(list))
+              data[field] = gone.includes("*") ? [] : list.filter((item) => !gone.includes(item));
           }
         } else {
           for (const [field, added] of Object.entries(rule.with)) {
