@@ -4,7 +4,7 @@ Feature: Add a host with the first-run guide
 
   Scenario: The guide is on the page, with the manual fields folded away
     When I open the Add a host page
-    Then the page lists the first steps with copy buttons for setup, doctor and pair
+    Then the page lists the first steps with copy buttons for doctor and pair
     And the address and token fields are folded away and the pairing link is in view
 
   Scenario: A pasted pairing link opens the manual fields on its name
