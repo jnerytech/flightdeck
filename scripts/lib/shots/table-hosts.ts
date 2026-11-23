@@ -27,6 +27,52 @@ async function listed(page: Page): Promise<void> {
   await page.getByRole("list", { name: /^(Destinations|Destinos)$/ }).waitFor();
 }
 
+/** #4335: Connections with one fake destino's row, and the step that follows its button (`verb` is the button's label). */
+function targetRow(
+  verb: "Connect" | "Edit" | "Remove",
+  name: string,
+  then: NonNullable<Shot["prepare"]>,
+): NonNullable<Shot["prepare"]> {
+  const labels = { Connect: "Conectar", Edit: "Editar", Remove: "Remover" };
+  return async (page) => {
+    await listed(page);
+    await page
+      .getByRole("button", { name: new RegExp(`^(${verb}|${labels[verb]}) ${name}$`) })
+      .click();
+    await then(page);
+  };
+}
+
+/** The form of a destino that is open, once the button that saves it shows. */
+const formOpen = async (page: Page): Promise<void> => {
+  await page.getByRole("button", { name: /^(Save destination|Salvar destino)$/ }).waitFor();
+};
+
+/** The destino's form with its authentication changed to `auth`: the field that follows shows. */
+const authAs =
+  (auth: "key-file" | "vault-key", field: RegExp): NonNullable<Shot["prepare"]> =>
+  async (page) => {
+    await formOpen(page);
+    await page.getByLabel(/^(Authentication|Autenticação)$/).selectOption(auth);
+    await page.getByLabel(field).first().waitFor();
+  };
+
+/** The form's "Test connection" pressed, and the line that tells how it went. */
+const testShown =
+  (line: RegExp): NonNullable<Shot["prepare"]> =>
+  async (page) => {
+    await formOpen(page);
+    await page.getByRole("button", { name: /^(Test connection|Testar conexão)$/ }).click();
+    await page.getByText(line).waitFor();
+  };
+
+/** The server key dialog a connection stops at. */
+const keyDialog: NonNullable<Shot["prepare"]> = async (page) => {
+  await page.getByRole("alertdialog").waitFor();
+};
+
+const KEY_ONE = "SHA256:printkeyone";
+
 const SIMULATE = /^(Simulate|Simular)$/;
 // The labels before and after #3996 (PR #4003) renamed them: whichever main has when the print runs.
 const CLEAN = /^(Clean|Limpar|Clean up old data|Limpar dados antigos)$/;
@@ -219,6 +265,98 @@ export function hostShots(ids: DemoIds): Shot[] {
       prepare: async (page) => {
         // The open dialog hides the list from the accessibility tree: its rows are found by their text.
         await page.getByText("docs-site", { exact: true }).waitFor();
+        await page.getByRole("alertdialog").waitFor();
+      },
+    },
+    // #4335: the form's variants, its test result, the server key dialogs and the two confirms. The demo's
+    // hosts do not keep the fake destinos, so the commands that name one are answered in the page.
+    {
+      name: "ssh-editar",
+      route: { name: "connections" },
+      ssh: true,
+      prepare: targetRow("Edit", "build-server", async (page) => {
+        await page
+          .getByRole("button", { name: /^(Forget server key|Esquecer chave do servidor)$/ })
+          .waitFor();
+      }),
+    },
+    {
+      name: "ssh-editar-arquivo",
+      route: { name: "connections" },
+      ssh: true,
+      prepare: targetRow(
+        "Edit",
+        "staging",
+        authAs("key-file", /^(Key file path|Arquivo de chave)/),
+      ),
+    },
+    {
+      name: "ssh-editar-cofre",
+      route: { name: "connections" },
+      ssh: true,
+      secrets: true,
+      prepare: targetRow("Edit", "staging", authAs("vault-key", /^(Vault key|Chave do cofre)/)),
+    },
+    {
+      name: "ssh-teste-ok",
+      route: { name: "connections" },
+      ssh: true,
+      sshReplies: { "ssh.test": { ok: true, error: null } },
+      prepare: targetRow("Edit", "build-server", testShown(/^(Connection ok\.|Conexão ok\.)$/)),
+    },
+    {
+      name: "ssh-teste-falhou",
+      route: { name: "connections" },
+      ssh: true,
+      sshReplies: {
+        "ssh.test": { ok: false, error: "authentication refused", reason: "ssh_test_auth" },
+      },
+      prepare: targetRow(
+        "Edit",
+        "build-server",
+        testShown(/^(The server refused the authentication|O servidor recusou a autenticação)/),
+      ),
+    },
+    {
+      name: "ssh-chave-nova",
+      route: { name: "connections" },
+      ssh: true,
+      sshReplies: {
+        "ssh.hostkey.check": { status: "unknown", fingerprint: "SHA256:printkeynew", pinned: null },
+      },
+      prepare: targetRow("Connect", "docs-site", keyDialog),
+    },
+    {
+      name: "ssh-chave-mudou",
+      route: { name: "connections" },
+      ssh: true,
+      sshReplies: {
+        "ssh.hostkey.check": {
+          status: "changed",
+          fingerprint: "SHA256:printkeytwo",
+          pinned: KEY_ONE,
+        },
+      },
+      prepare: targetRow("Connect", "build-server", keyDialog),
+    },
+    {
+      name: "ssh-remover",
+      route: { name: "connections" },
+      ssh: true,
+      prepare: targetRow("Remove", "staging", keyDialog),
+    },
+    {
+      name: "ssh-agente",
+      route: { name: "connections" },
+      ssh: true,
+      prepare: async (page) => {
+        await listed(page);
+        await page.getByRole("button", { name: /^(New destination|Novo destino)$/ }).click();
+        await formOpen(page);
+        // The forwarding sits under the advanced options once the form folds them (#4333).
+        const fold = page.getByText(/^(Advanced options|Opções avançadas)$/);
+        if ((await fold.count()) > 0) await fold.click();
+        await page.getByText(/^(Forward the agent|Encaminhar o agente)/).click();
         await page.getByRole("alertdialog").waitFor();
       },
     },

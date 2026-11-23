@@ -41,6 +41,12 @@ export interface Shot {
   /** #3943: with `ssh`, an askpass prompt follows the first destinos answer, so the print shows it. */
   askpass?: boolean;
   /**
+   * #4335: with `ssh`, the commands the page answers itself, in the host's place (the data of each answer by
+   * command). The fake destinos are not kept by the demo's real hosts, so a test, a server key check or
+   * the like would be refused there.
+   */
+  sshReplies?: Record<string, unknown>;
+  /**
    * #4001: the hosts answer the Maintenance panel with fixed facts, paths and counts (`maintenanceScript`);
    * `refuseStatus` refuses its first read, `holdClean` never answers the cleanup, so the print shows Clean busy.
    */
