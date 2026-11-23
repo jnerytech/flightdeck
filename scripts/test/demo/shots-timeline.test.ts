@@ -41,6 +41,7 @@ describe("the Timeline prints (#4252)", () => {
       "linha-do-tempo-voltar-recusa",
       "linha-do-tempo-voltar-recusa-aplicar",
       "linha-do-tempo-voltar-nada",
+      "linha-do-tempo-voltar-lista-longa",
       "linha-do-tempo-arquivos-falhou",
       "linha-do-tempo-desfazer",
       "linha-do-tempo-desfazer-recusa",
@@ -52,7 +53,7 @@ describe("the Timeline prints (#4252)", () => {
   test("every print opens the session that has turns", () => {
     expect(
       shots().map((shot) => (shot.route.name === "session" ? shot.route.id : shot.route.name)),
-    ).toEqual(Array(8).fill("rw"));
+    ).toEqual(Array(9).fill("rw"));
   });
 
   test("the Rewind refusals change the preview's answer and the apply's, which is answered in the page so no file goes back; nothing to rewind is an empty preview", () => {
@@ -68,6 +69,16 @@ describe("the Timeline prints (#4252)", () => {
       command: "rewind.preview",
       data: { via: "snapshot", files: [], insertions: 0, deletions: 0 },
     });
+  });
+
+  // #4374: a rewind that touches more files than fit in the dialog's list box.
+  test("the long list print answers the rewind preview with about 25 files, past the list's height", () => {
+    const found = rule("linha-do-tempo-voltar-lista-longa", "rewind.preview");
+    const files = (
+      found && "data" in found ? (found.data as { files: Array<{ path: string }> }) : { files: [] }
+    ).files;
+    expect(files.length).toBeGreaterThanOrEqual(25);
+    expect(new Set(files.map((file) => file.path)).size).toBe(files.length);
   });
 
   test("the files read that fails is a refused snapshots.files", () => {
@@ -113,6 +124,7 @@ describe("the Timeline prints (#4252)", () => {
       ["linha-do-tempo-voltar-recusa", ["Try again"]],
       ["linha-do-tempo-voltar-recusa-aplicar", ["Rewind files", "Could not rewind the files"]],
       ["linha-do-tempo-voltar-nada", ["Nothing to rewind", "Nada para voltar"]],
+      ["linha-do-tempo-voltar-lista-longa", ["Rewind files", "Files this rewind changes"]],
       ["linha-do-tempo-arquivos-falhou", ["Could not read the files of turn", "Try again"]],
       ["linha-do-tempo-desfazer", ["Undo rewind", "Undo the rewind"]],
       ["linha-do-tempo-desfazer-recusa", ["Undo rewind", "Could not work out what the undo"]],
@@ -125,16 +137,17 @@ describe("the Timeline prints (#4252)", () => {
     }
   });
 
-  test("the sheet, the refused apply, the files that failed, the Undo dialog and the open prompt are re-measured narrow", () => {
+  test("the sheet, the refused apply, the long list, the files that failed, the Undo dialog and the open prompt are re-measured narrow", () => {
     expect(
       [
         "linha-do-tempo",
         "linha-do-tempo-voltar-recusa-aplicar",
+        "linha-do-tempo-voltar-lista-longa",
         "linha-do-tempo-arquivos-falhou",
         "linha-do-tempo-desfazer",
         "linha-do-tempo-prompt-longo-aberto",
       ].map((name) => narrowSizes("dark", name).length),
-    ).toEqual([3, 3, 3, 3, 3]);
+    ).toEqual([3, 3, 3, 3, 3, 3]);
   });
 });
 

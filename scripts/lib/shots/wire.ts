@@ -10,8 +10,9 @@ import { type FrameRewriter, installHolds } from "./holds.ts";
  * change the host would really make; a `"{in 30s}"` in it is the time 30 s from the answer, #4229, and a `"{in -90s}"` the time 90 s before it, #4287); `reject` answers in the page with a refusal and `stall` leaves
  * the command unanswered, both without sending it (an answer to a request the host would really
  * take, #4203); `without` takes entries out of an array of the answer (a feature the host announces) and `with` adds them (one it does not). The demo's hosts are never left in the state the print shows.
+ * #4194: every rule applies on the socket of every host, unless it names a `port`: then only the host that listens there is touched, so the others answer (a page read by some hosts and refused by one).
  */
-export type WireRule =
+export type WireRule = (
   | { command: string; refuse: string }
   | { command: string; data: unknown; after?: unknown }
   | { command: string; as: string; data?: unknown; afterRefuse?: string }
@@ -20,7 +21,8 @@ export type WireRule =
   | { command: string; reject: string }
   | { command: string; stall: true }
   | { command: string; without: Record<string, string[]> }
-  | { command: string; with: Record<string, string[]> };
+  | { command: string; with: Record<string, string[]> }
+) & { port?: number };
 
 /**
  * A rewriter that applies `rules` to the commands the app asks. It goes into the page as its source
@@ -29,7 +31,16 @@ export type WireRule =
 // Not instrumented: its source goes into the page, where an istanbul counter would not exist
 // (the istanbul shard of a full run, #1492).
 /* istanbul ignore next */
-export function wireRewriter(rules: WireRule[]): FrameRewriter {
+export function wireRewriter(allRules: WireRule[], url = ""): FrameRewriter {
+  // #4194: a rule with a `port` is for the host that listens there; the others apply to every host.
+  const port = (() => {
+    try {
+      return Number(new URL(url).port);
+    } catch {
+      return Number.NaN;
+    }
+  })();
+  const rules = allRules.filter((rule) => rule.port === undefined || rule.port === port);
   const parse = (frame: string): Record<string, unknown> | null => {
     try {
       const value: unknown = JSON.parse(frame);
@@ -129,5 +140,5 @@ export function wireRewriter(rules: WireRule[]): FrameRewriter {
 
 /** The init script a print adds: the page's WebSocket wrapped with `wireRewriter(rules)`. */
 export function wireScript(rules: WireRule[]): string {
-  return `(${installHolds.toString()})(window, () => (${wireRewriter.toString()})(${JSON.stringify(rules)}));`;
+  return `(${installHolds.toString()})(window, (url) => (${wireRewriter.toString()})(${JSON.stringify(rules)}, url));`;
 }
