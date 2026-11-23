@@ -32,7 +32,7 @@ import { pendingSelectorFor } from "./lib/shots/loaded.ts";
 import { maintenanceScript } from "./lib/shots/maintenance.ts";
 import { narrowSizes, unknownNarrowShots } from "./lib/shots/narrow.ts";
 import { releasesScript } from "./lib/shots/releases.ts";
-import { ALFA, DEMO_CLIENTS, DEMO_ROI, type Shot } from "./lib/shots/shot.ts";
+import { ALFA, DEMO_CLIENTS, DEMO_ROI, parkPointer, type Shot } from "./lib/shots/shot.ts";
 import { sshScript } from "./lib/shots/ssh-frames.ts";
 import { accountShots } from "./lib/shots/table-account.ts";
 import { activityShots } from "./lib/shots/table-activity.ts";
@@ -393,6 +393,8 @@ async function printShot(
       await page.screenshot({ path: join(dir, `${shot.name}-FALHOU.png`) });
       throw error;
     });
+    // The last click leaves the pointer on its button: the print shows (and axe judges) that hover colour.
+    await parkPointer(page);
     // A skeleton or a busy region is a screen still loading: the print waits for the real one.
     await page.waitForFunction(
       (selector) => document.querySelector(selector) === null,

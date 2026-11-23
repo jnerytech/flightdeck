@@ -16,27 +16,33 @@ const DemoHost = z.object({ id: z.string(), name: z.string(), url: z.string(), t
 /** A host the demo runs (scripts/demo-seed.ts), already paired: id, name, address and token. */
 export type DemoHost = z.infer<typeof DemoHost>;
 
+/** A token no demo daemon issued: a host that holds it is refused at hello. */
+const REFUSED_TOKEN = "r".repeat(32);
+
 /**
  * The hosts handed to the web entry (`VITE_DEMO_HOSTS`, JSON); none when absent or invalid, and none
  * when the address asks `?hosts=none` (the first-run screen's print, #1052). `?hosts=<id>,<id>` keeps
  * only those (a demo with nowhere to move a session to, #3987), and `?plain=<id>,<id>` reaches those
  * over `<id>.localhost`: the same machine, but a name the app does not take for it, so the plain
- * `ws://` note shows (#3987).
+ * `ws://` note shows (#3987). `?refused=<id>,<id>` gives those hosts a token their daemon does not
+ * know, so the host answers `unauthorized` and its page offers to pair again (#4413).
  */
 export function parseDemoHosts(json: string | undefined, search = ""): DemoHost[] {
   const params = new URLSearchParams(search);
   const only = params.get("hosts");
   if (only === "none") return [];
   const plain = (params.get("plain") ?? "").split(",");
+  const refused = (params.get("refused") ?? "").split(",").filter(Boolean);
   const wanted = new Set((only ?? "").split(","));
   const kept = parseJsonText(json ?? "[]", z.array(DemoHost), []).filter(
     (host) => only === null || only === "all" || wanted.has(host.id),
   );
   return kept.map((host) => {
-    if (!plain.includes(host.id)) return host;
+    const known = refused.includes(host.id) ? { ...host, token: REFUSED_TOKEN } : host;
+    if (!plain.includes(host.id)) return known;
     const url = new URL(host.url);
     url.hostname = `${host.id}.localhost`;
-    return { ...host, url: url.toString() };
+    return { ...known, url: url.toString() };
   });
 }
 

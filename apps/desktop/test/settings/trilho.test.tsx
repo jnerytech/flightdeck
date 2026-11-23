@@ -125,4 +125,22 @@ describe("configuracoes-trilho: the rail and the search", () => {
     });
     expect(items()).toHaveLength(9);
   });
+
+  // Narrow, the rail is one row that scrolls sideways (#4439): the marked button must not sit out of sight.
+  test("the rail scrolls itself, and not the page, to bring the marked button into view", async () => {
+    setup();
+    const nav = rail();
+    const buttons = within(nav).queryAllByRole("button");
+    const box = (left: number, width: number) => () =>
+      ({ left, right: left + width, width, top: 0, bottom: 30, height: 30 }) as DOMRect;
+    nav.getBoundingClientRect = box(0, 200);
+    for (const [index, button] of buttons.entries())
+      button.getBoundingClientRect = box(index * 100, 100);
+    expect(nav.scrollLeft).toBe(0);
+    await act(async () => {
+      fireEvent.click(buttons[4] as HTMLElement);
+    });
+    // The button's middle (450) moves to the rail's middle (100).
+    expect(nav.scrollLeft).toBe(350);
+  });
 });

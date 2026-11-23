@@ -72,15 +72,28 @@
 @utility settings-rail {
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
+  /* Narrow, one row that scrolls sideways: a wrapped rail took 340 px of a 390 px window and pushed the first section below the fold (#4439). */
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  /* Room for the focus ring, which the scrolling box would clip on every side. */
+  padding-block: 0.25rem;
+  padding-inline: 0.25rem;
   gap: 0.125rem;
+  & > * {
+    flex-shrink: 0;
+  }
   & [aria-current="true"] {
     background: var(--color-accent);
     color: var(--color-accent-foreground);
   }
   @container (width >= 48rem) {
     flex-direction: column;
-    flex-wrap: nowrap;
+    overflow-x: visible;
+    padding-block: 0;
+    padding-inline: 0;
+    & > * {
+      flex-shrink: 1;
+    }
   }
 }
 

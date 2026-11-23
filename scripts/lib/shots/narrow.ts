@@ -142,6 +142,14 @@ export const NARROW_SHOTS: readonly string[] = [
   "sessao-mudancas",
   // #1406: the bar and the board's notice after Update N from the base.
   "board-atualizar",
+  // #4410: the board's load error, a filter with no match, the delete and discard dialogs, the column's New card, and the empty board, at 390.
+  "board-erro",
+  "board-filtro-vazio",
+  "board-apagar",
+  "board-apagar-iniciado",
+  "board-descartar",
+  "board-card-novo-coluna",
+  "projeto-vazio",
   // #1501: the Compare hosts table on the host page, a wide table in a sideways frame at 390.
   "host-comparar",
   // #3858: the Automations list and the Workflows page.
@@ -223,6 +231,13 @@ export const NARROW_SHOTS: readonly string[] = [
   "webhooks-lista",
   "webhooks-ntfy",
   "webhooks-editar",
+  // #4413: the host page's banner states, the unauthorized ones with their Pair again form: copy commands and a 18rem field must fit at 390.
+  "host-offline",
+  "host-reconectando",
+  "host-incompativel",
+  "host-nao-autorizado",
+  "host-nao-autorizado-testando",
+  "host-nao-autorizado-recusado",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */

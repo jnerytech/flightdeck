@@ -5,6 +5,10 @@ const label = (pattern: RegExp | string): string =>
   typeof pattern === "string"
     ? pattern
     : (pattern.source
+        // The engine writes a non-ASCII character of a pattern (…) as \u2026.
+        .replace(/\\u([0-9a-f]{4})/gi, (_, hex: string) =>
+          String.fromCharCode(Number.parseInt(hex, 16)),
+        )
         .replace(/^\^\(?/, "")
         .replace(/\)?\$?$/, "")
         .split("|")[0]
@@ -31,6 +35,9 @@ export function recordingPage(): { page: Page; steps: string[] } {
           if (prop === "getByText" || prop === "getByLabel") {
             return (pattern: RegExp | string) =>
               locator([...chain, `${prop === "getByText" ? "text" : "label"}[${label(pattern)}]`]);
+          }
+          if (prop === "locator") {
+            return (selector: string) => locator([...chain, `locator[${selector}]`]);
           }
           if (prop === "waitForTimeout") return async () => {};
           if (prop === "mouse") {

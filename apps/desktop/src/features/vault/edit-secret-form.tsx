@@ -12,6 +12,8 @@ const EDITSECRETFORM_KEYS = ["hosts"] as const;
 export const EditSecretForm = memo(function EditSecretForm(props: {
   store: AppStore;
   secret: SecretMeta;
+  /** Told the name the secret was saved under, before the form closes. */
+  onSaved(name: string): void;
   onClose(): void;
 }) {
   const t = useT();
@@ -36,6 +38,7 @@ export const EditSecretForm = memo(function EditSecretForm(props: {
         .filter(Boolean),
       allowedHosts: allowed,
     });
+    props.onSaved(name.trim());
     props.onClose();
   };
 
@@ -62,22 +65,29 @@ export const EditSecretForm = memo(function EditSecretForm(props: {
         <label htmlFor={`${id}-tags`}>{t("vault.tags")}</label>
         <Input id={`${id}-tags`} value={tags} onChange={(event) => setTags(event.target.value)} />
       </div>
-      <fieldset className="flex flex-col gap-2 text-sm">
-        <legend>{t("vault.hostsLegend")}</legend>
-        {state.hosts.map((host) => (
-          <label key={host.id} className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={allowed.includes(host.id)}
-              onChange={(event) => toggle(host.id, event.target.checked)}
-            />
-            {host.name}
-          </label>
-        ))}
-      </fieldset>
+      {state.hosts.length > 0 && (
+        <fieldset className="flex flex-col gap-2 text-sm">
+          <legend>{t("vault.hostsLegend")}</legend>
+          {state.hosts.map((host) => (
+            <label key={host.id} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={allowed.includes(host.id)}
+                onChange={(event) => toggle(host.id, event.target.checked)}
+              />
+              {host.name}
+            </label>
+          ))}
+          {/* Mounted empty and filled when the last host is unchecked, so it is announced. It warns; it does not block. */}
+          <output className="text-muted-foreground empty:sr-only">
+            {allowed.length === 0 ? t("vault.noHostWarning") : ""}
+          </output>
+        </fieldset>
+      )}
       <FormActions
         submit={t("vault.editSave")}
         disabled={name.trim() === ""}
+        disabledReason={t("vault.needName")}
         cancel={t("common.cancel")}
         onCancel={props.onClose}
       />
