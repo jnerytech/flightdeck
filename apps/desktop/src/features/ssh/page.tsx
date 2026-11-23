@@ -1,6 +1,6 @@
 import type { SshTarget } from "@flightdeck/protocol";
 import { Network } from "lucide-react";
-import { memo, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
@@ -25,6 +25,27 @@ const matches = (target: SshTarget, needle: string) =>
 
 const CONNECTIONSPAGE_KEYS = ["hosts"] as const;
 
+/**
+ * Closing the form (Save or Cancel) unmounts the focused button; the focus goes back to the one that
+ * opened it: "New destination", or the Edit of the destination that was open, whoever asked for the
+ * edit (its own button or the changed-server-key dialog).
+ */
+function useFocusBackAfterForm(editing: SshTarget | "new" | null) {
+  const opened = useRef<SshTarget | "new" | null>(null);
+  useEffect(() => {
+    if (editing !== null) {
+      opened.current = editing;
+      return;
+    }
+    const was = opened.current;
+    opened.current = null;
+    if (was === null) return;
+    const selector =
+      was === "new" ? "[data-new-target]" : `[data-edit-target="${CSS.escape(was.id)}"]`;
+    document.querySelector<HTMLElement>(selector)?.focus();
+  }, [editing]);
+}
+
 /** Phase 15: the ssh destinos kept by the first online host that announces `ssh`. */
 export const ConnectionsPage = memo(function ConnectionsPage(props: {
   store: AppStore;
@@ -42,6 +63,7 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
   const [tag, setTag] = useState("");
   const [via, setVia] = useState("");
   const [editing, setEditing] = useState<SshTarget | "new" | null>(null);
+  useFocusBackAfterForm(editing);
   const {
     targets,
     listing,
@@ -106,7 +128,9 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
             <Button variant="outline" onClick={() => void startImport()}>
               {t("connections.importAction")}
             </Button>
-            <Button onClick={() => setEditing("new")}>{t("connections.newTarget")}</Button>
+            <Button data-new-target onClick={() => setEditing("new")}>
+              {t("connections.newTarget")}
+            </Button>
           </>
         )
       }
@@ -260,6 +284,7 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
                     variant="outline"
                     size="sm"
                     aria-label={t(`connections.${verb}For`, { name: target.name })}
+                    data-edit-target={verb === "edit" ? target.id : undefined}
                     onClick={() => {
                       // The promise of Connect and Duplicate keeps the button busy until the host answered.
                       if (verb === "connect") return connect(target);
