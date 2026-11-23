@@ -1,7 +1,25 @@
 /** Part of the print table (scripts/demo-shots.ts), in print order. */
+import type { Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
 import { DEMO_UPDATE_CARDS } from "../e2e/journeys.ts";
-import { ALFA, type Shot, selectCards } from "./shot.ts";
+import { ALFA, type Shot, selectCards, toastSettled } from "./shot.ts";
+
+/** A card's ⋯ menu button: its name carries the title, so two cards never share one. */
+const actionsOf = (title: string) => new RegExp(`^(Actions for ${title}|Ações de ${title})$`);
+
+/** Delete… from a card's menu, and the confirmation it opens. */
+async function openDeleteDialog(page: Page, title: string): Promise<void> {
+  await page.getByRole("button", { name: actionsOf(title) }).click();
+  await page.getByRole("menuitem", { name: /^(Delete…|Excluir…)$/ }).click();
+  await page.getByRole("alertdialog").waitFor();
+  await page.waitForTimeout(400);
+}
+
+/** Select card from a card's menu: the keyboard-free way to add one card to the selection. */
+async function selectFromMenu(page: Page, title: string): Promise<void> {
+  await page.getByRole("button", { name: actionsOf(title) }).click();
+  await page.getByRole("menuitem", { name: /^(Select card|Selecionar card)$/ }).click();
+}
 
 export function boardShots(ids: DemoIds): Shot[] {
   return [
@@ -129,6 +147,68 @@ export function boardShots(ids: DemoIds): Shot[] {
           .click();
         await page.getByRole("menuitem", { name: /^(Iniciar card|Start card)$/ }).click();
         await page.waitForTimeout(600);
+      },
+    },
+    // #4410: the board states a person meets and no print showed.
+    // The host refuses board.get: the load error with its retry, not the board in its loading shape.
+    {
+      name: "board-erro",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      wire: [{ command: "board.get", refuse: "The board could not be read." }],
+      async prepare(page) {
+        await page.getByRole("button", { name: /^(Try again|Tentar de novo)$/ }).waitFor();
+        await toastSettled(page);
+      },
+    },
+    // A text filter nothing matches: every column that has cards says so (today's state; #4409 may add Clear filters).
+    {
+      name: "board-filtro-vazio",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      async prepare(page) {
+        await page.getByLabel(/^(Filter cards|Filtrar cards)$/).fill("no-such-card");
+        await page
+          .getByText(/^(No matches|Nenhuma correspondência)$/)
+          .first()
+          .waitFor();
+      },
+    },
+    // Delete… of a card with no work started, and of one with a worktree, which is discarded instead.
+    {
+      name: "board-apagar",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      prepare: (page) => openDeleteDialog(page, "Definir o esquema do carrinho"),
+    },
+    {
+      name: "board-apagar-iniciado",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      prepare: (page) => openDeleteDialog(page, "Revisar o fluxo de login"),
+    },
+    // Discard… on a selection of two cards, one of them with started work.
+    {
+      name: "board-descartar",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      async prepare(page) {
+        await selectFromMenu(page, "Definir o esquema do carrinho");
+        await selectFromMenu(page, "Revisar o fluxo de login");
+        await page
+          .getByRole("group", { name: /^(Selection|Seleção)$/ })
+          .getByRole("button", { name: /^(Discard…|Descartar…)$/ })
+          .click();
+        await page.getByRole("alertdialog").waitFor();
+        await page.waitForTimeout(400);
+      },
+    },
+    // The + of a column opens New card with Create off and its reason under it.
+    {
+      name: "board-card-novo-coluna",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      async prepare(page) {
+        await page
+          .getByRole("button", { name: /^(Add card to Backlog|Adicionar card em Backlog)$/ })
+          .click();
+        await page.getByRole("dialog").waitFor();
+        await page.getByText(/^(Give the card a title|Dê um título ao card)$/).waitFor();
+        await page.waitForTimeout(400);
       },
     },
     {
