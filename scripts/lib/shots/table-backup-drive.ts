@@ -10,11 +10,18 @@ import { type Shot, showSection } from "./shot.ts";
 const IMPORT = /^(Restore a backup|Restaurar um backup)$/;
 const DRIVE = /^Google Drive$/;
 
+const TARGET = /^(Where to save|Onde salvar)$/;
+const SIGN_IN = /^(Sign in with Google|Entrar com o Google)$/;
+
+/** Scheduled backups: Google Drive picked as the target, nothing signed in yet. */
+async function driveTarget(page: Page): Promise<void> {
+  await page.getByRole("group", { name: TARGET }).getByRole("radio", { name: DRIVE }).check();
+}
+
 /** Signs in through Scheduled backups: Google Drive as the target, then Sign in with Google. */
 async function signedIn(page: Page): Promise<void> {
-  const target = page.getByRole("group", { name: /^(Where to save|Onde salvar)$/ });
-  await target.getByRole("radio", { name: DRIVE }).check();
-  await page.getByRole("button", { name: /^(Sign in with Google|Entrar com o Google)$/ }).click();
+  await driveTarget(page);
+  await page.getByRole("button", { name: SIGN_IN }).click();
   await page.getByText(/^(Signed in to Google|Conectado ao Google)$/).waitFor();
 }
 
@@ -96,14 +103,6 @@ export function backupDriveShots(_ids: DemoIds): Shot[] {
 }
 
 const SCHEDULE = /^(Scheduled backups|Backups agendados)$/;
-const TARGET = /^(Where to save|Onde salvar)$/;
-const SIGN_IN = /^(Sign in with Google|Entrar com o Google)$/;
-
-/** Scheduled backups: Google Drive picked as the target, nothing signed in yet. */
-async function driveTarget(page: Page): Promise<void> {
-  await page.getByRole("group", { name: TARGET }).getByRole("radio", { name: DRIVE }).check();
-}
-
 /** One print of the Scheduled backups panel; `then` brings its state up before the panel is shown. */
 function schedulePrint(
   name: string,
