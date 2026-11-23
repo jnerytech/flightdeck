@@ -15,7 +15,7 @@ import {
   ConfirmDialog,
   InlineNotice,
 } from "@/shared/feedback/index.ts";
-import { ErrorState, Inline, LoadingState } from "@/shared/layout/index.ts";
+import { ErrorState, Inline, LoadingState, Stack } from "@/shared/layout/index.ts";
 import { refusalText } from "../../i18n/errors.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { HostResult } from "../../lib/kernel.ts";
@@ -34,7 +34,7 @@ export type Refused = Exclude<HostResult<unknown>, { ok: true }>;
 
 /** What rewinding does to each file, from the files' point of view. */
 function PreviewFiles(
-  props: Readonly<{ store: AppStore; preview: RewindPreview; empty?: string }>,
+  props: Readonly<{ store: AppStore; preview: RewindPreview; label: string; empty?: string }>,
 ) {
   const { t } = props.store.i18n;
   const { preview } = props;
@@ -44,7 +44,14 @@ function PreviewFiles(
   return (
     <div className="flex flex-col gap-2">
       <p className="text-muted-foreground text-xs">{t(`timeline.via.${preview.via}`)}</p>
-      <ul className="flex max-h-60 flex-col gap-1 overflow-y-auto text-sm">
+      {/* A long list scrolls inside its box: it takes the focus, so the keys can scroll it (#4374). */}
+      <Stack
+        as="ul"
+        gap={1}
+        scrolls
+        label={props.label}
+        className="max-h-60 overflow-y-auto text-sm focus-visible:outline-2 focus-visible:outline-ring"
+      >
         {preview.files.map((file) => (
           <li key={file.path} className="flex flex-wrap items-center gap-2">
             <code className="break-all">{file.path}</code>
@@ -53,7 +60,7 @@ function PreviewFiles(
             </span>
           </li>
         ))}
-      </ul>
+      </Stack>
       <p className="text-muted-foreground text-xs tabular-nums">
         {t("timeline.lines", { added: preview.insertions, removed: preview.deletions })}
       </p>
@@ -90,12 +97,21 @@ function PreviewState(
     onRetry(): void;
     /** The refusal's sentence: it holds `{reason}`. */
     failed: "timeline.previewFailed" | "timeline.undoPreviewFailed";
+    /** The name of the list of files, for the dialog it is in. */
+    filesLabel: "timeline.filesRewind" | "timeline.filesUndo" | "timeline.filesFork";
     empty?: string;
   }>,
 ) {
   const { t } = props.store.i18n;
   if (props.preview) {
-    return <PreviewFiles store={props.store} preview={props.preview} empty={props.empty} />;
+    return (
+      <PreviewFiles
+        store={props.store}
+        preview={props.preview}
+        label={t(props.filesLabel)}
+        empty={props.empty}
+      />
+    );
   }
   if (props.refused === null) return <LoadingState label={t("timeline.previewing")} />;
   const { refused } = props;
@@ -153,6 +169,7 @@ export function RewindDialog(
           refused={refused}
           onRetry={load}
           failed="timeline.previewFailed"
+          filesLabel="timeline.filesRewind"
         />
         {refusal !== null && (
           <InlineNotice tone="error">{t("timeline.applyFailed", { reason: refusal })}</InlineNotice>
@@ -218,6 +235,7 @@ export function UndoDialog(props: Omit<Target, "cwd"> & { onClose(): void; onDon
           refused={refused}
           onRetry={load}
           failed="timeline.undoPreviewFailed"
+          filesLabel="timeline.filesUndo"
           empty={t("timeline.undoNothing")}
         />
         {refusal !== null && (
@@ -379,6 +397,7 @@ export function ForkDialog(
                   refused={previewRefused}
                   onRetry={loadPreview}
                   failed="timeline.previewFailed"
+                  filesLabel="timeline.filesFork"
                 />
               </>
             )}
