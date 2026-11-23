@@ -10,10 +10,11 @@ const byName = (name: string) => webhooksShots(IDS).find((shot) => shot.name ===
 
 /** The targets the app reads back from the stored text the print starts with. */
 function stored(text: string) {
-  const items = new Map<string, string>([["flightdeck.webhooks", text]]);
-  const storage = { getItem: (key: string) => items.get(key) ?? null, setItem: () => {} };
-  const vault = { get: async () => null, set: async () => {}, delete: async () => {} };
-  return new WebhookTargets({ storage, vault }).list();
+  const storage = {
+    getItem: (key: string) => (key === "flightdeck.webhooks" ? text : null),
+    setItem: () => {},
+  };
+  return new WebhookTargets({ storage, vault: {} } as never).list();
 }
 
 /** #4405: Settings > Notifications > Webhooks, the states the audit of #168 found no print for. */
