@@ -28,7 +28,7 @@ const CONNECTIONSPAGE_KEYS = ["hosts"] as const;
 /**
  * Closing the form (Save or Cancel) unmounts the focused button; the focus goes back to the one that
  * opened it: "New destination", or the Edit of the destination that was open, whoever asked for the
- * edit (its own button or the changed-server-key dialog).
+ * edit (its own button or the changed-server-key dialog); "New destination" when that row is gone.
  */
 function useFocusBackAfterForm(editing: SshTarget | "new" | null) {
   const opened = useRef<SshTarget | "new" | null>(null);
@@ -40,9 +40,15 @@ function useFocusBackAfterForm(editing: SshTarget | "new" | null) {
     const was = opened.current;
     opened.current = null;
     if (was === null) return;
-    const selector =
-      was === "new" ? "[data-new-target]" : `[data-edit-target="${CSS.escape(was.id)}"]`;
-    document.querySelector<HTMLElement>(selector)?.focus();
+    // Save answers later than a click: a focus the person moved meanwhile stays where it is.
+    const now = document.activeElement;
+    if (now !== null && now !== document.body) return;
+    const edit =
+      was === "new"
+        ? null
+        : document.querySelector<HTMLElement>(`[data-edit-target="${CSS.escape(was.id)}"]`);
+    // A filter or an offline host can take the row away: Novo destino is the next place to start from.
+    (edit ?? document.querySelector<HTMLElement>("[data-new-target]"))?.focus();
   }, [editing]);
 }
 
