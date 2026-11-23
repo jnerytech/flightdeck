@@ -44,7 +44,7 @@ describe("the Claude account card prints (#4351)", () => {
     }
   });
 
-  test("the status prints answer account.get with their own status, and the demo host is asked nothing else", () => {
+  test("the status prints answer account.get with their own status", () => {
     expect(
       [
         "host-conta-conectada",

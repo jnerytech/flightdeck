@@ -3,13 +3,17 @@
 import type { AccountState } from "@flightdeck/protocol";
 import type { Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
-import { ALFA, type Shot, showSection } from "./shot.ts";
+import { ALFA, type Shot } from "./shot.ts";
 import type { WireRule } from "./wire.ts";
 
-/** The card's panel: its title is the heading `showSection` scrolls to. */
-const TITLE = /^(Claude account|Conta do Claude)$/;
 const card = (page: Page) =>
   page.getByRole("region", { name: /^(Claude account of|Conta do Claude de) / });
+
+/**
+ * The card goes to the top of its scrolling box. `showSection` looks for the title's text, and the
+ * sidebar's account line reads the same in English when no one is signed in.
+ */
+const show = (page: Page) => card(page).evaluate((el) => el.scrollIntoView({ block: "start" }));
 
 /** The demo host does not always announce the account; the card is drawn only for a host that does. */
 const CAN_SHOW: WireRule = { command: "host.info", with: { features: ["account"] } };
@@ -71,7 +75,7 @@ const answered = (state: AccountState, ...more: WireRule[]): WireRule[] => [
 /** The card has left its loading text: the print waits for the first thing a state draws. */
 const drawn = async (page: Page) => {
   await card(page).locator("p, meter, code, [role=alert]").first().waitFor({ timeout: 15_000 });
-  await showSection(TITLE)(page);
+  await show(page);
 };
 
 export function accountShots(_ids: DemoIds): Shot[] {
@@ -83,7 +87,7 @@ export function accountShots(_ids: DemoIds): Shot[] {
       wire: answered(SIGNED_IN),
       prepare: async (page) => {
         await card(page).locator("meter").first().waitFor({ timeout: 15_000 });
-        await showSection(TITLE)(page);
+        await show(page);
       },
     },
     {
@@ -92,7 +96,7 @@ export function accountShots(_ids: DemoIds): Shot[] {
       wire: answered(account({ status: "signed_out", name: null, organization: null, plan: null })),
       prepare: async (page) => {
         await card(page).locator("code").first().waitFor({ timeout: 15_000 });
-        await showSection(TITLE)(page);
+        await show(page);
       },
     },
     {
@@ -130,7 +134,7 @@ export function accountShots(_ids: DemoIds): Shot[] {
       ),
       prepare: async (page) => {
         await card(page).getByRole("alert").waitFor({ timeout: 15_000 });
-        await showSection(TITLE)(page);
+        await show(page);
       },
     },
     {
@@ -148,7 +152,7 @@ export function accountShots(_ids: DemoIds): Shot[] {
         await card(page)
           .getByText(/^(Reading the account…|Lendo a conta…)$/)
           .waitFor({ timeout: 15_000 });
-        await showSection(TITLE)(page);
+        await show(page);
       },
     },
     {
@@ -164,7 +168,7 @@ export function accountShots(_ids: DemoIds): Shot[] {
         await card(page)
           .getByText(/^(Reading…|Lendo…)$/)
           .waitFor({ timeout: 15_000 });
-        await showSection(TITLE)(page);
+        await show(page);
       },
     },
   ];
