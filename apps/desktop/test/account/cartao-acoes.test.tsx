@@ -47,7 +47,12 @@ const signedOut: AuthStatus = {
 };
 
 /** A host with an account on a manual clock; the plan changes from the second read on. */
-async function mount(kind: "in" | "out" | "hang" = "in", cooldownMs = 50, loadingMs?: number) {
+async function mount(
+  kind: "in" | "out" | "hang" = "in",
+  cooldownMs = 50,
+  loadingMs?: number,
+  copiedMs?: number,
+) {
   let clock = Date.now();
   const quota = new Quota({ pauseAt: 0.9, now: () => clock });
   let reads = 0;
@@ -87,7 +92,13 @@ async function mount(kind: "in" | "out" | "hang" = "in", cooldownMs = 50, loadin
   if (!host) throw new Error("no host");
   const view = render(
     <TContext.Provider value={translator("en")}>
-      <HostAccount store={store} host={host} cooldownMs={cooldownMs} loadingMs={loadingMs} />
+      <HostAccount
+        store={store}
+        host={host}
+        cooldownMs={cooldownMs}
+        loadingMs={loadingMs}
+        copiedMs={copiedMs}
+      />
     </TContext.Provider>,
   );
   const watchers = () => (account as unknown as { watchers: Set<unknown> }).watchers.size;
@@ -168,6 +179,41 @@ describe("conta-cartao-acoes: signed out", () => {
     await click("Copy command");
     expect(copied).toEqual(["claude auth login"]);
     await settle(() => button("Command copied") !== null);
+  });
+
+  test("the confirmation goes away after a few seconds and the button copies again (#4350)", async () => {
+    const { platform } = await mount("out", 50, undefined, 400);
+    const copied: string[] = [];
+    platform.copyText = async (text) => {
+      copied.push(text);
+    };
+    await settle(() => button("Copy command") !== null);
+    await click("Copy command");
+    await settle(() => button("Command copied") !== null);
+    await settle(() => button("Copy command") !== null);
+    expect(screen.queryByRole("status")?.textContent).toBe("");
+    await click("Copy command");
+    expect(copied).toEqual(["claude auth login", "claude auth login"]);
+  });
+
+  test("a copy the clipboard refuses is said in the card and the button stays (#4350)", async () => {
+    const { platform } = await mount("out", 50, undefined, 400);
+    platform.copyText = async () => {
+      throw new Error("denied");
+    };
+    await settle(() => button("Copy command") !== null);
+    await click("Copy command");
+    await settle(() =>
+      [...document.querySelectorAll("output")].some((o) =>
+        (o.textContent ?? "").startsWith("Could not copy."),
+      ),
+    );
+    expect(button("Copy command") !== null).toBe(true);
+    await settle(() =>
+      [...document.querySelectorAll("output")].every(
+        (o) => !(o.textContent ?? "").startsWith("Could not copy."),
+      ),
+    );
   });
 
   test("Open terminal opens the host's terminal", async () => {

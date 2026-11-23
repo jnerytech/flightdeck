@@ -54,6 +54,7 @@ function show(
     cooling?: boolean;
     timedOut?: boolean;
     copied?: boolean;
+    copyFailed?: boolean;
   },
   language: "en" | "pt-BR" = "en",
 ) {
@@ -70,6 +71,7 @@ function show(
         cooling={props.cooling}
         timedOut={props.timedOut}
         copied={merged.copied}
+        copyFailed={props.copyFailed}
         onRefresh={noop}
         onCopy={noop}
         onTerminal={noop}
@@ -123,14 +125,12 @@ describe("conta-cartao-ui: signed in", () => {
     expect(inCard().queryByText(/From the sign-in of claude/)).toBeNull();
   });
 
-  test("two bars with percentage, reset time (exact on hover) and the age of the reading", () => {
+  test("two bars with percentage, the reset time in the text (no hover needed) and the age of the reading", () => {
     show({ state: state() });
     expect(inBar("five_hour").queryByText("5 hours")).not.toBeNull();
     expect(inBar("five_hour").queryByText("42%")).not.toBeNull();
-    expect(inBar("five_hour").queryByText("resets in 3 h")).not.toBeNull();
-    expect(inBar("five_hour").queryByText("resets in 3 h")?.getAttribute("title")).toBe(
-      "resets at 15:00",
-    );
+    expect(inBar("five_hour").queryByText("resets in 3 h, at 15:00")).not.toBeNull();
+    expect(bar("five_hour")?.querySelector("[title]")).toBeNull();
     expect(inBar("seven_day").queryByText("7 days")).not.toBeNull();
     expect(inBar("seven_day").queryByText("53%")).not.toBeNull();
     expect(inCard().queryByText("Last read 2 min ago")).not.toBeNull();
@@ -204,6 +204,25 @@ describe("conta-cartao-ui: signed in", () => {
     expect(inCard().queryByText("demo@example.com")).not.toBeNull();
     expect(inCard().queryAllByRole("meter")).toHaveLength(2);
     expect(inCard().queryByText("Could not refresh: this is the last reading.")).not.toBeNull();
+  });
+
+  test("a failed refresh is said in a status, in both languages (#4350)", () => {
+    const { unmount } = show({ state: state({ stale: true, error: "account_unavailable" }) });
+    const line = inCard()
+      .queryAllByRole("status")
+      .find((el) => el.textContent === "Could not refresh: this is the last reading.");
+    expect(line === undefined).toBe(false);
+    unmount();
+    show({ state: state({ stale: true, error: "account_unavailable" }) }, "pt-BR");
+    const pt = inCard()
+      .queryAllByRole("status")
+      .find((el) => el.textContent === "Não foi possível atualizar: esta é a última leitura.");
+    expect(pt === undefined).toBe(false);
+  });
+
+  test("the reset time is in the text in pt-BR too (#4350)", () => {
+    show({ state: state() }, "pt-BR");
+    expect(inBar("five_hour").queryByText("reinicia em 3 h, às 15:00")).not.toBeNull();
   });
 });
 
@@ -418,13 +437,28 @@ describe("conta-cartao-ui: what a screen reader and a colour-blind person get (i
     show({ state: signedOut, copied: true });
     expect(inCard().queryByRole("status")?.textContent).toBe("Command copied");
   });
+
+  test("Copy: a failed copy is said where the person looks, in both languages (#4350)", () => {
+    const signedOut = state({ status: "signed_out", windows: [] });
+    const { unmount } = show({ state: signedOut, copyFailed: true });
+    expect(inCard().queryByRole("status")?.textContent).toBe(
+      "Could not copy. Select the command above and copy it by hand.",
+    );
+    expect(inCard().queryByRole("status")?.className.includes("sr-only")).toBe(false);
+    expect(inCard().queryByRole("button", { name: "Copy command" })).not.toBeNull();
+    unmount();
+    show({ state: signedOut, copyFailed: true }, "pt-BR");
+    expect(inCard().queryByRole("status")?.textContent).toBe(
+      "Não foi possível copiar. Selecione o comando acima e copie à mão.",
+    );
+  });
 });
 
 describe("conta-cartao-ui: pt-BR", () => {
   test("the card speaks Portuguese in each state", () => {
     const { unmount } = show({ state: state() }, "pt-BR");
     expect(inCard().queryByText("5 horas")).not.toBeNull();
-    expect(inCard().queryByText("reinicia em 3 h")).not.toBeNull();
+    expect(inCard().queryByText("reinicia em 3 h, às 15:00")).not.toBeNull();
     expect(inCard().queryByText("Última leitura há 2 min")).not.toBeNull();
     expect(inCard().queryByRole("meter", { name: "5 horas de alfa" })).not.toBeNull();
     unmount();
