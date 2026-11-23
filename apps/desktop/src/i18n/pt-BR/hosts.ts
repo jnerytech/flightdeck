@@ -473,6 +473,8 @@ export const hosts = {
     refused: "Nada respondeu em {url}. O daemon provavelmente não está rodando.",
     timeout: "O host não respondeu a tempo. A rede pode estar fora ou o daemon travado.",
     lost: "A conexão com o host caiu.",
+    connectingTo: "Alcançando {url}…",
+    lastFailed: "A última tentativa falhou: {reason}",
     lastTry: "Última tentativa: {time}",
     nextTry: "Próxima tentativa em {n} s",
     reconnectNow: "Reconectar agora",

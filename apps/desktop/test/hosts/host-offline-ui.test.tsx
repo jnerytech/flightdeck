@@ -99,6 +99,38 @@ describe("host-offline-ui", () => {
     expect(shown).toMatch(/Próxima tentativa em \d+ s/);
   });
 
+  test("a host that connects for the first time says it is connecting, with no reason and no command for a try that has not failed (#4412)", async () => {
+    const reaching = { en: "Reaching", "pt-BR": "Alcançando" } as const;
+    for (const language of ["en", "pt-BR"] as const) {
+      // A loopback address would show the Linux and WSL commands, any other one the generic hint and the address one.
+      for (const url of ["ws://127.0.0.1:7420/v1/ws", "ws://192.168.1.9:7420/v1/ws"]) {
+        const region = await banner({ url, status: "connecting", retry: null }, { language });
+        expect(region.textContent ?? "").toContain(`${reaching[language]} ${url}…`);
+        expect(region.querySelectorAll("p").length).toBe(1);
+        expect(region.querySelectorAll("button").length).toBe(1);
+        cleanup();
+      }
+    }
+  });
+
+  test("a host that connects again after a failed try labels the reason as the last try's (#4412)", async () => {
+    const expected = {
+      en: "The last try failed: Nothing answered at ws://127.0.0.1:7420/v1/ws.",
+      "pt-BR": "A última tentativa falhou: Nada respondeu em ws://127.0.0.1:7420/v1/ws.",
+    } as const;
+    for (const language of ["en", "pt-BR"] as const) {
+      const region = await banner({ ...OFFLINE, status: "connecting" }, { language });
+      expect(region.textContent ?? "").toContain(expected[language]);
+      cleanup();
+    }
+  });
+
+  test("an offline host keeps its reason without the last-try label (#4412)", async () => {
+    const region = await banner({ ...OFFLINE }, { language: "en" });
+    expect(region.textContent ?? "").not.toContain("The last try failed:");
+    expect(region.textContent ?? "").toContain("Nothing answered at");
+  });
+
   test("a refused connection to a loopback host shows the Linux and WSL commands", async () => {
     await offlineHost();
     await waitFor(() => expect(text()).toContain("systemctl --user status flightdeckd"));
