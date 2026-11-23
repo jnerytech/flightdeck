@@ -494,4 +494,29 @@ describe("conexoes-ui: focus after the form closes (#4333)", () => {
     expect(screen.queryByRole("button", { name: "Salvar destino" })).toBeNull();
     expect(focusOn("Novo destino")).toBe(true);
   });
+  test("when the edited destino is filtered out of the list, Cancelar puts the focus on Novo destino instead (#4333)", async () => {
+    await open({ targets: [VPS, LAB] });
+    await click("Editar vps");
+    await fill("Buscar destino", "lab");
+    expect(screen.queryByRole("button", { name: "Editar vps" })).toBeNull();
+    await click("Cancelar");
+    expect(focusOn("Novo destino")).toBe(true);
+  });
+
+  test("a focus the person moved while the host was saving stays where it is (#4333)", async () => {
+    const { d } = await open({ targets: [VPS, LAB], hold: ["ssh.save"] });
+    await click("Editar vps");
+    await click("Salvar destino");
+    await settle(() => d.sent("ssh.save").length === 1);
+    const search = screen.queryByLabelText("Buscar destino") as HTMLElement;
+    await act(async () => {
+      search.focus();
+    });
+    await act(async () => {
+      d.release("ssh.save");
+    });
+    await uiIdle();
+    expect(screen.queryByRole("button", { name: "Salvar destino" })).toBeNull();
+    expect(document.activeElement === search).toBe(true);
+  });
 });
