@@ -15,8 +15,8 @@ nome, o tipo, as etiquetas e uma descrição do segredo.
 - Cada linha mostra só o que é seguro mostrar: a impressão digital da chave pública, o começo e o
   fim de um token (`ghp_…WXYZ`, e nada para um token curto) ou os nomes de um conjunto de
   variáveis. Uma senha não mostra nada.
-- **Revelar** pede que você digite a palavra `revelar` e então mostra o valor por 10 segundos.
-  **Copiar** coloca o valor na área de transferência e a limpa 30 segundos depois. **Remover** pede
+- **Revelar** pede que você digite a palavra `revelar` e então mostra o valor por 10 segundos,
+  na própria linha, com um aviso que cita o segredo e um botão **Ocultar agora**. **Copiar** coloca o valor na área de transferência e a limpa 30 segundos depois. **Remover** pede
   que você digite o nome do segredo e apaga também o valor do cofre do sistema.
 - **Uso** é o registro de cada pedido feito ao cofre: o segredo, o host, a finalidade, quem pediu
   (você, o Claude, uma automação ou um workflow) e o resultado (entregue, negado ou usado). Ele

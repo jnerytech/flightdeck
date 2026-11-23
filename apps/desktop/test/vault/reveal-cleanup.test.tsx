@@ -70,21 +70,21 @@ describe("the reveal status and the focus after a removal (#2636)", () => {
     await act(async () => {
       jest.advanceTimersByTime(10_000);
     });
-    expect(status()?.textContent).toBe("Oculto");
+    expect(status()?.textContent).toBe("github oculto");
     await act(async () => {
       jest.advanceTimersByTime(5_000);
     });
-    expect(status()?.textContent).toBe("");
+    expect(status()?.textContent ?? "").toBe("");
   });
 
   test("removing the secret whose value is shown clears the status line at once", async () => {
     const store = await open(["github"]);
     await reveal("github");
-    expect(status()?.textContent).toBe("Visível por 10 s");
+    expect(status()?.textContent).toBe("github visível por 10 s");
     await remove("github");
     await settle(() => store.getState().secrets.length === 0);
-    await settle(() => status()?.textContent === "");
-    expect(status()?.textContent).toBe("");
+    await settle(() => (status()?.textContent ?? "") === "");
+    expect(status()?.textContent ?? "").toBe("");
   });
 
   test("after a removal the focus goes to the next row's Edit button", async () => {

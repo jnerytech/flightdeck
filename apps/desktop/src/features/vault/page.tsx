@@ -60,6 +60,8 @@ export const VaultPage = memo(function VaultPage(props: {
 
   // What a screen reader hears about the value (never the value): shown, about to hide, hidden.
   const [phase, setPhase] = useState<"shown" | "soon" | "hidden" | null>(null);
+  // The secret the status is about, which stays known while "hidden" is said after the value left.
+  const statusFor = useRef<string | null>(null);
   // The button that opened a confirmation, so the focus can go back to it when it closes.
   const opener = useRef<HTMLElement | null>(null);
   // Where the focus lands when the opener's row is gone (a removed secret).
@@ -118,7 +120,27 @@ export const VaultPage = memo(function VaultPage(props: {
   const reveal = async (secret: SecretMeta) => {
     setAsking(null);
     const value = await store.secrets.value(secret.id);
-    if (value !== null) setShown({ id: secret.id, value });
+    if (value === null) return;
+    statusFor.current = secret.id;
+    setShown({ id: secret.id, value });
+  };
+
+  // Hiding early says the same as the timer does: hidden, with the secret's name.
+  const hide = () => {
+    setShown(null);
+    setPhase("hidden");
+  };
+
+  // The row that carries the status: the one shown, and the one just hidden while "hidden" is said.
+  // Its line is on screen from the moment the value is, so the first text is announced when it fills.
+  const statusRow = shown?.id ?? (phase === null ? null : statusFor.current);
+  const statusOf = (secret: SecretMeta): string | undefined => {
+    if (secret.id !== statusRow) return undefined;
+    const seconds = Math.max(1, Math.round(revealMs / 1000));
+    if (phase === "shown") return t("vault.shownFor", { name: secret.name, seconds });
+    if (phase === "soon")
+      return t("vault.hidesSoon", { name: secret.name, seconds: WARN_MS / 1000 });
+    return phase === "hidden" ? t("vault.hidden", { name: secret.name }) : "";
   };
 
   // With a client that has a vault tag selected, its secrets come first (phase 29).
@@ -141,12 +163,6 @@ export const VaultPage = memo(function VaultPage(props: {
         )
       }
     >
-      <output className="text-muted-foreground text-sm">
-        {phase === "shown" &&
-          t("vault.shownFor", { seconds: Math.max(1, Math.round(revealMs / 1000)) })}
-        {phase === "soon" && t("vault.hidesSoon", { seconds: WARN_MS / 1000 })}
-        {phase === "hidden" && t("vault.hidden")}
-      </output>
       {creating && (
         <OpenedPanel opener="new">
           <NewSecretForm
@@ -207,6 +223,8 @@ export const VaultPage = memo(function VaultPage(props: {
                         secret={secret}
                         info={infos[secret.id] ?? {}}
                         revealed={shown?.id === secret.id ? shown.value : null}
+                        status={statusOf(secret)}
+                        onHide={hide}
                         onReveal={(button) => {
                           opener.current = button;
                           setAsking(secret);
