@@ -12,8 +12,8 @@ reports of the Agent SDK), and Anthropic's terms keep a login out of third-party
 ### Which account is this host using?
 
 - The card shows the account's email, the organization, the plan (Pro, Max, Ultra, Team, Enterprise) and
-  two bars, **5 hours** and **7 days**, with the percentage used and when each resets (hover for
-  the exact time). The 7-day Opus and Sonnet bars show only when the host reports them.
+  two bars, **5 hours** and **7 days**, with the percentage used and when each resets (in how long,
+  and at what time). The 7-day Opus and Sonnet bars show only when the host reports them.
 - The plan comes from the sign-in of `claude` on the host, which keeps it from when you signed in:
   after a change of plan, sign out and in again there, then press **Refresh**. The bars are read
   live and are always current.
