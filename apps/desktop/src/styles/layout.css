@@ -148,6 +148,10 @@
   @media (width < 1024px) {
     gap: 0.25rem;
   }
+  /* The host switcher and the arrows leave a 24rem box about 140 px for the path: from 1280 px it has room for two whole names (#4414). */
+  @media (width >= 1280px) {
+    flex-basis: 32rem;
+  }
 }
 
 @utility header-tabs {
