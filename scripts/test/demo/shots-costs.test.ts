@@ -1,12 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type { DemoIds } from "../../demo-seed.ts";
 import { NARROW_SHOTS } from "../../lib/shots/narrow.ts";
-import { ALFA } from "../../lib/shots/shot.ts";
+import { ALFA, type Shot } from "../../lib/shots/shot.ts";
 import { costsShots } from "../../lib/shots/table-costs.ts";
 
 const IDS = { project: "p1", projectName: "flightdeck-web" } as DemoIds;
 const shots = costsShots(IDS);
 const named = (name: string) => shots.find((shot) => shot.name === name);
+const at = (name: string, route: Shot["route"]): [string, Shot["route"]] => [name, route];
 
 describe("the Costs and ROI prints (#4194)", () => {
   test("the table prints Costs with no cost and after a refused read, the ROI tables refused and the settings panel's states, then the filters, the export lines, the empty ROI tables, the quota charts and the Budgets form, in order", () => {
@@ -45,11 +46,11 @@ describe("the Costs and ROI prints (#4194)", () => {
         "custos-exportado",
         "custos-exportar-falhou",
         "roi-custos-vazio",
-      ].map((name) => [name, { name: "costs" }]),
-      ["custos-cota", { name: "costs", host: ALFA }],
-      ["custos-cota-recusada", { name: "costs", host: ALFA }],
-      ["configuracoes-orcamentos-editar", { name: "settings" }],
-      ["configuracoes-orcamentos-limite", { name: "settings" }],
+      ].map((name) => at(name, { name: "costs" })),
+      at("custos-cota", { name: "costs", host: ALFA }),
+      at("custos-cota-recusada", { name: "costs", host: ALFA }),
+      at("configuracoes-orcamentos-editar", { name: "settings" }),
+      at("configuracoes-orcamentos-limite", { name: "settings" }),
     ]);
     expect(shots.filter((shot) => shot.roi).map((shot) => shot.name)).toEqual([
       "roi-custos-recusado",
