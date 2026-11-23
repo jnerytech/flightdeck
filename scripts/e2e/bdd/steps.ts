@@ -338,11 +338,11 @@ const fromCardMenu = async (c: Context, item: string) => {
     .getByRole("menuitem", { name: item, exact: true });
   let lastError = "";
   for (let opening = 1; opening <= MENU_OPENINGS; opening++) {
-    // A click on a button whose menu is open would close it.
-    if ((await button.getAttribute("aria-expanded", { timeout: 2000 })) !== "true") {
-      await button.click({ timeout: 2000 });
-    }
     try {
+      // A click on a button whose menu is open would close it.
+      if ((await button.getAttribute("aria-expanded", { timeout: 2000 })) !== "true") {
+        await button.click({ timeout: 2000 });
+      }
       await entry.click({ timeout: 2000 });
       return;
     } catch (error) {
