@@ -93,6 +93,8 @@ export const vault = {
       exported:
         "Vault saved as cofre.fdvault, where you chose. Keep the passphrase: without it the backup does not open.",
       conflictList: "Conflicting secrets",
+      previewTitle: "Backup preview",
+      choiceLegend: "When it differs",
       replaceMessage:
         "Replace {names} in the vault with the backup's? The current values are lost.",
       replaceConfirm: "Replace secrets",
@@ -107,6 +109,8 @@ export const vault = {
         mismatch: "The passphrases do not match.",
         unreadable:
           "The file could not be read. Check the passphrase; a changed file is refused too.",
+        failed:
+          "The import stopped with an error. Some secrets may already be in the vault: check the list before trying again.",
       },
     },
   },

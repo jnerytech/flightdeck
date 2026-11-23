@@ -92,6 +92,8 @@ export const vault = {
       exported:
         "Cofre salvo como cofre.fdvault, onde você escolheu. Guarde a frase-senha: sem ela o backup não abre.",
       conflictList: "Segredos em conflito",
+      previewTitle: "Prévia do backup",
+      choiceLegend: "Quando for diferente",
       replaceMessage: "Substituir {names} no cofre pelos do backup? Os valores atuais se perdem.",
       replaceConfirm: "Substituir segredos",
       added: "Novos: {n}",
@@ -105,6 +107,8 @@ export const vault = {
         mismatch: "As frases-senha não são iguais.",
         unreadable:
           "Não foi possível ler o arquivo. Confira a frase-senha; um arquivo alterado também é recusado.",
+        failed:
+          "A importação parou com um erro. Alguns segredos podem já estar no cofre: confira a lista antes de tentar de novo.",
       },
     },
   },

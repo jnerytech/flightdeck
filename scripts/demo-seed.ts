@@ -102,6 +102,8 @@ export interface DemoIds {
   prCard: string;
   /** A card whose workflow run waits at an open gate. */
   gateCard: string;
+  /** The id of that run: a print answers `run.get` for it with a run of its own (#4287). */
+  gateRunId: string;
   /** The project's name, as the Agente screen is opened with it. */
   projectName: string;
   /** A session with two turns that changed files: the timeline's rewind and fork. */
@@ -369,7 +371,13 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   await client.call("card.start", { cardId: diff.id });
   // The run stops at its gate: an open request in "Precisa de você", with its steps on the card.
   const gated = await card(DEMO_GATE_CARD, "Faça o plano e peça aprovação.");
-  await client.call("card.start", { cardId: gated.id, workflow: "feature" });
+  const gatedStart = await client.call<{ workflowRunId: string | null }>("card.start", {
+    cardId: gated.id,
+    workflow: "feature",
+  });
+  // The timeline prints answer for this run: without it none would show, and each would time out.
+  const gateRunId = gatedStart.workflowRunId;
+  if (!gateRunId) throw new Error("the gate card started with no workflow run");
   // Created in Review: a person's move there would ask for a PR (issue #78), and the demo has none.
   const inReview = await client.call<{ id: string }>("card.create", {
     projectId: project.id,
@@ -1028,6 +1036,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       diffCard: diff.id,
       prCard: inReview.id,
       gateCard: gated.id,
+      gateRunId,
       projectName: "flightdeck-web",
       rewindSession: rewind.sessionId,
       telemetrySession,
