@@ -446,6 +446,8 @@ export const en: Dictionary = {
     notifyUpdates: "Notify about updates",
     autoUpdate: "Update automatically",
     checkNow: "Check for updates now",
+    updatesUnsupported:
+      "This build does not update itself. Install a newer version of Flightdeck to update it.",
     upToDate: "You are on the latest version",
     shortcut: "Global shortcut",
     shortcutKeys: "Key combination",

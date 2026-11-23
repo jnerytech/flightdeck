@@ -17,6 +17,14 @@ export function UpdatesSection(
   }>,
 ) {
   const { settings, appUpdate, t } = props;
+  // A build that cannot update (the web one) says so, instead of dropping the section (#4438).
+  if (!settings.updaterSupported) {
+    return (
+      <Panel title={t("prefs.updates")}>
+        <p className="text-muted-foreground text-sm">{t("prefs.updatesUnsupported")}</p>
+      </Panel>
+    );
+  }
   return (
     <Panel title={t("prefs.updates")}>
       <label className={check}>
