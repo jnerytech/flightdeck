@@ -698,9 +698,29 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
       }
       return layer;
     };
+    /** The part of a box a person sees: what a scrolling or clipping box around it cuts off covers nothing (#4287). */
+    const visiblePart = (el: Element) => {
+      const whole = rectOf(el);
+      const part = { left: whole.left, top: whole.top, right: whole.right, bottom: whole.bottom };
+      for (let up = el.parentElement; up && up !== document.body; up = up.parentElement) {
+        const style = getComputedStyle(up);
+        const room = rectOf(up);
+        if (clips(style.overflowX) || scrolls(style.overflowX)) {
+          part.left = Math.max(part.left, room.left);
+          part.right = Math.min(part.right, room.right);
+        }
+        if (clips(style.overflowY) || scrolls(style.overflowY)) {
+          part.top = Math.max(part.top, room.top);
+          part.bottom = Math.min(part.bottom, room.bottom);
+        }
+        // A fixed layer is not cut by the boxes of the page under it.
+        if (style.position === "fixed") break;
+      }
+      return part;
+    };
     for (const reason of shown.filter((el) => el.classList.contains("action-reason"))) {
-      const box = rectOf(reason);
-      if (box.width <= 0 || box.height <= 0) continue;
+      const box = visiblePart(reason);
+      if (box.right - box.left <= 0 || box.bottom - box.top <= 0) continue;
       // A reason in a dialog is drawn over the page behind it with the dialog: only the dialog's text counts.
       const layer = layerOf(reason);
       for (const other of texts) {
