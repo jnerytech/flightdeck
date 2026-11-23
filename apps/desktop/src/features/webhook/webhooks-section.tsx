@@ -268,6 +268,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
                   <Stack gap={1}>
                     <ListRow
                       boxed
+                      wrap
                       title={<span className="font-medium">{target.name}</span>}
                       meta={
                         <Inline gap={2} className="text-muted-foreground">
@@ -423,10 +424,11 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
               <legend className="font-medium text-sm">{t("webhooks.kinds")}</legend>
               <Stack gap={1}>
                 {KINDS.map((kind) => (
-                  <label key={kind} className="text-sm">
+                  <label key={kind} className="hit-inline text-sm">
                     <Inline gap={2}>
                       <input
                         type="checkbox"
+                        className="hit-control"
                         checked={draft.kinds.includes(kind)}
                         onChange={(e) =>
                           set({

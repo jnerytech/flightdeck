@@ -227,6 +227,10 @@ export const NARROW_SHOTS: readonly string[] = [
   "clientes-longo",
   "clientes-renomear",
   "clientes-cofre-achados",
+  // #4405: Settings > Notifications > Webhooks: a row with its four buttons, the ntfy form and the edit form.
+  "webhooks-lista",
+  "webhooks-ntfy",
+  "webhooks-editar",
   // #4413: the host page's banner states, the unauthorized ones with their Pair again form: copy commands and a 18rem field must fit at 390.
   "host-offline",
   "host-reconectando",

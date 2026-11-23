@@ -18,7 +18,13 @@ import {
 } from "./lib/browser/axe.ts";
 import { launchFirst } from "./lib/browser/browser.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/browser/visual.ts";
-import { demoFinished, demoInbox, demoSecrets, demoVaultUsage } from "./lib/demo/seeds.ts";
+import {
+  demoFinished,
+  demoInbox,
+  demoSecrets,
+  demoVaultUsage,
+  demoWebhooks,
+} from "./lib/demo/seeds.ts";
 import { DEMO_AWAY_SINCE } from "./lib/e2e/journeys.ts";
 import { assistantScript } from "./lib/shots/assistant-frames.ts";
 import { holdsScript } from "./lib/shots/holds.ts";
@@ -60,6 +66,7 @@ import { snippetShots } from "./lib/shots/table-snippets.ts";
 import { teleportShots } from "./lib/shots/table-teleport.ts";
 import { timelineShots } from "./lib/shots/table-timeline.ts";
 import { vaultBackupShots } from "./lib/shots/table-vault-backup.ts";
+import { webhooksShots } from "./lib/shots/table-webhooks.ts";
 import { teleportScript } from "./lib/shots/teleport-frames.ts";
 import { pickVariants } from "./lib/shots/variants.ts";
 import { wireScript } from "./lib/shots/wire.ts";
@@ -134,6 +141,7 @@ function shots(ids: DemoIds): Shot[] {
     ...assistantShots(ids),
     ...costsShots(ids),
     ...backgroundShots(ids),
+    ...webhooksShots(ids),
   ];
 }
 
@@ -206,6 +214,8 @@ interface StorageSeed {
   secrets: string | null;
   /** The vault's usage log (#3602). */
   vaultUsage: string | null;
+  /** The Webhooks section's list (#4405). */
+  webhooks: string | null;
   /** The time the app was last active, long ago: Needs you shows "While you were away" (#1344). */
   away: string | null;
   simple: boolean;
@@ -230,6 +240,8 @@ function seedStorage(seed: StorageSeed): void {
       "flightdeck.finished",
       "flightdeck.vault",
       "flightdeck.vault-usage",
+      // The Webhooks prints keep a list (#4405): not for the next print, whose section starts empty.
+      "flightdeck.webhooks",
       "flightdeck.lastActive",
       // The "barra-recolhida" print folds the sidebar, and the fold is kept: not into the next print.
       "flightdeck.sidebarFolded",
@@ -267,6 +279,7 @@ function seedStorage(seed: StorageSeed): void {
     if (seed.finished) localStorage.setItem("flightdeck.finished", seed.finished);
     if (seed.secrets) localStorage.setItem("flightdeck.vault", seed.secrets);
     if (seed.vaultUsage) localStorage.setItem("flightdeck.vault-usage", seed.vaultUsage);
+    if (seed.webhooks) localStorage.setItem("flightdeck.webhooks", seed.webhooks);
     if (seed.away) localStorage.setItem("flightdeck.lastActive", seed.away);
     if (seed.teleportPreview) localStorage.setItem("flightdeck.teleportPreview", "true");
     if (seed.autoUpdateOff) localStorage.setItem("flightdeck.autoUpdate", "false");
@@ -318,6 +331,7 @@ function storageSeed(shot: Shot, lang: string, ids: DemoIds): StorageSeed {
       : null,
     secrets: shot.secrets ? demoSecrets(ALFA, shot.secrets === "wide" ? ["demo-beta"] : []) : null,
     vaultUsage: shot.vaultUsage ? demoVaultUsage(ALFA) : null,
+    webhooks: shot.webhooks ? demoWebhooks() : null,
     away: shot.away ? DEMO_AWAY_SINCE : null,
     simple: shot.simple === true,
     teleportPreview: shot.teleportPreview === true,

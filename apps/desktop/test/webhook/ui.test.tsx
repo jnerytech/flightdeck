@@ -85,6 +85,27 @@ describe("webhook-ui", () => {
     expect(screen.queryByText("No webhook yet.")).not.toBeNull();
   });
 
+  test("the event checkboxes and their labels are big enough to hit, the way the other forms' are (axe target-size, #4405)", async () => {
+    await open("en");
+    const boxes = ["Needs you", "Session ended", "Session failed", "Budget alert", "PR watch"].map(
+      (name) => screen.queryByLabelText(name),
+    );
+    expect(boxes.map((box) => box?.classList.contains("hit-control"))).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+    ]);
+    expect(boxes.map((box) => box?.closest("label")?.classList.contains("hit-inline"))).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+    ]);
+  });
+
   test("without an online host that can post it says messages wait", async () => {
     await open("en", { legacy: true });
     expect(
@@ -108,6 +129,14 @@ describe("webhook-ui", () => {
     // The form is cleared for the next one.
     expect((screen.getByLabelText("Nome") as HTMLInputElement).value).toBe("");
     expect((screen.getByLabelText("URL do webhook") as HTMLInputElement).type).toBe("password");
+  });
+
+  test("a webhook row wraps its details and buttons instead of running past the page (narrow prints, #4405)", async () => {
+    await open();
+    await addSlack();
+    await settle(() => screen.queryByText("Team") !== null);
+    const row = document.querySelector("[data-webhook] [data-row-meta]")?.parentElement;
+    expect(row?.classList.contains("flex-wrap")).toBe(true);
   });
 
   test("the form says what is missing and what is wrong with the address", async () => {
