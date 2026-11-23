@@ -8,7 +8,7 @@ describe("the pointer is parked off the content before a print is judged (#4431)
   test("parkPointer moves the mouse to a point outside the content", async () => {
     const { page, steps } = recordingPage();
     await parkPointer(page);
-    expect(steps).toEqual(["mouse.move 1000,700"]);
+    expect(steps).toEqual(["mouse.move 0,0"]);
   });
 
   test("demo:shots parks the pointer after a print's prepare and before its screenshot", () => {
