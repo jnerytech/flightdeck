@@ -47,13 +47,15 @@ const signedOut: AuthStatus = {
 };
 
 /** A host with an account on a manual clock; the plan changes from the second read on. */
-async function mount(kind: "in" | "out" = "in", cooldownMs = 50) {
+async function mount(kind: "in" | "out" | "hang" = "in", cooldownMs = 50, loadingMs?: number) {
   let clock = Date.now();
   const quota = new Quota({ pauseAt: 0.9, now: () => clock });
   let reads = 0;
   const readers: AccountReaders = {
     status: async () => {
       reads++;
+      // A host that never answers: no first state comes, by `account.get` or by the stream.
+      if (kind === "hang") return new Promise<AuthStatus>(() => {});
       return kind === "in" ? { ...signedIn, plan: reads === 1 ? "max" : "pro" } : signedOut;
     },
     sdk: async () => ({
@@ -85,7 +87,7 @@ async function mount(kind: "in" | "out" = "in", cooldownMs = 50) {
   if (!host) throw new Error("no host");
   const view = render(
     <TContext.Provider value={translator("en")}>
-      <HostAccount store={store} host={host} cooldownMs={cooldownMs} />
+      <HostAccount store={store} host={host} cooldownMs={cooldownMs} loadingMs={loadingMs} />
     </TContext.Provider>,
   );
   const watchers = () => (account as unknown as { watchers: Set<unknown> }).watchers.size;
@@ -199,5 +201,29 @@ describe("conta-cartao-acoes: a host that goes away", () => {
     await settle(() => screen.queryByText("demo@example.com") === null);
     expect(screen.queryByText(/alfa is offline/)).not.toBeNull();
     await settle(() => watchers() === 0);
+  });
+});
+
+describe("conta-cartao-acoes: the cooldown and a silent host (#4349)", () => {
+  test("after the read ends, the line says when it was read and the button says why it is off", async () => {
+    const { advance } = await mount("in", 5000);
+    await settle(() => screen.queryByText("demo@example.com") !== null);
+    advance(31_000);
+    await click("Refresh the account of alfa");
+    await settle(() => screen.queryByText("Pro") !== null);
+    expect(button("Refresh the account of alfa")?.getAttribute("aria-disabled")).toBe("true");
+    expect(screen.queryByRole("status")?.textContent?.startsWith("Last read")).toBe(true);
+    expect(screen.queryByText("A host reads its account at most every 30 seconds.")).not.toBeNull();
+  });
+
+  test("a host that does not answer ends the loading with Try again, which asks again", async () => {
+    await mount("hang", 50, 100);
+    expect(screen.queryByText("Reading the account…")).not.toBeNull();
+    await settle(() => button("Try again") !== null);
+    expect(screen.queryByText("Reading the account…")).toBeNull();
+    await click("Try again");
+    // The host still says nothing: the card says it is reading again while the new ask is out.
+    await settle(() => screen.queryByText("Reading the account…") !== null);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

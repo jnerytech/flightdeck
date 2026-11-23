@@ -26,7 +26,8 @@ const VPS = sshTarget({ id: "t1", name: "vps", tags: ["prod"] });
 /** The app on the Conexões screen of a daemon whose server key check answers `hostKey`. */
 async function open(hostKey?: SshHostKeyCheck) {
   const d = sshDaemon(cleanups, { targets: [VPS], ...(hostKey ? { hostKey } : {}) });
-  const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
+  const { platform } = memoryPlatform(false, "pt-BR");
+  const store = new AppStore(platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   const hostId = await store.roster.add({ name: "pc", url: d.url, token: TOKEN });
   render(<App store={store} />);
@@ -35,7 +36,7 @@ async function open(hostKey?: SshHostKeyCheck) {
     fireEvent.click(screen.queryByRole("button", { name: "SSH" }) as HTMLElement);
   });
   await settle(() => screen.queryByRole("button", { name: "Conectar vps" }) !== null);
-  return { d, store, hostId };
+  return { d, store, hostId, platform };
 }
 
 const click = async (name: string) => {
@@ -104,5 +105,59 @@ describe("conexoes-ui: connect", () => {
     expect(screen.queryByRole("button", { name: "Confirmar chave do servidor" })).toBeNull();
     expect(d.sent("ssh.connect")).toEqual([]);
     expect(store.router.current.name).toBe("connections");
+  });
+
+  test("a changed server key says how to go on, and Editar destino opens that destino without trusting the key", async () => {
+    const { d, store } = await open({
+      status: "changed",
+      fingerprint: "SHA256:new",
+      pinned: "SHA256:old",
+    });
+    await click("Conectar vps");
+    expect(screen.queryByText(/Esquecer chave do servidor/)).not.toBeNull();
+    await click("Editar destino");
+    await settle(() => screen.queryByRole("button", { name: "Salvar destino" }) !== null);
+    expect(screen.queryByText("SHA256:new")).toBeNull();
+    expect(d.sent("ssh.hostkey.confirm")).toEqual([]);
+    expect(d.sent("ssh.connect")).toEqual([]);
+    expect(store.router.current.name).toBe("connections");
+  });
+
+  test("a changed server key names its two values Chave salva and Chave oferecida agora", async () => {
+    await open({ status: "changed", fingerprint: "SHA256:new", pinned: "SHA256:old" });
+    await click("Conectar vps");
+    expect(screen.queryByText("Chave salva")).not.toBeNull();
+    expect(screen.queryByText("Chave oferecida agora")).not.toBeNull();
+  });
+
+  test("a server key never seen labels its fingerprint and Copiar impressão digital copies it", async () => {
+    const { platform } = await open({
+      status: "unknown",
+      fingerprint: "SHA256:newkey",
+      pinned: null,
+    });
+    const copied: string[] = [];
+    platform.copyText = async (text) => {
+      copied.push(text);
+    };
+    await click("Conectar vps");
+    expect(screen.queryByText("Impressão digital (SHA256)")).not.toBeNull();
+    await click("Copiar impressão digital");
+    expect(copied).toEqual(["SHA256:newkey"]);
+  });
+
+  test("a changed server key copies the key offered now", async () => {
+    const { platform } = await open({
+      status: "changed",
+      fingerprint: "SHA256:new",
+      pinned: "SHA256:old",
+    });
+    const copied: string[] = [];
+    platform.copyText = async (text) => {
+      copied.push(text);
+    };
+    await click("Conectar vps");
+    await click("Copiar impressão digital");
+    expect(copied).toEqual(["SHA256:new"]);
   });
 });

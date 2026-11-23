@@ -34,6 +34,7 @@ export const account = {
     stale: "Não foi possível atualizar: esta é a última leitura.",
     refresh: "Atualizar",
     refreshing: "Lendo…",
+    cooldown: "Um host lê a conta no máximo a cada 30 segundos.",
     refreshLabel: "Atualizar a conta de {host}",
     signedOut: {
       title: "Este host não está conectado ao Claude.",
