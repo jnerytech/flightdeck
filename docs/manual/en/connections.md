@@ -23,6 +23,8 @@ one (a key file path).
 - **Import from SSH config** reads the host's `~/.ssh/config` (read only, never written), lists the
   names it found, marks the ones already saved and creates only the ones you tick. Wildcard
   entries (`*`, `?`) are defaults for the others, not destinations.
+- Each destination in the list shows its sign-in method, the host that opens it and whether its
+  server key is confirmed yet.
 - **Search** by name, host or user; filter by tag and by the host that opens the destination.
   **Ctrl+K** also offers **Connect to <name>** for each destination.
 - The terminal tab of a destination is named "SSH · name" and carries its tags. A destination

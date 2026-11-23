@@ -23,6 +23,8 @@ caminho de um arquivo de chave).
 - **Importar do SSH config** lê o `~/.ssh/config` do host (só leitura, nunca escreve), lista os
   nomes que achou, marca os já cadastrados e cria só os que você marcar. Entradas com curinga (`*`,
   `?`) são padrões para as outras, não destinos.
+- Cada destino da lista mostra como ele autentica, o host que o abre e se a chave do servidor já foi
+  confirmada.
 - **Busca** por nome, host ou usuário; filtro por etiqueta e pelo host que abre o destino. O
   **Ctrl+K** também oferece **Conectar a <nome>** para cada destino.
 - A aba de terminal de um destino se chama "SSH · nome" e leva as etiquetas. Um destino com a

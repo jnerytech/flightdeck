@@ -56,7 +56,12 @@ async function open(options: Parameters<typeof sshDaemon>[1] = { targets: TARGET
 
 const rows = () => {
   const list = screen.queryByRole("list", { name: "Destinos" });
-  return list ? within(list).queryAllByRole("listitem") : [];
+  // A row holds a list of its own facts: only the direct items are rows.
+  return list
+    ? within(list)
+        .queryAllByRole("listitem")
+        .filter((item) => item.parentElement === list)
+    : [];
 };
 
 describe("conexoes-ui: the screen", () => {

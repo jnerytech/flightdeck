@@ -34,6 +34,7 @@ export const hosts = {
     via: "Opened by",
     all: "All",
     rowVia: "Opened by {host}",
+    rowViaLocal: "Opened by this host",
     keyConfirmed: "Server key confirmed",
     keyNotConfirmed: "Server key not confirmed yet",
     thisHost: "This host",
