@@ -466,6 +466,8 @@ export const hosts = {
     refused: "Nothing answered at {url}. The daemon is probably not running.",
     timeout: "The host did not answer in time. The network may be down or the daemon stuck.",
     lost: "The connection to the host dropped.",
+    connectingTo: "Reaching {url}…",
+    lastFailed: "The last try failed: {reason}",
     lastTry: "Last try: {time}",
     nextTry: "Next try in {n} s",
     reconnectNow: "Reconnect now",

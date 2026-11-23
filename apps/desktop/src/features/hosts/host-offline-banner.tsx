@@ -92,10 +92,15 @@ export function HostOfflineBanner(
     if (copied > 0) return t("hostOffline.copied");
     return answered ? t("hostOffline.still") : "";
   })();
-  const reason =
-    host.status === "unauthorized"
-      ? t("hostOffline.unauthorized")
-      : t(`hostOffline.${kind}` as const, { url: host.url });
+  // A first try, or one right after a connection that worked: nothing has failed, so no reason or hint applies yet (#4412).
+  const untried = connecting && retry === null;
+  const failure = t(`hostOffline.${kind}` as const, { url: host.url });
+  const reason = (() => {
+    if (host.status === "unauthorized") return t("hostOffline.unauthorized");
+    if (untried) return t("hostOffline.connectingTo", { url: host.url });
+    // While the next try runs, the reason belongs to the one before it.
+    return connecting ? t("hostOffline.lastFailed", { reason: failure }) : failure;
+  })();
   return (
     <section
       aria-label={t("hostOffline.label")}
@@ -165,7 +170,7 @@ export function HostOfflineBanner(
         )}
         {/* Always in the page, so a screen reader announces what lands in it (#2586). */}
         <output className="block">{status && <span key={copied}>{status}</span>}</output>
-        {hint === "linux" && (
+        {!untried && hint === "linux" && (
           <Stack gap={1}>
             <p>{t("hostOffline.hintLinux")}</p>
             <CopyCommand command={CHECK_DAEMON} onCopy={copy} />
@@ -174,15 +179,15 @@ export function HostOfflineBanner(
             <CopyCommand command={WSL_SYSTEMD} snippet onCopy={copy} />
           </Stack>
         )}
-        {hint === "windows" && (
+        {!untried && hint === "windows" && (
           <Stack gap={1}>
             <p>{t("hostOffline.hintWindows")}</p>
             <CopyCommand command={SERVICE_STATUS} onCopy={copy} />
             <CopyCommand command={SERVICE_START} onCopy={copy} />
           </Stack>
         )}
-        {hint === "generic" && <p>{t("hostOffline.hintGeneric")}</p>}
-        {mayBeRefusedAddress(kind, host.url) && <p>{t("hostOffline.hintAddress")}</p>}
+        {!untried && hint === "generic" && <p>{t("hostOffline.hintGeneric")}</p>}
+        {!untried && mayBeRefusedAddress(kind, host.url) && <p>{t("hostOffline.hintAddress")}</p>}
       </Stack>
     </section>
   );
