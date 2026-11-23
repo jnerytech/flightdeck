@@ -58,6 +58,15 @@ const IMPORT = /^(Import|Importar)$/;
 const SWITCH = /^(Keep the secrets with this tag|Manter os segredos com essa tag)/;
 const FINDINGS = /^(Secrets that could leave the client|Segredos que podem sair do cliente)$/;
 
+/**
+ * Runs a print's steps, then moves the pointer off the control it clicked: left there, it would
+ * paint the control's hover color, and axe would measure that instead of the resting one.
+ */
+const settled = (steps: (page: Page) => Promise<void>) => async (page: Page) => {
+  await steps(page);
+  await page.mouse.move(1000, 700);
+};
+
 /** Brings an element into the window: the screen is long, and a print shows only its top. */
 const show = (target: Locator) => target.scrollIntoViewIfNeeded();
 
@@ -86,86 +95,86 @@ export function clientsShots(): Shot[] {
       name: "clientes-renomear",
       route,
       clients: {},
-      prepare: async (page) => {
+      prepare: settled(async (page) => {
         await page.getByRole("button", { name: RENAME }).click();
         const save = page.getByRole("button", { name: /^(Save name|Salvar nome)$/ });
         await save.waitFor();
         await show(save);
-      },
+      }),
     },
     {
       // Delete asks first, and says nothing is deleted from the hosts.
       name: "clientes-apagar",
       route,
       clients: {},
-      prepare: async (page) => {
+      prepare: settled(async (page) => {
         await page.getByRole("button", { name: REMOVE }).click();
         await page.getByRole("alertdialog").waitFor();
-      },
+      }),
     },
     {
       // A suggestion for the project no rule claims: the button adds the rule to the client.
       name: "clientes-sugestoes",
       route,
       clients: { data: UNCLAIMED },
-      prepare: async (page) => {
+      prepare: settled(async (page) => {
         await suggest(page);
         const list = page.getByRole("list", {
           name: /^(Client suggestions|Sugestões de clientes)$/,
         });
         await list.waitFor({ timeout: 15_000 });
         await show(list);
-      },
+      }),
     },
     {
       // Every known project has a client: the line says so.
       name: "clientes-sugestoes-nada",
       route,
       clients: {},
-      prepare: async (page) => {
+      prepare: settled(async (page) => {
         await suggest(page);
         const nothing = page.getByText(/^(Nothing to suggest|Nada a sugerir)/);
         await nothing.waitFor();
         await show(nothing);
-      },
+      }),
     },
     {
       // The export, as text to copy to the other computer.
       name: "clientes-exportado",
       route,
       clients: {},
-      prepare: async (page) => {
+      prepare: settled(async (page) => {
         await page.getByRole("button", { name: EXPORT }).click();
         const box = page.getByLabel(EXPORT_BOX);
         await box.waitFor();
         await show(box);
-      },
+      }),
     },
     {
       // Text that is not an export: an alert, and nothing imported.
       name: "clientes-importar-erro",
       route,
       clients: {},
-      prepare: async (page) => {
+      prepare: settled(async (page) => {
         await paste(page, "this is not an export");
         const alert = page.getByRole("alert").filter({
           hasText: /^(That is not a clients export|Isso não é uma exportação de clientes)/,
         });
         await alert.waitFor();
         await show(alert);
-      },
+      }),
     },
     {
       // The demo's own export pasted back: nothing is new, both clients are updated.
       name: "clientes-importar-ok",
       route,
       clients: {},
-      prepare: async (page) => {
+      prepare: settled(async (page) => {
         await paste(page, DEMO_CLIENTS);
         const done = page.getByText(/^(Imported|Importado):/);
         await done.waitFor();
         await show(done);
-      },
+      }),
     },
     {
       // Turning the vault scope on asks first, and says how many rules the secrets get.
@@ -173,10 +182,10 @@ export function clientsShots(): Shot[] {
       route,
       clients: { data: TAGGED },
       secrets: "wide",
-      prepare: async (page) => {
+      prepare: settled(async (page) => {
         await page.getByRole("switch", { name: SWITCH }).click();
         await page.getByRole("alertdialog").waitFor({ timeout: 15_000 });
-      },
+      }),
     },
     {
       // The secrets of the tag that could leave the client: one is allowed on a host with none of its projects.
