@@ -514,4 +514,28 @@ describe("conexoes-ui: the advanced options fold away (#4333)", () => {
     });
     expect(fold()?.open).toBe(true);
   });
+  test("a destino whose stored options are all off or empty keeps the fold closed", async () => {
+    const OFF = sshTarget({
+      id: "t4",
+      name: "off",
+      options: { compression: false, forwardAgent: false, localForward: [] },
+    });
+    await open({ targets: [OFF] });
+    await click("Editar off");
+    expect(fold()).not.toBeNull();
+    expect(fold()?.open).toBe(false);
+  });
+
+  test("a forwards line that blocks Salvar destino keeps the fold open too", async () => {
+    await open({ targets: [VPS] });
+    await click("Novo destino");
+    await fill("Encaminhamentos locais (um por linha)", "not a forward");
+    expect(fold()).not.toBeNull();
+    const advanced = fold() as HTMLDetailsElement;
+    await act(async () => {
+      advanced.open = false;
+      advanced.dispatchEvent(new Event("toggle"));
+    });
+    expect(fold()?.open).toBe(true);
+  });
 });
