@@ -294,4 +294,28 @@ describe("conexoes-ui: the screen", () => {
     expect(rows()).toHaveLength(3);
     expect(screen.queryByText("Não foi possível ler os destinos.")).toBeNull();
   });
+
+  test("each destino says how it signs in, which host opens it and whether its server key is confirmed (#4334)", async () => {
+    await open({
+      targets: [
+        sshTarget({
+          id: "t1",
+          name: "vps",
+          auth: "key-file",
+          secretRef: "/k",
+          hostKey: "SHA256:abc",
+        }),
+        sshTarget({ id: "t3", name: "lab", viaHost: "outro", auth: "password" }),
+      ],
+    });
+    const vps = within(rows()[0] as HTMLElement);
+    expect(vps.queryByText("Chave em arquivo")).not.toBeNull();
+    expect(vps.queryByText("Aberto por Este host")).not.toBeNull();
+    expect(vps.queryByText("Chave do servidor confirmada")).not.toBeNull();
+    expect(vps.queryByText("Chave do servidor ainda não confirmada")).toBeNull();
+    const lab = within(rows()[1] as HTMLElement);
+    expect(lab.queryByText("Senha (pedida ao conectar)")).not.toBeNull();
+    expect(lab.queryByText("Aberto por outro")).not.toBeNull();
+    expect(lab.queryByText("Chave do servidor ainda não confirmada")).not.toBeNull();
+  });
 });
