@@ -136,6 +136,18 @@ export function shellShots(ids: DemoIds): Shot[] {
     { name: "sessao", route: { name: "session", host: ALFA, id: ids.idleSession } },
     // The form with its Criar sessão off and the reason beside it.
     { name: "nova-sessao", route: { name: "new-session", host: ALFA } },
+    // #4388: a host with no allowed folder; the Folder field says so, with the link, and offers no Browse.
+    {
+      name: "nova-sessao-sem-pasta",
+      route: { name: "new-session", host: ALFA },
+      wire: [{ command: "hello", without: { allowedRoots: ["*"] } }],
+      prepare: async (page) => {
+        await page
+          .getByText(/^(This host has no allowed folder|Este host não tem pasta permitida)/)
+          .first()
+          .waitFor({ timeout: 15_000 });
+      },
+    },
     // The folder dialog over the form: centered, with the page dimmed behind it.
     {
       name: "pasta-escolher",
