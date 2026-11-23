@@ -43,8 +43,9 @@ describe("shots-narrow: the narrow windows demo:shots re-measures (#641)", () =>
         "ssh-importar-vazio",
         "ssh-sem-host",
         "ssh-lista-falhou",
+        "ssh-lista-carregando",
       ].map((name) => narrowSizes("dark", name).length),
-    ).toEqual([3, 3, 3, 3, 3, 3, 3, 3, 3]);
+    ).toEqual([3, 3, 3, 3, 3, 3, 3, 3, 3, 3]);
   });
 
   test("a light print, or a print not in the list, is not", () => {
