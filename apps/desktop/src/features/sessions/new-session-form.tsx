@@ -149,6 +149,17 @@ export function NewSessionForm(
       done.then(finished, finished);
     }
   };
+  // The dead end of a host with no allowed folder: the reason and the way out, shown in the Folder field and under the button.
+  const needFolder = (
+    <span>
+      {t("newSession.needFolder")}{" "}
+      {props.onAddFolder && (
+        <Button type="button" variant="link" onClick={props.onAddFolder}>
+          {t("newSession.addFolder", { host: props.host.name })}
+        </Button>
+      )}
+    </span>
+  );
   return (
     <Page title={t("newSession.title", { host: props.host.name })}>
       <Form onSubmit={() => submit()}>
@@ -211,18 +222,26 @@ export function NewSessionForm(
             );
           }}
         </Field>
-        <Field label={t("newSession.folder")}>
-          {(control) => (
-            <NativeSelect {...control} value={root} onChange={(e) => setPicked(e.target.value)}>
-              {folders.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </NativeSelect>
-          )}
-        </Field>
-        {canBrowse && (
+        {folders.length > 0 ? (
+          <Field label={t("newSession.folder")}>
+            {(control) => (
+              <NativeSelect {...control} value={root} onChange={(e) => setPicked(e.target.value)}>
+                {folders.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </NativeSelect>
+            )}
+          </Field>
+        ) : (
+          // No allowed folder: no session can start, so the field says it here, not only under the button (#4388).
+          <Stack gap={1}>
+            <span className="text-sm">{t("newSession.folder")}</span>
+            <p className="text-muted-foreground text-sm">{needFolder}</p>
+          </Stack>
+        )}
+        {canBrowse && folders.length > 0 && (
           <Button
             type="button"
             variant="outline"
@@ -359,20 +378,7 @@ export function NewSessionForm(
           submit={t("newSession.create")}
           busy={creating}
           disabled={!root || missingPrompt}
-          disabledReason={
-            root ? (
-              t("newSession.needPrompt")
-            ) : (
-              <span>
-                {t("newSession.needFolder")}{" "}
-                {props.onAddFolder && (
-                  <Button type="button" variant="link" onClick={props.onAddFolder}>
-                    {t("newSession.addFolder", { host: props.host.name })}
-                  </Button>
-                )}
-              </span>
-            )
-          }
+          disabledReason={root ? t("newSession.needPrompt") : needFolder}
         />
       </Form>
     </Page>
