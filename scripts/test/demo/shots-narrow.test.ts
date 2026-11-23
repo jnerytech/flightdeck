@@ -31,6 +31,22 @@ describe("shots-narrow: the narrow windows demo:shots re-measures (#641)", () =>
     expect(narrowSizes("dark", "atividade")).toHaveLength(3);
   });
 
+  test("#4335: the SSH list, its forms, key dialog and list states are re-measured narrow, where the four buttons of a row and the long hint lines must wrap", () => {
+    expect(
+      [
+        "ssh-destinos",
+        "ssh-editar",
+        "ssh-editar-cofre",
+        "ssh-teste-falhou",
+        "ssh-chave-mudou",
+        "ssh-sem-resultado",
+        "ssh-importar-vazio",
+        "ssh-sem-host",
+        "ssh-lista-falhou",
+      ].map((name) => narrowSizes("dark", name).length),
+    ).toEqual([3, 3, 3, 3, 3, 3, 3, 3, 3]);
+  });
+
   test("a light print, or a print not in the list, is not", () => {
     expect(narrowSizes("light", "board")).toHaveLength(0);
     expect(narrowSizes("dark", "paleta")).toHaveLength(0);
