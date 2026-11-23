@@ -88,6 +88,15 @@ describe("layout-list-row: the title wins the width", () => {
     expect(part(container, "title")?.className ?? "").not.toContain("flex-auto");
   });
 
+  test("a wrapping row's trailing group is never wider than the row, so its controls can wrap (#4392)", () => {
+    const { container } = render(
+      <ListRow wrap title="A long name" trailing={<button type="button">×</button>} />,
+    );
+    expect(part(container, "trailing")?.className ?? "").toContain("max-w-full");
+    const plain = render(<ListRow title="Fix" trailing={<button type="button">×</button>} />);
+    expect(part(plain.container, "trailing")?.className ?? "").not.toContain("max-w-full");
+  });
+
   test("a row that does not ask to wrap is unchanged", () => {
     const { container } = render(<ListRow title="Fix" meta="alfa" />);
     expect((container.firstElementChild as HTMLElement).className).not.toContain("flex-wrap");

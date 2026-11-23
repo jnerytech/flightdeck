@@ -21,7 +21,12 @@ export const firstrun = {
     crumb: "Connect a host",
     addHost: "Add a host with the flightdeckd address and token.",
     stepsLabel: "First steps",
-    step1: "On the computer that runs Claude Code, install and start the daemon:",
+    step1:
+      "On the computer that runs Claude Code, download the daemon file for that computer from the Releases page, then run it from the download folder with setup (on Linux, run chmod +x on it first):",
+    step1Linux: "Linux",
+    step1Windows: "Windows",
+    step1After:
+      "setup installs the daemon, so flightdeckd works in a new terminal afterwards. On an ARM computer, the Linux file is flightdeckd-linux-arm64.",
     step2: "Copy the pairing link it prints at the end (it also shows a QR code).",
     step3: "Paste the link below and press Test and add.",
     step4:

@@ -195,14 +195,6 @@ export function ActivityBoard(
         </div>
       }
     >
-      {stage === "no_host" ? (
-        <EmptyState
-          title={t("activityBoard.noHost")}
-          action={
-            <Button onClick={() => props.go({ name: "add-host" })}>{t("start.addHost")}</Button>
-          }
-        />
-      ) : null}
       {stage === "loading" ? (
         <output className="block">
           <Inline>

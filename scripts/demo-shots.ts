@@ -36,6 +36,7 @@ import { mcpShots } from "./lib/shots/table-agent-mcp.ts";
 import { assistantShots, demoAssistantPrefs } from "./lib/shots/table-assistant.ts";
 import { automationShots } from "./lib/shots/table-automations.ts";
 import { backgroundShots } from "./lib/shots/table-background.ts";
+import { backupDriveShots, backupScheduleShots } from "./lib/shots/table-backup-drive.ts";
 import { boardShots } from "./lib/shots/table-board.ts";
 import { changesShots } from "./lib/shots/table-changes.ts";
 import { clientsShots } from "./lib/shots/table-clients.ts";
@@ -108,6 +109,8 @@ function shots(ids: DemoIds): Shot[] {
     ...contextShots(ids),
     ...timelineShots(ids),
     ...hostShots(ids),
+    ...backupDriveShots(ids),
+    ...backupScheduleShots(ids),
     ...healthShots(ids),
     ...accountShots(ids),
     ...harnessShots(ids),
@@ -326,7 +329,8 @@ async function installScripts(page: Page, shot: Shot): Promise<void> {
   if (shot.maintenance) await page.addInitScript({ content: maintenanceScript(shot.maintenance) });
   if (shot.releases) await page.addInitScript({ content: releasesScript(shot.releases) });
   if (shot.wire) await page.addInitScript({ content: wireScript(shot.wire) });
-  if (shot.ssh) await page.addInitScript({ content: sshScript(shot.askpass === true) });
+  if (shot.ssh)
+    await page.addInitScript({ content: sshScript(shot.askpass === true, shot.sshReplies) });
   if (shot.teleport) {
     await page.addInitScript({ content: teleportScript(shot.teleport === "refuses") });
   }

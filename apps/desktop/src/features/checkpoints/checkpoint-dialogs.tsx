@@ -1,5 +1,5 @@
 import type { RewindPreview } from "@flightdeck/protocol";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,7 +15,7 @@ import {
   ConfirmDialog,
   InlineNotice,
 } from "@/shared/feedback/index.ts";
-import { ErrorState, Inline, LoadingState } from "@/shared/layout/index.ts";
+import { ErrorState, Inline, LoadingState, Stack } from "@/shared/layout/index.ts";
 import { refusalText } from "../../i18n/errors.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { HostResult } from "../../lib/kernel.ts";
@@ -34,7 +34,7 @@ export type Refused = Exclude<HostResult<unknown>, { ok: true }>;
 
 /** What rewinding does to each file, from the files' point of view. */
 function PreviewFiles(
-  props: Readonly<{ store: AppStore; preview: RewindPreview; empty?: string }>,
+  props: Readonly<{ store: AppStore; preview: RewindPreview; label: string; empty?: string }>,
 ) {
   const { t } = props.store.i18n;
   const { preview } = props;
@@ -44,7 +44,14 @@ function PreviewFiles(
   return (
     <div className="flex flex-col gap-2">
       <p className="text-muted-foreground text-xs">{t(`timeline.via.${preview.via}`)}</p>
-      <ul className="flex max-h-60 flex-col gap-1 overflow-y-auto text-sm">
+      {/* A long list scrolls inside its box: it takes the focus, so the keys can scroll it (#4374). */}
+      <Stack
+        as="ul"
+        gap={1}
+        scrolls
+        label={props.label}
+        className="max-h-60 overflow-y-auto text-sm focus-visible:outline-2 focus-visible:outline-ring"
+      >
         {preview.files.map((file) => (
           <li key={file.path} className="flex flex-wrap items-center gap-2">
             <code className="break-all">{file.path}</code>
@@ -53,7 +60,7 @@ function PreviewFiles(
             </span>
           </li>
         ))}
-      </ul>
+      </Stack>
       <p className="text-muted-foreground text-xs tabular-nums">
         {t("timeline.lines", { added: preview.insertions, removed: preview.deletions })}
       </p>
@@ -90,12 +97,21 @@ function PreviewState(
     onRetry(): void;
     /** The refusal's sentence: it holds `{reason}`. */
     failed: "timeline.previewFailed" | "timeline.undoPreviewFailed";
+    /** The name of the list of files, for the dialog it is in. */
+    filesLabel: "timeline.filesRewind" | "timeline.filesUndo" | "timeline.filesFork";
     empty?: string;
   }>,
 ) {
   const { t } = props.store.i18n;
   if (props.preview) {
-    return <PreviewFiles store={props.store} preview={props.preview} empty={props.empty} />;
+    return (
+      <PreviewFiles
+        store={props.store}
+        preview={props.preview}
+        label={t(props.filesLabel)}
+        empty={props.empty}
+      />
+    );
   }
   if (props.refused === null) return <LoadingState label={t("timeline.previewing")} />;
   const { refused } = props;
@@ -153,6 +169,7 @@ export function RewindDialog(
           refused={refused}
           onRetry={load}
           failed="timeline.previewFailed"
+          filesLabel="timeline.filesRewind"
         />
         {refusal !== null && (
           <InlineNotice tone="error">{t("timeline.applyFailed", { reason: refusal })}</InlineNotice>
@@ -218,6 +235,7 @@ export function UndoDialog(props: Omit<Target, "cwd"> & { onClose(): void; onDon
           refused={refused}
           onRetry={load}
           failed="timeline.undoPreviewFailed"
+          filesLabel="timeline.filesUndo"
           empty={t("timeline.undoNothing")}
         />
         {refusal !== null && (
@@ -271,6 +289,12 @@ export function ForkDialog(
   const [forkRefused, setForkRefused] = useState<Refused | null>(null);
   const [allowing, setAllowing] = useState(false);
   const [forked, setForked] = useState<{ claudeSessionId: string; command: string } | null>(null);
+  const copy = useRef<HTMLButtonElement>(null);
+  const resultId = useId();
+  // The result replaces the Fork button the focus was on: it moves to the first useful control (#4375).
+  useEffect(() => {
+    if (forked) copy.current?.focus();
+  }, [forked]);
 
   const refusedText = (refused: Refused) => refusalText(refused.code, refused.message, t, refused);
   // A fork refused for its folder keeps the way out the banner's toast offers (#3550).
@@ -311,10 +335,19 @@ export function ForkDialog(
         <TurnContext store={store} turn={turn} />
         {forked ? (
           <div className="flex flex-col gap-2 text-sm">
-            <p>{t("timeline.forkCommand")}</p>
-            <code className="break-all rounded-md bg-muted p-2">{forked.command}</code>
+            <output id={resultId} className="block">
+              <Stack gap={2}>
+                <p>{t("timeline.forkCommand")}</p>
+                <code className="break-all rounded-md bg-muted p-2">{forked.command}</code>
+              </Stack>
+            </output>
             <Inline>
-              <Button variant="outline" onClick={() => void store.system.copyText(forked.command)}>
+              <Button
+                ref={copy}
+                aria-describedby={resultId}
+                variant="outline"
+                onClick={() => void store.system.copyText(forked.command)}
+              >
                 {t("timeline.forkCopy")}
               </Button>
               <TerminalButton
@@ -379,6 +412,7 @@ export function ForkDialog(
                   refused={previewRefused}
                   onRetry={loadPreview}
                   failed="timeline.previewFailed"
+                  filesLabel="timeline.filesFork"
                 />
               </>
             )}

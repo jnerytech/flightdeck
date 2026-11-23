@@ -44,6 +44,19 @@ export const NARROW_SHOTS: readonly string[] = [
   "cota-cartao-conta-compartilhada",
   // #4308: the status bar's quota popover, its guards and buttons, at 390.
   "cota-popover",
+  // #4348: Settings > Backup's Restore a backup with Google Drive: the source choice and the long file names.
+  "configuracoes-restaurar-fonte",
+  "configuracoes-restaurar-drive-entrar",
+  "configuracoes-restaurar-drive-lista",
+  "configuracoes-restaurar-drive-vazio",
+  "configuracoes-restaurar-drive-auth",
+  "configuracoes-restaurar-drive-falhou",
+  // #4348: Scheduled backups with Google Drive as the target, and a Keep number that is not valid.
+  "configuracoes-agendado-drive-saida",
+  "configuracoes-agendado-drive-conectado",
+  "configuracoes-agendado-drive-recusado",
+  "configuracoes-agendado-drive-aguardando",
+  "configuracoes-agendado-manter-invalido",
   // #1244: Merge PR's confirmation on a card with an open PR.
   "card-merge-pr",
   "workflows-modelos",
@@ -55,6 +68,7 @@ export const NARROW_SHOTS: readonly string[] = [
   // #4252: the Timeline sheet and its refusals, the Undo dialog and an open long prompt, at every width.
   "linha-do-tempo",
   "linha-do-tempo-voltar-recusa-aplicar",
+  "linha-do-tempo-voltar-lista-longa",
   "linha-do-tempo-arquivos-falhou",
   "linha-do-tempo-desfazer",
   "linha-do-tempo-prompt-longo-aberto",
@@ -132,6 +146,8 @@ export const NARROW_SHOTS: readonly string[] = [
   // #4194: Costs with no cost and after a refused read, and the settings panel with its error.
   "custos-vazio",
   "custos-recusado",
+  "custos-parcial",
+  "custos-projeto-vazio",
   "roi-ajustes",
   "roi-ajustes-numero-ruim",
   // #4194: the filters in use, the export's refusal line, the quota charts and a budget being edited at 390.

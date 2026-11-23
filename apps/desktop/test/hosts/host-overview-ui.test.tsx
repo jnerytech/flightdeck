@@ -86,6 +86,7 @@ function setup(forHost: "h1" | "h2" | "h3", gamaStatus = "online") {
         onSeeAllSessions={() => calls.push("sessions")}
         onSeeAllProjects={() => calls.push("projects")}
         onNewSession={() => calls.push("new")}
+        onAddProject={() => calls.push("add")}
       />
     </TooltipProvider>
   );
@@ -164,6 +165,29 @@ describe("host-overview-ui: a host page leads with its sessions and projects", (
     expect(calls).toEqual(["new"]);
     expect(screen.queryByRole("button", { name: "See all sessions" })).toBeNull();
   });
+
+  // A new person lands here after pairing; the Sessions panel has New session, so the Projects
+  // panel offers its own first step instead of text alone (the first-run audit of #168).
+  test("an online host with no project offers Add a project in its Projects panel, and it asks to add one", async () => {
+    const { view, calls } = setup("h3");
+    render(view);
+    await waitFor(() => expect(screen.queryByText("No projects on this host yet.")).not.toBeNull());
+    const button = within(region("Projects of gama")).queryByRole("button", {
+      name: "Add a project",
+    });
+    expect(button).not.toBeNull();
+    await act(async () => void fireEvent.click(button as HTMLElement));
+    expect(calls).toEqual(["add"]);
+  });
+
+  test("a host that already has a project does not offer Add a project there", async () => {
+    const { view } = setup("h1");
+    render(view);
+    await waitFor(() =>
+      expect(screen.queryByRole("region", { name: "Projects of alfa" })).not.toBeNull(),
+    );
+    expect(screen.queryByRole("button", { name: "Add a project" })).toBeNull();
+  });
 });
 
 describe("host-overview-ui: a host that does not answer (issue #3786)", () => {
@@ -177,6 +201,7 @@ describe("host-overview-ui: a host that does not answer (issue #3786)", () => {
       expect(screen.queryByText("The projects show here once gama answers.")).not.toBeNull();
       expect(document.body.textContent?.includes("No sessions on this host yet.")).toBe(false);
       expect(document.body.textContent?.includes("No projects on this host yet.")).toBe(false);
+      expect(screen.queryByRole("button", { name: "Add a project" })).toBeNull();
       const button = screen.getByRole("button", { name: "New session" }) as HTMLButtonElement;
       expect(button.disabled || button.getAttribute("aria-disabled") === "true").toBe(true);
       await act(async () => void fireEvent.click(button));

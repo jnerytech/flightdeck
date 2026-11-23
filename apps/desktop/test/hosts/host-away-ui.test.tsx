@@ -64,6 +64,8 @@ for (const [lang, t] of [
       expect(page).toContain(t.hostHome.noProjectsAway.replace("{host}", "pc"));
       expect(page).not.toContain(t.hostHome.noSessions);
       expect(page).not.toContain(t.hostHome.noProjects);
+      // The host cannot take a project now: no button, as New session is off (the text says why).
+      expect(screen.queryByRole("button", { name: t.hostHome.addProject })).toBeNull();
       const button = screen.queryByRole("button", {
         name: t.hostHome.newSession,
       }) as HTMLButtonElement | null;

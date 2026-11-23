@@ -83,8 +83,9 @@ describe("host-guide: Add a host (issue #1199)", () => {
       expect(list).not.toBeNull();
       expect(within(list as HTMLElement).queryAllByRole("listitem")).toHaveLength(4);
       expect(screen.queryByText(text.lost)).not.toBeNull();
+      // #4386: setup is run from the downloaded file, so step 1 has no copy button for it.
+      expect(screen.queryByRole("button", { name: text.copySetup })).toBeNull();
       for (const [name, command] of [
-        [text.copySetup, "flightdeckd setup"],
         [text.copyDoctor, "flightdeckd doctor"],
         [text.copyPair, "flightdeckd pair"],
       ] as const) {

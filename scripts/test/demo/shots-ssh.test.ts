@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { AskpassRequest, SshImportEntry, SshTarget } from "@flightdeck/protocol";
+import {
+  AskpassRequest,
+  SshHostKeyCheck,
+  SshImportEntry,
+  SshTarget,
+  SshTestResult,
+} from "@flightdeck/protocol";
 import type { DemoIds } from "../../demo-seed.ts";
 import { installHolds } from "../../lib/shots/holds.ts";
 import { sshRewriter, sshScript } from "../../lib/shots/ssh-frames.ts";
@@ -161,7 +167,8 @@ describe("shots-ssh: the page's WebSocket", () => {
 });
 
 describe("shots-ssh: the table", () => {
-  const sshShots = () => hostShots({} as DemoIds).filter((shot) => shot.name.startsWith("ssh-"));
+  const FIRST = ["ssh-destinos", "ssh-novo", "ssh-importar", "ssh-askpass"];
+  const sshShots = () => hostShots({} as DemoIds).filter((shot) => FIRST.includes(shot.name));
 
   test("the table prints the list, the new-destino form, the import and the askpass prompt", () => {
     expect(sshShots().map((shot) => shot.name)).toEqual([
@@ -179,5 +186,107 @@ describe("shots-ssh: the table", () => {
       ["connections", true, false],
       ["connections", true, true],
     ]);
+  });
+});
+
+/** The prints of #4335: the form's variants, the test result, the server key dialogs and the two confirms. */
+const STATES = [
+  "ssh-editar",
+  "ssh-editar-arquivo",
+  "ssh-editar-cofre",
+  "ssh-teste-ok",
+  "ssh-teste-falhou",
+  "ssh-chave-nova",
+  "ssh-chave-mudou",
+  "ssh-remover",
+  "ssh-agente",
+];
+
+describe("shots-ssh: the states of #4335", () => {
+  const state = (name: string) => hostShots({} as DemoIds).find((shot) => shot.name === name);
+  /** What the print answers in the page for one command, in the host's place. */
+  const replyOf = (name: string, command: string): unknown => state(name)?.sshReplies?.[command];
+
+  test("the table prints each state after the first four, in this order", () => {
+    const names = hostShots({} as DemoIds)
+      .map((shot) => shot.name)
+      .filter((name) => name.startsWith("ssh-"));
+    expect(names.slice(4)).toEqual(STATES);
+  });
+
+  test("each state opens Connections with the socket rewriter on and no askpass prompt", () => {
+    expect(
+      STATES.map((name) => [state(name)?.route.name, state(name)?.ssh, state(name)?.askpass]),
+    ).toEqual(STATES.map(() => ["connections", true, undefined]));
+  });
+
+  test("the first-connection dialog is answered with an unknown key and nothing pinned", () => {
+    const check = SshHostKeyCheck.safeParse(replyOf("ssh-chave-nova", "ssh.hostkey.check")).data;
+    expect([check?.status, check?.pinned, check?.fingerprint.startsWith("SHA256:")]).toEqual([
+      "unknown",
+      null,
+      true,
+    ]);
+  });
+
+  test("the changed-key dialog shows the key the destino kept, and a different one now", () => {
+    const check = SshHostKeyCheck.safeParse(replyOf("ssh-chave-mudou", "ssh.hostkey.check")).data;
+    const kept = targets(heard("ssh.list", { targets: [] }).out.data).find(
+      (t) => t.name === "build-server",
+    )?.hostKey;
+    expect([check?.status, check?.pinned === kept, check?.fingerprint === check?.pinned]).toEqual([
+      "changed",
+      true,
+      false,
+    ]);
+  });
+
+  test("the test result is answered ok in one print and refused, with its reason, in the other", () => {
+    const ok = SshTestResult.safeParse(replyOf("ssh-teste-ok", "ssh.test")).data;
+    const failed = SshTestResult.safeParse(replyOf("ssh-teste-falhou", "ssh.test")).data;
+    expect([ok?.ok, failed?.ok, failed?.reason]).toEqual([true, false, "ssh_test_auth"]);
+  });
+
+  test("only the key dialogs and the test result are answered in the page", () => {
+    expect(STATES.filter((name) => state(name)?.sshReplies !== undefined)).toEqual([
+      "ssh-teste-ok",
+      "ssh-teste-falhou",
+      "ssh-chave-nova",
+      "ssh-chave-mudou",
+    ]);
+  });
+});
+
+describe("shots-ssh: the answers a print makes in the host's place", () => {
+  const replies = { "ssh.test": { ok: true, error: null } };
+
+  test("the command a print replies to is answered in the page", () => {
+    const answer = sshRewriter(false, replies).answer?.(ask("r9", "ssh.test"));
+    expect(JSON.parse(answer ?? "null")).toEqual({
+      type: "ack",
+      id: "r9",
+      ok: true,
+      data: { ok: true, error: null },
+    });
+  });
+
+  test("any other command, and a frame that is no JSON, goes to the host", () => {
+    const rewriter = sshRewriter(false, replies);
+    expect([rewriter.answer?.(ask("r9", "ssh.list")), rewriter.answer?.("not json")]).toEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+
+  test("the init script carries the replies into the page", async () => {
+    const page = { WebSocket: FakeSocket as unknown as typeof WebSocket };
+    new Function("window", sshScript(false, replies))(page);
+    const socket = new page.WebSocket("ws://x") as unknown as FakeSocket;
+    const got: Array<{ data: unknown }> = [];
+    socket.addEventListener("message", (event) => got.push(JSON.parse(String(event.data))));
+    (socket as unknown as { send(data: string): void }).send(ask("r9", "ssh.test"));
+    // The answer is queued as a microtask: one await lets it through.
+    await Promise.resolve();
+    expect(got.map((frame) => frame.data)).toEqual([{ ok: true, error: null }]);
   });
 });
