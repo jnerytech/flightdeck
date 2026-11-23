@@ -84,6 +84,11 @@ export const NARROW_SHOTS: readonly string[] = [
   "host-saude-falta",
   "host-saude-correcoes",
   "host-saude-ok-aberto",
+  // #4351: the Claude account card with every window, a long name, a failed read and a refresh under way.
+  "host-conta-conectada",
+  "host-conta-desconectada",
+  "host-conta-desconhecida-erro",
+  "host-conta-atualizando",
   // #1328: Settings > Backup schedule, waiting for the passphrase.
   "configuracoes-backup-agenda",
   // #1354: the selection bar and Start N's confirm, compact at 390.

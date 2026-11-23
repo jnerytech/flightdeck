@@ -28,6 +28,7 @@ import { narrowSizes, unknownNarrowShots } from "./lib/shots/narrow.ts";
 import { releasesScript } from "./lib/shots/releases.ts";
 import { ALFA, DEMO_CLIENTS, DEMO_ROI, type Shot } from "./lib/shots/shot.ts";
 import { sshScript } from "./lib/shots/ssh-frames.ts";
+import { accountShots } from "./lib/shots/table-account.ts";
 import { activityShots } from "./lib/shots/table-activity.ts";
 import { agentShots } from "./lib/shots/table-agent.ts";
 import { contextShots, filesShots } from "./lib/shots/table-agent-files.ts";
@@ -106,6 +107,7 @@ function shots(ids: DemoIds): Shot[] {
     ...timelineShots(ids),
     ...hostShots(ids),
     ...healthShots(ids),
+    ...accountShots(ids),
     ...harnessShots(ids),
     ...automationShots(ids),
     ...knowledgeShots(ids),
