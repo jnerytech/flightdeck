@@ -114,7 +114,8 @@ function schedulePrint(
   return {
     name,
     route: { name: "settings", section: "backup" },
-    ...(google && { query: { google } }),
+    // backupFolder=demo: the scheduled backups panel is only there with a folder to write to.
+    query: { ...(google && { google }), backupFolder: "demo" },
     prepare: async (page) => {
       await then(page);
       await page.getByText(waitFor).waitFor();
