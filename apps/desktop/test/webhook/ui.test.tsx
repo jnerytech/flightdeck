@@ -626,4 +626,226 @@ describe("webhook-ui: focus and words after each row action (#2677)", () => {
     expect(screen.queryByRole("button", { name: "Remove Team" })).not.toBeNull();
     expect(said("Team removed")).toBe(false);
   });
+
+  describe("a half-typed form is not dropped without asking (#4404)", () => {
+    const addTeam = async () => {
+      await fill("Name", "Team");
+      await fill("Webhook URL", SECRET);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+      });
+      await click("Save webhook");
+      await settle(() => screen.queryByRole("button", { name: "Edit Team" }) !== null);
+    };
+    const nameValue = () => (screen.getByLabelText("Name") as HTMLInputElement).value;
+    const discardAsked = () => screen.queryByRole("alertdialog") !== null;
+
+    test("Edit on a row asks before it replaces text typed in the Add form; Cancel keeps the text, Discard loads the row", async () => {
+      await open("en");
+      await addTeam();
+      await fill("Name", "Half typed");
+      await click("Edit Team");
+      await settleMaybe(discardAsked);
+      expect(discardAsked()).toBe(true);
+      const dialog = screen.getByRole("alertdialog");
+      expect(
+        within(dialog).queryByText("Discard what you typed in this form? It will be lost."),
+      ).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+      });
+      await settle(() => !discardAsked());
+      expect(nameValue()).toBe("Half typed");
+      await click("Edit Team");
+      await settleMaybe(discardAsked);
+      expect(discardAsked()).toBe(true);
+      const again = screen.getByRole("alertdialog");
+      await act(async () => {
+        fireEvent.click(within(again).getByRole("button", { name: "Discard" }));
+      });
+      await settle(() => nameValue() === "Team");
+      expect(screen.queryByRole("heading", { name: "Edit Team" })).not.toBeNull();
+    });
+
+    test("Cancel on an edit with a changed field asks; Discard closes the edit, keeping the stored webhook", async () => {
+      await open("en");
+      await addTeam();
+      await click("Edit Team");
+      await fill("Name", "Renamed");
+      await click("Cancel");
+      await settleMaybe(discardAsked);
+      expect(discardAsked()).toBe(true);
+      const dialog = screen.getByRole("alertdialog");
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+      });
+      await settle(() => !discardAsked());
+      expect(nameValue()).toBe("Renamed");
+      await click("Cancel");
+      await settleMaybe(discardAsked);
+      expect(discardAsked()).toBe(true);
+      const again = screen.getByRole("alertdialog");
+      await act(async () => {
+        fireEvent.click(within(again).getByRole("button", { name: "Discard" }));
+      });
+      await settle(() => nameValue() === "");
+      expect(screen.queryByText("Team")).not.toBeNull();
+    });
+
+    test("an empty Add form and an edit with nothing changed act at once, with no question", async () => {
+      await open("en");
+      await addTeam();
+      await click("Edit Team");
+      expect(nameValue()).toBe("Team");
+      expect(discardAsked()).toBe(false);
+      await click("Cancel");
+      expect(discardAsked()).toBe(false);
+      expect(nameValue()).toBe("");
+    });
+
+    test("the question is in Portuguese too", async () => {
+      await open("pt-BR");
+      await addSlack();
+      await settle(() => screen.queryByRole("button", { name: "Editar Team" }) !== null);
+      await fill("Nome", "Metade");
+      await click("Editar Team");
+      await settleMaybe(discardAsked);
+      expect(discardAsked()).toBe(true);
+      const dialog = screen.getByRole("alertdialog");
+      expect(
+        within(dialog).queryByText(
+          "Descartar o que você digitou neste formulário? Isso será perdido.",
+        ),
+      ).not.toBeNull();
+      expect(within(dialog).queryByRole("button", { name: "Descartar" })).not.toBeNull();
+    });
+  });
+
+  describe("the intro names ntfy and Test says why it cannot run (#4403)", () => {
+    test("the intro names ntfy in both languages", async () => {
+      await open("en");
+      expect(screen.queryByText(/Slack, Discord, ntfy/)).not.toBeNull();
+      cleanup();
+      await open("pt-BR");
+      expect(screen.queryByText(/Slack, ao Discord, ao ntfy/)).not.toBeNull();
+    });
+
+    test("with no online host that can post, Test is off and points at the notice that says why", async () => {
+      await open("en", { legacy: true });
+      await fill("Name", "Team");
+      await fill("Webhook URL", SECRET);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+      });
+      await click("Save webhook");
+      await settle(() => screen.queryByRole("button", { name: "Test Team" }) !== null);
+      const test = screen.getByRole("button", { name: "Test Team" }) as HTMLButtonElement;
+      expect(test.disabled).toBe(true);
+      const reason = document.getElementById(test.getAttribute("aria-describedby") ?? "none");
+      expect(reason?.textContent).toBe(
+        "No online host can post right now. Messages wait and are retried.",
+      );
+      // The other row buttons still work.
+      expect(
+        (screen.getByRole("button", { name: "Edit Team" }) as HTMLButtonElement).disabled,
+      ).toBe(false);
+    });
+
+    test("with an online host Test stays on and has no reason", async () => {
+      await open("en");
+      await fill("Name", "Team");
+      await fill("Webhook URL", SECRET);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+      });
+      await click("Save webhook");
+      await settle(() => screen.queryByRole("button", { name: "Test Team" }) !== null);
+      const test = screen.getByRole("button", { name: "Test Team" }) as HTMLButtonElement;
+      expect(test.disabled).toBe(false);
+      expect(test.getAttribute("aria-describedby")).toBeNull();
+    });
+  });
+
+  describe("the address field can be shown, and is hidden again (#4402)", () => {
+    const field = (label: string) => screen.getByLabelText(label) as HTMLInputElement;
+    const add = async (name: string) => {
+      await fill("Name", name);
+      await fill("Webhook URL", SECRET);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+      });
+      await click("Save webhook");
+      await settle(() => screen.queryByRole("button", { name: `Edit ${name}` }) !== null);
+    };
+
+    test("the address starts hidden; Show reveals it, Hide hides it, and the control's name flips", async () => {
+      await open("en");
+      await fill("Webhook URL", SECRET);
+      expect(field("Webhook URL").type).toBe("password");
+      expect(screen.queryByRole("button", { name: "Show Webhook URL" })).not.toBeNull();
+      await click("Show Webhook URL");
+      expect(field("Webhook URL").type).toBe("text");
+      expect(field("Webhook URL").value).toBe(SECRET);
+      expect(screen.queryByRole("button", { name: "Show Webhook URL" })).toBeNull();
+      await click("Hide Webhook URL");
+      expect(field("Webhook URL").type).toBe("password");
+    });
+
+    test("an ntfy topic URL and the signing secret have the control too", async () => {
+      await open("en");
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText("Type"), { target: { value: "ntfy" } });
+      });
+      expect(screen.queryByRole("button", { name: "Show Topic URL" })).not.toBeNull();
+      await click("Show Topic URL");
+      expect(field("Topic URL").type).toBe("text");
+      await click("Show Access token (optional)");
+      expect(field("Access token (optional)").type).toBe("text");
+    });
+
+    test("the control is named in Portuguese", async () => {
+      await open("pt-BR");
+      expect(screen.queryByRole("button", { name: "Mostrar URL do webhook" })).not.toBeNull();
+      await click("Mostrar URL do webhook");
+      expect(screen.queryByRole("button", { name: "Ocultar URL do webhook" })).not.toBeNull();
+    });
+
+    test("a saved, cancelled or switched form hides the address again", async () => {
+      await open("en");
+      await add("One");
+      await add("Two");
+      await fill("Name", "Three");
+      await fill("Webhook URL", SECRET);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+      });
+      expect(screen.queryByRole("button", { name: "Show Webhook URL" })).not.toBeNull();
+      await click("Show Webhook URL");
+      await click("Save webhook");
+      await settle(() => screen.queryByRole("button", { name: "Edit Three" }) !== null);
+      expect(screen.queryByRole("button", { name: "Show Webhook URL" })).not.toBeNull();
+      expect(field("Webhook URL").type).toBe("password");
+      await click("Edit One");
+      await click("Show Webhook URL");
+      await click("Edit Two");
+      expect(field("Webhook URL").type).toBe("password");
+      await click("Show Webhook URL");
+      await click("Cancel");
+      expect(field("Webhook URL").type).toBe("password");
+      expect(screen.queryByRole("button", { name: "Show Webhook URL" })).not.toBeNull();
+    });
+
+    test("a revealed field is kept from the spellchecker, and switching the type hides it again", async () => {
+      await open("en");
+      expect(field("Webhook URL").getAttribute("spellcheck")).toBe("false");
+      await click("Show Webhook URL");
+      expect(field("Webhook URL").type).toBe("text");
+      expect(field("Webhook URL").getAttribute("spellcheck")).toBe("false");
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText("Type"), { target: { value: "ntfy" } });
+      });
+      expect(field("Topic URL").type).toBe("password");
+      expect(screen.queryByRole("button", { name: "Show Topic URL" })).not.toBeNull();
+    });
+  });
 });

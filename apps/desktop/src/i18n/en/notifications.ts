@@ -27,7 +27,8 @@ export const notifications = {
   },
   webhooks: {
     title: "Webhooks",
-    intro: "Send a message to Slack, Discord or any HTTPS endpoint when something needs you.",
+    intro:
+      "Send a message to Slack, Discord, ntfy (a notice on your phone) or any HTTPS endpoint when something needs you.",
     appOnly: "Webhooks are sent only while this app is running.",
     noHost: "No online host can post right now. Messages wait and are retried.",
     empty: "No webhook yet.",
@@ -60,6 +61,10 @@ export const notifications = {
       pr_watch: "PR watch",
     },
     save: "Save webhook",
+    discardMessage: "Discard what you typed in this form? It will be lost.",
+    discardConfirm: "Discard",
+    showField: "Show {field}",
+    hideField: "Hide {field}",
     saveChanges: "Save changes",
     cancel: "Cancel",
     edit: "Edit {name}",
