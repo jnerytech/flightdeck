@@ -56,7 +56,7 @@ function restorePrint(
 
 export function backupDriveShots(_ids: DemoIds): Shot[] {
   return [
-    // #4348: the choice of where the backup comes from, with Drive offered and a file chosen.
+    // #4348: the choice of where the backup comes from, with Drive offered and the file source selected.
     restorePrint("configuracoes-restaurar-fonte", "files"),
     // Drive chosen while Google is signed out: the line that says to sign in first, and no lookup.
     restorePrint(
