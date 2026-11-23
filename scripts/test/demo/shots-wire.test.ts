@@ -252,6 +252,14 @@ describe("shots-wire: a held, a replied, a sequenced and a trimmed command (#415
     ).toEqual({ type: "ack", id: "r1", ok: true, data: { name: "alfa", features: ["a", "d"] } });
   });
 
+  test("without with * takes every entry out of the array, for a host whose entries the print cannot name (#4388)", () => {
+    const wire = wireRewriter([{ command: "hello", without: { allowedRoots: ["*"] } }]);
+    wire.fromApp(ask("r1", "hello"));
+    expect(
+      read(wire.fromHost(ack("r1", { hostName: "alfa", allowedRoots: ["/a", "/b"] }))),
+    ).toEqual({ type: "ack", id: "r1", ok: true, data: { hostName: "alfa", allowedRoots: [] } });
+  });
+
   test("with adds the named entries to an array of the answer, once, and keeps everything else", () => {
     const wire = wireRewriter([{ command: "host.info", with: { features: ["b", "z"] } }]);
     wire.fromApp(ask("r1", "host.info"));
