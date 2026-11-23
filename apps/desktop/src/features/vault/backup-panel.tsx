@@ -1,10 +1,9 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { useBusy } from "@/shared/hooks/index.ts";
-import { Field, Form, FormActions, Stack } from "@/shared/layout/index.ts";
+import { Form, FormActions, PasswordField, Stack } from "@/shared/layout/index.ts";
 import type { ConflictChoice, ImportPreview } from "./domain/vault-backup.ts";
 
 type Note = { tone: "info" | "error"; text: string };
@@ -89,34 +88,23 @@ export function BackupPanel(props: Readonly<{ store: AppStore }>) {
             {t("vault.backup.exportTitle")}
           </h2>
           <Form variant="page" onSubmit={() => exporting.run(doExport)}>
-            <Field label={t("vault.backup.passphrase")} help={t("vault.backup.passphraseHelp")}>
-              {(control) => (
-                <Input
-                  {...control}
-                  type="password"
-                  autoComplete="off"
-                  value={passphrase}
-                  onChange={(event) => {
-                    setPassphrase(event.target.value);
-                    setExportNote(null);
-                  }}
-                />
-              )}
-            </Field>
-            <Field label={t("vault.backup.confirm")}>
-              {(control) => (
-                <Input
-                  {...control}
-                  type="password"
-                  autoComplete="off"
-                  value={confirmation}
-                  onChange={(event) => {
-                    setConfirmation(event.target.value);
-                    setExportNote(null);
-                  }}
-                />
-              )}
-            </Field>
+            <PasswordField
+              label={t("vault.backup.passphrase")}
+              help={t("vault.backup.passphraseHelp")}
+              value={passphrase}
+              onChange={(value) => {
+                setPassphrase(value);
+                setExportNote(null);
+              }}
+            />
+            <PasswordField
+              label={t("vault.backup.confirm")}
+              value={confirmation}
+              onChange={(value) => {
+                setConfirmation(value);
+                setExportNote(null);
+              }}
+            />
             <FormActions
               submit={t("vault.backup.export")}
               busy={exporting.busy}
@@ -134,21 +122,15 @@ export function BackupPanel(props: Readonly<{ store: AppStore }>) {
             {t("vault.backup.importTitle")}
           </h2>
           <Form variant="page" onSubmit={() => importing.run(doPreview)}>
-            <Field label={t("vault.backup.filePassphrase")}>
-              {(control) => (
-                <Input
-                  {...control}
-                  ref={importField}
-                  type="password"
-                  autoComplete="off"
-                  value={filePassphrase}
-                  onChange={(event) => {
-                    setFilePassphrase(event.target.value);
-                    setImportNote(null);
-                  }}
-                />
-              )}
-            </Field>
+            <PasswordField
+              label={t("vault.backup.filePassphrase")}
+              inputRef={importField}
+              value={filePassphrase}
+              onChange={(value) => {
+                setFilePassphrase(value);
+                setImportNote(null);
+              }}
+            />
             <FormActions
               submit={t("vault.backup.import")}
               busy={importing.busy}

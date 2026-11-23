@@ -18,6 +18,7 @@ export { Note } from "./note.tsx";
 export { OpenedPanel } from "./opened-panel.tsx";
 export { Page, Section } from "./page.tsx";
 export { Panel } from "./panel.tsx";
+export { PasswordField } from "./password-field.tsx";
 export { ShortArea } from "./short-area.ts";
 export { SplitView } from "./split-view.tsx";
 export { Grid, Inline, Stack, Toolbar } from "./stack.tsx";
