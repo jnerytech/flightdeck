@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useEffect, useId, useReducer, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
@@ -106,6 +106,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
   const [said, setSaid] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
   const root = useRef<HTMLElement>(null);
+  const noHostId = useId();
   // Where the focus goes once the list has re-rendered, as a lookup in the rendered section.
   const focusAfter = useRef<((section: HTMLElement) => HTMLElement | null | undefined) | null>(
     null,
@@ -245,7 +246,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
         <Stack gap={3}>
           <p className="text-muted-foreground text-sm">{t("webhooks.intro")}</p>
           <InlineNotice tone="info">{t("webhooks.appOnly")}</InlineNotice>
-          {!canPost && <InlineNotice>{t("webhooks.noHost")}</InlineNotice>}
+          {!canPost && <InlineNotice id={noHostId}>{t("webhooks.noHost")}</InlineNotice>}
           {targets.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t("webhooks.empty")}</p>
           ) : (
@@ -280,6 +281,9 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
                             size="sm"
                             aria-label={t("webhooks.test", { name: target.name })}
                             aria-busy={testing.busy && testingId === target.id ? true : undefined}
+                            // With no online host that can post a test could only fail: the notice says why (#4403).
+                            disabled={!canPost}
+                            aria-describedby={canPost ? undefined : noHostId}
                             onClick={() => testing.run(() => test(target))}
                           >
                             {testing.busy && testingId === target.id

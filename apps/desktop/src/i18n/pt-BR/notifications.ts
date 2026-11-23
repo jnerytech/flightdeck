@@ -28,7 +28,7 @@ export const notifications = {
   webhooks: {
     title: "Webhooks",
     intro:
-      "Envie uma mensagem ao Slack, ao Discord ou a qualquer endereço HTTPS quando algo precisar de você.",
+      "Envie uma mensagem ao Slack, ao Discord, ao ntfy (um aviso no celular) ou a qualquer endereço HTTPS quando algo precisar de você.",
     appOnly: "Os webhooks só são enviados enquanto este app estiver aberto.",
     noHost: "Nenhum host online pode enviar agora. As mensagens esperam e são tentadas de novo.",
     empty: "Nenhum webhook ainda.",
