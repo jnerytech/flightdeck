@@ -876,3 +876,38 @@ describe("linha-do-tempo-falhas", () => {
     expect(box()?.hasAttribute("aria-describedby")).toBe(false);
   });
 });
+
+// #4375: the result of a fork into the terminal replaces the Fork button, so it is announced and the focus goes to Copy.
+describe("linha-do-tempo-falhas: the result of a fork into the terminal", () => {
+  const forkResult = {
+    "snapshots.list": async () => SNAPSHOTS,
+    "session.fork": async () => ({ claudeSessionId: "c2", command: "claude --resume c2" }),
+  };
+  const toTerminal = async (names: { fork: string }, terminal: string, fork: string) => {
+    await click(names.fork);
+    await tick(terminal, "radio");
+    await click(fork);
+  };
+
+  test("the result is a status that holds the sentence and the command, and Copy has the focus", async () => {
+    const { names } = await timeline("en", forkResult);
+    await toTerminal(names, "Open in the terminal", "Fork");
+    const status = screen
+      .queryAllByRole("status")
+      .find((el) => /Conversation forked/.test(el.textContent ?? ""));
+    expect(status?.textContent?.includes("claude --resume c2")).toBe(true);
+    const copy = screen.queryByRole("button", { name: "Copy the command" });
+    expect(document.activeElement === copy).toBe(true);
+  });
+
+  test("the same holds in Portuguese", async () => {
+    const { names } = await timeline("pt-BR", forkResult);
+    await toTerminal(names, "Abrir no terminal", "Bifurcar");
+    const status = screen
+      .queryAllByRole("status")
+      .find((el) => /Conversa bifurcada/.test(el.textContent ?? ""));
+    expect(status?.textContent?.includes("claude --resume c2")).toBe(true);
+    const copy = screen.queryByRole("button", { name: "Copiar o comando" });
+    expect(document.activeElement === copy).toBe(true);
+  });
+});
