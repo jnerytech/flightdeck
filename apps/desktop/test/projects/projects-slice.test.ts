@@ -15,16 +15,22 @@ function projects(
     listed?: { projects: Project[] } | null;
     detected?: Detected;
     held?: Record<string, Project[]>;
+    failed?: Record<string, boolean>;
   } = {},
 ) {
   let held = over.held ?? {};
+  let failed = over.failed ?? {};
   const said: string[] = [];
   const refused: string[] = [];
   const asked: string[] = [];
   const slice = new ProjectsSlice({
-    state: () => ({ hosts: [{ id: "h1", name: "alfa" }], projects: held }) as never,
+    state: () =>
+      ({ hosts: [{ id: "h1", name: "alfa" }], projects: held, projectsFailed: failed }) as never,
     setProjects: (next) => {
       held = next;
+    },
+    setProjectsFailed: (next: Record<string, boolean>) => {
+      failed = next;
     },
     quietly: (async (hostId: string, type: string) => {
       asked.push(`${hostId}:${type}`);
@@ -35,7 +41,7 @@ function projects(
     success: (text) => void said.push(text),
     t: () => translator("en"),
   });
-  return { slice, held: () => held, said, refused, asked };
+  return { slice, held: () => held, failed: () => failed, said, refused, asked };
 }
 
 describe("projects slice", () => {
@@ -51,6 +57,22 @@ describe("projects slice", () => {
     const { slice, held } = projects({ listed: null, held: { h1: [project("kept")] } });
     expect(await slice.load("h1")).toBeNull();
     expect(held().h1?.map((p) => p.id)).toEqual(["kept"]);
+  });
+
+  // #4397: a refused list stayed null, so a screen read it as "no projects".
+  test("a host that refuses the list is marked failed, and the marks of other hosts stay", async () => {
+    const { slice, failed } = projects({ listed: null, failed: { h2: true } });
+    await slice.load("h1");
+    expect(failed()).toEqual({ h1: true, h2: true });
+  });
+
+  test("a list that answers clears the host's failed mark, and so does remembering one", async () => {
+    const answered = projects({ listed: { projects: [] }, failed: { h1: true, h2: true } });
+    await answered.slice.load("h1");
+    expect(answered.failed()).toEqual({ h2: true });
+    const remembered = projects({ failed: { h1: true } });
+    remembered.slice.remember("h1", [project("p1")]);
+    expect(remembered.failed()).toEqual({});
   });
 
   test("remembering a host's projects leaves the other hosts' alone", () => {
