@@ -52,6 +52,7 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
   const exporting = useBusy();
   const reading = useBusy();
   const restoring = useBusy();
+  const restarting = useBusy();
 
   const doExport = async () => {
     setExportNote(null);
@@ -372,7 +373,11 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
             )}
             {importNote && <InlineNotice tone={importNote.tone}>{importNote.text}</InlineNotice>}
             {importNote?.restart && (
-              <Button type="button" onClick={() => void store.backup.restart()}>
+              <Button
+                type="button"
+                disabled={restarting.busy}
+                onClick={() => restarting.run(() => store.backup.restart())}
+              >
                 {t("backupAll.restart")}
               </Button>
             )}
