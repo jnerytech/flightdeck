@@ -26,7 +26,7 @@ type Specs = Parameters<typeof activityState>[0];
 function feed(store: InstanceType<typeof AppStore>, specs: Specs, hostsAre: HostsAre = "online") {
   const { hosts, hub, unread } = activityState(specs, store.getState());
   let shown = hosts;
-  if (hostsAre === "none" || hostsAre === "unloaded") shown = [];
+  if (hostsAre === "unloaded") shown = [];
   else if (hostsAre === "connecting") shown = hosts.map((h) => ({ ...h, status: "connecting" }));
   else if (hostsAre === "one-online") {
     shown = hosts.map((h, i) => ({ ...h, status: i === 0 ? "online" : "connecting" }));
@@ -41,8 +41,8 @@ function feed(store: InstanceType<typeof AppStore>, specs: Specs, hostsAre: Host
   });
 }
 
-/** What the roster holds: no host, hosts being reached, or hosts that answered. */
-type HostsAre = "none" | "unloaded" | "connecting" | "one-offline" | "one-online" | "online";
+/** What the roster holds: not read yet, hosts being reached, or hosts that answered. */
+type HostsAre = "unloaded" | "connecting" | "one-offline" | "one-online" | "online";
 
 function setup(
   _specs: Specs,
@@ -677,17 +677,6 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     ).toBe(true);
   });
 
-  test("with no host it offers Add a host, not four columns of None (#4241)", async () => {
-    const w = setup(SPECS, { hosts: "none" });
-    render(w.view(SPECS));
-    expect(columnNames()).toEqual([]);
-    expect(has(screen.queryByText("No host yet. Add one to see its sessions here."))).toBe(true);
-    await act(async () => {
-      fireEvent.click(control(document.body, "Add a host"));
-    });
-    expect(w.routes).toEqual([{ name: "add-host" }]);
-  });
-
   test("until a host has answered it says it is loading, then the columns show (#4241)", async () => {
     const w = setup(SPECS, { hosts: "connecting" });
     render(w.view([]));
@@ -699,11 +688,10 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     expect(has(screen.queryByText("Reaching your hosts…"))).toBe(false);
   });
 
-  test("before the saved hosts are read it is loading, not No host yet (#4241)", () => {
+  test("before the saved hosts are read it is loading (#4241)", () => {
     const w = setup(SPECS, { hosts: "unloaded" });
     render(w.view([]));
     expect(has(screen.queryByText("Reaching your hosts…"))).toBe(true);
-    expect(has(screen.queryByText("No host yet. Add one to see its sessions here."))).toBe(false);
   });
 
   test("one host offline and another still being reached is still loading (#4241)", () => {
@@ -806,14 +794,7 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     expect(document.activeElement?.textContent).toBe("Deny");
   });
 
-  test("the no-host and loading states read in Portuguese (#4241)", () => {
-    const none = setup(SPECS, { hosts: "none", language: "pt-BR" });
-    render(none.view(SPECS));
-    expect(
-      has(screen.queryByText("Nenhum host ainda. Adicione um para ver as sessões aqui.")),
-    ).toBe(true);
-    expect(has(screen.queryByRole("button", { name: "Adicionar um host" }))).toBe(true);
-    cleanup();
+  test("the loading state reads in Portuguese (#4241)", () => {
     const loading = setup(SPECS, { hosts: "connecting", language: "pt-BR" });
     render(loading.view([]));
     expect(has(screen.queryByText("Conectando aos seus hosts…"))).toBe(true);
