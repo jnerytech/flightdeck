@@ -123,6 +123,17 @@ describe("conexoes-ui: connect", () => {
     expect(store.router.current.name).toBe("connections");
   });
 
+  test("closing the form that Editar destino opened puts the focus on that destino's Editar (#4333)", async () => {
+    await open({ status: "changed", fingerprint: "SHA256:new", pinned: "SHA256:old" });
+    await click("Conectar vps");
+    await click("Editar destino");
+    await settle(() => screen.queryByRole("button", { name: "Salvar destino" }) !== null);
+    await click("Cancelar");
+    const edit = screen.queryByRole("button", { name: "Editar vps" });
+    expect(edit).not.toBeNull();
+    expect(document.activeElement === edit).toBe(true);
+  });
+
   test("a changed server key names its two values Chave salva and Chave oferecida agora", async () => {
     await open({ status: "changed", fingerprint: "SHA256:new", pinned: "SHA256:old" });
     await click("Conectar vps");

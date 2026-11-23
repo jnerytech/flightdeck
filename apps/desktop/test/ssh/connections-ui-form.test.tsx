@@ -449,3 +449,49 @@ describe("conexoes-ui: the form explains itself (#4333)", () => {
     expect(save().disabled).toBe(true);
   });
 });
+
+describe("conexoes-ui: focus after the form closes (#4333)", () => {
+  /** Whether the focus is on the named button: a boolean, so a failure prints no DOM node. */
+  const focusOn = (name: string) => {
+    const button = screen.queryByRole("button", { name });
+    return button !== null && document.activeElement === button;
+  };
+
+  test("Cancelar on Novo destino puts the focus back on Novo destino", async () => {
+    await open({ targets: [VPS, LAB] });
+    await click("Novo destino");
+    await click("Cancelar");
+    expect(screen.queryByRole("button", { name: "Salvar destino" })).toBeNull();
+    expect(focusOn("Novo destino")).toBe(true);
+  });
+
+  test("Cancelar on a row's Editar puts the focus back on that row's Editar", async () => {
+    await open({ targets: [VPS, LAB] });
+    await click("Editar lab");
+    await click("Cancelar");
+    expect(focusOn("Editar lab")).toBe(true);
+  });
+
+  test("Salvar destino on a row's Editar puts the focus back on that row's Editar", async () => {
+    const { d } = await open({ targets: [VPS, LAB] });
+    await click("Editar vps");
+    await click("Salvar destino");
+    await settle(() => d.sent("ssh.save").length === 1);
+    await uiIdle();
+    expect(screen.queryByRole("button", { name: "Salvar destino" })).toBeNull();
+    expect(focusOn("Editar vps")).toBe(true);
+  });
+
+  test("Salvar destino on Novo destino puts the focus back on Novo destino", async () => {
+    const { d } = await open({ targets: [VPS] });
+    await click("Novo destino");
+    await fill("Nome", "nova");
+    await fill("Host", "nova.example.com");
+    await fill("Usuário", "me");
+    await click("Salvar destino");
+    await settle(() => d.sent("ssh.save").length === 1);
+    await uiIdle();
+    expect(screen.queryByRole("button", { name: "Salvar destino" })).toBeNull();
+    expect(focusOn("Novo destino")).toBe(true);
+  });
+});
