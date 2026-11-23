@@ -133,17 +133,6 @@ describe("cofre-ui: backup", () => {
     expect(document.body.innerHTML).not.toContain(VALUE);
   });
 
-  test("a short passphrase is refused with the reason and nothing is saved", async () => {
-    const { saved } = await open();
-    await fill("Frase-senha", "short");
-    await fill("Confirmar frase-senha", "short");
-    await click("Exportar cofre");
-    expect(saved).toEqual([]);
-    expect(
-      screen.queryByText("A frase-senha precisa ter pelo menos 12 caracteres."),
-    ).not.toBeNull();
-  });
-
   test("a confirmation that differs is refused with the reason and nothing is saved", async () => {
     const { saved } = await open();
     await fill("Frase-senha", PASS);
@@ -157,7 +146,7 @@ describe("cofre-ui: backup", () => {
     await open();
     const button = () =>
       screen.getByRole("button", { name: "Exportar cofre" }) as HTMLButtonElement;
-    const reason = "Digite a frase-senha e repita-a.";
+    const reason = "Digite uma frase-senha de pelo menos 12 caracteres e repita-a.";
     expect(button().disabled).toBe(true);
     expect(screen.queryByText(reason)).not.toBeNull();
     await fill("Frase-senha", PASS);

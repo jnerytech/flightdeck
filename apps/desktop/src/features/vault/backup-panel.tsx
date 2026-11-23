@@ -4,6 +4,7 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Stack } from "@/shared/layout/index.ts";
+import { MIN_PASSPHRASE } from "./domain/backup-error.ts";
 import type { ConflictChoice, ImportPreview } from "./domain/vault-backup.ts";
 
 /** Phase 16: the encrypted backup (`.fdvault`): export, and import with a preview. */
@@ -104,7 +105,7 @@ export function BackupPanel(props: Readonly<{ store: AppStore }>) {
             <FormActions
               submit={t("vault.backup.export")}
               busy={exporting}
-              disabled={passphrase === "" || confirmation === ""}
+              disabled={passphrase.length < MIN_PASSPHRASE || confirmation === ""}
               disabledReason={t("vault.backup.exportNeeds")}
             />
             {exportMessage && <output className="block">{exportMessage}</output>}

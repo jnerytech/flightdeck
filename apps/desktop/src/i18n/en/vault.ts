@@ -87,7 +87,7 @@ export const vault = {
       export: "Export vault",
       import: "Import vault",
       apply: "Apply",
-      exportNeeds: "Type the passphrase and repeat it.",
+      exportNeeds: "Type a passphrase of at least 12 characters and repeat it.",
       importNeeds: "Type the file's passphrase.",
       passphraseHelp: "At least 12 characters. Without it the backup cannot be opened.",
       exported:
