@@ -241,6 +241,9 @@ export function SwitchField(
   props: Readonly<{
     checked: boolean;
     onChange(checked: boolean): void;
+    /** Off and not togglable; `describedBy` names the element that says why. */
+    disabled?: boolean;
+    describedBy?: string;
     children: ReactNode;
   }>,
 ) {
@@ -252,6 +255,8 @@ export function SwitchField(
         // 24 px tall by itself: axe's target-size rule asks that of a target with a neighbor close by.
         className="data-[size=default]:h-6"
         checked={props.checked}
+        disabled={props.disabled}
+        aria-describedby={props.describedBy}
         onCheckedChange={props.onChange}
       />
       <label htmlFor={id}>{props.children}</label>

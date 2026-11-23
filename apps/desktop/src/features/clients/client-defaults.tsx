@@ -1,9 +1,10 @@
-import { useRef, useState } from "react";
+import { TriangleAlert } from "lucide-react";
+import { useId, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { PersonaPicker } from "@/features/personas/ui.ts";
 import { useDraft } from "@/features/sessions/index.ts";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
-import { Field, Form, FormActions, Stack } from "@/shared/layout/index.ts";
+import { Field, Form, FormActions, Inline, Stack, SwitchField } from "@/shared/layout/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { generatedScopeRules, vaultFindings } from "./domain/client-vault.ts";
@@ -27,6 +28,7 @@ export function ClientDefaults(
   const [vaultTag, setVaultTag, savedVaultTag] = useDraft(client.defaults.vaultTag ?? "");
   const [confirming, setConfirming] = useState(false);
   const tagField = useRef<HTMLInputElement>(null);
+  const reasonId = useId();
   /** What the last save did: a polite line, not silence (#3875). */
   const [done, setDone] = useState<string | null>(null);
   // The host keeps a value trimmed, so a draft that only adds blanks is no change.
@@ -37,6 +39,7 @@ export function ClientDefaults(
   const scope = store.clientScope.get();
   const projects = scope.projectKeysOf(client.id);
   const saved = client.defaults.vaultTag;
+  const needsTag = !saved && !client.defaults.vaultScope;
   const tagged = saved ? state.secrets.filter((s) => s.tags.includes(saved)) : [];
   const preview = tagged.map((secret) => ({
     secret,
@@ -120,31 +123,52 @@ export function ClientDefaults(
         />
       </Form>
       {done && <InlineNotice tone="info">{done}</InlineNotice>}
-      <label className="text-sm">
-        <input
-          type="checkbox"
-          checked={client.defaults.vaultScope}
-          disabled={!saved}
-          onChange={(e) => {
-            if (e.target.checked) setConfirming(true);
-            else store.clients.setDefaults(client.id, { vaultScope: false });
-          }}
-        />{" "}
+      <SwitchField
+        // A scope left on after its tag was cleared must still be switchable off.
+        disabled={!saved && !client.defaults.vaultScope}
+        describedBy={needsTag ? reasonId : undefined}
+        checked={client.defaults.vaultScope}
+        onChange={(on) => {
+          if (on) {
+            setConfirming(true);
+            return;
+          }
+          if (!store.clients.setDefaults(client.id, { vaultScope: false })) return;
+          setDone(t("clients.vaultScopeOff", { name: client.name }));
+        }}
+      >
         {t("clients.vaultScope")}
-      </label>
+      </SwitchField>
+      {needsTag && (
+        <p id={reasonId} className="text-muted-foreground text-xs">
+          {t("clients.vaultScopeNeedsTag")}
+        </p>
+      )}
       {findings.length > 0 && (
-        <Stack as="ul" label={t("clients.vaultFindingsTitle")} gap={1}>
-          {findings.map((f) => (
-            <li key={`${f.secretId}/${f.kind}`} className="text-status-needs-you text-sm">
-              {t(
-                f.kind === "hosts-wider" ? "clients.vaultFindingHosts" : "clients.vaultFindingRule",
-                {
-                  secret: f.secretName,
-                  items: (f.kind === "hosts-wider" ? f.detail.map(hostName) : f.detail).join(", "),
-                },
-              )}
-            </li>
-          ))}
+        <Stack gap={1}>
+          <p className="font-medium text-sm">{t("clients.vaultFindingsTitle")}</p>
+          <Stack as="ul" gap={1}>
+            {findings.map((f) => (
+              <li key={`${f.secretId}/${f.kind}`} className="text-status-needs-you text-sm">
+                <Inline gap={1}>
+                  <TriangleAlert aria-hidden="true" className="size-3.5" />
+                  <span>
+                    {t(
+                      f.kind === "hosts-wider"
+                        ? "clients.vaultFindingHosts"
+                        : "clients.vaultFindingRule",
+                      {
+                        secret: f.secretName,
+                        items: (f.kind === "hosts-wider" ? f.detail.map(hostName) : f.detail).join(
+                          ", ",
+                        ),
+                      },
+                    )}
+                  </span>
+                </Inline>
+              </li>
+            ))}
+          </Stack>
         </Stack>
       )}
       {confirming && (
@@ -159,7 +183,14 @@ export function ClientDefaults(
           confirmLabel={t("clients.vaultScopeConfirm")}
           onConfirm={() => {
             setConfirming(false);
-            store.clients.setDefaults(client.id, { vaultScope: true });
+            if (!store.clients.setDefaults(client.id, { vaultScope: true })) return;
+            setDone(
+              t("clients.vaultScopeOn", {
+                name: client.name,
+                secrets: preview.length,
+                rules: preview.reduce((sum, p) => sum + p.rules.length, 0),
+              }),
+            );
           }}
           onCancel={() => setConfirming(false)}
         />

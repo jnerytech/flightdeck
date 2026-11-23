@@ -320,16 +320,38 @@ const cardMenuButton = (c: Context) =>
     exact: true,
   });
 
+/** How many times a card menu step opens the menu before it gives up (#4357). */
+const MENU_OPENINGS = 3;
+
 /**
- * Finish… sits under the card page's menu (#1197). The step clicks Actions and then the item of the open menu.
- * Only the open menu's item counts: one in the menu's closing animation takes a click that selects nothing.
+ * Finish… sits under the card page's menu (#1197). The step clicks Actions and then the item of the open menu,
+ * with no wait for a dialog to be gone or for the focus to be back: a person clicks Actions the moment a card
+ * dialog closes. On a slow CI runner that menu is sometimes dismissed within 20 ms of opening, by a focus move the
+ * app does not explain yet (#4357, #4353), so the step opens it again, up to MENU_OPENINGS times, when it closed
+ * before its item could be clicked. Only the open menu's item counts: one in the menu's closing animation takes a
+ * click that selects nothing.
  */
 const fromCardMenu = async (c: Context, item: string) => {
-  await cardMenuButton(c).click();
-  await c.page
+  const button = cardMenuButton(c);
+  const entry = c.page
     .locator('[role="menu"][data-state="open"]')
-    .getByRole("menuitem", { name: item, exact: true })
-    .click();
+    .getByRole("menuitem", { name: item, exact: true });
+  let lastError = "";
+  for (let opening = 1; opening <= MENU_OPENINGS; opening++) {
+    try {
+      // A click on a button whose menu is open would close it.
+      if ((await button.getAttribute("aria-expanded", { timeout: 2000 })) !== "true") {
+        await button.click({ timeout: 2000 });
+      }
+      await entry.click({ timeout: 2000 });
+      return;
+    } catch (error) {
+      lastError = error instanceof Error ? (error.message.split("\n")[0] ?? "") : String(error);
+    }
+  }
+  throw new Error(
+    `the ${item} item was not clickable after ${MENU_OPENINGS} openings of the card's Actions menu (#4357): ${lastError}`,
+  );
 };
 
 /**

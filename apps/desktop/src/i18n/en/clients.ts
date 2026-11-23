@@ -98,6 +98,9 @@ export const clients = {
       "Turn on the vault scope of {name}? {secrets} secret(s) with the tag {tag} get {rules} generated rule(s) in front of their own.",
     vaultScopeWarning:
       "The generated rules ask for approval in the client's projects and deny Claude, automations and workflows anywhere else. Your own direct use in the app is not affected, and your own rules follow them. Turning it off restores everything.",
+    vaultScopeNeedsTag: "Save a vault tag first: the scope applies to the secrets that carry it.",
+    vaultScopeOn: "Vault scope of {name} is on: {rules} generated rule(s) on {secrets} secret(s).",
+    vaultScopeOff: "Vault scope of {name} is off: the secrets are back to their own rules.",
     vaultScopeConfirm: "Turn on",
     vaultFindingsTitle: "Secrets that could leave the client",
     vaultFindingRule: "{secret}: a rule lets or asks for another client's project ({items}).",

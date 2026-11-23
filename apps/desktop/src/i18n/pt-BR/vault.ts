@@ -86,7 +86,7 @@ export const vault = {
       export: "Exportar cofre",
       import: "Importar cofre",
       apply: "Aplicar",
-      exportNeeds: "Digite a frase-senha e repita-a.",
+      exportNeeds: "Digite uma frase-senha de pelo menos 12 caracteres e repita-a.",
       importNeeds: "Digite a frase-senha do arquivo.",
       passphraseHelp: "Pelo menos 12 caracteres. Sem ela o backup não abre.",
       exported:
