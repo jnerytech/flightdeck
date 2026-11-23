@@ -9,7 +9,7 @@ export const backup = {
     confirm: "Confirmar frase-senha",
     passphraseHelp: "Pelo menos 12 caracteres. Sem ela o backup não abre.",
     export: "Fazer backup agora",
-    exportNeeds: "Digite a frase-senha e repita-a.",
+    exportNeeds: "Digite uma frase-senha de pelo menos 12 caracteres e repita-a.",
     saved: "Backup salvo, onde você escolheu. Guarde a frase-senha: sem ela o backup não abre.",
     importTitle: "Restaurar um backup",
     sourceLegend: "Restaurar de",
@@ -23,6 +23,7 @@ export const backup = {
     read: "Ler backup",
     needsDesktop: "Restaurar um backup precisa do app para desktop: o navegador não abre arquivos.",
     readNeeds: "Digite a frase-senha do arquivo.",
+    readHelp: "Um seletor de arquivos abre quando você aperta Ler backup.",
     kinds: {
       settings: "Configurações",
       personas: "Personas",
@@ -32,6 +33,7 @@ export const backup = {
     },
     line: "{kind}: {added} novos, {same} iguais, {conflicting} diferentes",
     previewTitle: "Prévia do backup",
+    previewSource: "Arquivo lido: {name}",
     previewRead:
       "Backup lido: {added} novos, {conflicting} diferentes. Nada muda até você apertar Restaurar.",
     conflictList: "Diferentes aqui",

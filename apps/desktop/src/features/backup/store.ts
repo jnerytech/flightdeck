@@ -27,7 +27,7 @@ export interface BackupCore {
   /** Saves a file the person names; false when they cancel. */
   saveFile(name: string, text: string): Promise<boolean>;
   /** A backup file the person picks; null when they cancel. */
-  pickFile(): Promise<{ text: string } | null>;
+  pickFile(): Promise<{ path: string; text: string } | null>;
   /** Reads a backup and compares it with this profile; changes nothing. */
   previewText(text: string, passphrase: string): Promise<RestorePreview>;
   /** Applies a preview all or nothing. */
@@ -42,7 +42,8 @@ export interface BackupCore {
 
 /** What a backup preview answers: the preview, or why it could not be read. */
 export type BackupPreviewOutcome =
-  | { ok: true; preview: RestorePreview }
+  /** `source` is what the preview was read from: the file's name (never its folder) or the Drive name. */
+  | { ok: true; preview: RestorePreview; source: string }
   | { ok: false; code: BackupErrorCode | BackupOutcomeCode };
 
 /** The whole-app backup: saved as one encrypted file, read back from a file or Google Drive, and restored (#1241, #1462; #1596: a slice of the store). */
@@ -71,7 +72,8 @@ export class BackupSlice {
     try {
       const file = await this.core.pickFile();
       if (!file) return { ok: false, code: "cancelled" };
-      return { ok: true, preview: await this.core.previewText(file.text, passphrase) };
+      const preview = await this.core.previewText(file.text, passphrase);
+      return { ok: true, preview, source: file.path.split(/[\\/]/).pop() ?? file.path };
     } catch (error) {
       return this.refused(error);
     }
@@ -101,7 +103,7 @@ export class BackupSlice {
     }
     if (text.length > BACKUP_FILE_MAX_BYTES) return { ok: false, code: "too-big" };
     try {
-      return { ok: true, preview: await this.core.previewText(text, passphrase) };
+      return { ok: true, preview: await this.core.previewText(text, passphrase), source: name };
     } catch (error) {
       return this.refused(error);
     }

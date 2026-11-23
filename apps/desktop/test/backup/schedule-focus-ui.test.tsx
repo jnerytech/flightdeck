@@ -86,7 +86,7 @@ describe("backup-schedule-focus-ui: the passphrase form moves the focus and anno
       line !== null && document.activeElement === line,
       line?.tagName,
       line?.getAttribute("role") ?? null,
-      screen.queryByRole("status") === line,
+      screen.queryAllByRole("status").includes(line as HTMLElement),
     ]).toEqual([true, "OUTPUT", null, true]);
   });
 

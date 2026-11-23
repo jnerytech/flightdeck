@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { ConflictChoice } from "@/features/vault/index.ts";
+import { type ConflictChoice, MIN_PASSPHRASE } from "@/features/vault/index.ts";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
@@ -29,6 +29,7 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
   );
   const [filePassphrase, setFilePassphrase] = useState("");
   const [preview, setPreview] = useState<RestorePreview | null>(null);
+  const [source, setSource] = useState("");
   const [choice, setChoice] = useState<ConflictChoice>("skip");
   const [importNote, setImportNote] = useState<{ tone: "info" | "error"; text: string } | null>(
     null,
@@ -70,6 +71,7 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
       : await store.backup.preview(filePassphrase);
     if (outcome.ok) {
       setPreview(outcome.preview);
+      setSource(outcome.source);
       setChoice("skip");
       // The decrypted bundle is held by the preview; the passphrase is not needed again.
       setFilePassphrase("");
@@ -163,7 +165,7 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
               <FormActions
                 submit={t("backupAll.export")}
                 busy={exporting.busy}
-                disabled={passphrase === "" || confirmation === ""}
+                disabled={passphrase.length < MIN_PASSPHRASE || confirmation === ""}
                 disabledReason={t("backupAll.exportNeeds")}
               />
             </Form>
@@ -250,7 +252,10 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
             {store.system.canReadBackup() ? (
               (!onDrive || scheduler.driveSignedIn) && (
                 <Form variant="inline" onSubmit={() => reading.run(doRead)}>
-                  <Field label={t("backupAll.filePassphrase")}>
+                  <Field
+                    label={t("backupAll.filePassphrase")}
+                    help={onDrive ? undefined : t("backupAll.readHelp")}
+                  >
                     {(control) => (
                       <Input
                         {...control}
@@ -286,6 +291,9 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
                 className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <Stack gap={4}>
+                  <p className="text-sm [overflow-wrap:anywhere]">
+                    {t("backupAll.previewSource", { name: source })}
+                  </p>
                   <InlineNotice tone="info">
                     {t("backupAll.previewRead", { added, conflicting: differing.length })}
                   </InlineNotice>

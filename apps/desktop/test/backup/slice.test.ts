@@ -18,7 +18,7 @@ function slice(over: Partial<BackupCore> = {}) {
       saved.push({ name, text });
       return true;
     },
-    pickFile: async () => ({ text: "picked" }),
+    pickFile: async () => ({ path: "/home/me/backups/work.fdbackup", text: "picked" }),
     previewText: async () => PREVIEW,
     applyPreview: async () => RESULT,
     driveNames: async () => [],
@@ -75,7 +75,11 @@ describe("backup slice: the whole-app backup", () => {
         return PREVIEW;
       },
     });
-    expect(await s.backup.preview("pass")).toEqual({ ok: true, preview: PREVIEW });
+    expect(await s.backup.preview("pass")).toEqual({
+      ok: true,
+      preview: PREVIEW,
+      source: "work.fdbackup",
+    });
     expect(read).toEqual(["picked"]);
     const none = slice({ pickFile: async () => null });
     expect(await none.backup.preview("pass")).toEqual({ ok: false, code: "cancelled" });
@@ -102,7 +106,11 @@ describe("backup slice: the whole-app backup", () => {
     const big = slice({ driveText: async () => "x".repeat(1024 * 1024 + 1) });
     expect(await big.backup.previewDrive(NAME(1), "pass")).toEqual({ ok: false, code: "too-big" });
     const ok = slice();
-    expect(await ok.backup.previewDrive(NAME(1), "pass")).toEqual({ ok: true, preview: PREVIEW });
+    expect(await ok.backup.previewDrive(NAME(1), "pass")).toEqual({
+      ok: true,
+      preview: PREVIEW,
+      source: NAME(1),
+    });
     expect(await ok.backup.restore(PREVIEW, "skip")).toEqual({ ok: true, result: RESULT });
     const used = slice({
       applyPreview: async () => {

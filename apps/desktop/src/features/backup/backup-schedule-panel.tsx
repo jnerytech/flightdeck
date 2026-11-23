@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MIN_PASSPHRASE } from "@/features/vault/index.ts";
 import { useT } from "@/i18n/context";
 import { formatDateTime } from "@/i18n/format";
 import type { AppStore } from "@/lib/app-store";
@@ -16,9 +17,6 @@ function validKeep(text: string): number | null {
   const keep = Number(text);
   return text.trim() !== "" && Number.isInteger(keep) && keep >= 1 ? keep : null;
 }
-
-/** The same floor as a backup file's passphrase (the bundle refuses a shorter one). */
-const MIN_PASSPHRASE = 12;
 
 type Scheduler = AppStore["backupScheduler"];
 type Busy = ReturnType<typeof useBusy>;
@@ -108,19 +106,19 @@ function RunLines(
       : t("backupSchedule.nextDue", { when: formatDateTime(new Date(at).toISOString(), t.lang) });
   return (
     <>
-      <p className="text-muted-foreground text-sm">
+      <output className="block text-muted-foreground text-sm">
         {lastRunAt === null
           ? t("backupSchedule.neverRun")
           : t("backupSchedule.lastRun", {
               when: formatDateTime(new Date(lastRunAt).toISOString(), t.lang),
             })}
-      </p>
+      </output>
       {next && (
-        <p className="text-muted-foreground text-sm">
+        <output className="block text-muted-foreground text-sm">
           {"waitingFor" in next
             ? t(`backupSchedule.nextWaiting.${next.waitingFor}`)
             : dueText(next.at)}
-        </p>
+        </output>
       )}
     </>
   );
