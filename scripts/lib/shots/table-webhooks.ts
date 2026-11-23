@@ -12,8 +12,8 @@ import type { Shot } from "./shot.ts";
 const ADD_FORM = /^(Add webhook|Adicionar webhook)$/;
 const LIST_NAME = "Platform team Slack";
 const FAILING_NAME = "Phone alerts";
-/** The instant a test result is drawn at: fixed, so its time is the same on every run. */
-const TEST_AT = new Date("2026-11-20T12:00:00Z");
+/** The webhook a test print adds in the page: not the name of a seeded row, so the Test button is the only one. */
+const ADDED_NAME = "Deploy alerts";
 const SENT = { status: 200, retryAfterMs: null, refused: null };
 
 /** The Add form, once the section has drawn. */
@@ -31,15 +31,15 @@ const listed = async (page: Page): Promise<void> => {
 function testedAs(result: RegExp): NonNullable<Shot["prepare"]> {
   return async (page) => {
     await addFormShown(page);
-    await page.clock.setFixedTime(TEST_AT);
     const form = page.getByRole("form", { name: ADD_FORM });
-    await form.getByLabel(/^(Name|Nome)$/).fill(LIST_NAME);
+    await form.getByLabel(/^(Name|Nome)$/).fill(ADDED_NAME);
     await form
       .getByLabel(/^(Webhook URL|URL do webhook)$/)
       .fill("https://hooks.example.test/T000/B000");
     await form.getByLabel(/^(Needs you|Precisa de você)$/).check();
     await form.getByRole("button", { name: /^(Save webhook|Salvar webhook)$/ }).click();
-    await page.getByRole("button", { name: new RegExp(`^(Test|Testar) ${LIST_NAME}$`) }).click();
+    await page.getByText(ADDED_NAME, { exact: true }).waitFor();
+    await page.getByRole("button", { name: new RegExp(`^(Test|Testar) ${ADDED_NAME}$`) }).click();
     await page.getByText(result).waitFor();
   };
 }
@@ -100,7 +100,7 @@ export function webhooksShots(_ids: DemoIds): Shot[] {
         await listed(page);
         await page
           .getByText(/^(No online host can post right now|Nenhum host online pode enviar agora)/)
-          .waitFor({ timeout: 15_000 });
+          .waitFor();
       },
     },
     {

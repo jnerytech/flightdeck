@@ -168,7 +168,8 @@ export function demoWebhooks(): string {
     name,
     type,
     hostScope: null,
-    kinds: ["needs_you", "session_failed"],
+    // Kinds the demo never raises on the Settings page: a seeded row has no address, so an event would fail it and flip its status.
+    kinds: ["budget_alert", "pr_watch"],
     clientId: null,
     enabled: true,
     urlHost,
