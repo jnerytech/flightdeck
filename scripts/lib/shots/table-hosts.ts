@@ -737,10 +737,18 @@ export function hostShots(ids: DemoIds): Shot[] {
         await pairField(page).waitFor({ timeout: 15_000 });
         await page.evaluate(() => {
           window.WebSocket = class extends EventTarget {
+            static readonly CONNECTING = 0;
+            static readonly OPEN = 1;
+            static readonly CLOSING = 2;
+            static readonly CLOSED = 3;
             readyState = 0;
             send() {}
             close() {}
           } as unknown as typeof WebSocket;
+          // The probe gives up after 8 s: the resizes and the axe run after this step take longer, so the timer is dropped.
+          const real = window.setTimeout.bind(window);
+          window.setTimeout = ((fn: TimerHandler, ms?: number, ...rest: unknown[]) =>
+            ms === 8000 ? 0 : real(fn, ms, ...rest)) as typeof window.setTimeout;
         });
         await pairField(page).fill(wrongLink(ids));
         await page.getByRole("button", { name: PAIR_AGAIN }).click();
@@ -754,6 +762,7 @@ export function hostShots(ids: DemoIds): Shot[] {
       route: { name: "host", host: ALFA },
       query: REFUSED_QUERY,
       prepare: async (page) => {
+        await pairField(page).waitFor({ timeout: 15_000 });
         await pairField(page).fill(wrongLink(ids));
         await page.getByRole("button", { name: PAIR_AGAIN }).click();
         await page

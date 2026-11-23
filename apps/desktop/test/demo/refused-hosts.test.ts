@@ -11,8 +11,7 @@ const tokens = (search: string) =>
 describe("?refused=<ids> in the demo's address", () => {
   test("a host it names gets a token its daemon refuses, and the others keep theirs", () => {
     const refused = tokens("?refused=demo-alfa");
-    expect(refused["demo-alfa"]).not.toBe(TOKEN);
-    expect(refused["demo-alfa"]?.length).toBeGreaterThan(0);
+    expect(refused["demo-alfa"]).toBe("r".repeat(32));
     expect(refused["demo-beta"]).toBe(TOKEN);
   });
 

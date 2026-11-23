@@ -17,6 +17,13 @@ describe("the host banner prints (#4413)", () => {
     expect(shots.map((s) => [s.name, s.route.name])).toEqual(UNAUTHORIZED.map((n) => [n, "host"]));
   });
 
+  test("each opens the one demo host with a token its daemon refuses, not a healthy host", () => {
+    const shots = hostShots(IDS).filter((s) => UNAUTHORIZED.includes(s.name));
+    expect(shots.map((s) => s.query)).toEqual(
+      UNAUTHORIZED.map(() => ({ hosts: "demo-alfa", refused: "demo-alfa" })),
+    );
+  });
+
   test("every banner state is re-measured at 1024, 640 and 390 in the dark prints", () => {
     expect(BANNERS.map((name) => narrowSizes("dark", name).map((size) => size.width))).toEqual(
       BANNERS.map(() => [1024, 640, 390]),
