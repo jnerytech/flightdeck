@@ -720,4 +720,49 @@ describe("webhook-ui: focus and words after each row action (#2677)", () => {
       expect(within(dialog).queryByRole("button", { name: "Descartar" })).not.toBeNull();
     });
   });
+
+  describe("the intro names ntfy and Test says why it cannot run (#4403)", () => {
+    test("the intro names ntfy in both languages", async () => {
+      await open("en");
+      expect(screen.queryByText(/Slack, Discord, ntfy/)).not.toBeNull();
+      cleanup();
+      await open("pt-BR");
+      expect(screen.queryByText(/Slack, ao Discord, ao ntfy/)).not.toBeNull();
+    });
+
+    test("with no online host that can post, Test is off and points at the notice that says why", async () => {
+      await open("en", { legacy: true });
+      await fill("Name", "Team");
+      await fill("Webhook URL", SECRET);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+      });
+      await click("Save webhook");
+      await settle(() => screen.queryByRole("button", { name: "Test Team" }) !== null);
+      const test = screen.getByRole("button", { name: "Test Team" }) as HTMLButtonElement;
+      expect(test.disabled).toBe(true);
+      const reason = document.getElementById(test.getAttribute("aria-describedby") ?? "none");
+      expect(reason?.textContent).toBe(
+        "No online host can post right now. Messages wait and are retried.",
+      );
+      // The other row buttons still work.
+      expect(
+        (screen.getByRole("button", { name: "Edit Team" }) as HTMLButtonElement).disabled,
+      ).toBe(false);
+    });
+
+    test("with an online host Test stays on and has no reason", async () => {
+      await open("en");
+      await fill("Name", "Team");
+      await fill("Webhook URL", SECRET);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+      });
+      await click("Save webhook");
+      await settle(() => screen.queryByRole("button", { name: "Test Team" }) !== null);
+      const test = screen.getByRole("button", { name: "Test Team" }) as HTMLButtonElement;
+      expect(test.disabled).toBe(false);
+      expect(test.getAttribute("aria-describedby")).toBeNull();
+    });
+  });
 });
