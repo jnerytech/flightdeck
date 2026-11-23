@@ -207,7 +207,7 @@ describe("projetos-lista-ui: the Projects overview", () => {
     },
   );
 
-  test("a failed host that is offline says it is offline, and a failed mark does not hide projects that loaded", async () => {
+  test("a failed host that is offline says it is offline, not that its read failed, and its projects that loaded still show", async () => {
     const { view, state } = setup();
     const offline = { ...host("h1", "alfa"), status: "offline" };
     const { rerender } = render(
@@ -221,7 +221,8 @@ describe("projetos-lista-ui: the Projects overview", () => {
     expect(screen.queryByText("Could not read this host's projects.")).toBeNull();
     rerender(view({ ...state, projectsFailed: { h1: true } } as never));
     await waitFor(() => expect(names().length).toBeGreaterThan(0));
-    expect(screen.queryByText("Could not read this host's projects.")).toBeNull();
+    // Online again with its mark still set: the cards show and the notice stays above them.
+    expect(screen.queryByText("Could not read this host's projects.")).not.toBeNull();
   });
 
   test("one host refused its list while another has projects: the cards show and the notice says some are missing", async () => {
