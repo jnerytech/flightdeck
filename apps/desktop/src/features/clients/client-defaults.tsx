@@ -5,7 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { PersonaPicker } from "@/features/personas/ui.ts";
 import { useDraft } from "@/features/sessions/index.ts";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
-import { Field, Form, FormActions, Stack } from "@/shared/layout/index.ts";
+import { Field, Form, FormActions, Inline, Stack } from "@/shared/layout/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { generatedScopeRules, vaultFindings } from "./domain/client-vault.ts";
@@ -123,10 +123,8 @@ export function ClientDefaults(
         />
       </Form>
       {done && <InlineNotice tone="info">{done}</InlineNotice>}
-      <span className="inline-flex items-center gap-2 text-sm">
+      <Inline gap={2} className="text-sm">
         <Switch
-          // 24 px tall by itself: axe's target-size rule asks that of a target with a neighbor close by.
-          className="data-[size=default]:h-6"
           aria-label={t("clients.vaultScope")}
           aria-describedby={saved ? undefined : reasonId}
           checked={client.defaults.vaultScope}
@@ -141,7 +139,7 @@ export function ClientDefaults(
           }}
         />
         {t("clients.vaultScope")}
-      </span>
+      </Inline>
       {!saved && (
         <p id={reasonId} className="text-muted-foreground text-xs">
           {t("clients.vaultScopeNeedsTag")}
@@ -149,30 +147,29 @@ export function ClientDefaults(
       )}
       {findings.length > 0 && (
         <Stack gap={1}>
-          <p className="flex items-center gap-1 font-medium text-sm">
-            <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0" />
+          <Inline gap={1} className="font-medium text-sm">
+            <TriangleAlert aria-hidden="true" className="size-3.5" />
             {t("clients.vaultFindingsTitle")}
-          </p>
+          </Inline>
           <Stack as="ul" label={t("clients.vaultFindingsTitle")} gap={1}>
             {findings.map((f) => (
-              <li
-                key={`${f.secretId}/${f.kind}`}
-                className="flex items-start gap-1 text-status-needs-you text-sm"
-              >
-                <TriangleAlert aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
-                <span>
-                  {t(
-                    f.kind === "hosts-wider"
-                      ? "clients.vaultFindingHosts"
-                      : "clients.vaultFindingRule",
-                    {
-                      secret: f.secretName,
-                      items: (f.kind === "hosts-wider" ? f.detail.map(hostName) : f.detail).join(
-                        ", ",
-                      ),
-                    },
-                  )}
-                </span>
+              <li key={`${f.secretId}/${f.kind}`} className="text-status-needs-you text-sm">
+                <Inline gap={1}>
+                  <TriangleAlert aria-hidden="true" className="size-3.5" />
+                  <span>
+                    {t(
+                      f.kind === "hosts-wider"
+                        ? "clients.vaultFindingHosts"
+                        : "clients.vaultFindingRule",
+                      {
+                        secret: f.secretName,
+                        items: (f.kind === "hosts-wider" ? f.detail.map(hostName) : f.detail).join(
+                          ", ",
+                        ),
+                      },
+                    )}
+                  </span>
+                </Inline>
               </li>
             ))}
           </Stack>
