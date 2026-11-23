@@ -1,5 +1,5 @@
 import type { RewindPreview } from "@flightdeck/protocol";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -289,6 +289,12 @@ export function ForkDialog(
   const [forkRefused, setForkRefused] = useState<Refused | null>(null);
   const [allowing, setAllowing] = useState(false);
   const [forked, setForked] = useState<{ claudeSessionId: string; command: string } | null>(null);
+  const copy = useRef<HTMLButtonElement>(null);
+  const resultId = useId();
+  // The result replaces the Fork button the focus was on: it moves to the first useful control (#4375).
+  useEffect(() => {
+    if (forked) copy.current?.focus();
+  }, [forked]);
 
   const refusedText = (refused: Refused) => refusalText(refused.code, refused.message, t, refused);
   // A fork refused for its folder keeps the way out the banner's toast offers (#3550).
@@ -329,10 +335,19 @@ export function ForkDialog(
         <TurnContext store={store} turn={turn} />
         {forked ? (
           <div className="flex flex-col gap-2 text-sm">
-            <p>{t("timeline.forkCommand")}</p>
-            <code className="break-all rounded-md bg-muted p-2">{forked.command}</code>
+            <output id={resultId} className="block">
+              <Stack gap={2}>
+                <p>{t("timeline.forkCommand")}</p>
+                <code className="break-all rounded-md bg-muted p-2">{forked.command}</code>
+              </Stack>
+            </output>
             <Inline>
-              <Button variant="outline" onClick={() => void store.system.copyText(forked.command)}>
+              <Button
+                ref={copy}
+                aria-describedby={resultId}
+                variant="outline"
+                onClick={() => void store.system.copyText(forked.command)}
+              >
                 {t("timeline.forkCopy")}
               </Button>
               <TerminalButton
