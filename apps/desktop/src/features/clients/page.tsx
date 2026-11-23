@@ -154,6 +154,7 @@ export function ClientsPage(
                 <Stack gap={2}>
                   <ListRow
                     boxed
+                    wrap
                     leading={<ClientDot color={client.color} />}
                     title={<span data-client-name>{client.name}</span>}
                     trailing={

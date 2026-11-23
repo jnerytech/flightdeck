@@ -24,6 +24,7 @@ export function ListRow(
     <div
       className={cn(
         "flex min-w-0 items-center gap-2",
+        props.wrap && "flex-wrap",
         props.boxed && "rounded-md border px-3 py-2 text-sm",
         props.selected && "bg-accent",
         props.className,
@@ -34,11 +35,20 @@ export function ListRow(
           {props.leading}
         </span>
       )}
-      <span data-row-title className="min-w-0 flex-auto truncate">
+      <span
+        data-row-title
+        className={cn("min-w-0 flex-auto", props.wrap ? "break-words" : "truncate")}
+      >
         {props.title}
       </span>
       {props.meta && (
-        <span data-row-meta className="min-w-0 shrink-[8] truncate text-muted-foreground text-xs">
+        <span
+          data-row-meta
+          className={cn(
+            "min-w-0 shrink-[8] text-muted-foreground text-xs",
+            props.wrap ? "break-words" : "truncate",
+          )}
+        >
           {props.meta}
         </span>
       )}

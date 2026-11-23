@@ -119,6 +119,7 @@ export function ClientRules(
           {client.rules.map((rule, index) => (
             <li key={rule.id}>
               <ListRow
+                wrap
                 title={<span data-rule-value>{ruleValue(rule)}</span>}
                 meta={hostLabel(rule)}
                 trailing={
