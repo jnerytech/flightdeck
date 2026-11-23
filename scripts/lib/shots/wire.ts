@@ -94,7 +94,7 @@ export function wireRewriter(allRules: WireRule[], url = ""): FrameRewriter {
           for (const [field, gone] of Object.entries(rule.without)) {
             const list = data[field];
             if (Array.isArray(list))
-              data[field] = list.filter((item) => !gone.includes("*") && !gone.includes(item));
+              data[field] = gone.includes("*") ? [] : list.filter((item) => !gone.includes(item));
           }
         } else {
           for (const [field, added] of Object.entries(rule.with)) {

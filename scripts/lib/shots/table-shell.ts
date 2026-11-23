@@ -146,6 +146,11 @@ export function shellShots(ids: DemoIds): Shot[] {
           .getByText(/^(This host has no allowed folder|Este host não tem pasta permitida)/)
           .first()
           .waitFor({ timeout: 15_000 });
+        // The form must not still hold a select of folders from before the answer was rewritten.
+        await page.getByRole("combobox", { name: /^(Folder|Pasta)$/ }).waitFor({
+          state: "detached",
+          timeout: 15_000,
+        });
       },
     },
     // The folder dialog over the form: centered, with the page dimmed behind it.
