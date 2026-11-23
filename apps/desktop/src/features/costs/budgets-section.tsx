@@ -422,8 +422,8 @@ export function BudgetsSection(
                         value={draft.period}
                         onChange={(e) => set({ period: e.target.value as Draft["period"] })}
                       >
-                        <option value="day">{t("budgets.day")}</option>
-                        <option value="month">{t("budgets.month")}</option>
+                        <option value="day">{t("budgetsUi.optDay")}</option>
+                        <option value="month">{t("budgetsUi.optMonth")}</option>
                       </NativeSelect>
                     )}
                   </Field>
@@ -471,8 +471,8 @@ export function BudgetsSection(
                       value={draft.action}
                       onChange={(e) => set({ action: e.target.value as Draft["action"] })}
                     >
-                      <option value="notify">{t("budgets.notify")}</option>
-                      <option value="queue">{t("budgets.queue")}</option>
+                      <option value="notify">{t("budgetsUi.optNotify")}</option>
+                      <option value="queue">{t("budgetsUi.optQueue")}</option>
                     </NativeSelect>
                   )}
                 </Field>
