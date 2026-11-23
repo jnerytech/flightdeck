@@ -93,6 +93,7 @@ function setup(
         onSeeAllSessions={() => {}}
         onSeeAllProjects={() => {}}
         onNewSession={() => {}}
+        onAddProject={() => {}}
         onRemove={() => {}}
       />
     </TContext.Provider>,

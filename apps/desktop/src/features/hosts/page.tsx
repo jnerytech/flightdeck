@@ -68,6 +68,7 @@ export function HostPage(
     onSeeAllSessions(): void;
     onSeeAllProjects(): void;
     onNewSession(): void;
+    onAddProject(): void;
     onRemove(): void;
     /** Issue #1484: open Settings at this panel, with the focus on its heading. */
     section?: HostSection;
@@ -166,6 +167,7 @@ export function HostPage(
                     onSeeAllSessions={props.onSeeAllSessions}
                     onSeeAllProjects={props.onSeeAllProjects}
                     onNewSession={props.onNewSession}
+                    onAddProject={props.onAddProject}
                   />
                   {hasFeature(info?.features, "account", false) && (
                     <HostAccount store={store} host={host} />
