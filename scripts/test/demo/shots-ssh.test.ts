@@ -211,7 +211,7 @@ describe("shots-ssh: the states of #4335", () => {
     const names = hostShots({} as DemoIds)
       .map((shot) => shot.name)
       .filter((name) => name.startsWith("ssh-"));
-    expect(names.slice(4)).toEqual(STATES);
+    expect(names.slice(4, 4 + STATES.length)).toEqual(STATES);
   });
 
   test("each state opens Connections with the socket rewriter on and no askpass prompt", () => {
@@ -254,6 +254,55 @@ describe("shots-ssh: the states of #4335", () => {
       "ssh-chave-nova",
       "ssh-chave-mudou",
     ]);
+  });
+});
+
+/** The list states of #4335: a filter with no match, nothing to import, no host with ssh, a failed list and a list still loading. */
+const LIST_STATES = [
+  "ssh-sem-resultado",
+  "ssh-importar-vazio",
+  "ssh-sem-host",
+  "ssh-lista-falhou",
+  "ssh-lista-carregando",
+];
+
+describe("shots-ssh: the list states of #4335", () => {
+  const state = (name: string) => hostShots({} as DemoIds).find((shot) => shot.name === name);
+
+  test("the table prints them after the form states, in this order", () => {
+    const names = hostShots({} as DemoIds)
+      .map((shot) => shot.name)
+      .filter((name) => name.startsWith("ssh-"));
+    expect(names.slice(4 + STATES.length)).toEqual(LIST_STATES);
+  });
+
+  test("a filter with no match and an import with nothing are answered with the fake destinos", () => {
+    expect([state("ssh-sem-resultado")?.ssh, state("ssh-importar-vazio")?.ssh]).toEqual([
+      true,
+      true,
+    ]);
+    expect(state("ssh-importar-vazio")?.sshReplies).toEqual({
+      "ssh.import.preview": { entries: [] },
+    });
+  });
+
+  test("no host with ssh: every host stops announcing the feature, and the rewriter that fakes destinos is off", () => {
+    const shot = state("ssh-sem-host");
+    expect([shot?.wire, shot?.ssh]).toEqual([
+      [{ command: "host.info", without: { features: ["ssh"] } }],
+      undefined,
+    ]);
+  });
+
+  test("a failed list is a refused ssh.list, and a loading one an ssh.list the page never hears", () => {
+    const failed = state("ssh-lista-falhou");
+    const loading = state("ssh-lista-carregando");
+    expect([
+      failed?.wire?.map((rule) => ("refuse" in rule ? rule.command : null)),
+      loading?.wire?.map((rule) => ("hold" in rule ? rule.command : null)),
+      failed?.ssh,
+      loading?.ssh,
+    ]).toEqual([["ssh.list"], ["ssh.list"], undefined, undefined]);
   });
 });
 

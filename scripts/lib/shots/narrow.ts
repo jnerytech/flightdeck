@@ -44,6 +44,17 @@ export const NARROW_SHOTS: readonly string[] = [
   "cota-cartao-conta-compartilhada",
   // #4308: the status bar's quota popover, its guards and buttons, at 390.
   "cota-popover",
+  // #4335: Connections: a row with its four buttons, the form and its test result, the changed-key dialog and the list states.
+  "ssh-destinos",
+  "ssh-editar",
+  "ssh-editar-cofre",
+  "ssh-teste-falhou",
+  "ssh-chave-mudou",
+  "ssh-sem-resultado",
+  "ssh-importar-vazio",
+  "ssh-sem-host",
+  "ssh-lista-falhou",
+  "ssh-lista-carregando",
   // #4348: Settings > Backup's Restore a backup with Google Drive: the source choice and the long file names.
   "configuracoes-restaurar-fonte",
   "configuracoes-restaurar-drive-entrar",
