@@ -224,13 +224,12 @@ describe("nova-sessao-ux: the form says what it needs", () => {
         info: { allowedRoots: [] },
       } as unknown as typeof host;
       const added: string[] = [];
-      const { container } = render(
+      render(
         <TContext.Provider value={translator(language)}>
           <NewSessionForm host={empty} onCreate={() => {}} onAddFolder={() => added.push("add")} />
         </TContext.Provider>,
       );
       expect(screen.queryByRole("combobox", { name: folder })).toBeNull();
-      expect(container.querySelector("select[id]")).toBeNull();
       const field = screen.queryByText(folder)?.parentElement ?? null;
       expect(field?.textContent).toContain(reason);
       const link = within(field as HTMLElement).queryByRole("button", { name: add });

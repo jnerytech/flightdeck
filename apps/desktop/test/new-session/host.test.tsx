@@ -96,7 +96,10 @@ describe("nova-sessao-host: a host with no folder says where to add one (issue #
         }}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Adicionar uma pasta na página de alfa" }));
+    // The link is in the Folder field and again under the button (#4388); both go to the host's page.
+    const links = screen.getAllByRole("button", { name: "Adicionar uma pasta na página de alfa" });
+    expect(links).toHaveLength(2);
+    fireEvent.click(links[1] as HTMLElement);
     expect(went).toBe(1);
   });
 });
