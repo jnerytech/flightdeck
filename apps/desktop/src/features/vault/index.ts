@@ -8,7 +8,7 @@ export {
   type VaultApprovalsCore,
   VaultApprovalsSlice,
 } from "./approvals-store.ts";
-export { BackupError, type BackupErrorCode } from "./domain/backup-error.ts";
+export { BackupError, type BackupErrorCode, MIN_PASSPHRASE } from "./domain/backup-error.ts";
 // `vault-backup.ts` is left out of the static exports on purpose: it imports `age`, and the app store
 // loads this index at start-up. A lazy chunk (the backup bundle) takes it through `loadVaultBackup`;
 // only types come through statically.

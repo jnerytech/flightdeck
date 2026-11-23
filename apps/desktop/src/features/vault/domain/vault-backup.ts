@@ -3,10 +3,8 @@ import { armor, Decrypter, Encrypter } from "age-encryption";
 import { z } from "zod";
 import { parseJsonText } from "@/shared/lib/index.ts";
 import type { Vault } from "../vault.ts";
-import { BackupError } from "./backup-error.ts";
+import { BackupError, MIN_PASSPHRASE } from "./backup-error.ts";
 import { type SecretMeta, SecretMetaSchema } from "./vault-types.ts";
-
-export const MIN_PASSPHRASE = 12;
 
 // The error lives apart so the store can tell it without loading `age` (see backup-error.ts).
 export { BackupError } from "./backup-error.ts";

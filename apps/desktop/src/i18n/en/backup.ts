@@ -9,7 +9,7 @@ export const backup = {
     confirm: "Confirm passphrase",
     passphraseHelp: "At least 12 characters. Without it the backup cannot be opened.",
     export: "Back up now",
-    exportNeeds: "Type the passphrase and repeat it.",
+    exportNeeds: "Type a passphrase of at least 12 characters and repeat it.",
     saved:
       "Backup saved, where you chose. Keep the passphrase: without it the backup does not open.",
     importTitle: "Restore a backup",
@@ -24,6 +24,7 @@ export const backup = {
     read: "Read backup",
     needsDesktop: "Restoring a backup needs the desktop app: a browser cannot open files.",
     readNeeds: "Type the file's passphrase.",
+    readHelp: "A file picker opens when you press Read backup.",
     kinds: {
       settings: "Settings",
       personas: "Personas",
@@ -33,6 +34,7 @@ export const backup = {
     },
     line: "{kind}: {added} new, {same} the same, {conflicting} different",
     previewTitle: "Backup preview",
+    previewSource: "File read: {name}",
     previewRead:
       "Backup read: {added} new, {conflicting} different. Nothing changes until you press Restore.",
     conflictList: "Different here",
