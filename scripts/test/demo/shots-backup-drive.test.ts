@@ -23,9 +23,15 @@ describe("the Drive restore prints (#4348)", () => {
   });
 
   test("each print is Settings > Backup with the demo's Google answering as its state needs", () => {
+    // backupFolder=demo: the scheduled backups panel (Where to save, Sign in) is only there with a folder to write to.
     expect(
-      shots().map((shot) => [shot.route.name, shot.query?.google, shot.prepare !== undefined]),
-    ).toEqual(EXPECTED.map(([, mode]) => ["settings", mode, true]));
+      shots().map((shot) => [
+        shot.route.name,
+        shot.query?.google,
+        shot.query?.backupFolder,
+        shot.prepare !== undefined,
+      ]),
+    ).toEqual(EXPECTED.map(([, mode]) => ["settings", mode, "demo", true]));
   });
 
   test("each print is re-measured narrow, where the source choice and the long file names must wrap", () => {
@@ -70,9 +76,9 @@ describe("the Drive restore prints (#4348)", () => {
 
   test.each(STEPS)("%s drives the page the way its state needs", async (name, expected) => {
     const { page, steps } = recordingPage();
-    await shots()
-      .find((shot) => shot.name === name)
-      ?.prepare?.(page);
+    const shot = shots().find((one) => one.name === name);
+    expect(shot).toBeDefined();
+    await shot?.prepare?.(page);
     expect(steps).toEqual(expected);
   });
 

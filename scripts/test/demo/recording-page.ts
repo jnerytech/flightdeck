@@ -4,11 +4,11 @@ import type { Page } from "playwright-core";
 const label = (pattern: RegExp | string): string =>
   typeof pattern === "string"
     ? pattern
-    : pattern.source
+    : (pattern.source
         .replace(/^\^\(?/, "")
         .replace(/\)?\$?$/, "")
         .split("|")[0]
-        .replaceAll("\\", "");
+        ?.replaceAll("\\", "") ?? "");
 
 /**
  * A page that does nothing but write down what a print's steps drive: each step reads
