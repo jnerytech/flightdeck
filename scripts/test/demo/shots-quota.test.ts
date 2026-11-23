@@ -48,13 +48,35 @@ describe("the Quota card prints (#4308)", () => {
   });
 
   test("the popover's Tab order is each host's guard, its page button, then Show what is running; any other order is a finding", () => {
-    const guard = "New cards wait from, on alfa";
-    const page = "Open the page of alfa";
+    const guard = (host: string) => `New cards wait from, on ${host}`;
+    const page = (host: string) => `Open the page of ${host}`;
     const running = "Show what is running";
-    expect(tabOrderProblem([guard, page, running], 1)).toBeNull();
-    expect(tabOrderProblem([page, guard, running], 1)).toContain("stop 1");
-    expect(tabOrderProblem([guard, page], 1)).toContain("stop 3");
-    expect(tabOrderProblem([guard, running, page], 1)).not.toBeNull();
+    const right = [guard("alfa"), page("alfa"), guard("beta"), page("beta"), running];
+    expect(tabOrderProblem(right, ["alfa", "beta"])).toBeNull();
+    expect(tabOrderProblem(right.slice(0, 3), ["alfa"])).toBe(
+      'stop 3 was "New cards wait from, on beta", expected Show what is running',
+    );
+    expect(tabOrderProblem([page("alfa"), guard("alfa"), running], ["alfa"])).toContain("stop 1");
+    expect(tabOrderProblem([guard("alfa"), page("alfa")], ["alfa"])).toContain("stop 3");
+    // The right kinds of control, but the second host's page button comes before its guard's host.
+    expect(
+      tabOrderProblem(
+        [guard("alfa"), page("alfa"), guard("beta"), page("alfa"), running],
+        ["alfa", "beta"],
+      ),
+    ).toContain("stop 4");
+    // pt-BR names, and a popover with no host at all (nothing to check, so nothing is right).
+    expect(
+      tabOrderProblem(
+        [
+          "Cartões novos esperam a partir de, em alfa",
+          "Abrir a página de alfa",
+          "Mostrar o que está rodando",
+        ],
+        ["alfa"],
+      ),
+    ).toBeNull();
+    expect(tabOrderProblem([running], [])).toContain("no host");
   });
 
   test("the hot card has a window over the guard; the card with no reading has no window", () => {
