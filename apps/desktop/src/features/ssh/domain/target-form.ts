@@ -21,6 +21,11 @@ export function secretRefOf(auth: string, keyFile: string, secretId: string): st
   return auth === "vault-key" || auth === "password" ? secretId || null : null;
 }
 
+/** Whether a saved destino sets anything the form keeps under its advanced options. */
+export const hasAdvanced = (target: SshTarget | null): boolean =>
+  target !== null &&
+  (target.viaHost !== null || target.jump !== null || Object.keys(target.options).length > 0);
+
 const WHOLE = /^\d+$/;
 
 /** A port is a whole number from 1 to 65535. */
