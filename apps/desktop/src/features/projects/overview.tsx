@@ -60,7 +60,7 @@ export function ProjectsOverview(
     !inView.some((host) => host.status === "online");
   const offline = one !== undefined && one.status !== "online" && one.status !== "connecting";
   const loading = useMinLoading(scoped.length === 0 && (connecting || (!read && !offline)));
-  // A host that is online but refused its list has no projects to show: it says so, not "no projects" (#4397).
+  // A host that is online but refused its list has no projects to show: it says so, not "no projects", even when other hosts' cards show (#4397).
   const refused = inView.filter(
     (host) => host.status === "online" && state.projectsFailed[host.id],
   );
@@ -117,7 +117,7 @@ export function ProjectsOverview(
       }
     >
       {scoped.length === 0 && loading && <LoadingState label={t("states.loadingProjects")} />}
-      {scoped.length === 0 && !loading && refused.length > 0 && (
+      {!loading && refused.length > 0 && (
         <ReadFailed store={store} onRetry={() => store.palette.load()} />
       )}
       {scoped.length === 0 && !loading && refused.length === 0 && (
