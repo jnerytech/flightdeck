@@ -27,7 +27,7 @@ const UNDO_LISTED: WireRule = {
   },
 };
 
-/** A rewind that touches more files than fit in the dialog's list box (15 rem), to show its scroll and its focus (#4374). */
+/** A rewind that touches more files than fit in the dialog's list box (15 rem), to show its scroll (#4374). */
 const MANY_FILES = Array.from({ length: 26 }, (_, i) => ({
   path: `src/checkout/step-${String(i + 1).padStart(2, "0")}.ts`,
   change: (["modified", "created", "deleted"] as const)[i % 3],
@@ -158,7 +158,7 @@ export function timelineShots(ids: DemoIds): Shot[] {
       },
     },
     {
-      // #4374: the list of files is taller than its box, so it scrolls and takes the keyboard focus.
+      // #4374: the list of files is taller than its box, so it scrolls (the print shows the box and the cut; the keyboard focus is checked by the dialog tests).
       name: "linha-do-tempo-voltar-lista-longa",
       route,
       wire: [
