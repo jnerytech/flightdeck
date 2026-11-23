@@ -227,6 +227,13 @@ export const NARROW_SHOTS: readonly string[] = [
   "clientes-longo",
   "clientes-renomear",
   "clientes-cofre-achados",
+  // #4413: the host page's banner states, the unauthorized ones with their Pair again form: copy commands and a 18rem field must fit at 390.
+  "host-offline",
+  "host-reconectando",
+  "host-incompativel",
+  "host-nao-autorizado",
+  "host-nao-autorizado-testando",
+  "host-nao-autorizado-recusado",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */

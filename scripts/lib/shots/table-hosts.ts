@@ -98,6 +98,15 @@ function maintenancePanel(then?: NonNullable<Shot["prepare"]>): NonNullable<Shot
 
 const SUBMIT = /^(Test and add|Testar e adicionar)$/;
 
+/** The address of a host the demo's daemon refuses: only that host is kept, with a token it does not know (#4413). */
+const REFUSED_QUERY = { hosts: ALFA, refused: ALFA };
+const PAIR_AGAIN = /^(Pair again|Parear de novo)$/;
+const pairField = (page: Page) =>
+  page.getByLabel(/^(New pairing link or token|Novo link de pareamento ou token)$/);
+/** The first demo host's own link with a token its daemon does not know. */
+const wrongLink = (ids: DemoIds): string =>
+  formatPairingLink({ ...ids.alfaPairing, name: "orange-pi", token: "wrong-token" });
+
 const FOLDER_KEY = "flightdeck.demoBackupFolder";
 const EVERY_DAY = /^(Every day|Todo dia)$/;
 const CHOOSE_FOLDER = /^(Choose folder|Escolher pasta)$/;
@@ -709,6 +718,51 @@ export function hostShots(ids: DemoIds): Shot[] {
     { name: "host-offline", route: { name: "host", host: "demo-offline" } },
     { name: "host-reconectando", route: { name: "host", host: "demo-slow" } },
     { name: "host-incompativel", route: { name: "host", host: "demo-old" } },
+    // #4413: a host whose token the daemon refuses (`?refused=`): the banner's Pair again form, idle, being tried and refused.
+    {
+      name: "host-nao-autorizado",
+      route: { name: "host", host: ALFA },
+      query: REFUSED_QUERY,
+      prepare: async (page) => {
+        await pairField(page).waitFor({ timeout: 15_000 });
+        await page.mouse.move(1000, 700);
+      },
+    },
+    {
+      // The try is under way: the page's sockets never open, so "Testing…" stays up for the print.
+      name: "host-nao-autorizado-testando",
+      route: { name: "host", host: ALFA },
+      query: REFUSED_QUERY,
+      prepare: async (page) => {
+        await pairField(page).waitFor({ timeout: 15_000 });
+        await page.evaluate(() => {
+          window.WebSocket = class extends EventTarget {
+            readyState = 0;
+            send() {}
+            close() {}
+          } as unknown as typeof WebSocket;
+        });
+        await pairField(page).fill(wrongLink(ids));
+        await page.getByRole("button", { name: PAIR_AGAIN }).click();
+        await page.getByRole("button", { name: /^(Testing…|Testando…)$/ }).waitFor();
+        await page.mouse.move(1000, 700);
+      },
+    },
+    {
+      // The daemon refuses the link's token: the error line under the form.
+      name: "host-nao-autorizado-recusado",
+      route: { name: "host", host: ALFA },
+      query: REFUSED_QUERY,
+      prepare: async (page) => {
+        await pairField(page).fill(wrongLink(ids));
+        await page.getByRole("button", { name: PAIR_AGAIN }).click();
+        await page
+          .getByRole("alert")
+          .filter({ hasText: /^(Token refused|Token recusado):/ })
+          .waitFor({ timeout: 15_000 });
+        await page.mouse.move(1000, 700);
+      },
+    },
     {
       // Issue #105: the project page with its session tiles; it fails if no tile shows.
       name: "projeto-blocos",
