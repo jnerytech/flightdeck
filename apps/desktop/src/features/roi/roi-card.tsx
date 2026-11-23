@@ -165,7 +165,7 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
         <h2 className="shrink-0 font-medium text-sm">{t("roiUi.title")}</h2>
         {/* Below 640 px the headline sits under the title row and wraps, never cut mid-sentence (#4411). */}
         {!open && (
-          <p className="min-w-0 flex-1 truncate text-sm max-sm:order-last max-sm:basis-full max-sm:whitespace-normal">
+          <p className="min-w-0 flex-1 truncate text-sm max-sm:order-last max-sm:basis-full max-sm:overflow-visible max-sm:whitespace-normal max-sm:break-words">
             {headlineText}
           </p>
         )}
