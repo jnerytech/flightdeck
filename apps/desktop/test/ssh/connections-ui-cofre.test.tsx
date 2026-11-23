@@ -120,6 +120,17 @@ describe("conexoes-ui with the vault: the form", () => {
     ).toBe(true);
   });
 
+  test("the vault key picker is required for a screen reader, and the optional password picker is not (#4333)", async () => {
+    await open();
+    await click("Editar vps");
+    await choose("Autenticação", "vault-key");
+    expect(screen.queryByLabelText("Chave do cofre")?.getAttribute("aria-required")).toBe("true");
+    await choose("Autenticação", "password");
+    expect(
+      screen.queryByLabelText("Senha no cofre (opcional)")?.getAttribute("aria-required"),
+    ).toBeNull();
+  });
+
   test("Senha authentication may point at a password in the vault, or at none to be asked", async () => {
     const { d, password } = await open();
     await click("Editar vps");
