@@ -215,6 +215,10 @@ export const NARROW_SHOTS: readonly string[] = [
   "personas-editor-existing",
   "personas-editor-errors",
   "personas-untrusted",
+  // #4345: the Clients screen's long row, its rename mode and the vault findings; their text must wrap at 390.
+  "clientes-longo",
+  "clientes-renomear",
+  "clientes-cofre-achados",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */
