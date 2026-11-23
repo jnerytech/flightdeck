@@ -54,6 +54,7 @@ export const NARROW_SHOTS: readonly string[] = [
   "ssh-importar-vazio",
   "ssh-sem-host",
   "ssh-lista-falhou",
+  "ssh-lista-carregando",
   // #4348: Settings > Backup's Restore a backup with Google Drive: the source choice and the long file names.
   "configuracoes-restaurar-fonte",
   "configuracoes-restaurar-drive-entrar",
