@@ -40,16 +40,33 @@ describe("primeira execução", () => {
     const items = within(list as HTMLElement).queryAllByRole("listitem");
     expect(items).toHaveLength(4);
     expect((list as HTMLElement).tagName).toBe("OL");
-    expect(items[0]?.textContent).toContain("flightdeckd setup");
     expect(items[2]?.textContent).toContain("Testar e adicionar");
     expect(items[3]?.textContent).toContain("página do host");
-    const copy = screen.queryByRole("button", { name: "Copiar flightdeckd setup" });
-    expect(copy).not.toBeNull();
-    await act(async () => {
-      fireEvent.click(copy as HTMLElement);
-    });
-    expect(copies).toEqual(["flightdeckd setup"]);
+    expect(copies).toEqual([]);
   });
+
+  // #4386: a new host has no `flightdeckd` on its PATH, so step 1 names the downloaded file instead.
+  for (const [language, releases, after] of [
+    ["pt-BR", "página de Releases", "novo terminal"],
+    ["en", "Releases page", "new terminal"],
+  ] as const) {
+    test(`step 1 says where the daemon file comes from and shows the command that runs it from the download folder (${language}, #4386)`, async () => {
+      const { copies } = firstRun(language);
+      await act(async () => {});
+      const steps = screen.queryByRole("list", {
+        name: language === "en" ? "First steps" : "Primeiros passos",
+      });
+      const first = within(steps as HTMLElement).queryAllByRole("listitem")[0]?.textContent ?? "";
+      expect(first).toContain(releases);
+      expect(first).toContain("./flightdeckd-linux-x64 setup");
+      expect(first).toContain(".\\flightdeckd-windows-x64.exe setup");
+      expect(first).toContain(after);
+      // `flightdeckd setup` cannot run before setup has put it on the PATH: no copy button offers it.
+      expect(first).not.toContain(" flightdeckd setup");
+      expect(screen.queryByRole("button", { name: /flightdeckd setup/ })).toBeNull();
+      expect(copies).toEqual([]);
+    });
+  }
 
   test("below the steps, the troubleshooting command says what it does and can be copied", async () => {
     const { copies } = firstRun();
@@ -102,7 +119,7 @@ describe("primeira execução", () => {
     firstRun("en");
     await act(async () => {});
     expect(screen.queryByRole("list", { name: "First steps" })).not.toBeNull();
-    expect(screen.queryByRole("button", { name: "Copy flightdeckd setup" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Copy flightdeckd pair" })).not.toBeNull();
   });
 
   test("the first host added from the empty screen opens its page, where it is checked and its folders are chosen", async () => {
