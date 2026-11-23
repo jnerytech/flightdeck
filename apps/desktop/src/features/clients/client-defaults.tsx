@@ -1,5 +1,7 @@
-import { useRef, useState } from "react";
+import { TriangleAlert } from "lucide-react";
+import { useId, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { PersonaPicker } from "@/features/personas/ui.ts";
 import { useDraft } from "@/features/sessions/index.ts";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
@@ -27,6 +29,7 @@ export function ClientDefaults(
   const [vaultTag, setVaultTag, savedVaultTag] = useDraft(client.defaults.vaultTag ?? "");
   const [confirming, setConfirming] = useState(false);
   const tagField = useRef<HTMLInputElement>(null);
+  const reasonId = useId();
   /** What the last save did: a polite line, not silence (#3875). */
   const [done, setDone] = useState<string | null>(null);
   // The host keeps a value trimmed, so a draft that only adds blanks is no change.
@@ -120,31 +123,59 @@ export function ClientDefaults(
         />
       </Form>
       {done && <InlineNotice tone="info">{done}</InlineNotice>}
-      <label className="text-sm">
-        <input
-          type="checkbox"
+      <span className="inline-flex items-center gap-2 text-sm">
+        <Switch
+          // 24 px tall by itself: axe's target-size rule asks that of a target with a neighbor close by.
+          className="data-[size=default]:h-6"
+          aria-label={t("clients.vaultScope")}
+          aria-describedby={saved ? undefined : reasonId}
           checked={client.defaults.vaultScope}
           disabled={!saved}
-          onChange={(e) => {
-            if (e.target.checked) setConfirming(true);
-            else store.clients.setDefaults(client.id, { vaultScope: false });
+          onCheckedChange={(on) => {
+            if (on) {
+              setConfirming(true);
+              return;
+            }
+            if (!store.clients.setDefaults(client.id, { vaultScope: false })) return;
+            setDone(t("clients.vaultScopeOff", { name: client.name }));
           }}
-        />{" "}
+        />
         {t("clients.vaultScope")}
-      </label>
+      </span>
+      {!saved && (
+        <p id={reasonId} className="text-muted-foreground text-xs">
+          {t("clients.vaultScopeNeedsTag")}
+        </p>
+      )}
       {findings.length > 0 && (
-        <Stack as="ul" label={t("clients.vaultFindingsTitle")} gap={1}>
-          {findings.map((f) => (
-            <li key={`${f.secretId}/${f.kind}`} className="text-status-needs-you text-sm">
-              {t(
-                f.kind === "hosts-wider" ? "clients.vaultFindingHosts" : "clients.vaultFindingRule",
-                {
-                  secret: f.secretName,
-                  items: (f.kind === "hosts-wider" ? f.detail.map(hostName) : f.detail).join(", "),
-                },
-              )}
-            </li>
-          ))}
+        <Stack gap={1}>
+          <p className="flex items-center gap-1 font-medium text-sm">
+            <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0" />
+            {t("clients.vaultFindingsTitle")}
+          </p>
+          <Stack as="ul" label={t("clients.vaultFindingsTitle")} gap={1}>
+            {findings.map((f) => (
+              <li
+                key={`${f.secretId}/${f.kind}`}
+                className="flex items-start gap-1 text-status-needs-you text-sm"
+              >
+                <TriangleAlert aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                  {t(
+                    f.kind === "hosts-wider"
+                      ? "clients.vaultFindingHosts"
+                      : "clients.vaultFindingRule",
+                    {
+                      secret: f.secretName,
+                      items: (f.kind === "hosts-wider" ? f.detail.map(hostName) : f.detail).join(
+                        ", ",
+                      ),
+                    },
+                  )}
+                </span>
+              </li>
+            ))}
+          </Stack>
         </Stack>
       )}
       {confirming && (
@@ -159,7 +190,14 @@ export function ClientDefaults(
           confirmLabel={t("clients.vaultScopeConfirm")}
           onConfirm={() => {
             setConfirming(false);
-            store.clients.setDefaults(client.id, { vaultScope: true });
+            if (!store.clients.setDefaults(client.id, { vaultScope: true })) return;
+            setDone(
+              t("clients.vaultScopeOn", {
+                name: client.name,
+                secrets: preview.length,
+                rules: preview.reduce((sum, p) => sum + p.rules.length, 0),
+              }),
+            );
           }}
           onCancel={() => setConfirming(false)}
         />

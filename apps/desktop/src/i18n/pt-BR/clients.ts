@@ -88,6 +88,12 @@ export const clients = {
       "Ligar o escopo do cofre de {name}? {secrets} segredo(s) com a tag {tag} passam a ter {rules} regra(s) geradas, na frente das suas.",
     vaultScopeWarning:
       "As regras geradas pedem aprovação nos projetos do cliente e fazem negar o Claude, as automações e os workflows em qualquer outro lugar. O seu uso direto no app não é afetado, e as suas regras seguem depois delas. Desligar volta tudo ao que era.",
+    vaultScopeNeedsTag:
+      "Salve uma tag do cofre primeiro: o escopo vale para os segredos que a carregam.",
+    vaultScopeOn:
+      "Escopo do cofre de {name} ligado: {rules} regra(s) geradas em {secrets} segredo(s).",
+    vaultScopeOff:
+      "Escopo do cofre de {name} desligado: os segredos voltaram às suas próprias regras.",
     vaultScopeConfirm: "Ligar",
     vaultFindingsTitle: "Segredos que podem sair do cliente",
     vaultFindingRule: "{secret}: uma regra libera ou pede o projeto de outro cliente ({items}).",
