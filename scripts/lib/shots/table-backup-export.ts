@@ -35,12 +35,21 @@ function refusal(name: string, prepare: (page: Page) => Promise<void>): Shot {
   };
 }
 
+/**
+ * Clicks Back up now, then moves the pointer off it: it would stay over the button, and its hover
+ * color is not the one the print and the contrast check should see.
+ */
+async function backUpNow(page: Page): Promise<void> {
+  await page.getByRole("button", { name: BACK_UP }).click();
+  await page.mouse.move(1000, 700);
+}
+
 export function backupExportShots(_ids: DemoIds): Shot[] {
   return [
     // The two passphrases are not the same: Back up now is on, and the click is refused.
     refusal("configuracoes-backup-erro-diferente", async (page) => {
       await typeBoth(page, PHRASE, "another long passphrase");
-      await page.getByRole("button", { name: BACK_UP }).click();
+      await backUpNow(page);
       await page
         .getByText(/^(The passphrases do not match\.|As frases-senha não são iguais\.)$/)
         .waitFor();
@@ -60,7 +69,7 @@ export function backupExportShots(_ids: DemoIds): Shot[] {
         `localStorage.setItem("flightdeck.personas", ${JSON.stringify(oversizedPersonas())})`,
       );
       await typeBoth(page, PHRASE, PHRASE);
-      await page.getByRole("button", { name: BACK_UP }).click();
+      await backUpNow(page);
       await page
         .getByText(
           /^(This backup is too big to be restored later|Este backup é grande demais para ser restaurado depois)/,
