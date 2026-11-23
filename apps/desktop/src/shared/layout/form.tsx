@@ -24,6 +24,7 @@ export interface FieldControl {
   id: string;
   "aria-describedby"?: string;
   "aria-invalid"?: true;
+  "aria-required"?: true;
 }
 
 // The one scale every form uses: 16 px between fields, 4 px between a label and its control, and
@@ -75,6 +76,8 @@ export function Field(
     label: ReactNode;
     help?: ReactNode;
     error?: ReactNode;
+    /** The form cannot be saved without it: the control says so to a screen reader and the label shows a mark. */
+    required?: boolean;
     /** For the field's box in a row: `min-w-0 flex-1` lets a text field take the row's room. */
     className?: string;
     children: (control: FieldControl) => ReactNode;
@@ -87,9 +90,20 @@ export function Field(
   return (
     // min-w-0: in a row, the box shrinks below its control, which then keeps to it (#1244).
     <div className={cn("flex min-w-0 flex-col gap-1 text-sm", props.className)}>
-      <label htmlFor={id}>{props.label}</label>
+      {props.required ? (
+        // The mark sits beside the label, not in it: the label's text stays the control's name.
+        <span className="flex items-baseline gap-1">
+          <label htmlFor={id}>{props.label}</label>
+          <span aria-hidden="true" className="text-destructive">
+            *
+          </span>
+        </span>
+      ) : (
+        <label htmlFor={id}>{props.label}</label>
+      )}
       {props.children({
         id,
+        ...(props.required ? { "aria-required": true as const } : {}),
         ...(described ? { "aria-describedby": described } : {}),
         ...(props.error ? { "aria-invalid": true as const } : {}),
       })}
