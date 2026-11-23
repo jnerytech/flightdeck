@@ -10,6 +10,7 @@ export function wireProjects(kernel: AppKernel<ReturnType<ProjectsCore["state"]>
   return new ProjectsSlice({
     state: () => kernel.state(),
     setProjects: (projects) => kernel.update({ projects }),
+    setProjectsFailed: (projectsFailed) => kernel.update({ projectsFailed }),
     quietly: async (hostId, type, payload) => {
       const conn = kernel.connection(hostId);
       return conn ? conn.request(type, payload).catch(() => null) : null;

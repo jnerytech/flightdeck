@@ -137,6 +137,8 @@ export interface AppState
   notices: Notice[];
   /** Projects of each host, loaded for the Ctrl+K palette (phase 8). */
   projects: Record<string, Project[]>;
+  /** The hosts whose last `project.list` was refused or went unanswered, by host id (#4397): a screen says so, not "no projects". */
+  projectsFailed: Record<string, boolean>;
   /** Phase 29: the clients, in the order their rules are tried; kept by `store.clients`. */
   clientList: Client[];
   /** Phase 36: counts the saves of `store.roi`, so the screens that read its settings render again. */
@@ -415,6 +417,7 @@ export function initialAppState(
     hub: {},
     terminalEnv: null,
     projects: {},
+    projectsFailed: {},
     clientList: held.clientList,
     roiRevision: 0,
     worktreeFilter: null,

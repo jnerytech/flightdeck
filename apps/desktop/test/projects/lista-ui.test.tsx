@@ -183,6 +183,65 @@ describe("projetos-lista-ui: the Projects overview", () => {
     expect(screen.queryByText("No projects yet.")).not.toBeNull();
   });
 
+  // #4397: a refused project.list left the host with no projects, so the screen said "No projects" and offered to add one.
+  test.each([
+    ["en", "Could not read this host's projects.", "Try again", "No projects yet."],
+    [
+      "pt-BR",
+      "Não foi possível ler os projetos deste host.",
+      "Tentar de novo",
+      "Nenhum projeto cadastrado.",
+    ],
+  ])(
+    "a host whose project list was refused says so and offers a retry, not an empty list (%s)",
+    async (language, failedText, retry, empty) => {
+      const { store, view, state } = setup({ language });
+      const loads: string[] = [];
+      store.palette.load = async () => void loads.push("load");
+      render(view({ ...state, projects: {}, projectsFailed: { h1: true } } as never));
+      await waitFor(() => expect(screen.queryByText(failedText)).not.toBeNull());
+      expect(screen.queryByText(empty)).toBeNull();
+      const before = loads.length;
+      fireEvent.click(screen.getByRole("button", { name: retry }));
+      await waitFor(() => expect(loads.length).toBeGreaterThan(before));
+    },
+  );
+
+  test("a failed host that is offline says it is offline, not that its read failed, and its projects that loaded still show", async () => {
+    const { view, state } = setup();
+    const offline = { ...host("h1", "alfa"), status: "offline" };
+    const { rerender } = render(
+      view({ ...state, projects: {}, hosts: [offline], projectsFailed: { h1: true } } as never),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByText("alfa is offline. Its projects show again when it reconnects."),
+      ).not.toBeNull(),
+    );
+    expect(screen.queryByText("Could not read this host's projects.")).toBeNull();
+    rerender(view({ ...state, projectsFailed: { h1: true } } as never));
+    await waitFor(() => expect(names().length).toBeGreaterThan(0));
+    // Online again with its mark still set: the cards show and the notice stays above them.
+    expect(screen.queryByText("Could not read this host's projects.")).not.toBeNull();
+  });
+
+  test("the store's own wiring marks a host with no answer failed and clears it when its list is remembered", async () => {
+    const { store } = setup();
+    // No connection answers project.list, as with a host that refused it.
+    expect(await store.projectList.load("h9")).toBeNull();
+    expect(store.getState().projectsFailed).toEqual({ h9: true });
+    store.projectList.remember("h9", []);
+    expect(store.getState().projectsFailed).toEqual({});
+  });
+
+  test("one host refused its list while another has projects: the cards show and the notice says some are missing", async () => {
+    const { view, state } = setup();
+    render(view({ ...state, projectsFailed: { h2: true } } as never));
+    await waitFor(() => expect(names().length).toBeGreaterThan(0));
+    expect(screen.queryByText("Could not read this host's projects.")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeNull();
+  });
+
   test("before the project lists are read it shows the loading state, not the empty one", async () => {
     const { store, view, state } = setup();
     // The palette's load has not answered yet: the lists are unknown, not empty.

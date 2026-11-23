@@ -11,6 +11,8 @@ import type { HostCommandType, HostResult } from "../../lib/kernel.ts";
 interface ProjectsState {
   hosts: readonly { id: string; name: string }[];
   projects: Record<string, Project[]>;
+  /** The hosts whose last list was refused, by host id. */
+  projectsFailed: Record<string, boolean>;
 }
 
 /** What the projects read and ask through the app's store. */
@@ -19,6 +21,8 @@ export interface ProjectsCore {
   state(): ProjectsState;
   /** Replaces the projects the app holds, as one change. */
   setProjects(projects: ProjectsState["projects"]): void;
+  /** Replaces the hosts whose list was refused, as one change. */
+  setProjectsFailed(failed: ProjectsState["projectsFailed"]): void;
   /** A command to a host that gives null instead of an error (a host without it, or offline). */
   quietly<C extends HostCommandType>(
     hostId: string,
@@ -54,7 +58,11 @@ export class ProjectsSlice {
   /** A host's projects into the state (quiet: a host without a board, or offline, lists none). */
   async load(hostId: string): Promise<Project[] | null> {
     const list = await this.core.quietly(hostId, "project.list", {});
-    if (!list) return null;
+    if (!list) {
+      // Not "no projects": the list stays as it was and the screens say the read failed (#4397).
+      this.core.setProjectsFailed({ ...this.core.state().projectsFailed, [hostId]: true });
+      return null;
+    }
     this.remember(hostId, list.projects);
     return list.projects;
   }
@@ -62,6 +70,12 @@ export class ProjectsSlice {
   /** Keeps a host's projects in the state: the palette lists them, and clients place them. */
   remember(hostId: string, projects: Project[]): void {
     this.core.setProjects({ ...this.core.state().projects, [hostId]: projects });
+    // An answered list ends the failure the host had.
+    const failed = this.core.state().projectsFailed;
+    if (!failed[hostId]) return;
+    this.core.setProjectsFailed(
+      Object.fromEntries(Object.entries(failed).filter(([id]) => id !== hostId)),
+    );
   }
 
   /** The key of a project of a host: the daemon's, else the one its folder would have. */
