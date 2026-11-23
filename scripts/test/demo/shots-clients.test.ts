@@ -52,7 +52,7 @@ describe("the Clients screen's prints (#4345)", () => {
   test("the vault prints start with Acme holding the tag ci, and a secret allowed on a second host", () => {
     for (const name of ["clientes-cofre-confirmar", "clientes-cofre-achados"]) {
       const [acme] = clientsOf(name);
-      expect((acme?.defaults as { vaultTag?: string }).vaultTag).toBe("ci");
+      expect(((acme?.defaults ?? {}) as { vaultTag?: string }).vaultTag).toBe("ci");
       expect(shot(name)?.secrets).toBe("wide");
     }
   });

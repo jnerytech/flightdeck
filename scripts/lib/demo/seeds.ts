@@ -108,10 +108,10 @@ const hoursAgo = (hours: number) => DEMO_VAULT_NOW - hours * 3_600_000;
 
 /**
  * The vault's list of the prints (#3602): one secret of each type, so the rows differ, allowed on
- * `hostId`. Only the list: the web build keeps values in memory, so no secret has one and no value
+ * `hostId`, and on `alsoOn` too for a print that needs a secret allowed beyond one host. Only the list: the web build keeps values in memory, so no secret has one and no value
  * is ever on a print.
  */
-export function demoSecrets(hostId: string, _alsoOn: string[] = []): string {
+export function demoSecrets(hostId: string, alsoOn: string[] = []): string {
   const secret = (id: string, name: string, type: string, extra = {}) => ({
     id: `demo-secret-${id}`,
     name,
@@ -120,7 +120,7 @@ export function demoSecrets(hostId: string, _alsoOn: string[] = []): string {
     tags: [],
     createdAt: hoursAgo(24 * 30),
     lastUsedAt: null,
-    allowedHosts: [hostId],
+    allowedHosts: [hostId, ...alsoOn],
     ...extra,
   });
   return JSON.stringify([

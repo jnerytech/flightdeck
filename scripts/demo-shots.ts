@@ -38,6 +38,7 @@ import { automationShots } from "./lib/shots/table-automations.ts";
 import { backgroundShots } from "./lib/shots/table-background.ts";
 import { boardShots } from "./lib/shots/table-board.ts";
 import { changesShots } from "./lib/shots/table-changes.ts";
+import { clientsShots } from "./lib/shots/table-clients.ts";
 import { costsShots } from "./lib/shots/table-costs.ts";
 import { devicesShots } from "./lib/shots/table-devices.ts";
 import { harnessShots } from "./lib/shots/table-harness.ts";
@@ -98,6 +99,7 @@ function shots(ids: DemoIds): Shot[] {
     ...boardShots(ids),
     ...changesShots(ids),
     ...runenvShots(ids),
+    ...clientsShots(),
     ...runViewShots(ids),
     ...agentShots(ids),
     ...mcpShots(ids),
@@ -288,7 +290,9 @@ interface PrintSetup {
 /** What the storage starts with for one print: only what the print asks for, the rest empty. */
 function storageSeed(shot: Shot, lang: string, ids: DemoIds): StorageSeed {
   return {
-    clients: shot.clients ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" } : null,
+    clients: shot.clients
+      ? { clients: shot.clients.data ?? DEMO_CLIENTS, selected: shot.clients.selected ?? "" }
+      : null,
     roi: shot.roi ? DEMO_ROI : null,
     inbox: shot.inbox
       ? demoInbox(
@@ -303,7 +307,7 @@ function storageSeed(shot: Shot, lang: string, ids: DemoIds): StorageSeed {
           new Date(),
         )
       : null,
-    secrets: shot.secrets ? demoSecrets(ALFA) : null,
+    secrets: shot.secrets ? demoSecrets(ALFA, shot.secrets === "wide" ? ["demo-beta"] : []) : null,
     vaultUsage: shot.vaultUsage ? demoVaultUsage(ALFA) : null,
     away: shot.away ? DEMO_AWAY_SINCE : null,
     simple: shot.simple === true,

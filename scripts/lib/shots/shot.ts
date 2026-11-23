@@ -15,7 +15,8 @@ export interface Shot {
   route: Route;
   /**
    * Clients kept in the page's storage before it loads (phase 29), and the one selected; the other
-   * prints have none, so they look as they did before clients existed.
+   * prints have none, so they look as they did before clients existed. `data` (#4345) is the stored
+   * text of the clients to start with, in place of the demo's two.
    */
   clients?: { selected?: string; data?: string };
   /** Simple mode on the demo's first host (phase 33): the print starts at its Home. */
@@ -31,6 +32,7 @@ export interface Shot {
   /** #1414: the hosts answer with their memory and a budget over their holds (`holdsScript`). */
   holds?: boolean;
   /** #3602: the vault's list kept in the page's storage before it loads (the secrets' rows, with no value). */
+  /** `"wide"` (#4345): the secrets are allowed on the second demo host too, so a client's tag can name a host beyond its own. */
   secrets?: boolean | "wide";
   /** #3602: the vault's usage log kept in the page's storage before it loads. */
   vaultUsage?: boolean;
