@@ -82,34 +82,42 @@ async function barsShown(page: Page): Promise<void> {
 
 /**
  * The first stop of the popover's Tab order that is not the one expected, or null when the order is
- * right: each host's guard, then its page button, and last "Show what is running".
+ * right: for each host (in the order given) its guard and then its page button, and last "Show what
+ * is running". A control named after another host is a wrong stop.
  */
-export function tabOrderProblem(names: readonly string[], hosts: number): string | null {
-  const expected: [string, RegExp][] = [];
-  for (let host = 0; host < hosts; host++) {
-    expected.push(["the host's guard", GUARD], ["the host's page button", PAGE_BUTTON]);
+export function tabOrderProblem(names: readonly string[], hosts: readonly string[]): string | null {
+  if (hosts.length === 0) return "no host in the popover";
+  const expected: [string, (name: string) => boolean][] = [];
+  for (const host of hosts) {
+    expected.push(
+      [`the guard of ${host}`, (name) => GUARD.test(name) && name.endsWith(host)],
+      [`the page button of ${host}`, (name) => PAGE_BUTTON.test(name) && name.endsWith(host)],
+    );
   }
-  expected.push(["Show what is running", SHOW_RUNNING]);
-  for (const [index, [what, pattern]] of expected.entries()) {
+  expected.push(["Show what is running", (name) => SHOW_RUNNING.test(name)]);
+  for (const [index, [what, matches]] of expected.entries()) {
     const got = names[index];
-    if (got === undefined || !pattern.test(got)) {
+    if (got === undefined || !matches(got)) {
       return `stop ${index + 1} was ${got === undefined ? "nothing" : `"${got}"`}, expected ${what}`;
     }
   }
   return null;
 }
 
-/** Opens the status bar's quota popover and waits for it. */
+const popover = (page: Page) => page.getByRole("dialog", { name: POPOVER });
+
+/** Opens the status bar's quota popover, waits for its bars and keeps the pointer off it. */
 async function openPopover(page: Page): Promise<void> {
   await page.locator("button.status-quota").click({ timeout: WAIT });
-  await page.getByRole("dialog", { name: POPOVER }).waitFor({ timeout: WAIT });
+  await popover(page).getByRole("meter").first().waitFor({ timeout: WAIT });
+  await page.mouse.move(1000, 700);
 }
 
-/** The name of the control that has the focus: its label, or else its text. */
+/** The name of the control that has the focus: its label, or else the start of its text. */
 const focusedName = (page: Page): Promise<string | null> =>
   page.evaluate(() => {
     const el = document.activeElement;
-    return el?.getAttribute("aria-label") ?? el?.textContent?.trim() ?? null;
+    return el?.getAttribute("aria-label") ?? el?.textContent?.trim().slice(0, 80) ?? null;
   });
 
 /**
@@ -117,12 +125,15 @@ const focusedName = (page: Page): Promise<string | null> =>
  * item; the print throws when it does not, so the finding shows in the PR's run (#4308).
  */
 async function checkKeyboard(page: Page): Promise<void> {
-  const hosts = await page
-    .getByRole("dialog", { name: POPOVER })
-    .getByRole("combobox", { name: GUARD })
-    .count();
+  const hosts = await popover(page).getByRole("heading").allTextContents();
+  // Radix moves the focus in after the dialog shows.
+  await page.waitForFunction(
+    () => document.activeElement?.closest('[role="dialog"]') != null,
+    undefined,
+    { timeout: WAIT },
+  );
   const stops = [await focusedName(page)];
-  for (let stop = 1; stop <= hosts * 2; stop++) {
+  for (let stop = 1; stop <= hosts.length * 2; stop++) {
     await page.keyboard.press("Tab");
     stops.push(await focusedName(page));
   }
@@ -132,9 +143,13 @@ async function checkKeyboard(page: Page): Promise<void> {
   );
   if (problem) throw new Error(`The quota popover's Tab order: ${problem}`);
   await page.keyboard.press("Escape");
-  await page.waitForFunction(() => document.activeElement?.classList.contains("status-quota"), {
-    timeout: 2000,
-  });
+  await popover(page).waitFor({ state: "detached", timeout: WAIT });
+  const back = await focusedName(page);
+  if (
+    !(await page.locator("button.status-quota").evaluate((el) => el === document.activeElement))
+  ) {
+    throw new Error(`Escape did not give the focus back to the quota item; it is on "${back}"`);
+  }
 }
 
 export function quotaShots(_ids: DemoIds): Shot[] {
@@ -216,7 +231,6 @@ export function quotaShots(_ids: DemoIds): Shot[] {
         await openPopover(page);
         await checkKeyboard(page);
         await openPopover(page);
-        await page.mouse.move(600, 300);
         await page.waitForTimeout(400);
       },
     },
