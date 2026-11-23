@@ -32,6 +32,9 @@ export function recordingPage(): { page: Page; steps: string[] } {
             return (pattern: RegExp | string) =>
               locator([...chain, `${prop === "getByText" ? "text" : "label"}[${label(pattern)}]`]);
           }
+          if (prop === "locator") {
+            return (selector: string) => locator([...chain, `locator[${selector}]`]);
+          }
           if (prop === "waitForTimeout") return async () => {};
           if (prop === "mouse") {
             return {
