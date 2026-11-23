@@ -173,6 +173,58 @@ describe("clients-vault: the vault tag and the scope on the Clients screen", () 
   });
 });
 
+const said = (text: string) =>
+  [...document.querySelectorAll("[role=status]")].some((el) => el.textContent === text);
+const scopeSwitch = (name = "Acme") =>
+  within(itemOf(name)).queryByRole("switch", {
+    name: "Manter os segredos com essa tag só nos projetos do cliente",
+  });
+
+describe("clients-vault: the scope control says why it is off and what it did (#4344)", () => {
+  test("with no vault tag the reason is visible and described by the switch", async () => {
+    await open();
+    const control = scopeSwitch();
+    expect(control).not.toBeNull();
+    expect((control as HTMLButtonElement).disabled).toBe(true);
+    const reason = within(itemOf("Acme")).queryByText(
+      "Salve uma tag do cofre primeiro: o escopo vale para os segredos que a carregam.",
+    );
+    expect(reason).not.toBeNull();
+    const id = control?.getAttribute("aria-describedby") ?? "";
+    expect(id !== "" && document.getElementById(id) === reason).toBe(true);
+  });
+
+  test("with a vault tag saved the reason is gone and the switch is on offer", async () => {
+    await open({ tag: "client:acme" });
+    expect(scopeSwitch()).not.toBeNull();
+    expect((scopeSwitch() as HTMLButtonElement).disabled).toBe(false);
+    expect(within(itemOf("Acme")).queryByText(/Salve uma tag do cofre primeiro/)).toBeNull();
+  });
+
+  test("turning it on and off each say the result in a status line", async () => {
+    await open({ tag: "client:acme" });
+    await click(scopeSwitch());
+    await click(await waitButton("Ligar"));
+    await settle(() => said("Escopo do cofre de Acme ligado: 4 regra(s) geradas em 1 segredo(s)."));
+    await click(scopeSwitch());
+    await settle(() =>
+      said("Escopo do cofre de Acme desligado: os segredos voltaram às suas próprias regras."),
+    );
+  });
+
+  test("the findings have a visible heading and a mark that is not a colour", async () => {
+    const { store, secret } = await open({ tag: "client:acme" });
+    await store.vaultRules.set(secret.id, [
+      { id: "r1", match: { project: "github.com/beta/app" }, decision: "allow" },
+    ]);
+    await settle(() => screen.queryByText("Segredos que podem sair do cliente") !== null);
+    const item = [...document.querySelectorAll("li")].find((li) =>
+      li.textContent?.includes("uma regra libera ou pede o projeto de outro cliente"),
+    );
+    expect(item?.querySelector("svg") != null).toBe(true);
+  });
+});
+
 async function waitButton(name: string): Promise<HTMLElement | null> {
   await settle(() => screen.queryByRole("button", { name }) !== null);
   return screen.queryByRole("button", { name });
