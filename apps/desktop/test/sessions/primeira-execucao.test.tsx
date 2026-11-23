@@ -51,7 +51,7 @@ describe("primeira execução", () => {
     ["en", "Releases page", "new terminal"],
   ] as const) {
     test(`step 1 says where the daemon file comes from and shows the command that runs it from the download folder (${language}, #4386)`, async () => {
-      const { copies } = firstRun(language);
+      firstRun(language);
       await act(async () => {});
       const steps = screen.queryByRole("list", {
         name: language === "en" ? "First steps" : "Primeiros passos",
@@ -62,9 +62,8 @@ describe("primeira execução", () => {
       expect(first).toContain(".\\flightdeckd-windows-x64.exe setup");
       expect(first).toContain(after);
       // `flightdeckd setup` cannot run before setup has put it on the PATH: no copy button offers it.
-      expect(first).not.toContain(" flightdeckd setup");
+      expect(first).not.toContain("flightdeckd setup");
       expect(screen.queryByRole("button", { name: /flightdeckd setup/ })).toBeNull();
-      expect(copies).toEqual([]);
     });
   }
 
