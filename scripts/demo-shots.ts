@@ -31,6 +31,7 @@ import { sshScript } from "./lib/shots/ssh-frames.ts";
 import { activityShots } from "./lib/shots/table-activity.ts";
 import { agentShots } from "./lib/shots/table-agent.ts";
 import { contextShots, filesShots } from "./lib/shots/table-agent-files.ts";
+import { mcpShots } from "./lib/shots/table-agent-mcp.ts";
 import { assistantShots, demoAssistantPrefs } from "./lib/shots/table-assistant.ts";
 import { automationShots } from "./lib/shots/table-automations.ts";
 import { backgroundShots } from "./lib/shots/table-background.ts";
@@ -96,6 +97,7 @@ function shots(ids: DemoIds): Shot[] {
     ...runenvShots(ids),
     ...runViewShots(ids),
     ...agentShots(ids),
+    ...mcpShots(ids),
     ...activityShots(ids),
     ...filesShots(ids),
     ...contextShots(ids),

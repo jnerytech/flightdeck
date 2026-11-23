@@ -293,8 +293,15 @@ export const hosts = {
     okHide: "Ocultar {n} itens sem nada a fazer",
     optionalAbsent: "Opcional · não instalado",
     okList: "Funcionando",
+    resultSame: "Verificado de novo: nada mudou",
+    resultChanged: "Verificado de novo: o resultado mudou",
+    fixed: "{name}: corrigido",
+    fixedStill: "{name}: ainda precisa de atenção",
+    stale: "As linhas abaixo são da última leitura que funcionou",
+    checkOffline: "Conecte o host para verificar de novo",
     service: {
       turnOn: "Ligar",
+      turnOnRow: "Ligar início no boot",
       messageLinux:
         "O Flightdeck vai instalar um serviço do usuário em ~/.config/systemd/user/flightdeckd.service, para o flightdeckd iniciar no próximo boot ou login. O daemon que está rodando agora continua como está.",
       messageWindows:
@@ -319,6 +326,7 @@ export const hosts = {
     check: "Verificar de novo",
     checking: "Verificando…",
     readFailed: "Não foi possível ler a saúde: {reason}",
+    offline: "Este host está offline",
     allSet: "Tudo certo",
     optionalMissing: "Opcionais faltando: {n}",
     requiredMissing: "Obrigatórias faltando: {n}",

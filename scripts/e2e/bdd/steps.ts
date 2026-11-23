@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { formatPairingLink } from "@flightdeck/protocol";
+import { expect, type Locator } from "@playwright/test";
 import { DEMO_BACKUP_FOLDER, DEMO_BACKUP_FOLDER_KEY } from "../../../apps/desktop/src/demo/boot.ts";
 import { SCHEDULE_KEY } from "../../../apps/desktop/src/features/backup/backup-schedule.ts";
 import { TOKEN_MASK } from "../../../apps/desktop/src/features/hosts/domain/pairing-mask.ts";
@@ -320,10 +321,8 @@ const cardMenuButton = (c: Context) =>
   });
 
 /**
- * Finish… sits under the card page's menu (#1197). The step clicks Actions and then the item of the open menu,
- * with no wait for a dialog to be gone or for the focus to be back, and no second try: a person clicks Actions the
- * moment a card dialog closes, and the menu stays open (#4288). Only the open menu's item counts: one in the menu's
- * closing animation takes a click that selects nothing.
+ * Finish… sits under the card page's menu (#1197). The step clicks Actions and then the item of the open menu.
+ * Only the open menu's item counts: one in the menu's closing animation takes a click that selects nothing.
  */
 const fromCardMenu = async (c: Context, item: string) => {
   await cardMenuButton(c).click();
@@ -331,6 +330,15 @@ const fromCardMenu = async (c: Context, item: string) => {
     .locator('[role="menu"][data-state="open"]')
     .getByRole("menuitem", { name: item, exact: true })
     .click();
+};
+
+/**
+ * A card dialog is gone and the focus is back on Actions. The dialog hands the focus back a tick after it leaves, and
+ * an Actions click made before that opens a menu the late focus closes again (#4353).
+ */
+const cardDialogGone = async (c: Context, dialog: Locator) => {
+  await dialog.waitFor({ state: "detached", timeout: WAIT });
+  await expect(cardMenuButton(c)).toBeFocused({ timeout: WAIT });
 };
 
 step(When, "I open the card and read the three ways to finish it", async (c) => {
@@ -345,14 +353,14 @@ step(When, "I open the card and read the three ways to finish it", async (c) => 
   // No worktree yet: the merge is off, and the dialog says why.
   await dialog.getByText(c.t("cardUi.finishNeedWorktree"), { exact: true }).waitFor();
   await c.page.keyboard.press("Escape");
-  await dialog.waitFor({ state: "detached", timeout: WAIT });
+  await cardDialogGone(c, dialog);
 });
 
 step(When, "I finish the card by moving it to Done", async (c) => {
   await fromCardMenu(c, c.t("cardUi.finish"));
   const dialog = c.page.getByRole("dialog", { name: c.t("cardUi.finishTitle") });
   await dialog.getByRole("button", { name: c.t("cardUi.finishMoveButton"), exact: true }).click();
-  await dialog.waitFor({ state: "detached", timeout: WAIT });
+  await cardDialogGone(c, dialog);
 });
 
 step(Then, "the card says it is already done", async (c) => {
@@ -1141,7 +1149,7 @@ step(
     const row = serviceRow(c);
     await row.waitFor({ timeout: WAIT });
     const offered = await row
-      .getByRole("button", { name: c.t("hostHealth.service.turnOn"), exact: true })
+      .getByRole("button", { name: c.t("hostHealth.service.turnOnRow"), exact: true })
       .count();
     if (offered > 0) throw new Error("Turn it on is offered on a host that runs from source");
   },
