@@ -150,6 +150,34 @@ describe("arch-imports: the domain borders (#1591)", () => {
     ]);
   });
 
+  test("the Tauri entry and everything it reaches never import src/demo, the web entry may (#4383)", async () => {
+    const found = await planted({
+      "apps/desktop/src/main.tsx":
+        'import { App } from "./app/App.tsx";\nimport { g } from "./demo/google.ts";\nexport const m = [App, g];\n',
+      "apps/desktop/src/app/App.tsx":
+        'import { boot } from "../demo/boot.ts";\nexport const App = boot;\n',
+      "apps/desktop/src/demo/boot.ts": 'import { g } from "./google.ts";\nexport const boot = g;\n',
+      "apps/desktop/src/demo/google.ts": "export const g = 1;\n",
+      "apps/desktop/src/main.web.tsx":
+        'import { boot } from "./demo/boot.ts";\nexport const w = boot;\n',
+    });
+    // The path is transitive: main.tsx reaches boot.ts through App.tsx; main.web.tsx is free.
+    expect(found).toEqual([
+      "desktop-release-entry-no-demo apps/desktop/src/main.tsx -> apps/desktop/src/demo/boot.ts",
+      "desktop-release-entry-no-demo apps/desktop/src/main.tsx -> apps/desktop/src/demo/google.ts",
+    ]);
+  });
+
+  test("the web entry alone may import src/demo (#4383)", async () => {
+    const found = await planted({
+      "apps/desktop/src/main.tsx": "export const m = 1;\n",
+      "apps/desktop/src/main.web.tsx":
+        'import { boot } from "./demo/boot.ts";\nexport const w = boot;\n',
+      "apps/desktop/src/demo/boot.ts": "export const boot = 1;\n",
+    });
+    expect(found).toEqual([]);
+  });
+
   test("a new cycle between two domains fails", async () => {
     const found = await planted({
       "apps/daemon/src/board/index.ts":
