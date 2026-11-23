@@ -87,6 +87,66 @@ describe("conexoes-ui: ssh asks for a password", () => {
     expect(dialog()).toBeNull();
   });
 
+  const type = async (value: string) => {
+    const field = screen.queryByLabelText("Senha");
+    expect(field).not.toBeNull();
+    await act(async () => {
+      fireEvent.change(field as HTMLElement, { target: { value } });
+    });
+    return field as HTMLInputElement;
+  };
+
+  test("Enter in the field sends the answer once, and on an empty field sends nothing (#4331)", async () => {
+    const { d } = await open();
+    await ask(d, request("r1"));
+    const field = await type("");
+    await act(async () => {
+      fireEvent.keyDown(field, { key: "Enter" });
+    });
+    await uiIdle();
+    expect(d.sent("askpass.answer")).toEqual([]);
+    expect(dialog()).not.toBeNull();
+    await type(SECRET);
+    await act(async () => {
+      fireEvent.keyDown(field, { key: "Enter" });
+    });
+    await uiIdle();
+    expect(d.sent("askpass.answer")).toEqual([{ requestId: "r1", secret: SECRET }]);
+    expect(dialog()).toBeNull();
+  });
+
+  test("a show control lets the person check what was typed, and hides it again (#4331)", async () => {
+    const { d } = await open();
+    await ask(d, request("r1"));
+    const field = await type(SECRET);
+    const show = () => screen.queryByRole("button", { name: "Mostrar o que foi digitado" });
+    expect(show()).not.toBeNull();
+    expect(show()?.getAttribute("aria-pressed")).toBe("false");
+    expect(field.type).toBe("password");
+    await click("Mostrar o que foi digitado");
+    expect(show()?.getAttribute("aria-pressed")).toBe("true");
+    expect(field.type).toBe("text");
+    await click("Mostrar o que foi digitado");
+    expect(show()?.getAttribute("aria-pressed")).toBe("false");
+    expect(field.type).toBe("password");
+  });
+
+  test("the next request starts hidden, whatever the last one showed (#4331)", async () => {
+    const { d } = await open();
+    await ask(d, request("r1"));
+    await click("Mostrar o que foi digitado");
+    expect((screen.queryByLabelText("Senha") as HTMLInputElement).type).toBe("text");
+    await ask(d, request("r2"));
+    await click("Cancelar");
+    const field = screen.queryByLabelText("Senha") as HTMLInputElement | null;
+    expect(field?.type).toBe("password");
+    expect(
+      screen
+        .queryByRole("button", { name: "Mostrar o que foi digitado" })
+        ?.getAttribute("aria-pressed"),
+    ).toBe("false");
+  });
+
   test("cancelling answers with nothing, so ssh fails at once", async () => {
     const { d } = await open();
     await ask(d, request("r1"));
