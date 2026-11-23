@@ -100,3 +100,81 @@ describe("the Claude account card prints (#4351)", () => {
     ).toEqual([3, 3, 3, 3]);
   });
 });
+
+/** The calls a print's `prepare` makes on a page that records them, in order. */
+async function calls(name: string): Promise<string[]> {
+  const made: string[] = [];
+  const text = (arg: unknown): string => {
+    if (arg instanceof RegExp || typeof arg === "string") return String(arg);
+    if (typeof arg === "object" && arg !== null) return Object.values(arg).map(text).join(",");
+    return typeof arg;
+  };
+  const member = (call: string): unknown =>
+    new Proxy(
+      (...args: unknown[]) => {
+        made.push(`${call}(${args.map(text).join(",")})`);
+        return recorder;
+      },
+      { get: (_target, prop) => (recorder as Record<string | symbol, unknown>)[prop] },
+    );
+  // `then` stays undefined, or awaiting the recorder would wait for it forever.
+  const recorder: unknown = new Proxy(() => recorder, {
+    get: (_target, prop) => (prop === "then" ? undefined : member(String(prop))),
+  });
+  await named(name)?.prepare?.(recorder as never);
+  return made;
+}
+
+/** True when every needle shows in the calls and the first show of each comes after the one before. */
+function inOrder(made: string[], ...needles: string[]): boolean {
+  const at = needles.map((needle) => made.findIndex((call) => call.includes(needle)));
+  return at.every((index, n) => index > -1 && index > (at[n - 1] ?? -1));
+}
+
+describe("what each Claude account print does before the shot", () => {
+  test("the signed-in print waits for a meter, the signed-out one for the command, then each scrolls to the card", async () => {
+    expect([
+      inOrder(await calls("host-conta-conectada"), "locator(meter", "waitFor(", "evaluate("),
+      inOrder(await calls("host-conta-desconectada"), "locator(code", "waitFor(", "evaluate("),
+    ]).toEqual([true, true]);
+  });
+
+  test("the API key, third-party and unknown prints wait for the first thing the card draws", async () => {
+    const waited = await Promise.all(
+      ["host-conta-chave-api", "host-conta-terceiros", "host-conta-desconhecida"].map(
+        async (name) => inOrder(await calls(name), "locator(p, meter", "waitFor(", "evaluate("),
+      ),
+    );
+    expect(waited).toEqual([true, true, true]);
+  });
+
+  test("the unknown print with an error waits for the alert", async () => {
+    expect(
+      inOrder(
+        await calls("host-conta-desconhecida-erro"),
+        "getByRole(alert",
+        "waitFor(",
+        "evaluate(",
+      ),
+    ).toBe(true);
+  });
+
+  test("the loading print waits for the reading text, since nothing else draws", async () => {
+    expect(inOrder(await calls("host-conta-carregando"), "Reading the account", "evaluate(")).toBe(
+      true,
+    );
+  });
+
+  test("the refreshing print waits for the read, presses Refresh, then waits for the Reading line", async () => {
+    expect(
+      inOrder(
+        await calls("host-conta-atualizando"),
+        "locator(meter",
+        "getByRole(button",
+        "click(",
+        "(Reading",
+        "evaluate(",
+      ),
+    ).toBe(true);
+  });
+});
