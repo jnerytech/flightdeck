@@ -1,8 +1,9 @@
-import { FolderOpen, ListTodo, Lock, Plus } from "lucide-react";
+import { FolderOpen, ListTodo, Lock, Plus, X } from "lucide-react";
+import type { RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddProject } from "@/features/projects/ui.ts";
-import { Toolbar } from "@/shared/layout/index.ts";
+import { Inline, Toolbar } from "@/shared/layout/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { BoardSyncControl } from "./board-sync.tsx";
@@ -16,6 +17,8 @@ export function BoardFilters(
     projectId: string;
     filter: string;
     onFilter(value: string): void;
+    /** The text field, so a clear gives the focus back to it. */
+    filterRef: RefObject<HTMLInputElement | null>;
     /** The host announces dependencies: the blocked-only filter shows. */
     withDeps: boolean;
     onlyBlocked: boolean;
@@ -35,12 +38,27 @@ export function BoardFilters(
   return (
     <Toolbar label={t("hub.filters")}>
       <Input
+        ref={props.filterRef}
         aria-label={t("kanban.filter")}
         placeholder={t("hub.filterPlaceholder")}
         className="h-8 w-40 text-xs"
         value={props.filter}
         onChange={(e) => props.onFilter(e.target.value)}
       />
+      {props.filter !== "" && (
+        <Button
+          size="icon"
+          variant="ghost"
+          className="size-6"
+          aria-label={t("board.clearFilterText")}
+          onClick={() => {
+            props.onFilter("");
+            props.filterRef.current?.focus();
+          }}
+        >
+          <X aria-hidden="true" />
+        </Button>
+      )}
       {props.withDeps && (
         <Button
           size="sm"
@@ -81,5 +99,17 @@ export function BoardFilters(
         {t("kanban.newCard")}
       </Button>
     </Toolbar>
+  );
+}
+
+/** Above the columns when the filter hides every card: one line, and the way back. */
+export function NoCardsMatch(props: Readonly<{ t: T; onClear(): void }>) {
+  return (
+    <Inline gap={2} className="text-sm text-muted-foreground">
+      <p>{props.t("board.noCardsMatch")}</p>
+      <Button size="sm" variant="outline" onClick={props.onClear}>
+        {props.t("board.clearFilters")}
+      </Button>
+    </Inline>
   );
 }

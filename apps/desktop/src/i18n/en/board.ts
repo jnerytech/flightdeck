@@ -180,6 +180,9 @@ export const board = {
     showColumn: "{column}, {count}",
     countOfMany: "{shown} of {total} cards",
     noMatches: "No matches",
+    noCardsMatch: "No cards match the filter.",
+    clearFilters: "Clear filters",
+    clearFilterText: "Clear filter text",
     quickAdd: "New card in {column}",
   },
   cardReview: {

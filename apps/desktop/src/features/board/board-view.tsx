@@ -31,14 +31,20 @@ import type { Key } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { quietAlerts } from "../needs-you/index.ts";
 import { BoardDialogs } from "./board-dialogs.tsx";
-import { BoardFilters } from "./board-filters.tsx";
+import { BoardFilters, NoCardsMatch } from "./board-filters.tsx";
 import { BoardLanes } from "./board-lanes.tsx";
 import { BoardLoadError } from "./board-load-error.tsx";
 import { boardTitle, COLUMNS, positionBefore, projectCards } from "./domain/board.ts";
 import { bulkSplit } from "./domain/board-bulk.ts";
 import { askAbout } from "./domain/board-contracts.ts";
 import { boardFiles, filesPanelOpen } from "./domain/board-files.ts";
-import { type BulkRefusal, COLUMN_GAP, countLabel, fitColumnWidth } from "./domain/board-select.ts";
+import {
+  type BulkRefusal,
+  COLUMN_GAP,
+  countLabel,
+  filteredCountLabel,
+  fitColumnWidth,
+} from "./domain/board-select.ts";
 import { useBoardFocus } from "./use-board-focus.ts";
 import { useBoardProject } from "./use-board-project.ts";
 import { useBulkRun } from "./use-bulk-run.tsx";
@@ -86,6 +92,7 @@ export const BoardView = memo(function BoardView(props: {
       document.querySelector<HTMLElement>(`[data-card="${cardId}"] [data-card-open]`)?.focus(),
   });
   const [filter, setFilter] = useState("");
+  const filterRef = useRef<HTMLInputElement>(null);
   /** Phase 31: only the cards that wait for a blocker. */
   const [onlyBlocked, setOnlyBlocked] = useState(false);
   const loading = useMinLoading(project === null && !loadFailed);
@@ -356,6 +363,7 @@ export const BoardView = memo(function BoardView(props: {
               projectId={projectId}
               filter={filter}
               onFilter={setFilter}
+              filterRef={filterRef}
               withDeps={withDeps}
               onlyBlocked={onlyBlocked}
               onToggleBlocked={() => setOnlyBlocked(!onlyBlocked)}
@@ -391,7 +399,11 @@ export const BoardView = memo(function BoardView(props: {
           />
         )}
         <BoardStatus
-          text={[selection.length === 0 ? "" : selectedSaid, notice ?? ""]
+          text={[
+            selection.length === 0 ? "" : selectedSaid,
+            notice ?? "",
+            filtering && all.length > 0 ? filteredCountLabel(t, shown.length, all.length) : "",
+          ]
             .filter(Boolean)
             .join(". ")}
         />
@@ -405,6 +417,16 @@ export const BoardView = memo(function BoardView(props: {
         <p id={hintId} className="sr-only">
           {t("board.keysHint")}
         </p>
+        {filtering && all.length > 0 && shown.length === 0 && (
+          <NoCardsMatch
+            t={t}
+            onClear={() => {
+              setFilter("");
+              setOnlyBlocked(false);
+              filterRef.current?.focus();
+            }}
+          />
+        )}
         {switcher && all.length > 0 && (
           <ColumnSwitcher
             label={t("board.columns")}
