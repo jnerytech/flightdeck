@@ -72,9 +72,33 @@ describe("configuracoes-trilho: the rail and the search", () => {
     expect(items()).not.toContain("Diagnóstico");
   });
 
-  test("a section the app cannot offer is not on the rail", () => {
+  // #4438: a build that cannot update keeps the section and says so, instead of leaving a reader to guess.
+  test("a build that cannot update keeps the Updates section, says so and draws no update control", async () => {
     setup(false);
-    expect(items()).not.toContain("Atualizações");
+    expect(items()).toContain("Atualizações");
+    const section = screen.getByRole("region", { name: "Atualizações" });
+    expect(
+      within(section).queryByText("Este build não se atualiza sozinho.", { exact: false }),
+    ).not.toBeNull();
+    expect(within(section).queryAllByRole("button")).toHaveLength(0);
+    expect(within(section).queryAllByRole("checkbox")).toHaveLength(0);
+    await act(async () => {
+      fireEvent.change(screen.getByRole("searchbox", { name: "Buscar nas configurações" }), {
+        target: { value: "versão" },
+      });
+    });
+    expect(items()).toEqual(["Atualizações"]);
+  });
+
+  test("a build that can update keeps its controls in the Updates section", () => {
+    setup(true);
+    const section = screen.getByRole("region", { name: "Atualizações" });
+    expect(
+      within(section).queryByRole("button", { name: "Procurar atualização agora" }),
+    ).not.toBeNull();
+    expect(
+      within(section).queryByText("Este build não se atualiza sozinho.", { exact: false }),
+    ).toBeNull();
   });
 
   test("a rail button takes you to its section: it scrolls there and the focus follows", async () => {
