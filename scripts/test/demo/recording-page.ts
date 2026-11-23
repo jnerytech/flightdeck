@@ -33,6 +33,13 @@ export function recordingPage(): { page: Page; steps: string[] } {
               locator([...chain, `${prop === "getByText" ? "text" : "label"}[${label(pattern)}]`]);
           }
           if (prop === "waitForTimeout") return async () => {};
+          if (prop === "mouse") {
+            return {
+              move: async (x: number, y: number) => {
+                steps.push(`mouse.move ${x},${y}`);
+              },
+            };
+          }
           return async (...args: unknown[]) => {
             const text = prop === "fill" ? ` "${String(args[0])}"` : "";
             steps.push(`${prop}${text} ${chain.join(" > ")}`);

@@ -57,6 +57,10 @@ export const NARROW_SHOTS: readonly string[] = [
   "configuracoes-agendado-drive-recusado",
   "configuracoes-agendado-drive-aguardando",
   "configuracoes-agendado-manter-invalido",
+  // #4348: Back up everything refused: the form's fields, and the notice or the reason under them, narrow.
+  "configuracoes-backup-erro-diferente",
+  "configuracoes-backup-erro-curta",
+  "configuracoes-backup-erro-grande",
   // #1244: Merge PR's confirmation on a card with an open PR.
   "card-merge-pr",
   "workflows-modelos",

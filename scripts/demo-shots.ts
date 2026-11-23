@@ -37,6 +37,7 @@ import { assistantShots, demoAssistantPrefs } from "./lib/shots/table-assistant.
 import { automationShots } from "./lib/shots/table-automations.ts";
 import { backgroundShots } from "./lib/shots/table-background.ts";
 import { backupDriveShots, backupScheduleShots } from "./lib/shots/table-backup-drive.ts";
+import { backupExportShots } from "./lib/shots/table-backup-export.ts";
 import { boardShots } from "./lib/shots/table-board.ts";
 import { changesShots } from "./lib/shots/table-changes.ts";
 import { costsShots } from "./lib/shots/table-costs.ts";
@@ -109,6 +110,7 @@ function shots(ids: DemoIds): Shot[] {
     ...hostShots(ids),
     ...backupDriveShots(ids),
     ...backupScheduleShots(ids),
+    ...backupExportShots(ids),
     ...healthShots(ids),
     ...accountShots(ids),
     ...harnessShots(ids),
