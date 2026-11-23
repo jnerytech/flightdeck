@@ -238,8 +238,8 @@ describe("nova-sessao-ux: the form says what it needs", () => {
         fireEvent.click(link as HTMLElement);
       });
       expect(added).toEqual(["add"]);
-      // The button keeps its reason, and the same link.
-      expect(screen.queryAllByRole("button", { name: add })).toHaveLength(2);
+      // The button keeps its reason as text; the link is in the field only, so the Tab order has one stop for it.
+      expect(screen.queryAllByRole("button", { name: add })).toHaveLength(1);
     });
   }
 
