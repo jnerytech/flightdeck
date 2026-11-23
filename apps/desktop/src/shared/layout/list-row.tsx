@@ -57,7 +57,11 @@ export function ListRow(
         </span>
       )}
       {props.trailing && (
-        <span data-row-trailing className="shrink-0">
+        <span
+          data-row-trailing
+          // On a line of its own the group keeps its content width; capped at the row's, its controls wrap.
+          className={cn("shrink-0", props.wrap && "max-w-full")}
+        >
           {props.trailing}
         </span>
       )}
