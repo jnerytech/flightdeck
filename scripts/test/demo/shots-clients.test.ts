@@ -114,6 +114,12 @@ describe("what each Clients print does on the page (#4345)", () => {
     expect(waited.filter(([, ok]) => !ok).map(([name]) => name)).toEqual([]);
   });
 
+  test("a print that clicks moves the pointer off the control before the shot, so no hover color is measured", async () => {
+    const seen = await Promise.all(STATES.map(async (name) => [name, await calls(name)] as const));
+    const stays = seen.filter(([, done]) => /click|fill/.test(done) && !/move\(/.test(done));
+    expect(stays.map(([name]) => name)).toEqual([]);
+  });
+
   test("rename and delete press the client's own button, delete only asks", async () => {
     expect(await calls("clientes-renomear")).toMatch(/Rename.*click.*Save name.*scrollIntoView/);
     expect(await calls("clientes-apagar")).toMatch(/Delete.*click.*alertdialog.*waitFor/);
