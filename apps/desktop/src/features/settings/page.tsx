@@ -1,4 +1,4 @@
-import { memo, type ReactNode, useEffect, useState } from "react";
+import { memo, type ReactNode, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AssistantSettings } from "@/features/assistant/ui.ts";
@@ -294,6 +294,18 @@ export const Settings = memo(function Settings(props: {
         ? t("settingsRail.matchesOne")
         : t("settingsRail.matches", { n: shown.length });
   const { current, go } = useSettingsRail(shown, props.section);
+  const railRef = useRef<HTMLElement>(null);
+  // Narrow, the rail is one row that scrolls (#4439): the marked button comes to its middle. Only the
+  // rail moves, never the page, which the reader may be scrolling. A column rail has no sideways room.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the mark is what moves the rail
+  useEffect(() => {
+    const rail = railRef.current;
+    const marked = rail?.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!rail || !marked) return;
+    const at = marked.getBoundingClientRect();
+    const box = rail.getBoundingClientRect();
+    rail.scrollLeft += at.left + at.width / 2 - (box.left + box.width / 2);
+  }, [current]);
   // After the rail's own jump to the section: the heading of the host's panel takes the focus (#3912).
   const headingFocus = props.section === "budgets" ? panels.focus : null;
   useEffect(() => {
@@ -311,7 +323,7 @@ export const Settings = memo(function Settings(props: {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <nav aria-label={t("settingsRail.label")} className="settings-rail">
+          <nav ref={railRef} aria-label={t("settingsRail.label")} className="settings-rail">
             {shown.map((section) => (
               <Button
                 key={section.id}
