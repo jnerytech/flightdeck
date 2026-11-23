@@ -77,8 +77,16 @@ describe("roi-fold-ui: the Return on cost card is one line until it is opened (#
       rowWraps: row?.classList.contains("max-sm:flex-wrap") ?? false,
       underTitle: narrow.includes("max-sm:basis-full") && narrow.includes("max-sm:order-last"),
       wraps: narrow.includes("max-sm:whitespace-normal"),
+      notClipped:
+        narrow.includes("max-sm:overflow-visible") && narrow.includes("max-sm:break-words"),
       wideKeepsEllipsis: headline?.classList.contains("truncate") ?? false,
-    }).toEqual({ rowWraps: true, underTitle: true, wraps: true, wideKeepsEllipsis: true });
+    }).toEqual({
+      rowWraps: true,
+      underTitle: true,
+      wraps: true,
+      notClipped: true,
+      wideKeepsEllipsis: true,
+    });
   });
 
   test("opened, the card keeps its period buttons and its headline under the title row", async () => {
