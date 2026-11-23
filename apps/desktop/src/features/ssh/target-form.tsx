@@ -14,6 +14,9 @@ import { Field, Form, FormActions, NativeSelect } from "@/shared/layout/index.ts
 import {
   AUTH_KEY,
   AUTHS,
+  forwardsProblem,
+  MAX_FORWARDS,
+  missingFields,
   secretRefOf,
   split,
   unsaved,
@@ -65,13 +68,17 @@ export const TargetForm = memo(function TargetForm(props: {
   const saving = useBusy();
   const portBad = !validPort(port);
   const aliveBad = !validAlive(alive);
-  const ready =
-    !portBad &&
-    !aliveBad &&
-    name.trim() !== "" &&
-    host.trim() !== "" &&
-    user.trim() !== "" &&
-    (auth !== "vault-key" || secretId !== "");
+  const forwardsBad = forwardsProblem(forwards);
+  const missing = missingFields({ name, host, user, auth, secretId });
+  const ready = !portBad && !aliveBad && forwardsBad === null && missing.length === 0;
+  const disabledReason =
+    missing.length > 0
+      ? t("connections.form.missing", {
+          fields: missing.map((field) => t(`connections.form.${field}`)).join(", "),
+        })
+      : portBad || aliveBad || forwardsBad
+        ? t("connections.form.fixFields")
+        : undefined;
 
   const changed =
     target !== null &&
@@ -151,14 +158,19 @@ export const TargetForm = memo(function TargetForm(props: {
       }}
     >
       {
-        <Field label={t("connections.form.name")}>
+        <Field label={t("connections.form.name")} required>
           {(control) => (
-            <Input {...control} value={name} onChange={(event) => setName(event.target.value)} />
+            <Input
+              {...control}
+              autoFocus
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
           )}
         </Field>
       }
       {
-        <Field label={t("connections.form.host")}>
+        <Field label={t("connections.form.host")} required>
           {(control) => (
             <Input {...control} value={host} onChange={(event) => setHost(event.target.value)} />
           )}
@@ -180,7 +192,7 @@ export const TargetForm = memo(function TargetForm(props: {
         </Field>
       }
       {
-        <Field label={t("connections.form.user")}>
+        <Field label={t("connections.form.user")} required>
           {(control) => (
             <Input {...control} value={user} onChange={(event) => setUser(event.target.value)} />
           )}
@@ -204,7 +216,7 @@ export const TargetForm = memo(function TargetForm(props: {
         </Field>
       }
       {auth === "key-file" && (
-        <Field label={t("connections.form.keyFile")}>
+        <Field label={t("connections.form.keyFile")} help={t("connections.form.keyFileHelp")}>
           {(control) => (
             <Input
               {...control}
@@ -217,6 +229,7 @@ export const TargetForm = memo(function TargetForm(props: {
       {auth === "vault-key" && (
         <SecretPicker
           label={t("connections.form.vaultKey")}
+          required
           secrets={state.secrets}
           types={["ssh-key"]}
           value={secretId}
@@ -233,7 +246,7 @@ export const TargetForm = memo(function TargetForm(props: {
         />
       )}
       {
-        <Field label={t("connections.form.via")}>
+        <Field label={t("connections.form.via")} help={t("connections.form.viaHelp")}>
           {(control) => (
             <NativeSelect {...control} value={via} onChange={(event) => setVia(event.target.value)}>
               <option value="">{t("connections.thisHost")}</option>
@@ -247,7 +260,7 @@ export const TargetForm = memo(function TargetForm(props: {
         </Field>
       }
       {
-        <Field label={t("connections.form.jump")}>
+        <Field label={t("connections.form.jump")} help={t("connections.form.jumpHelp")}>
           {(control) => (
             <NativeSelect
               {...control}
@@ -295,7 +308,17 @@ export const TargetForm = memo(function TargetForm(props: {
         {t("connections.form.compression")}
       </label>
       {
-        <Field label={t("connections.form.forwards")}>
+        <Field
+          label={t("connections.form.forwards")}
+          help={t("connections.form.forwardsHelp")}
+          error={
+            forwardsBad?.kind === "line"
+              ? t("connections.form.forwardInvalid", { line: forwardsBad.line })
+              : forwardsBad?.kind === "many"
+                ? t("connections.form.forwardsTooMany", { max: MAX_FORWARDS })
+                : undefined
+          }
+        >
           {(control) => (
             <Textarea
               {...control}
@@ -330,7 +353,7 @@ export const TargetForm = memo(function TargetForm(props: {
         submit={t("connections.form.save")}
         busy={saving.busy}
         disabled={!ready}
-        disabledReason={portBad || aliveBad ? t("connections.form.fixFields") : undefined}
+        disabledReason={disabledReason}
         cancel={t("common.cancel")}
         onCancel={props.onClose}
         extra={
