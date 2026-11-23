@@ -268,6 +268,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
                   <Stack gap={1}>
                     <ListRow
                       boxed
+                      wrap
                       title={<span className="font-medium">{target.name}</span>}
                       meta={
                         <Inline gap={2} className="text-muted-foreground">
