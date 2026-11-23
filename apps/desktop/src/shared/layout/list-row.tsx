@@ -37,7 +37,11 @@ export function ListRow(
       )}
       <span
         data-row-title
-        className={cn("min-w-0 flex-auto", props.wrap ? "break-words" : "truncate")}
+        className={cn(
+          "min-w-0",
+          // A wrapping title starts from a small basis: the mark stays beside it and the ends drop first.
+          props.wrap ? "basis-32 grow break-words" : "flex-auto truncate",
+        )}
       >
         {props.title}
       </span>
