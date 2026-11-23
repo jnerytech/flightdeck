@@ -98,7 +98,7 @@ export function holdsRewriter(used = 0.95, pauseAt = 0.9): FrameRewriter {
 /* istanbul ignore next */
 export function installHolds(
   target: { WebSocket: typeof WebSocket },
-  make: () => FrameRewriter,
+  make: (url: string) => FrameRewriter,
 ): void {
   const Base = target.WebSocket;
   /** The listen of the base class, called with the wrapped listener. */
@@ -109,7 +109,7 @@ export function installHolds(
     options?: boolean | AddEventListenerOptions,
   ) => void;
   class Held extends Base {
-    readonly rewriter = make();
+    readonly rewriter = make("");
     /** What the app's message listeners hear, to give them an answer the print makes in the host's place. */
     readonly hear: Array<(data: string) => void> = [];
     override send(data: Parameters<WebSocket["send"]>[0]): void {
@@ -159,5 +159,5 @@ export function installHolds(
 
 /** The init script a print adds: the page's WebSocket wrapped with `holdsRewriter`. */
 export function holdsScript(): string {
-  return `(${installHolds.toString()})(window, ${holdsRewriter.toString()});`;
+  return `(${installHolds.toString()})(window, () => (${holdsRewriter.toString()})());`;
 }

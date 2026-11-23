@@ -278,6 +278,72 @@ describe("shots-wire: a held, a replied, a sequenced and a trimmed command (#415
   });
 });
 
+// #4194: the three demo hosts share one page, so a rule that must hit one host (a Costs page the
+// others answer) names the host's port; the socket's url says which host it talks to.
+describe("shots-wire: a rule for one host (#4194)", () => {
+  const url = (port: number) => `ws://127.0.0.1:${port}/v1/ws`;
+  const refused = (id: string) =>
+    ({
+      type: "ack",
+      id,
+      ok: false,
+      error: { code: "unavailable", message: "not on this host" },
+    }) as const;
+  const costs = { costs: 1 };
+  const rules: WireRule[] = [{ command: "costs.summary", refuse: "not on this host", port: 4711 }];
+
+  test("a rule with a port refuses the answer of the socket on that port", () => {
+    const wire = wireRewriter(rules, url(4711));
+    wire.fromApp(ask("r1", "costs.summary"));
+    expect(read(wire.fromHost(ack("r1", costs)))).toEqual(refused("r1"));
+  });
+
+  test("the socket of another host hears the answer as it came", () => {
+    const wire = wireRewriter(rules, url(4712));
+    wire.fromApp(ask("r1", "costs.summary"));
+    expect(read(wire.fromHost(ack("r1", costs)))).toEqual({
+      type: "ack",
+      id: "r1",
+      ok: true,
+      data: costs,
+    });
+  });
+
+  test("a rule with no port applies on every socket, and a url that is not one matches no port", () => {
+    const open: WireRule[] = [{ command: "costs.summary", refuse: "not on this host" }];
+    for (const where of [url(4712), "", "not a url"]) {
+      const wire = wireRewriter(open, where);
+      wire.fromApp(ask("r1", "costs.summary"));
+      expect(read(wire.fromHost(ack("r1", costs)))).toEqual(refused("r1"));
+    }
+    const wire = wireRewriter(rules, "not a url");
+    wire.fromApp(ask("r1", "costs.summary"));
+    expect(read(wire.fromHost(ack("r1", costs))).ok).toBe(true);
+  });
+
+  test("the init script gives each socket its own url, so one host refuses and the other answers", () => {
+    class Socket {
+      listeners: Array<(event: { data: unknown }) => void> = [];
+      constructor(readonly url: string) {}
+      send(_data: string) {}
+      addEventListener(type: string, listener: (event: { data: unknown }) => void) {
+        if (type === "message") this.listeners.push(listener);
+      }
+    }
+    const page = { WebSocket: Socket as unknown as typeof WebSocket };
+    new Function("window", wireScript(rules))(page);
+    const heard = (port: number): unknown => {
+      const socket = new page.WebSocket(url(port)) as unknown as Socket;
+      const got: unknown[] = [];
+      socket.addEventListener("message", (event) => got.push(JSON.parse(String(event.data)).ok));
+      socket.send(ask("r1", "costs.summary"));
+      for (const listener of socket.listeners) listener({ data: ack("r1", costs) });
+      return got[0];
+    };
+    expect([heard(4711), heard(4712)]).toEqual([false, true]);
+  });
+});
+
 describe("shots-wire: the states the table prints (#3982)", () => {
   const IDS = { rewindSession: "rw", waitingSession: "wt" } as DemoIds;
   const shots = () =>
