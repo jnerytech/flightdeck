@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
-import { EmptyState, Field, NativeSelect, Page } from "@/shared/layout/index.ts";
+import { EmptyState, Field, Inline, NativeSelect, Page } from "@/shared/layout/index.ts";
+import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature } from "../../lib/version.ts";
@@ -14,6 +15,14 @@ import { HostKeyDialog } from "./host-key-dialog";
 import { ImportPanel } from "./import-panel";
 import { TargetForm } from "./target-form";
 import { useSshActions } from "./use-ssh-actions.ts";
+
+/** The dictionary key of each sign-in method, as the form names them. */
+const AUTH_LABEL = {
+  agent: "connections.form.authOption.agent",
+  "key-file": "connections.form.authOption.keyFile",
+  "vault-key": "connections.form.authOption.vaultKey",
+  password: "connections.form.authOption.password",
+} as const satisfies Record<SshTarget["auth"], Key>;
 
 /** The "via" filter's value for a destino that this host opens itself. */
 const LOCAL = "-";
@@ -283,7 +292,18 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
                   </span>
                 ))}
               </div>
-              <div className="flex gap-2">
+              <Inline gap={3} className="text-muted-foreground text-sm">
+                <span>{t(AUTH_LABEL[target.auth])}</span>
+                <span>
+                  {t("connections.rowVia", {
+                    host: target.viaHost ? viaName(target.viaHost) : t("connections.thisHost"),
+                  })}
+                </span>
+                <span>
+                  {t(target.hostKey ? "connections.keyConfirmed" : "connections.keyNotConfirmed")}
+                </span>
+              </Inline>
+              <Inline>
                 {(["connect", "edit", "duplicate", "remove"] as const).map((verb) => (
                   <ActionButton
                     key={verb}
@@ -302,7 +322,7 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
                     {t(`connections.${verb}`)}
                   </ActionButton>
                 ))}
-              </div>
+              </Inline>
             </li>
           ))}
         </ul>
