@@ -132,6 +132,8 @@ export const NARROW_SHOTS: readonly string[] = [
   // #4194: Costs with no cost and after a refused read, and the settings panel with its error.
   "custos-vazio",
   "custos-recusado",
+  "custos-parcial",
+  "custos-projeto-vazio",
   "roi-ajustes",
   "roi-ajustes-numero-ruim",
   // #4194: the filters in use, the export's refusal line, the quota charts and a budget being edited at 390.
