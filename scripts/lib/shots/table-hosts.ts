@@ -6,7 +6,7 @@ import { DEMO_CARD_TEMPLATE } from "../demo/card-templates.ts";
 import { DEMO_PR_CARD, DEMO_PR_URL, DEMO_TEAM_REPORT } from "../e2e/journeys.ts";
 import { failFolderWrites } from "./folder-fail.ts";
 import { keepSaves, offerBackup } from "./save-file.ts";
-import { ALFA, openHostSettings, type Shot, showSection, showToast } from "./shot.ts";
+import { ALFA, openHostSettings, type Shot, showSection, showToast, toastSettled } from "./shot.ts";
 
 /** Opens one of the vault's tabs and waits for its panel to settle. */
 function vaultTab(name: string | RegExp): NonNullable<Shot["prepare"]> {
@@ -358,6 +358,67 @@ export function hostShots(ids: DemoIds): Shot[] {
         if ((await fold.count()) > 0) await fold.click();
         await page.getByText(/^(Forward the agent|Encaminhar o agente)/).click();
         await page.getByRole("alertdialog").waitFor();
+      },
+    },
+    // #4335: the list's own states. The first two keep the fake destinos; the others are the page's answers
+    // changed (`wire`), so they cannot share the socket rewriter that fakes the destinos.
+    {
+      name: "ssh-sem-resultado",
+      route: { name: "connections" },
+      ssh: true,
+      prepare: async (page) => {
+        await listed(page);
+        await page.getByLabel(/^(Search destination|Buscar destino)$/).fill("no-such-destination");
+        await page
+          .getByText(
+            /^(No destination matches the filters\.|Nenhum destino corresponde aos filtros\.)$/,
+          )
+          .waitFor();
+      },
+    },
+    {
+      name: "ssh-importar-vazio",
+      route: { name: "connections" },
+      ssh: true,
+      sshReplies: { "ssh.import.preview": { entries: [] } },
+      prepare: async (page) => {
+        await listed(page);
+        await page
+          .getByRole("button", { name: /^(Import from SSH config|Importar do SSH config)$/ })
+          .click();
+        await page.getByText(/^(Nothing to import\.|Nada para importar\.)$/).waitFor();
+      },
+    },
+    {
+      name: "ssh-sem-host",
+      route: { name: "connections" },
+      wire: [{ command: "host.info", without: { features: ["ssh"] } }],
+      prepare: async (page) => {
+        await page
+          .getByText(/^(No connected host supports SSH|Nenhum host conectado oferece SSH)/)
+          .waitFor({ timeout: 15_000 });
+      },
+    },
+    {
+      name: "ssh-lista-falhou",
+      route: { name: "connections" },
+      wire: [{ command: "ssh.list", refuse: "The destinations could not be read." }],
+      prepare: async (page) => {
+        await page
+          .getByRole("button", { name: /^(Try again|Tentar de novo)$/ })
+          .waitFor({ timeout: 15_000 });
+        await toastSettled(page);
+      },
+    },
+    {
+      // The list is never heard: the page stays on its loading line.
+      name: "ssh-lista-carregando",
+      route: { name: "connections" },
+      wire: [{ command: "ssh.list", hold: true }],
+      prepare: async (page) => {
+        await page
+          .getByText(/^(Loading the destinations…|Carregando os destinos…)$/)
+          .waitFor({ timeout: 15_000 });
       },
     },
     // #3602: the vault's views. The seeded list has no values (the web build keeps them in memory).
