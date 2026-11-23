@@ -177,4 +177,24 @@ describe("the Costs and ROI prints (#4194)", () => {
     ])
       expect([name, NARROW_SHOTS.includes(name)]).toEqual([name, true]);
   });
+
+  // The notice is `<span>{text} </span>` next to a button, and Playwright matches a regex against the
+  // text as it is, trailing space included: a wait ending in `\.$` never resolved on CI.
+  test("the project print waits for the notice as the page renders it, with the space after its full stop", async () => {
+    const waited: RegExp[] = [];
+    const page = {
+      getByText: (matcher: RegExp) => {
+        waited.push(matcher);
+        return { first: () => ({ waitFor: async () => undefined }) };
+      },
+    };
+    await named("custos-projeto-vazio")?.prepare?.(page as never);
+    expect(waited.length).toBe(1);
+    const [matcher] = waited;
+    expect([
+      matcher?.test("flightdeck-web has no costs in this period. "),
+      matcher?.test("flightdeck-web não tem custos neste período. "),
+      matcher?.test("flightdeck-web has no costs in this period"),
+    ]).toEqual([true, true, false]);
+  });
 });
