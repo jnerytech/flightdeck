@@ -6,7 +6,7 @@ Feature: The first hour
   Scenario: A first start asks to connect a host and lists the first steps
     Given the app starts with no host
     Then the screen asks to connect the first host
-    And the page lists the first steps with copy buttons for setup, doctor and pair
+    And the page lists the first steps with copy buttons for doctor and pair
     And the address and token fields are folded away and the pairing link is in view
     And the first tab and the breadcrumb say to connect a host
 
