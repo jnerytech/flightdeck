@@ -99,7 +99,9 @@ export const ALFA = "demo-alfa";
  * Moves the pointer off the page content, so a print never shows (and axe never judges) the hover
  * colour of the button the print's last step clicked (#4431).
  */
-export async function parkPointer(_page: Page): Promise<void> {}
+export async function parkPointer(page: Page): Promise<void> {
+  await page.mouse.move(1000, 700);
+}
 
 /** The clients the client prints start with: Acme claims the demo's `github.com/acme/*` projects. */
 export const DEMO_CLIENTS = JSON.stringify({
