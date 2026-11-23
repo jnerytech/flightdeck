@@ -1,11 +1,10 @@
 import { TriangleAlert } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { PersonaPicker } from "@/features/personas/ui.ts";
 import { useDraft } from "@/features/sessions/index.ts";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
-import { Field, Form, FormActions, Inline, Stack } from "@/shared/layout/index.ts";
+import { Field, Form, FormActions, Inline, Stack, SwitchField } from "@/shared/layout/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { generatedScopeRules, vaultFindings } from "./domain/client-vault.ts";
@@ -40,6 +39,7 @@ export function ClientDefaults(
   const scope = store.clientScope.get();
   const projects = scope.projectKeysOf(client.id);
   const saved = client.defaults.vaultTag;
+  const needsTag = !saved && !client.defaults.vaultScope;
   const tagged = saved ? state.secrets.filter((s) => s.tags.includes(saved)) : [];
   const preview = tagged.map((secret) => ({
     secret,
@@ -123,35 +123,31 @@ export function ClientDefaults(
         />
       </Form>
       {done && <InlineNotice tone="info">{done}</InlineNotice>}
-      <Inline gap={2} className="text-sm">
-        <Switch
-          aria-label={t("clients.vaultScope")}
-          aria-describedby={saved ? undefined : reasonId}
-          checked={client.defaults.vaultScope}
-          disabled={!saved}
-          onCheckedChange={(on) => {
-            if (on) {
-              setConfirming(true);
-              return;
-            }
-            if (!store.clients.setDefaults(client.id, { vaultScope: false })) return;
-            setDone(t("clients.vaultScopeOff", { name: client.name }));
-          }}
-        />
+      <SwitchField
+        // A scope left on after its tag was cleared must still be switchable off.
+        disabled={!saved && !client.defaults.vaultScope}
+        describedBy={needsTag ? reasonId : undefined}
+        checked={client.defaults.vaultScope}
+        onChange={(on) => {
+          if (on) {
+            setConfirming(true);
+            return;
+          }
+          if (!store.clients.setDefaults(client.id, { vaultScope: false })) return;
+          setDone(t("clients.vaultScopeOff", { name: client.name }));
+        }}
+      >
         {t("clients.vaultScope")}
-      </Inline>
-      {!saved && (
+      </SwitchField>
+      {needsTag && (
         <p id={reasonId} className="text-muted-foreground text-xs">
           {t("clients.vaultScopeNeedsTag")}
         </p>
       )}
       {findings.length > 0 && (
         <Stack gap={1}>
-          <Inline gap={1} className="font-medium text-sm">
-            <TriangleAlert aria-hidden="true" className="size-3.5" />
-            {t("clients.vaultFindingsTitle")}
-          </Inline>
-          <Stack as="ul" label={t("clients.vaultFindingsTitle")} gap={1}>
+          <p className="font-medium text-sm">{t("clients.vaultFindingsTitle")}</p>
+          <Stack as="ul" gap={1}>
             {findings.map((f) => (
               <li key={`${f.secretId}/${f.kind}`} className="text-status-needs-you text-sm">
                 <Inline gap={1}>
