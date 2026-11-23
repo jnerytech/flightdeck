@@ -56,7 +56,12 @@ async function open(options: Parameters<typeof sshDaemon>[1] = { targets: TARGET
 
 const rows = () => {
   const list = screen.queryByRole("list", { name: "Destinos" });
-  return list ? within(list).queryAllByRole("listitem") : [];
+  // A row holds a list of its own facts: only the direct items are rows.
+  return list
+    ? within(list)
+        .queryAllByRole("listitem")
+        .filter((item) => item.parentElement === list)
+    : [];
 };
 
 describe("conexoes-ui: the screen", () => {
@@ -293,5 +298,31 @@ describe("conexoes-ui: the screen", () => {
     await uiIdle();
     expect(rows()).toHaveLength(3);
     expect(screen.queryByText("Não foi possível ler os destinos.")).toBeNull();
+  });
+
+  test("each destino says how it signs in, which host opens it and whether its server key is confirmed (#4334)", async () => {
+    await open({
+      targets: [
+        sshTarget({
+          id: "t1",
+          name: "vps",
+          auth: "key-file",
+          secretRef: "/k",
+          hostKey: "SHA256:abc",
+        }),
+        sshTarget({ id: "t3", name: "lab", viaHost: "outro", auth: "password" }),
+      ],
+    });
+    const vps = within(rows()[0] as HTMLElement);
+    // The three facts are the items of a list, so a screen reader pauses between them.
+    expect(vps.queryAllByRole("listitem")).toHaveLength(3);
+    expect(vps.queryByText("Chave em arquivo")).not.toBeNull();
+    expect(vps.queryByText("Aberto por este host")).not.toBeNull();
+    expect(vps.queryByText("Chave do servidor confirmada")).not.toBeNull();
+    expect(vps.queryByText("Chave do servidor ainda não confirmada")).toBeNull();
+    const lab = within(rows()[1] as HTMLElement);
+    expect(lab.queryByText("Senha (pedida ao conectar)")).not.toBeNull();
+    expect(lab.queryByText("Aberto por outro")).not.toBeNull();
+    expect(lab.queryByText("Chave do servidor ainda não confirmada")).not.toBeNull();
   });
 });

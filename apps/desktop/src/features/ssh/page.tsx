@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
-import { EmptyState, Field, NativeSelect, Page } from "@/shared/layout/index.ts";
+import { EmptyState, Field, Inline, NativeSelect, Page } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature } from "../../lib/version.ts";
+import { AUTH_KEY } from "./domain/target-form.ts";
 import { HostKeyDialog } from "./host-key-dialog";
 import { ImportPanel } from "./import-panel";
 import { TargetForm } from "./target-form";
@@ -283,7 +284,18 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
                   </span>
                 ))}
               </div>
-              <div className="flex gap-2">
+              <Inline as="ul" gap={3} className="text-muted-foreground text-sm">
+                <li>{t(`connections.form.authOption.${AUTH_KEY[target.auth]}`)}</li>
+                <li>
+                  {target.viaHost
+                    ? t("connections.rowVia", { host: viaName(target.viaHost) })
+                    : t("connections.rowViaLocal")}
+                </li>
+                <li>
+                  {t(target.hostKey ? "connections.keyConfirmed" : "connections.keyNotConfirmed")}
+                </li>
+              </Inline>
+              <Inline>
                 {(["connect", "edit", "duplicate", "remove"] as const).map((verb) => (
                   <ActionButton
                     key={verb}
@@ -302,7 +314,7 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
                     {t(`connections.${verb}`)}
                   </ActionButton>
                 ))}
-              </div>
+              </Inline>
             </li>
           ))}
         </ul>
