@@ -4,6 +4,7 @@ import type { AppStore } from "@/lib/app-store";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { useBusy } from "@/shared/hooks/index.ts";
 import { Form, FormActions, PasswordField, Stack } from "@/shared/layout/index.ts";
+import { MIN_PASSPHRASE } from "./domain/backup-error.ts";
 import type { ConflictChoice, ImportPreview } from "./domain/vault-backup.ts";
 
 type Note = { tone: "info" | "error"; text: string };
@@ -108,7 +109,7 @@ export function BackupPanel(props: Readonly<{ store: AppStore }>) {
             <FormActions
               submit={t("vault.backup.export")}
               busy={exporting.busy}
-              disabled={passphrase === "" || confirmation === ""}
+              disabled={passphrase.length < MIN_PASSPHRASE || confirmation === ""}
               disabledReason={t("vault.backup.exportNeeds")}
             />
             {exportNote && <InlineNotice tone={exportNote.tone}>{exportNote.text}</InlineNotice>}
