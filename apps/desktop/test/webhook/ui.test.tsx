@@ -814,10 +814,15 @@ describe("webhook-ui: focus and words after each row action (#2677)", () => {
       await open("en");
       await add("One");
       await add("Two");
+      await fill("Name", "Three");
       await fill("Webhook URL", SECRET);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+      });
       expect(screen.queryByRole("button", { name: "Show Webhook URL" })).not.toBeNull();
       await click("Show Webhook URL");
       await click("Save webhook");
+      await settle(() => screen.queryByRole("button", { name: "Edit Three" }) !== null);
       expect(screen.queryByRole("button", { name: "Show Webhook URL" })).not.toBeNull();
       expect(field("Webhook URL").type).toBe("password");
       await click("Edit One");
