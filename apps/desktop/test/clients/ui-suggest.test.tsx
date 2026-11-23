@@ -120,6 +120,39 @@ describe("clients-ui: Suggest from what I have", () => {
   });
 });
 
+/** True when a live line of this role on the page says exactly this. */
+const said = (role: "status" | "alert", text: string) =>
+  [...document.querySelectorAll(`[role=${role}]`)].some((el) => el.textContent === text);
+
+describe("clients-ui: a suggestion says what it did and keeps the focus (#4344)", () => {
+  test("accepting one says the client was created and the focus stays on Suggest", async () => {
+    await open();
+    await click("Sugerir a partir do que tenho");
+    await click("Criar acme");
+    await settle(() => suggestions().length === 1);
+    expect(said("status", "Cliente acme criado com a regra github.com/acme/*")).toBe(true);
+    expect(document.activeElement).toBe(
+      screen.queryByRole("button", { name: "Sugerir a partir do que tenho" }),
+    );
+  });
+
+  test("adding a rule to a client says which rule went where", async () => {
+    await open([client("Beta")]);
+    await click("Sugerir a partir do que tenho");
+    await click("Adicionar regra a Beta");
+    await settle(() => said("status", "Regra github.com/beta/* adicionada a Beta"));
+  });
+
+  test("nothing to suggest is a polite status line", async () => {
+    await open([
+      client("Acme", [{ id: "r1", kind: "remote", pattern: "github.com/acme/*" }]),
+      client("Beta", [{ id: "r2", kind: "remote", pattern: "github.com/beta/*" }]),
+    ]);
+    await click("Sugerir a partir do que tenho");
+    expect(said("status", "Nada a sugerir: todo projeto conhecido já tem cliente.")).toBe(true);
+  });
+});
+
 describe("clients-ui: what no client has, and what was pinned by hand", () => {
   test("says how many known projects have no client", async () => {
     await open([client("Acme", [{ id: "r1", kind: "remote", pattern: "github.com/acme/*" }])]);

@@ -93,3 +93,57 @@ describe("clients-ui: moving the clients to another desktop", () => {
     expect(store.clients.list().map((c) => c.name)).toEqual(["Acme"]);
   });
 });
+
+/** True when a live line of this role on the page says exactly this. */
+const said = (role: "status" | "alert", text: string) =>
+  [...document.querySelectorAll(`[role=${role}]`)].some((el) => el.textContent === text);
+
+describe("clients-ui: the transfer outcome is announced and the export can be copied (#4344)", () => {
+  test("a bad paste is an alert, not a muted line", async () => {
+    await open([acme]);
+    await act(async () => {
+      fireEvent.change(box("Colar uma exportação"), { target: { value: "isso não é json" } });
+    });
+    await click("Importar");
+    expect(said("alert", "Isso não é uma exportação de clientes.")).toBe(true);
+  });
+
+  test("a second identical failure is announced again, as a new alert", async () => {
+    await open([acme]);
+    await act(async () => {
+      fireEvent.change(box("Colar uma exportação"), { target: { value: "isso não é json" } });
+    });
+    await click("Importar");
+    const first = document.querySelector("[role=alert]");
+    expect(first).not.toBeNull();
+    await click("Importar");
+    const second = document.querySelector("[role=alert]");
+    expect(second).not.toBeNull();
+    expect(second === first).toBe(false);
+  });
+
+  test("an import that worked is a polite status line", async () => {
+    await open([acme]);
+    const incoming = { v: 1, clients: [{ ...acme, id: "beta", name: "Beta" }], overrides: {} };
+    await act(async () => {
+      fireEvent.change(box("Colar uma exportação"), {
+        target: { value: JSON.stringify(incoming) },
+      });
+    });
+    await click("Importar");
+    expect(said("status", "Importado: 1 novo, 0 atualizados.")).toBe(true);
+  });
+
+  test("Copy puts the export on the clipboard", async () => {
+    const { store } = await open([acme]);
+    const copied: string[] = [];
+    store.system.copyText = (async (text: string) => {
+      copied.push(text);
+      return true;
+    }) as never;
+    expect(screen.queryByRole("button", { name: "Copiar exportação" })).toBeNull();
+    await click("Exportar clientes");
+    await click("Copiar exportação");
+    expect(copied).toEqual([store.clients.exportJson()]);
+  });
+});

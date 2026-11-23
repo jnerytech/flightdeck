@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Field, Form, FormActions, Panel, Stack } from "@/shared/layout/index.ts";
+import { InlineNotice } from "@/shared/feedback/index.ts";
+import { Field, Form, FormActions, Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
 /** The clients as text, to move to another desktop: copy them out, paste them in. */
@@ -10,16 +11,19 @@ export function ClientsTransfer(props: Readonly<{ store: AppStore }>) {
   const { t } = store.i18n;
   const [exported, setExported] = useState<string | null>(null);
   const [pasted, setPasted] = useState("");
-  const [outcome, setOutcome] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<{ text: string; failed: boolean; run: number } | null>(
+    null,
+  );
+  const runs = useRef(0);
 
   const run = () => {
     const done = store.clients.importJson(pasted);
     if (!done) {
-      setOutcome(t("clients.importBad"));
+      setOutcome({ text: t("clients.importBad"), failed: true, run: ++runs.current });
       return;
     }
-    setOutcome(
-      t("clients.imported", {
+    setOutcome({
+      text: t("clients.imported", {
         added: t(done.added === 1 ? "clients.countNew1" : "clients.countNewN", {
           count: done.added,
         }),
@@ -27,7 +31,9 @@ export function ClientsTransfer(props: Readonly<{ store: AppStore }>) {
           count: done.updated,
         }),
       }),
-    );
+      failed: false,
+      run: ++runs.current,
+    });
     setPasted("");
   };
 
@@ -35,11 +41,19 @@ export function ClientsTransfer(props: Readonly<{ store: AppStore }>) {
     <Panel title={t("clients.transferTitle")}>
       <Stack gap={4}>
         <Stack gap={2}>
-          <div>
+          <Inline gap={2}>
             <Button variant="outline" onClick={() => setExported(store.clients.exportJson())}>
               {t("clients.export")}
             </Button>
-          </div>
+            {exported !== null && (
+              <Button
+                variant="outline"
+                onClick={() => void store.system.copyText(exported, t("clients.exportCopied"))}
+              >
+                {t("clients.exportCopy")}
+              </Button>
+            )}
+          </Inline>
           {exported !== null && (
             <Field label={t("clients.exportLabel")}>
               {(control) => <Textarea {...control} readOnly rows={6} value={exported} />}
@@ -58,7 +72,12 @@ export function ClientsTransfer(props: Readonly<{ store: AppStore }>) {
             )}
           </Field>
           <FormActions submit={t("clients.import")} disabled={pasted.trim() === ""} />
-          {outcome && <p className="text-muted-foreground text-sm">{outcome}</p>}
+          {outcome && (
+            // A new key remounts the notice, so the same sentence twice is announced twice.
+            <InlineNotice key={outcome.run} tone={outcome.failed ? "error" : "info"}>
+              {outcome.text}
+            </InlineNotice>
+          )}
         </Form>
       </Stack>
     </Panel>
