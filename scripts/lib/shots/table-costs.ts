@@ -189,7 +189,7 @@ export function costsShots(ids: DemoIds): Shot[] {
       wire: [NO_COST],
       prepare: async (page) => {
         await page
-          .getByText(/(has no costs in this period|não tem custos neste período)\.$/)
+          .getByText(/(has no costs in this period|não tem custos neste período)\.\s*$/)
           .first()
           .waitFor({ timeout: WAIT });
       },
