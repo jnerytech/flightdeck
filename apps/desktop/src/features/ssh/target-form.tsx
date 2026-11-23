@@ -229,6 +229,7 @@ export const TargetForm = memo(function TargetForm(props: {
       {auth === "vault-key" && (
         <SecretPicker
           label={t("connections.form.vaultKey")}
+          required
           secrets={state.secrets}
           types={["ssh-key"]}
           value={secretId}
@@ -313,7 +314,7 @@ export const TargetForm = memo(function TargetForm(props: {
           error={
             forwardsBad?.kind === "line"
               ? t("connections.form.forwardInvalid", { line: forwardsBad.line })
-              : forwardsBad
+              : forwardsBad?.kind === "many"
                 ? t("connections.form.forwardsTooMany", { max: MAX_FORWARDS })
                 : undefined
           }

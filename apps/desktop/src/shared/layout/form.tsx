@@ -94,7 +94,7 @@ export function Field(
         // The mark sits beside the label, not in it: the label's text stays the control's name.
         <span className="flex items-baseline gap-1">
           <label htmlFor={id}>{props.label}</label>
-          <span aria-hidden="true" className="text-destructive">
+          <span aria-hidden="true" className="text-muted-foreground">
             *
           </span>
         </span>
