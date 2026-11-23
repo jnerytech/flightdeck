@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { DepResult, DepsResult, DoctorResult } from "@flightdeck/protocol";
+import { useState } from "react";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 
@@ -113,7 +114,7 @@ function setup(
       />
     </TooltipProvider>
   );
-  return { view, calls, checks: () => checks, added };
+  return { view, calls, checks: () => checks, added, store, host };
 }
 
 const section = () => screen.getByRole("region", { name: "Health & dependencies" });
@@ -222,7 +223,7 @@ describe("host-health-ui: one section for the dependencies and the doctor", () =
         }),
       ],
     };
-    const turnOn = (name = "Turn it on") =>
+    const turnOn = (name = "Turn on start at boot") =>
       within(row("Start at boot (service)")).queryByRole("button", { name });
 
     test("a connected host that offers it gets Turn it on: it asks first, installs, checks again, and says when it starts", async () => {
@@ -287,9 +288,11 @@ describe("host-health-ui: one section for the dependencies and the doctor", () =
         "listitem",
         { name: "Iniciar no boot (serviço)" },
       );
-      expect(fold ? within(fold).queryByRole("button", { name: "Ligar" }) !== null : false).toBe(
-        true,
-      );
+      expect(
+        fold
+          ? within(fold).queryByRole("button", { name: "Ligar início no boot" }) !== null
+          : false,
+      ).toBe(true);
     });
   });
 
@@ -475,5 +478,136 @@ describe("host-health-ui: the folded list reads as a table and opens from a real
         section().querySelector("[data-slot='health-summary']")?.textContent?.includes("OK: 2 ·") ??
         false,
     }).toEqual({ text: true, okWord: false, icon: "dash", green: false, counts: true });
+  });
+});
+
+/** A section whose Check again answers with `after`, the way the store does: new rows and a new read time. */
+function Live(props: Readonly<{ after: DepsResult }>) {
+  const [now, setNow] = useState({ deps: DEPS, at: NOW - 60_000 });
+  const [fixture] = useState(() => setup());
+  const store = fixture.store;
+  return (
+    <TooltipProvider>
+      {/* A read nobody asked for: the store's own refresh. */}
+      <button type="button" onClick={() => setNow({ deps: DEPS, at: NOW + 1 })}>
+        background read
+      </button>
+      <HostHealth
+        store={store}
+        host={fixture.host}
+        deps={now.deps}
+        doctor={DOCTOR}
+        checkedAt={now.at}
+        error={null}
+        onCheck={async () => setNow({ deps: props.after, at: NOW })}
+        onAddFolder={() => {}}
+        onHooksChanged={() => {}}
+      />
+    </TooltipProvider>
+  );
+}
+
+// #4323, #4324: what a person is told after Check again or a fix, and where the focus goes.
+describe("host-health-ui: the result of a check, a failed read, an offline host, the focus after a fix", () => {
+  const withoutHooks: DepsResult = {
+    items: DEPS.items.filter((item) => item.id !== "hooks").concat(dep("hooks", "optional", "ok")),
+  };
+
+  const press = async (name: string | RegExp) =>
+    act(async () => void fireEvent.click(within(section()).getByRole("button", { name })));
+  const live = () => within(section()).queryByRole("status");
+
+  test("Check again says in the live region that nothing changed, or that the result changed", async () => {
+    render(<Live after={DEPS} />);
+    expect((live()?.textContent ?? "").includes("nothing changed")).toBe(false);
+    await press("Check again");
+    expect((live()?.textContent ?? "").includes("Checked again: nothing changed")).toBe(true);
+    cleanup();
+    render(<Live after={withoutHooks} />);
+    await press("Check again");
+    expect((live()?.textContent ?? "").includes("Checked again: the result changed")).toBe(true);
+  });
+
+  test("a failed read marks the rows and the counts as from the last read; a good one does not", () => {
+    render(setup({ error: "host busy" }).view);
+    expect(section().textContent ?? "").toContain(
+      "The rows below are from the last read that worked",
+    );
+    cleanup();
+    render(setup().view);
+    expect(section().textContent ?? "").not.toContain("from the last read");
+    cleanup();
+    render(setup({ deps: null, checkedAt: null, error: "host busy" }).view);
+    expect(section().textContent ?? "").not.toContain("from the last read");
+  });
+
+  test("an offline host says so in the headline, marks its rows, and disables Check again with the reason", () => {
+    render(setup({ status: "offline" }).view);
+    const text = section().textContent ?? "";
+    expect(text).toContain("This host is offline");
+    expect(text).toContain("The rows below are from the last read that worked");
+    expect(text).toContain("Connect the host to check it again");
+    const button = within(section()).getByRole("button", { name: "Check again" });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(text).not.toContain("Could not read the health");
+  });
+
+  test("a fix says what it fixed, and the focus goes to the headline when the row moved into the fold", async () => {
+    render(<Live after={withoutHooks} />);
+    await act(
+      async () =>
+        void fireEvent.click(
+          within(row("Claude Code hooks")).getByRole("button", { name: "Install hooks" }),
+        ),
+    );
+    await act(
+      async () =>
+        void fireEvent.click(
+          within(screen.getByRole("alertdialog")).getByRole("button", { name: "Install hooks" }),
+        ),
+    );
+    expect((live()?.textContent ?? "").includes("Claude Code hooks: fixed")).toBe(true);
+    expect(document.activeElement === live()).toBe(true);
+  });
+
+  test("the result line is the answer to what was asked: a later read nobody asked for does not rewrite it", async () => {
+    render(<Live after={withoutHooks} />);
+    await act(
+      async () =>
+        void fireEvent.click(
+          within(row("Claude Code hooks")).getByRole("button", { name: "Install hooks" }),
+        ),
+    );
+    await act(
+      async () =>
+        void fireEvent.click(
+          within(screen.getByRole("alertdialog")).getByRole("button", { name: "Install hooks" }),
+        ),
+    );
+    expect((live()?.textContent ?? "").includes("Claude Code hooks: fixed")).toBe(true);
+    await act(
+      async () => void fireEvent.click(screen.getByRole("button", { name: "background read" })),
+    );
+    expect((live()?.textContent ?? "").includes("Claude Code hooks: fixed")).toBe(true);
+    expect((live()?.textContent ?? "").includes("still needs attention")).toBe(false);
+  });
+
+  test("a fix that did not clear the problem says so", async () => {
+    render(<Live after={DEPS} />);
+    await act(
+      async () =>
+        void fireEvent.click(
+          within(row("Claude Code hooks")).getByRole("button", { name: "Install hooks" }),
+        ),
+    );
+    await act(
+      async () =>
+        void fireEvent.click(
+          within(screen.getByRole("alertdialog")).getByRole("button", { name: "Install hooks" }),
+        ),
+    );
+    expect((live()?.textContent ?? "").includes("Claude Code hooks: still needs attention")).toBe(
+      true,
+    );
   });
 });

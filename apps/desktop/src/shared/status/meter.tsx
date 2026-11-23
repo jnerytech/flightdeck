@@ -11,6 +11,8 @@ export function Meter(
     label: string;
     value: number;
     max: number;
+    /** What a screen reader says instead of the raw value ("62%"), when value over max is not a number a person reads. */
+    valueText?: string;
     hot?: boolean;
     className?: string;
   }>,
@@ -21,6 +23,7 @@ export function Meter(
       min={0}
       max={props.max}
       value={props.value}
+      aria-valuetext={props.valueText}
       data-hot={props.hot === true}
       className={cn(METER, props.hot && HOT, props.className)}
     />
