@@ -40,6 +40,14 @@ module.exports = {
       },
     },
     {
+      name: "desktop-release-entry-no-demo",
+      comment:
+        "The Tauri entry (main.tsx) and everything it reaches never import src/demo: the fake Google OAuth and Drive would ship in the release build. Only main.web.tsx, vite.config.ts and scripts/ may import the demo (#4383).",
+      severity: "error",
+      from: { path: `${DESKTOP}main\\.tsx$` },
+      to: { path: `${DESKTOP}demo/`, reachable: true },
+    },
+    {
       name: "desktop-entry-exports-no-component",
       comment:
         "A desktop feature's index.ts (state and wiring) re-exports no component; components go out through ui.ts. A .tsx re-export pulled every screen into the app-store import cycle (#2451, docs/decisions/2026-11-12-feature-ui-entry.md). A type from a .tsx passes.",
