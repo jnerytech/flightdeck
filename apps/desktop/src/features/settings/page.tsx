@@ -139,25 +139,21 @@ export const Settings = memo(function Settings(props: {
         />
       ),
     },
-    ...(settings.updaterSupported
-      ? [
-          {
-            id: "updates",
-            label: t("prefs.updates"),
-            words: t("settingsRail.words.updates"),
-            node: (
-              <UpdatesSection
-                settings={settings}
-                appUpdate={props.appUpdate}
-                t={t}
-                onCheckUpdate={props.onCheckUpdate}
-                onNotifyUpdates={props.onNotifyUpdates}
-                onAutoUpdate={props.onAutoUpdate}
-              />
-            ),
-          },
-        ]
-      : []),
+    {
+      id: "updates",
+      label: t("prefs.updates"),
+      words: t("settingsRail.words.updates"),
+      node: (
+        <UpdatesSection
+          settings={settings}
+          appUpdate={props.appUpdate}
+          t={t}
+          onCheckUpdate={props.onCheckUpdate}
+          onNotifyUpdates={props.onNotifyUpdates}
+          onAutoUpdate={props.onAutoUpdate}
+        />
+      ),
+    },
     {
       id: "shortcut",
       label: t("prefs.shortcut"),

@@ -1805,9 +1805,10 @@ async function fillBudget(
   }
   await section.getByLabel(text.unit, { exact: true }).selectOption({ label: text[unit] });
   await section.getByLabel(text.limitPct, { exact: true }).fill(percent);
+  // The form's options carry their own capitalised labels; the row sentence's lowercase words are another key (#4437).
   await section
     .getByLabel(text.action, { exact: true })
-    .selectOption({ label: dictionary(c).budgets[action] });
+    .selectOption({ label: action === "notify" ? text.optNotify : text.optQueue });
   await section.getByRole("button", { name: text.create, exact: true }).click();
 }
 

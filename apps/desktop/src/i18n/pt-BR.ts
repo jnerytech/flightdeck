@@ -446,6 +446,8 @@ export const ptBR = {
     notifyUpdates: "Avisar sobre atualizações",
     autoUpdate: "Atualizar automaticamente",
     checkNow: "Procurar atualização agora",
+    updatesUnsupported:
+      "Este build não se atualiza sozinho. Instale uma versão mais nova do Flightdeck para atualizar.",
     upToDate: "Você está na versão mais recente",
     shortcut: "Atalho global",
     shortcutKeys: "Combinação de teclas",
