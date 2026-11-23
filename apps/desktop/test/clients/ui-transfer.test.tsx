@@ -117,7 +117,7 @@ describe("clients-ui: the transfer outcome is announced and the export can be co
       });
     });
     await click("Importar");
-    expect(said("status", "Importado: 1 novo, 0 atualizado.")).toBe(true);
+    expect(said("status", "Importado: 1 novo, 0 atualizados.")).toBe(true);
   });
 
   test("Copy puts the export on the clipboard", async () => {

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { InlineNotice } from "@/shared/feedback/index.ts";
 import { Inline, ListRow, Panel, Stack } from "@/shared/layout/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { applySuggestion, suggestClients } from "./domain/client-suggest.ts";
@@ -15,6 +16,9 @@ export function ClientsSuggest(
   const { store, state } = props;
   const { t } = store.i18n;
   const [asked, setAsked] = useState(false);
+  /** What the last accepted suggestion did: a polite line, not silence (#4344). */
+  const [done, setDone] = useState<string | null>(null);
+  const ask = useRef<HTMLButtonElement>(null);
   const scope = store.clientScope.get();
   const data = { clients: state.clientList, overrides: state.clientOverrides };
   const suggestions = suggestClients(scope.knownProjects, data);
@@ -34,12 +38,20 @@ export function ClientsSuggest(
       )}
       <Panel>
         <Inline gap={2}>
-          <Button variant="outline" onClick={() => setAsked(true)}>
+          <Button
+            variant="outline"
+            ref={ask}
+            onClick={() => {
+              setAsked(true);
+              setDone(null);
+            }}
+          >
             {t("clients.suggestButton")}
           </Button>
         </Inline>
-        {asked && suggestions.length === 0 && (
-          <p className="text-muted-foreground text-sm">{t("clients.suggestNothing")}</p>
+        {done && <InlineNotice tone="info">{done}</InlineNotice>}
+        {asked && suggestions.length === 0 && !done && (
+          <InlineNotice tone="info">{t("clients.suggestNothing")}</InlineNotice>
         )}
         {asked && suggestions.length > 0 && (
           <Stack as="ul" label={t("clients.suggestionsList")} gap={1}>
@@ -56,7 +68,22 @@ export function ClientsSuggest(
                         })
                   }
                   trailing={
-                    <Button size="sm" onClick={() => applySuggestion(store.clients, s)}>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        applySuggestion(store.clients, s);
+                        setDone(
+                          s.existingClientId
+                            ? t("clients.suggestRuleAdded", {
+                                pattern: s.pattern,
+                                name: owner(s.existingClientId),
+                              })
+                            : t("clients.suggestCreated", { name: s.name, pattern: s.pattern }),
+                        );
+                        // The pressed button leaves with its suggestion: the one that asked takes the focus.
+                        ask.current?.focus();
+                      }}
+                    >
                       {s.existingClientId
                         ? t("clients.suggestAddRule", { name: owner(s.existingClientId) })
                         : t("clients.suggestCreate", { name: s.name })}
