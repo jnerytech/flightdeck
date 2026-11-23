@@ -182,7 +182,7 @@ describe("conta-cartao-acoes: signed out", () => {
   });
 
   test("the confirmation goes away after a few seconds and the button copies again (#4350)", async () => {
-    const { platform } = await mount("out", 50, undefined, 80);
+    const { platform } = await mount("out", 50, undefined, 400);
     const copied: string[] = [];
     platform.copyText = async (text) => {
       copied.push(text);
@@ -197,7 +197,7 @@ describe("conta-cartao-acoes: signed out", () => {
   });
 
   test("a copy the clipboard refuses is said in the card and the button stays (#4350)", async () => {
-    const { platform } = await mount("out", 50, undefined, 80);
+    const { platform } = await mount("out", 50, undefined, 400);
     platform.copyText = async () => {
       throw new Error("denied");
     };

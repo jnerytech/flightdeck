@@ -47,7 +47,9 @@ export function HostAccount(
   }, [cooling, props.cooldownMs]);
   useEffect(() => {
     if (copy === null) return;
-    const timer = setTimeout(() => setCopy(null), props.copiedMs ?? COPIED_MS);
+    // A failure tells the person to copy by hand: it stays longer than a confirmation.
+    const ms = (props.copiedMs ?? COPIED_MS) * (copy === "failed" ? 3 : 1);
+    const timer = setTimeout(() => setCopy(null), ms);
     return () => clearTimeout(timer);
   }, [copy, props.copiedMs]);
   return (
@@ -69,11 +71,13 @@ export function HostAccount(
           setCooling(true);
         });
       }}
-      onCopy={() =>
+      onCopy={() => {
+        // Back to nothing first: a second press with the same result restarts the timer.
+        setCopy(null);
         void store.system
           .copyText(state?.loginCommand ?? "")
-          .then((ok) => setCopy(ok ? "ok" : "failed"))
-      }
+          .then((ok) => setCopy(ok ? "ok" : "failed"));
+      }}
       onTerminal={() => void store.terminals.open(host.id)}
     />
   );
