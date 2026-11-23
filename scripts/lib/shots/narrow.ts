@@ -55,6 +55,7 @@ export const NARROW_SHOTS: readonly string[] = [
   // #4252: the Timeline sheet and its refusals, the Undo dialog and an open long prompt, at every width.
   "linha-do-tempo",
   "linha-do-tempo-voltar-recusa-aplicar",
+  "linha-do-tempo-voltar-lista-longa",
   "linha-do-tempo-arquivos-falhou",
   "linha-do-tempo-desfazer",
   "linha-do-tempo-prompt-longo-aberto",

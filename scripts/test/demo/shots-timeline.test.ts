@@ -73,11 +73,12 @@ describe("the Timeline prints (#4252)", () => {
 
   // #4374: a rewind that touches more files than fit in the dialog's list box.
   test("the long list print answers the rewind preview with about 25 files, past the list's height", () => {
-    const data = rule("linha-do-tempo-voltar-lista-longa", "rewind.preview")?.data as
-      | { files: Array<{ path: string; change: string }> }
-      | undefined;
-    expect(data?.files.length).toBeGreaterThanOrEqual(25);
-    expect(new Set(data?.files.map((file) => file.path)).size).toBe(data?.files.length);
+    const found = rule("linha-do-tempo-voltar-lista-longa", "rewind.preview");
+    const files = (
+      found && "data" in found ? (found.data as { files: Array<{ path: string }> }) : { files: [] }
+    ).files;
+    expect(files.length).toBeGreaterThanOrEqual(25);
+    expect(new Set(files.map((file) => file.path)).size).toBe(files.length);
   });
 
   test("the files read that fails is a refused snapshots.files", () => {
