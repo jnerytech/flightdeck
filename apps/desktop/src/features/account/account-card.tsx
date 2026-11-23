@@ -22,6 +22,8 @@ export interface AccountCardProps {
   /** The host has not answered in the time the screen waits: say so, with a way to ask again. */
   timedOut?: boolean;
   copied: boolean;
+  /** The clipboard refused the copy: the card says so, with what to do. */
+  copyFailed?: boolean;
   onRefresh: () => void;
   onCopy: () => void;
   onTerminal: () => void;
