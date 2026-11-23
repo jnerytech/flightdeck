@@ -68,16 +68,16 @@ describe("a revealed value tells a screen reader what happens to it (#2603)", ()
     await open();
     jest.useFakeTimers();
     await reveal();
-    expect(status()?.textContent).toBe("Visível por 10 s");
+    expect(status()?.textContent).toBe("github visível por 10 s");
     await pass(4_800);
-    expect(status()?.textContent).toBe("Visível por 10 s");
+    expect(status()?.textContent).toBe("github visível por 10 s");
     await pass(300);
-    expect(status()?.textContent).toBe("Some em 5 segundos");
+    expect(status()?.textContent).toBe("github some em 5 segundos");
     await pass(4_500);
     expect(screen.queryByText(VALUE)).not.toBeNull();
     await pass(500);
     expect(screen.queryByText(VALUE)).toBeNull();
-    expect(status()?.textContent).toBe("Oculto");
+    expect(status()?.textContent).toBe("github oculto");
   });
 
   test("the value is never inside the status line", async () => {
