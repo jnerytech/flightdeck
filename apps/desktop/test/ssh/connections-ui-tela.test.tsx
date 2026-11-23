@@ -268,4 +268,30 @@ describe("conexoes-ui: the screen", () => {
     expect(d.sent("ssh.hostkey.check")).toHaveLength(1);
     expect(d.sent("ssh.connect")).toHaveLength(1);
   });
+
+  test("when the host that keeps the destinations goes away, the next host's failed read shows no rows of the first (#4334)", async () => {
+    const { d, store } = await open();
+    expect(rows()).toHaveLength(3);
+    const next = sshDaemon(cleanups, { targets: [], refuse: ["ssh.list"] });
+    await store.roster.add({ name: "pc2", url: next.url, token: TOKEN });
+    await settle(() => store.getState().hosts.some((h) => h.name === "pc2" && h.hostInfo != null));
+    d.stop();
+    await settle(() => store.getState().hosts.some((h) => h.status !== "online"));
+    await settle(() => screen.queryByText("Não foi possível ler os destinos.") !== null);
+    expect(rows()).toHaveLength(0);
+  });
+
+  test("a failed reload after a change keeps the list the person was looking at (#4334)", async () => {
+    const refuse: string[] = [];
+    const { d } = await open({ targets: TARGETS, refuse });
+    refuse.push("ssh.list");
+    const duplicate = screen.queryByRole("button", { name: "Duplicar vps" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.click(duplicate);
+    });
+    await settle(() => d.sent("ssh.save").length > 0);
+    await uiIdle();
+    expect(rows()).toHaveLength(3);
+    expect(screen.queryByText("Não foi possível ler os destinos.")).toBeNull();
+  });
 });
