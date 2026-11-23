@@ -52,7 +52,8 @@ function restorePrint(
   return {
     name,
     route: { name: "settings", section: "backup" },
-    query: { google },
+    // backupFolder=demo: the scheduled backups panel is only there with a folder to write to.
+    query: { google, backupFolder: "demo" },
     prepare: async (page) => {
       await then(page);
       if (waitFor) await page.getByText(waitFor).waitFor();
