@@ -34,10 +34,19 @@ describe("trilho-estreito: the settings rail takes one row in a narrow window (#
     }).toEqual({ oneRow: true, scrolls: true, buttonsKeepWidth: true });
   });
 
-  test("from 48 rem the rail is still a column that does not scroll", () => {
+  test("narrow, the scrolling box leaves room on every side for the focus ring it would clip", () => {
+    expect({
+      block: /padding-block: 0\.25rem/.test(narrow),
+      inline: /padding-inline: 0\.25rem/.test(narrow),
+    }).toEqual({ block: true, inline: true });
+  });
+
+  test("from 48 rem the rail is still a column that does not scroll, pad or hold its buttons' width", () => {
     expect({
       column: /flex-direction: column/.test(wide),
       noScroll: /overflow-x: visible/.test(wide),
-    }).toEqual({ column: true, noScroll: true });
+      noPadding: /padding-block: 0;/.test(wide) && /padding-inline: 0;/.test(wide),
+      buttonsShrink: /flex-shrink: 1/.test(wide),
+    }).toEqual({ column: true, noScroll: true, noPadding: true, buttonsShrink: true });
   });
 });
