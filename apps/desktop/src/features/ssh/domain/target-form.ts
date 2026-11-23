@@ -24,7 +24,12 @@ export function secretRefOf(auth: string, keyFile: string, secretId: string): st
 /** Whether a saved destino sets anything the form keeps under its advanced options. */
 export const hasAdvanced = (target: SshTarget | null): boolean =>
   target !== null &&
-  (target.viaHost !== null || target.jump !== null || Object.keys(target.options).length > 0);
+  (target.viaHost !== null ||
+    target.jump !== null ||
+    (target.options.serverAliveInterval ?? 0) > 0 ||
+    target.options.compression === true ||
+    (target.options.localForward ?? []).length > 0 ||
+    target.options.forwardAgent === true);
 
 const WHOLE = /^\d+$/;
 
