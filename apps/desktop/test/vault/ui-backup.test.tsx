@@ -5,7 +5,7 @@ import {
   previewImport,
   toFdvault,
 } from "../../src/features/vault/domain/vault-backup.ts";
-import { Vault } from "../../src/features/vault/vault.ts";
+import { type SecretMeta, Vault } from "../../src/features/vault/vault.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
@@ -351,5 +351,163 @@ describe("cofre-ui: backup", () => {
     }
     await click("Aplicar");
     expect(await store.vault.value("shared-id")).toBe("local-value");
+  });
+});
+
+/** The vault entry a backup shares with `sourceVault`, so the restore sees one conflict. */
+const LOCAL_GITHUB: SecretMeta = {
+  id: "shared-id",
+  name: "github",
+  type: "token",
+  description: "",
+  tags: [],
+  createdAt: 1,
+  lastUsedAt: null,
+  allowedHosts: ["local"],
+};
+
+const alertText = () => screen.queryByRole("alert")?.textContent ?? "";
+
+// Issue #4346: the Vault > Backup tab behaves as Settings > Back up everything does.
+describe("cofre-ui: backup, focus, announcements and a failed restore", () => {
+  test("the preview is named and takes the focus when it appears", async () => {
+    await open(await backupText());
+    await fill("Frase-senha do arquivo", PASS);
+    await click("Importar cofre");
+    const preview = screen.queryByRole("region", { name: "Prévia do backup" });
+    expect({ shown: preview !== null, focused: document.activeElement === preview }).toEqual({
+      shown: true,
+      focused: true,
+    });
+  });
+
+  test("with a conflict, the choice has a legend, its radios are hit controls and a name wraps", async () => {
+    const { store } = await open(await backupText());
+    await store.vault.restore(LOCAL_GITHUB, "local-value");
+    await fill("Frase-senha do arquivo", PASS);
+    await click("Importar cofre");
+    const radios = ["Manter o que está no cofre", "Substituir pelo backup"].map((label) =>
+      screen.queryByLabelText(label),
+    );
+    const item = screen.getByRole("list", { name: "Segredos em conflito" }).querySelector("li");
+    expect({
+      legend: screen.queryByRole("group", { name: "Quando for diferente" }) !== null,
+      hit: radios.map((radio) => radio?.classList.contains("hit-control")),
+      wraps: item?.classList.contains("[overflow-wrap:anywhere]"),
+    }).toEqual({ legend: true, hit: [true, true], wraps: true });
+  });
+
+  test("a restore that fails says so in an alert, ends the busy state and puts the focus on the file passphrase", async () => {
+    const { store } = await open(await backupText());
+    store.secrets.applyImport = async () => {
+      throw new Error("disk full");
+    };
+    await fill("Frase-senha do arquivo", PASS);
+    await click("Importar cofre");
+    await click("Aplicar");
+    const field = screen.queryByLabelText("Frase-senha do arquivo");
+    expect({
+      alert: alertText(),
+      previewGone: screen.queryByRole("region", { name: "Prévia do backup" }) === null,
+      focused: field !== null && document.activeElement === field,
+    }).toEqual({
+      alert:
+        "A importação parou com um erro. Alguns segredos podem já estar no cofre: confira a lista antes de tentar de novo.",
+      previewGone: true,
+      focused: true,
+    });
+  });
+
+  test("a restore that fails halfway still refreshes the secrets list with what got in", async () => {
+    const { store } = await open(await backupText());
+    const restore = store.vault.restore.bind(store.vault);
+    store.vault.restore = async (meta, value) => {
+      await restore(meta, value);
+      throw new Error("disk full");
+    };
+    await fill("Frase-senha do arquivo", PASS);
+    await click("Importar cofre");
+    await click("Aplicar");
+    expect(store.getState().secrets.map((secret) => secret.name)).toEqual(["github"]);
+  });
+
+  test("a wrong passphrase is an alert, and editing the field clears it", async () => {
+    await open(await backupText());
+    await fill("Frase-senha do arquivo", "another passphrase");
+    await click("Importar cofre");
+    const said = alertText();
+    await fill("Frase-senha do arquivo", "another passphrase!");
+    expect({ said: said.startsWith("Não foi possível ler o arquivo"), after: alertText() }).toEqual(
+      { said: true, after: "" },
+    );
+  });
+
+  test("an export refused for its passphrase is an alert, and editing either field clears it", async () => {
+    await open();
+    await fill("Frase-senha", "short");
+    await fill("Confirmar frase-senha", "short");
+    await click("Exportar cofre");
+    const said = alertText();
+    await fill("Confirmar frase-senha", "shorter");
+    expect({ said, after: alertText() }).toEqual({
+      said: "A frase-senha precisa ter pelo menos 12 caracteres.",
+      after: "",
+    });
+  });
+
+  test("pressing Aplicar twice while the restore runs applies the preview once and shows it is busy", async () => {
+    const { store } = await open(await backupText());
+    let calls = 0;
+    let release: (() => void) | null = null;
+    store.secrets.applyImport = () => {
+      calls += 1;
+      return new Promise((resolve) => {
+        release = () => resolve({ added: 1, overwritten: 0, skipped: 0 });
+      });
+    };
+    await fill("Frase-senha do arquivo", PASS);
+    await click("Importar cofre");
+    await click("Aplicar");
+    const busy = screen.queryByRole("button", { name: "Aplicar" })?.getAttribute("aria-busy");
+    await click("Aplicar");
+    await act(async () => {
+      (release as (() => void) | null)?.();
+    });
+    await uiIdle();
+    expect({ calls, busy }).toEqual({ calls: 1, busy: "true" });
+  });
+
+  test("pressing Aplicar again while a replace runs does not open the replace dialog a second time", async () => {
+    const { store } = await open(await backupText());
+    await store.vault.restore(LOCAL_GITHUB, "local-value");
+    store.secrets.applyImport = () => new Promise(() => {});
+    await fill("Frase-senha do arquivo", PASS);
+    await click("Importar cofre");
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText("Substituir pelo backup"));
+    });
+    await click("Aplicar");
+    await click("Substituir segredos");
+    // Enter in the form submits it even though the button is busy.
+    const form = screen.getByRole("button", { name: "Aplicar" }).closest("form");
+    await act(async () => {
+      fireEvent.submit(form as HTMLFormElement);
+    });
+    await uiIdle();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  test("a restore that succeeds is announced as a status and the focus returns to the file passphrase", async () => {
+    await open(await backupText());
+    await fill("Frase-senha do arquivo", PASS);
+    await click("Importar cofre");
+    await click("Aplicar");
+    const field = screen.queryByLabelText("Frase-senha do arquivo");
+    expect({
+      announced: screen
+        .queryAllByRole("status")
+        .some((node) => node.textContent === "Adicionados: 1, substituídos: 0, mantidos: 0."),
+      focused: field !== null && document.activeElement === field,
+    }).toEqual({ announced: true, focused: true });
   });
 });
