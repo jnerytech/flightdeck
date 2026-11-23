@@ -58,6 +58,8 @@ async function open(selection: string) {
 
 const namesIn = (root: HTMLElement | null) =>
   [...(root?.querySelectorAll("li") ?? [])]
+    // A row's tags are a list inside the row: count the rows, not the tags.
+    .filter((li) => li.parentElement?.closest("li") == null)
     .map((li) => li.textContent ?? "")
     .map((text) => ["s-acme", "s-solto", "s-beta"].find((n) => text.includes(n)) ?? "");
 const region = (name: string) => screen.queryByRole("region", { name });

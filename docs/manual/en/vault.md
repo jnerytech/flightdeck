@@ -14,6 +14,8 @@ the tags and a description of the secret.
   **Delete the original file after importing**.
 - Each row shows what is safe to show: a key's public key fingerprint, a token's start and end
   (`ghp_…WXYZ`, and nothing for a short one) or the names of an env set. A password shows nothing.
+  A screen reader hears "Hint:" or "Variables:" before that line, and a row's tags as a list named
+  "Tags".
 - **Reveal** asks you to type the word `reveal`, then shows the value for 10 seconds, in
   its own row, with a status line that names the secret and a **Hide now** button. **Copy** puts
   the value on the clipboard and clears the clipboard 30 seconds later. **Remove** asks you to type

@@ -71,9 +71,11 @@ describe("cofre-ui: the screen", () => {
       });
       await store.secrets.add({ name: "app env", type: "env", value: ENV_VALUE });
     });
-    const rows = within(await screen.findByRole("list", { name: "Segredos" })).getAllByRole(
-      "listitem",
-    );
+    const list = await screen.findByRole("list", { name: "Segredos" });
+    // A row's tags are a list inside the row: count the rows, not the tags.
+    const rows = within(list)
+      .getAllByRole("listitem")
+      .filter((item) => item.parentElement === list);
     expect(rows).toHaveLength(2);
     const github = within(rows[0] as HTMLElement);
     expect(github.queryByText("github")).not.toBeNull();
