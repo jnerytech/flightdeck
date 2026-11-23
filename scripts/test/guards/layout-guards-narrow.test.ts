@@ -131,6 +131,28 @@ describe("layout-guards narrow: what the page function finds at a narrow width",
     ]);
   });
 
+  // #4287's review: an absolute box is cut only by the boxes from its containing block up; a scrolling
+  // box in between that is not positioned does not cut it, and a fixed one floats over the page.
+  test("narrow (#4287): a reason that a scrolling box around it does not cut, or that is fixed, is still drawn over the text beside it", () => {
+    page(`
+      <div data-slot="page-body" data-rect="0,0,640,800">
+        <div style="position: relative" data-rect="16,16,624,400">
+          <div data-slot="list" style="overflow-y: auto" data-rect="16,16,624,300">
+            <span data-slot="row" class="action-reason" style="position: absolute" data-rect="300,290,584,330">Type the hours.</span>
+          </div>
+          <p data-rect="32,310,584,326">Estimated hours of this card</p>
+        </div>
+        <section data-slot="panel" style="overflow-y: auto" data-rect="16,420,624,500">
+          <span data-slot="note" class="action-reason" style="position: fixed" data-rect="300,490,584,530">Type the path.</span>
+          <p data-rect="32,510,584,526">Spec file</p>
+        </section>
+      </div>`);
+    expect(narrow()).toEqual([
+      "reason-over: page-body > list > row (over page-body > p, 284x16 px)",
+      "reason-over: page-body > panel > note (over page-body > panel > p, 284x16 px)",
+    ]);
+  });
+
   // #1338's review: a reason in a dialog or a full-window sheet floats over the page with it, so the
   // page's text behind the modal is not under it; the dialog's own text is. A tooltip drawn over a
   // reason is a floating layer too. And text is judged by its own lines: a paragraph's box can reach
