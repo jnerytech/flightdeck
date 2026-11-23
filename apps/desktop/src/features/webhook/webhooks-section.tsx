@@ -13,6 +13,7 @@ import {
   ListRow,
   NativeSelect,
   Panel,
+  PasswordField,
   Stack,
 } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
@@ -123,14 +124,22 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "webhook", false),
   );
   const editing = targets.find((target) => target.id === draft.id);
+  const urlLabel = draft.type === "ntfy" ? t("webhooks.ntfyUrl") : t("webhooks.url");
+  const secretLabel = draft.type === "ntfy" ? t("webhooks.token") : t("webhooks.signing");
+  // A form that is replaced hides its revealed fields again: they are mounted anew (#4402).
+  const [epoch, setEpoch] = useState(0);
   const secretKeepKey = draft.type === "ntfy" ? "webhooks.tokenKeep" : "webhooks.signingKeep";
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
+  const replaceDraft = (next: Draft) => {
+    setDraft(next);
+    setEpoch((n) => n + 1);
+  };
   // Edit and Cancel load another form: they ask first when this one holds typed text.
   const load = (next: Draft, focus: boolean) => {
     if (typedIn(draft, editing)) return setReplacing({ next, focus });
     setProblem(null);
     if (focus) focusAfter.current = (section) => section.querySelector("form input");
-    setDraft(next);
+    replaceDraft(next);
   };
   const complete =
     draft.name.trim() !== "" && draft.kinds.length > 0 && (editing || draft.url.trim() !== "");
@@ -160,7 +169,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
           ...(draft.signing && takesSecret(draft.type) ? { signingSecret: draft.signing } : {}),
         });
       }
-      setDraft(EMPTY);
+      replaceDraft(EMPTY);
       if (editing) {
         // The last result was for the address before the edit.
         setResults(({ [editing.id]: _stale, ...rest }) => rest);
@@ -203,7 +212,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
       return;
     }
     // A form that was editing this webhook goes back to an empty Add form, without its save error.
-    setDraft((current) => (current.id === target.id ? EMPTY : current));
+    if (draft.id === target.id) replaceDraft(EMPTY);
     setError(null);
     // The next row's first button, the one before it for the last row, else the Add form.
     focusAfter.current = (section) => {
@@ -367,35 +376,29 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
                 </NativeSelect>
               )}
             </Field>
-            <Field
-              label={draft.type === "ntfy" ? t("webhooks.ntfyUrl") : t("webhooks.url")}
+            <PasswordField
+              key={`url-${epoch}`}
+              label={urlLabel}
               help={urlHelp(Boolean(editing), draft.type, t)}
-            >
-              {(control) => (
-                <Input
-                  {...control}
-                  type="password"
-                  autoComplete="off"
-                  value={draft.url}
-                  onChange={(e) => set({ url: e.target.value })}
-                />
-              )}
-            </Field>
+              value={draft.url}
+              onChange={(url) => set({ url })}
+              reveal={{
+                show: t("webhooks.showField", { field: urlLabel }),
+                hide: t("webhooks.hideField", { field: urlLabel }),
+              }}
+            />
             {takesSecret(draft.type) && (
-              <Field
-                label={draft.type === "ntfy" ? t("webhooks.token") : t("webhooks.signing")}
+              <PasswordField
+                key={`secret-${epoch}`}
+                label={secretLabel}
                 help={editing ? t(secretKeepKey) : undefined}
-              >
-                {(control) => (
-                  <Input
-                    {...control}
-                    type="password"
-                    autoComplete="off"
-                    value={draft.signing}
-                    onChange={(e) => set({ signing: e.target.value })}
-                  />
-                )}
-              </Field>
+                value={draft.signing}
+                onChange={(signing) => set({ signing })}
+                reveal={{
+                  show: t("webhooks.showField", { field: secretLabel }),
+                  hide: t("webhooks.hideField", { field: secretLabel }),
+                }}
+              />
             )}
             <Field label={t("webhooks.scope")}>
               {(control) => (
@@ -459,7 +462,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
             if (replacing.focus) {
               focusAfter.current = (section) => section.querySelector("form input");
             }
-            setDraft(replacing.next);
+            replaceDraft(replacing.next);
             setReplacing(null);
           }}
           onCancel={() => setReplacing(null)}

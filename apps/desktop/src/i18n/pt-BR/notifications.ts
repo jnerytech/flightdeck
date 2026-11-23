@@ -63,6 +63,8 @@ export const notifications = {
     save: "Salvar webhook",
     discardMessage: "Descartar o que você digitou neste formulário? Isso será perdido.",
     discardConfirm: "Descartar",
+    showField: "Mostrar {field}",
+    hideField: "Ocultar {field}",
     saveChanges: "Salvar alterações",
     cancel: "Cancelar",
     edit: "Editar {name}",
