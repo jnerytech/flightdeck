@@ -325,7 +325,8 @@ async function installScripts(page: Page, shot: Shot): Promise<void> {
   if (shot.maintenance) await page.addInitScript({ content: maintenanceScript(shot.maintenance) });
   if (shot.releases) await page.addInitScript({ content: releasesScript(shot.releases) });
   if (shot.wire) await page.addInitScript({ content: wireScript(shot.wire) });
-  if (shot.ssh) await page.addInitScript({ content: sshScript(shot.askpass === true) });
+  if (shot.ssh)
+    await page.addInitScript({ content: sshScript(shot.askpass === true, shot.sshReplies) });
   if (shot.teleport) {
     await page.addInitScript({ content: teleportScript(shot.teleport === "refuses") });
   }

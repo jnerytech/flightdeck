@@ -5,7 +5,8 @@ import { type FrameRewriter, installHolds } from "./holds.ts";
  * same askpass prompt on every machine. The demo's hosts are real daemons that read the machine's
  * own ssh config and never ask for a password, so the page's sockets are wrapped with this: the
  * answers to `ssh.list` and `ssh.import.preview` are replaced by fake ones, and one
- * `askpass.request` follows the first `ssh.list` answer when the print asks for it. Fake values only (RFC 5737 addresses and
+ * `askpass.request` follows the first `ssh.list` answer when the print asks for it, and the commands the print
+ * names (#4335) are answered in the page, never sent. Fake values only (RFC 5737 addresses and
  * example.test names).
  *
  * It goes into the page as its source (`sshScript`), so it uses nothing outside its own body.
@@ -13,7 +14,7 @@ import { type FrameRewriter, installHolds } from "./holds.ts";
 // Not instrumented: its source goes into the page, where an istanbul counter would not exist
 // (the istanbul shard of a full run, #1492).
 /* istanbul ignore next */
-export function sshRewriter(askpass = false): FrameRewriter {
+export function sshRewriter(askpass = false, replies: Record<string, unknown> = {}): FrameRewriter {
   const parse = (frame: string): Record<string, unknown> | null => {
     try {
       const value: unknown = JSON.parse(frame);
@@ -118,6 +119,14 @@ export function sshRewriter(askpass = false): FrameRewriter {
       if (due) prompted = true;
       return JSON.stringify({ ...message, data: rewrite[type]?.() });
     },
+    answer(frame) {
+      const message = parse(frame);
+      const type = message?.type;
+      if (typeof type !== "string" || !(type in replies) || typeof message?.id !== "string") {
+        return undefined;
+      }
+      return JSON.stringify({ type: "ack", id: message.id, ok: true, data: replies[type] });
+    },
     followUp() {
       // `fromHost` marked the first ssh.list answer: the prompt follows it, and only it.
       if (!due) return [];
@@ -128,7 +137,7 @@ export function sshRewriter(askpass = false): FrameRewriter {
 }
 
 /** The init script a print adds: the page's WebSocket wrapped with `sshRewriter`. */
-export function sshScript(askpass: boolean): string {
-  const make = `() => (${sshRewriter.toString()})(${askpass})`;
+export function sshScript(askpass: boolean, replies: Record<string, unknown> = {}): string {
+  const make = `() => (${sshRewriter.toString()})(${askpass}, ${JSON.stringify(replies)})`;
   return `(${installHolds.toString()})(window, ${make});`;
 }
