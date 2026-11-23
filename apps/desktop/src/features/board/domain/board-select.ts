@@ -64,10 +64,10 @@ export function columnCount(shown: number): string /* NOSONAR: BoardView names t
   return String(shown);
 }
 
-/** A column's count while a filter is on: `2 / 5` when it hides some. */
+/** A column's count while a filter is on: `2/5` when it hides some (no spaces: the column's name keeps its room). */
 export function filteredColumnCount(shown: number, total: number): string {
   // A column that never had a card is just 0: a ratio of nothing says nothing.
-  return total > 0 ? `${shown} / ${total}` : String(shown);
+  return total > 0 ? `${shown}/${total}` : String(shown);
 }
 
 /** The same count in words, for a screen reader: "3 cards". */

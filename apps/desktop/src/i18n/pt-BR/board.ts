@@ -175,6 +175,9 @@ export const board = {
     showColumn: "{column}, {count}",
     countOfMany: "{shown} de {total} cards",
     noMatches: "Nenhuma correspondência",
+    noCardsMatch: "Nenhum card corresponde ao filtro.",
+    clearFilters: "Limpar filtros",
+    clearFilterText: "Limpar o texto do filtro",
     quickAdd: "Novo card em {column}",
   },
   cardReview: {

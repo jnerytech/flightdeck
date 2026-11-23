@@ -143,6 +143,8 @@
 
 /* The count of a column, a small pill. */
 @utility column-count {
+  /* The pill keeps its width, so the name gives way and not the count (#4409). */
+  flex-shrink: 0;
   min-width: 1rem;
   height: 1rem;
   padding-inline: 0.25rem;
