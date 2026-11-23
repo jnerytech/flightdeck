@@ -94,3 +94,8 @@ export function backupDriveShots(_ids: DemoIds): Shot[] {
     ),
   ];
 }
+
+/** Settings > Backup > Scheduled backups with Google Drive as the target, in its states (#4348). */
+export function backupScheduleShots(_ids: DemoIds): Shot[] {
+  return [];
+}
