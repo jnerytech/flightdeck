@@ -225,8 +225,10 @@ describe("conexoes-ui: the form", () => {
     await tick("Encaminhar o agente (ForwardAgent)");
     await click("Cancelar");
     expect(
-      (screen.queryByLabelText("Encaminhar o agente (ForwardAgent)") as HTMLInputElement).checked,
-    ).toBe(false);
+      screen
+        .queryByRole("switch", { name: "Encaminhar o agente (ForwardAgent)" })
+        ?.getAttribute("aria-checked"),
+    ).toBe("false");
     await click("Salvar destino");
     const sent = d.sent("ssh.save")[0] as { options: Record<string, unknown>; confirm?: boolean };
     expect(sent.options.forwardAgent).toBeUndefined();
@@ -447,5 +449,69 @@ describe("conexoes-ui: the form explains itself (#4333)", () => {
     await fill("Encaminhamentos locais (um por linha)", many);
     expect(screen.queryByText("Use no máximo 20 encaminhamentos.")).not.toBeNull();
     expect(save().disabled).toBe(true);
+  });
+});
+
+describe("conexoes-ui: the advanced options fold away (#4333)", () => {
+  const SUMMARY = "Opções avançadas";
+  const ADVANCED = sshTarget({ id: "t3", name: "adv", options: { compression: true } });
+  const fold = () => screen.queryByText(SUMMARY)?.closest("details") ?? null;
+
+  test("the basics stay in view and the rest folds under one closed summary", async () => {
+    await open({ targets: [VPS] });
+    await click("Novo destino");
+    const advanced = fold();
+    expect(advanced).not.toBeNull();
+    expect(advanced?.open).toBe(false);
+    for (const label of [
+      "Aberto pelo host",
+      "Salto (ProxyJump)",
+      "Manter a conexão viva (segundos)",
+    ]) {
+      expect(advanced?.contains(screen.queryByLabelText(label))).toBe(true);
+    }
+    for (const label of ["Encaminhamentos locais (um por linha)", "Compressão"]) {
+      expect(advanced?.contains(screen.queryByLabelText(label))).toBe(true);
+    }
+    for (const label of ["Nome", "Host", "Usuário", "Porta", "Etiquetas (separadas por vírgula)"]) {
+      const field = screen.queryByLabelText(label);
+      expect(field).not.toBeNull();
+      expect(advanced?.contains(field)).toBe(false);
+    }
+  });
+
+  test("a destino with an advanced option opens with the fold open; one without keeps it closed", async () => {
+    await open({ targets: [VPS, ADVANCED] });
+    await click("Editar vps");
+    expect(fold()?.open).toBe(false);
+    await click("Cancelar");
+    await click("Editar adv");
+    expect(fold()?.open).toBe(true);
+  });
+
+  test("Compressão and the agent are switches, and a saved option shows on", async () => {
+    await open({ targets: [ADVANCED] });
+    await click("Editar adv");
+    const compression = screen.queryByRole("switch", { name: "Compressão" });
+    expect(compression?.getAttribute("aria-checked")).toBe("true");
+    const agent = screen.queryByRole("switch", { name: "Encaminhar o agente (ForwardAgent)" });
+    expect(agent?.getAttribute("aria-checked")).toBe("false");
+  });
+
+  test("a value the fold holds that blocks Salvar destino keeps the fold open", async () => {
+    await open({ targets: [VPS] });
+    await click("Novo destino");
+    await fill("Manter a conexão viva (segundos)", "abc");
+    expect(fold()).not.toBeNull();
+    const advanced = fold() as HTMLDetailsElement;
+    await act(async () => {
+      advanced.open = true;
+      advanced.dispatchEvent(new Event("toggle"));
+    });
+    await act(async () => {
+      advanced.open = false;
+      advanced.dispatchEvent(new Event("toggle"));
+    });
+    expect(fold()?.open).toBe(true);
   });
 });
