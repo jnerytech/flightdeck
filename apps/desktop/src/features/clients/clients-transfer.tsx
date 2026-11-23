@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { InlineNotice } from "@/shared/feedback/index.ts";
@@ -11,12 +11,15 @@ export function ClientsTransfer(props: Readonly<{ store: AppStore }>) {
   const { t } = store.i18n;
   const [exported, setExported] = useState<string | null>(null);
   const [pasted, setPasted] = useState("");
-  const [outcome, setOutcome] = useState<{ text: string; failed: boolean } | null>(null);
+  const [outcome, setOutcome] = useState<{ text: string; failed: boolean; run: number } | null>(
+    null,
+  );
+  const runs = useRef(0);
 
   const run = () => {
     const done = store.clients.importJson(pasted);
     if (!done) {
-      setOutcome({ text: t("clients.importBad"), failed: true });
+      setOutcome({ text: t("clients.importBad"), failed: true, run: ++runs.current });
       return;
     }
     setOutcome({
@@ -29,6 +32,7 @@ export function ClientsTransfer(props: Readonly<{ store: AppStore }>) {
         }),
       }),
       failed: false,
+      run: ++runs.current,
     });
     setPasted("");
   };
@@ -69,7 +73,10 @@ export function ClientsTransfer(props: Readonly<{ store: AppStore }>) {
           </Field>
           <FormActions submit={t("clients.import")} disabled={pasted.trim() === ""} />
           {outcome && (
-            <InlineNotice tone={outcome.failed ? "error" : "info"}>{outcome.text}</InlineNotice>
+            // A new key remounts the notice, so the same sentence twice is announced twice.
+            <InlineNotice key={outcome.run} tone={outcome.failed ? "error" : "info"}>
+              {outcome.text}
+            </InlineNotice>
           )}
         </Form>
       </Stack>
