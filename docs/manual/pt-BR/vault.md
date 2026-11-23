@@ -12,6 +12,11 @@ nome, o tipo, as etiquetas e uma descrição do segredo.
   e mostra a chave pública, pronta para **Copiar chave pública**. **Importar arquivo de chave** lê
   um arquivo que você escolhe no diálogo do sistema; o original fica onde está, a menos que você
   marque **Apagar o arquivo original depois de importar**.
+- **Editar** muda o nome, a descrição, as etiquetas e os hosts permitidos de um segredo, nunca o
+  valor. **Salvar alterações** fica desligado, com o motivo ao lado, enquanto o nome está vazio.
+  Quando o formulário fecha, uma linha no alto da página diz que o segredo foi salvo. Se você
+  desmarcar todos os hosts permitidos, o formulário avisa que nenhum host poderá usar o segredo e a
+  linha dele passa a dizer isso; você ainda pode salvar.
 - Cada linha mostra só o que é seguro mostrar: a impressão digital da chave pública, o começo e o
   fim de um token (`ghp_…WXYZ`, e nada para um token curto) ou os nomes de um conjunto de
   variáveis. Uma senha não mostra nada. Um leitor de tela lê "Dica:" ou "Variáveis:" antes dessa

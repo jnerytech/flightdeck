@@ -85,7 +85,9 @@ export function SecretRow(
             : t("vault.lastUsed", { when: props.formatWhen(secret.lastUsedAt) })}
         </span>
         <span>
-          {t("vault.hosts", { hosts: secret.allowedHosts.map(props.hostName).join(", ") })}
+          {secret.allowedHosts.length === 0
+            ? t("vault.noHost")
+            : t("vault.hosts", { hosts: secret.allowedHosts.map(props.hostName).join(", ") })}
         </span>
       </p>
       {(props.status !== undefined || props.revealed !== null) && (
