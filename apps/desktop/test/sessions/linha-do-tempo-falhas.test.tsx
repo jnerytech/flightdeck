@@ -898,6 +898,8 @@ describe("linha-do-tempo-falhas: the result of a fork into the terminal", () => 
     expect(status?.textContent?.includes("claude --resume c2")).toBe(true);
     const copy = screen.queryByRole("button", { name: "Copy the command" });
     expect(document.activeElement === copy).toBe(true);
+    // A screen reader that skips a live region inserted with its text still reads it with the focused button.
+    expect(copy?.getAttribute("aria-describedby") === status?.id && !!status?.id).toBe(true);
   });
 
   test("the same holds in Portuguese", async () => {

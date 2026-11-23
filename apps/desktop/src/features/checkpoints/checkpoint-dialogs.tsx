@@ -272,6 +272,7 @@ export function ForkDialog(
   const [allowing, setAllowing] = useState(false);
   const [forked, setForked] = useState<{ claudeSessionId: string; command: string } | null>(null);
   const copy = useRef<HTMLButtonElement>(null);
+  const resultId = useId();
   // The result replaces the Fork button the focus was on: it moves to the first useful control (#4375).
   useEffect(() => {
     if (forked) copy.current?.focus();
@@ -316,7 +317,7 @@ export function ForkDialog(
         <TurnContext store={store} turn={turn} />
         {forked ? (
           <div className="flex flex-col gap-2 text-sm">
-            <output>
+            <output id={resultId} className="block">
               <Stack gap={2}>
                 <p>{t("timeline.forkCommand")}</p>
                 <code className="break-all rounded-md bg-muted p-2">{forked.command}</code>
@@ -325,6 +326,7 @@ export function ForkDialog(
             <Inline>
               <Button
                 ref={copy}
+                aria-describedby={resultId}
                 variant="outline"
                 onClick={() => void store.system.copyText(forked.command)}
               >
