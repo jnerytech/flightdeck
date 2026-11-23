@@ -15,6 +15,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
+const { TContext } = await import("../../src/i18n/context.tsx");
 const { VaultPage } = await import("../../src/features/vault/page.tsx");
 
 setDefaultTimeout(30_000);
@@ -64,8 +65,8 @@ async function backupText(): Promise<string> {
 }
 
 /** The page over a store whose save dialog and file picker are fakes. */
-async function open(picked: string | null = null) {
-  const { platform } = memoryPlatform();
+async function open(picked: string | null = null, language = "pt-BR") {
+  const { platform } = memoryPlatform(false, language);
   const saved: Array<{ name: string; text: string }> = [];
   platform.saveFile = async (name, text) => {
     saved.push({ name, text });
@@ -74,9 +75,14 @@ async function open(picked: string | null = null) {
   platform.vault.pickFile = async () =>
     picked === null ? null : { path: "x.fdvault", text: picked };
   const store = new AppStore(platform, { baseDelayMs: 60_000, vaultWorkFactor: 4 });
+  store.i18n.start();
   const daemon = legacyDaemon(cleanups);
   await store.roster.add({ name: "h", url: daemon.url, token: TOKEN });
-  render(<VaultPage store={store} />);
+  render(
+    <TContext.Provider value={store.i18n.t}>
+      <VaultPage store={store} />
+    </TContext.Provider>,
+  );
   const tab = screen.queryByRole("tab", { name: "Backup" });
   expect(tab).not.toBeNull();
   await act(async () => {
@@ -351,5 +357,38 @@ describe("cofre-ui: backup", () => {
     }
     await click("Aplicar");
     expect(await store.vault.value("shared-id")).toBe("local-value");
+  });
+});
+
+describe.each([
+  {
+    language: "pt-BR",
+    pass: "Frase-senha",
+    confirm: "Confirmar frase-senha",
+    exportName: "Exportar cofre",
+    reason: "Digite uma frase-senha de pelo menos 12 caracteres e repita-a.",
+  },
+  {
+    language: "en",
+    pass: "Passphrase",
+    confirm: "Confirm passphrase",
+    exportName: "Export vault",
+    reason: "Type a passphrase of at least 12 characters and repeat it.",
+  },
+])("cofre-ui: the export waits for the passphrase floor ($language, #4347)", (w) => {
+  test("a matching passphrase under 12 characters keeps the export off, with the reason", async () => {
+    await open(null, w.language);
+    await fill(w.pass, "short");
+    await fill(w.confirm, "short");
+    const button = screen.getByRole("button", { name: w.exportName }) as HTMLButtonElement;
+    expect([button.disabled, screen.queryByText(w.reason) !== null]).toEqual([true, true]);
+  });
+
+  test("at 12 characters that match the export turns on and the reason goes", async () => {
+    await open(null, w.language);
+    await fill(w.pass, PASS);
+    await fill(w.confirm, PASS);
+    const button = screen.getByRole("button", { name: w.exportName }) as HTMLButtonElement;
+    expect([button.disabled, screen.queryByText(w.reason) !== null]).toEqual([false, false]);
   });
 });
