@@ -329,4 +329,19 @@ describe("conexoes-ui: where the focus goes when the askpass dialog closes (#433
     await settleMaybe(() => document.activeElement === button);
     expect(document.activeElement === button).toBe(true);
   });
+
+  test("when what had the focus can no longer take it (a button turned off while it waited), the focus goes to the main area", async () => {
+    const { d } = await open();
+    const waiting = document.createElement("button");
+    document.body.append(waiting);
+    waiting.focus();
+    await ask(d, request("r1"));
+    waiting.disabled = true;
+    await click("Cancelar");
+    await settleMaybe(() => dialog() === null);
+    await settleMaybe(() => document.activeElement === document.querySelector("main"));
+    expect(document.activeElement === waiting).toBe(false);
+    expect(document.activeElement === document.querySelector("main")).toBe(true);
+    waiting.remove();
+  });
 });
