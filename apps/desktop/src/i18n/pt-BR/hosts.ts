@@ -49,6 +49,8 @@ export const hosts = {
       exists: "já cadastrado",
       apply: "Importar selecionados",
       title: "Destinos do SSH config",
+      list: "Nomes do SSH config",
+      allSaved: "Todos os nomes já estão cadastrados.",
       close: "Fechar",
       selectAll: "Marcar todos",
       selectNone: "Desmarcar todos",

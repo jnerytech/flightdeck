@@ -25,15 +25,18 @@ export function ImportPanel(
       return next;
     });
 
+  const close = (
+    <FieldRow>
+      <Button variant="ghost" onClick={props.onClose}>
+        {t("connections.import.close")}
+      </Button>
+    </FieldRow>
+  );
   if (props.entries.length === 0) {
     return (
       <Panel title={t("connections.import.title")}>
         <p>{t("connections.import.empty")}</p>
-        <FieldRow>
-          <Button variant="ghost" onClick={props.onClose}>
-            {t("connections.import.close")}
-          </Button>
-        </FieldRow>
+        {close}
       </Panel>
     );
   }
@@ -50,7 +53,7 @@ export function ImportPanel(
           </Button>
         </Inline>
       )}
-      <Stack as="ul" gap={2} label={t("connections.import.title")}>
+      <Stack as="ul" gap={2} label={t("connections.import.list")}>
         {props.entries.map((entry) => (
           <li key={entry.alias}>
             <Inline className="text-sm">
@@ -71,20 +74,27 @@ export function ImportPanel(
           </li>
         ))}
       </Stack>
-      <FieldRow>
-        <ActionButton
-          disabled={picked.size === 0}
-          disabledReason={t("connections.import.pickOne")}
-          onClick={() =>
-            props.onApply(props.entries.filter((e) => picked.has(e.alias)).map((e) => e.alias))
-          }
-        >
-          {t("connections.import.apply")}
-        </ActionButton>
-        <Button variant="ghost" onClick={props.onClose}>
-          {t("common.cancel")}
-        </Button>
-      </FieldRow>
+      {free.length === 0 ? (
+        <>
+          <p>{t("connections.import.allSaved")}</p>
+          {close}
+        </>
+      ) : (
+        <FieldRow>
+          <ActionButton
+            disabled={picked.size === 0}
+            disabledReason={t("connections.import.pickOne")}
+            onClick={() =>
+              props.onApply(props.entries.filter((e) => picked.has(e.alias)).map((e) => e.alias))
+            }
+          >
+            {t("connections.import.apply")}
+          </ActionButton>
+          <Button variant="ghost" onClick={props.onClose}>
+            {t("common.cancel")}
+          </Button>
+        </FieldRow>
+      )}
     </Panel>
   );
 }

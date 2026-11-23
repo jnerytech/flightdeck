@@ -48,6 +48,8 @@ export const hosts = {
       exists: "already saved",
       apply: "Import selected",
       title: "Destinations in the SSH config",
+      list: "Names in the SSH config",
+      allSaved: "Every name is already saved.",
       close: "Close",
       selectAll: "Select all",
       selectNone: "Select none",
