@@ -8,7 +8,8 @@ export interface StorageWindow {
 }
 
 /** Self-contained: Playwright sends its source to the page, so it names nothing outside itself. */
-export function failFolderWrites(win: StorageWindow, key: string): void {
+export function failFolderWrites(win: StorageWindow, key: string, allowed = 0): void {
+  void allowed;
   const proto = win.Storage.prototype;
   const original = proto.setItem;
   proto.setItem = function (this: unknown, name: string, value: string) {
