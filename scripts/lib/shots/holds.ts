@@ -90,7 +90,7 @@ export function holdsRewriter(used = 0.95, pauseAt = 0.9): FrameRewriter {
 }
 
 /**
- * Wraps `target.WebSocket` so each socket's frames go through a rewriter `make` builds: what the app
+ * Wraps `target.WebSocket` so each socket's frames go through a rewriter `make` builds from the socket's url (#4194): what the app
  * sends is noted, and its `message` listeners get the host's frames rewritten. Runs in the page.
  */
 // Not instrumented: its source goes into the page, where an istanbul counter would not exist
@@ -109,7 +109,7 @@ export function installHolds(
     options?: boolean | AddEventListenerOptions,
   ) => void;
   class Held extends Base {
-    readonly rewriter = make("");
+    readonly rewriter = make(this.url);
     /** What the app's message listeners hear, to give them an answer the print makes in the host's place. */
     readonly hear: Array<(data: string) => void> = [];
     override send(data: Parameters<WebSocket["send"]>[0]): void {
