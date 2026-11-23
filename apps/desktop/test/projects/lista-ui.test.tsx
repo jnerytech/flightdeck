@@ -225,6 +225,15 @@ describe("projetos-lista-ui: the Projects overview", () => {
     expect(screen.queryByText("Could not read this host's projects.")).not.toBeNull();
   });
 
+  test("the store's own wiring marks a host with no answer failed and clears it when its list is remembered", async () => {
+    const { store } = setup();
+    // No connection answers project.list, as with a host that refused it.
+    expect(await store.projectList.load("h9")).toBeNull();
+    expect(store.getState().projectsFailed).toEqual({ h9: true });
+    store.projectList.remember("h9", []);
+    expect(store.getState().projectsFailed).toEqual({});
+  });
+
   test("one host refused its list while another has projects: the cards show and the notice says some are missing", async () => {
     const { view, state } = setup();
     render(view({ ...state, projectsFailed: { h2: true } } as never));
