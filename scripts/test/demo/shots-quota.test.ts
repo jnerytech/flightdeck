@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { DemoIds } from "../../demo-seed.ts";
 import { NARROW_SHOTS } from "../../lib/shots/narrow.ts";
-import { quotaShots } from "../../lib/shots/table-quota.ts";
+import { quotaShots, tabOrderProblem } from "../../lib/shots/table-quota.ts";
 
 const NAMES = [
   "cota-cartao-quente",
@@ -11,6 +11,7 @@ const NAMES = [
   "cota-cartao-conta-compartilhada",
   "cota-cartao-projecao",
   "cota-cartao-obsoleta",
+  "cota-popover",
 ];
 const shots = () => quotaShots({} as DemoIds);
 const named = (name: string) => shots().find((shot) => shot.name === name);
@@ -26,9 +27,9 @@ describe("the Quota card prints (#4308)", () => {
     expect(shots().map((shot) => shot.name)).toEqual(NAMES);
   });
 
-  test("each opens the hub, where the card is, and sends nothing to a host", () => {
+  test("each card print opens the hub, where the card is, and sends nothing to a host; the popover opens from the status bar of another page", () => {
     for (const name of NAMES) {
-      expect(named(name)?.route).toEqual({ name: "hub" });
+      expect(named(name)?.route).toEqual({ name: name === "cota-popover" ? "activity" : "hub" });
       // The streams that would overwrite the faked answer are answered in the page.
       const answered = (named(name)?.wire ?? []).filter((r) => "reply" in r).map((r) => r.command);
       expect(answered).toEqual(["quota.watch", "account.watch"]);
@@ -40,9 +41,20 @@ describe("the Quota card prints (#4308)", () => {
       "cota-cartao-quente",
       "cota-cartao-trava-leitura",
       "cota-cartao-conta-compartilhada",
+      "cota-popover",
     ]) {
       expect(NARROW_SHOTS).toContain(name);
     }
+  });
+
+  test("the popover's Tab order is each host's guard, its page button, then Show what is running; any other order is a finding", () => {
+    const guard = "New cards wait from, on alfa";
+    const page = "Open the page of alfa";
+    const running = "Show what is running";
+    expect(tabOrderProblem([guard, page, running], 1)).toBeNull();
+    expect(tabOrderProblem([page, guard, running], 1)).toContain("stop 1");
+    expect(tabOrderProblem([guard, page], 1)).toContain("stop 3");
+    expect(tabOrderProblem([guard, running, page], 1)).not.toBeNull();
   });
 
   test("the hot card has a window over the guard; the card with no reading has no window", () => {

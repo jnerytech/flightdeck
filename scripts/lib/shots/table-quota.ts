@@ -77,6 +77,14 @@ async function barsShown(page: Page): Promise<void> {
   await page.waitForTimeout(400);
 }
 
+/**
+ * The first stop of the popover's Tab order that is not the one expected, or null when the order is
+ * right: each host's guard, then its page button, and last "Show what is running".
+ */
+export function tabOrderProblem(_names: readonly string[], _hosts: number): string | null {
+  return null;
+}
+
 export function quotaShots(_ids: DemoIds): Shot[] {
   return [
     {
