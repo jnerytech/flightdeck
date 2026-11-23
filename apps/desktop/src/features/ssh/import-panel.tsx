@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { ActionButton } from "@/shared/feedback/index.ts";
-import { FieldRow } from "@/shared/layout/index.ts";
+import { FieldRow, Inline, Panel, Stack } from "@/shared/layout/index.ts";
 
 /** The names of the host's `~/.ssh/config` that could become destinos; the registered ones are marked. */
 export function ImportPanel(
@@ -14,9 +14,9 @@ export function ImportPanel(
   }>,
 ) {
   const t = useT();
-  const [picked, setPicked] = useState(
-    () => new Set(props.entries.filter((entry) => !entry.exists).map((entry) => entry.alias)),
-  );
+  // The names that can still be imported: a registered one is shown but never ticked.
+  const free = props.entries.filter((entry) => !entry.exists).map((entry) => entry.alias);
+  const [picked, setPicked] = useState(() => new Set(free));
   const toggle = (alias: string, on: boolean) =>
     setPicked((current) => {
       const next = new Set(current);
@@ -25,14 +25,38 @@ export function ImportPanel(
       return next;
     });
 
-  return (
-    <div className="flex flex-col gap-3 rounded-lg border p-4">
-      {props.entries.length === 0 ? (
+  const close = (
+    <FieldRow>
+      <Button variant="ghost" onClick={props.onClose}>
+        {t("connections.import.close")}
+      </Button>
+    </FieldRow>
+  );
+  if (props.entries.length === 0) {
+    return (
+      <Panel title={t("connections.import.title")}>
         <p>{t("connections.import.empty")}</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {props.entries.map((entry) => (
-            <li key={entry.alias} className="flex flex-wrap items-center gap-2 text-sm">
+        {close}
+      </Panel>
+    );
+  }
+
+  return (
+    <Panel title={t("connections.import.title")}>
+      {free.length > 0 && (
+        <Inline>
+          <Button variant="ghost" size="sm" onClick={() => setPicked(new Set(free))}>
+            {t("connections.import.selectAll")}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())}>
+            {t("connections.import.selectNone")}
+          </Button>
+        </Inline>
+      )}
+      <Stack as="ul" gap={2} label={t("connections.import.list")}>
+        {props.entries.map((entry) => (
+          <li key={entry.alias}>
+            <Inline className="text-sm">
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -46,24 +70,31 @@ export function ImportPanel(
                 {entry.user + "@" + entry.host + (entry.port === 22 ? "" : ":" + entry.port)}
               </span>
               {entry.exists && <span>{t("connections.import.exists")}</span>}
-            </li>
-          ))}
-        </ul>
+            </Inline>
+          </li>
+        ))}
+      </Stack>
+      {free.length === 0 ? (
+        <>
+          <p>{t("connections.import.allSaved")}</p>
+          {close}
+        </>
+      ) : (
+        <FieldRow>
+          <ActionButton
+            disabled={picked.size === 0}
+            disabledReason={t("connections.import.pickOne")}
+            onClick={() =>
+              props.onApply(props.entries.filter((e) => picked.has(e.alias)).map((e) => e.alias))
+            }
+          >
+            {t("connections.import.apply")}
+          </ActionButton>
+          <Button variant="ghost" onClick={props.onClose}>
+            {t("common.cancel")}
+          </Button>
+        </FieldRow>
       )}
-      <FieldRow>
-        <ActionButton
-          disabled={picked.size === 0}
-          disabledReason={t("connections.import.pickOne")}
-          onClick={() =>
-            props.onApply(props.entries.filter((e) => picked.has(e.alias)).map((e) => e.alias))
-          }
-        >
-          {t("connections.import.apply")}
-        </ActionButton>
-        <Button variant="ghost" onClick={props.onClose}>
-          {t("common.cancel")}
-        </Button>
-      </FieldRow>
-    </div>
+    </Panel>
   );
 }

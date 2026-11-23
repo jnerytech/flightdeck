@@ -36,6 +36,8 @@ export interface BackupCore {
   driveNames(): Promise<string[]>;
   /** One backup of Google Drive, as text. */
   driveText(name: string): Promise<string>;
+  /** Starts the app again; absent where it cannot (#4347). */
+  restart?(): Promise<void>;
   /** Tells the person about a failure no code explains. */
   fail(error: unknown): void;
 }
@@ -49,6 +51,20 @@ export type BackupPreviewOutcome =
 /** The whole-app backup: saved as one encrypted file, read back from a file or Google Drive, and restored (#1241, #1462; #1596: a slice of the store). */
 export class BackupSlice {
   constructor(private readonly core: BackupCore) {}
+
+  /** Whether the app can start again, so a restore can offer it (#4347). */
+  get canRestart(): boolean {
+    return this.core.restart !== undefined;
+  }
+
+  /** Starts the app again so it reads what a restore wrote; a failure is told to the person. */
+  async restart(): Promise<void> {
+    try {
+      await this.core.restart?.();
+    } catch (error) {
+      this.core.fail(error);
+    }
+  }
 
   /** Issue #1241: saves the whole backup as one encrypted file; the reason when refused or cancelled. */
   async create(

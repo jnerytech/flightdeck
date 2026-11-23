@@ -108,8 +108,9 @@ describe("conexoes-ui: import from the SSH config", () => {
   });
 
   test("Importar selecionados says why it is closed when nothing is ticked", async () => {
-    await open([entry("vps", true)]);
+    await open([entry("web"), entry("vps", true)]);
     await click("Importar do SSH config");
+    await click("Desmarcar todos");
     const button = screen.queryByRole("button", {
       name: "Importar selecionados",
     }) as HTMLButtonElement | null;
@@ -119,8 +120,9 @@ describe("conexoes-ui: import from the SSH config", () => {
   });
 
   test("Importar selecionados stays closed when nothing is ticked", async () => {
-    await open([entry("vps", true)]);
+    await open([entry("web"), entry("vps", true)]);
     await click("Importar do SSH config");
+    await click("Desmarcar todos");
     expect(
       (screen.queryByRole("button", { name: "Importar selecionados" }) as HTMLButtonElement)
         .disabled,
@@ -147,5 +149,53 @@ describe("conexoes-ui: import from the SSH config", () => {
     await click("Importar do SSH config");
     await click("Importar selecionados");
     expect(screen.queryByText("db: nome repetido")).not.toBeNull();
+  });
+});
+
+describe("conexoes-ui: the import preview is a titled block (#4334)", () => {
+  test("the preview has a heading and its list is named", async () => {
+    await open([entry("web"), entry("db")]);
+    await click("Importar do SSH config");
+    expect(screen.queryByRole("heading", { name: "Destinos do SSH config" })).not.toBeNull();
+    expect(screen.queryByRole("list", { name: "Nomes do SSH config" })).not.toBeNull();
+  });
+
+  test("a config with nothing to import offers only to close, not a disabled Importar selecionados", async () => {
+    await open([]);
+    await click("Importar do SSH config");
+    expect(screen.queryByText("Nada para importar.")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Importar selecionados" })).toBeNull();
+    expect(screen.queryByText("Marque ao menos um destino.")).toBeNull();
+    await click("Fechar");
+    expect(screen.queryByRole("heading", { name: "Destinos do SSH config" })).toBeNull();
+  });
+
+  test("Marcar todos ticks every name not saved yet and Desmarcar todos clears them", async () => {
+    await open([entry("web"), entry("db"), entry("vps", true)]);
+    await click("Importar do SSH config");
+    const ticked = () =>
+      ["web", "db", "vps"].map(
+        (alias) => (screen.queryByLabelText(alias) as HTMLInputElement).checked,
+      );
+    expect(ticked()).toEqual([true, true, false]);
+    await click("Desmarcar todos");
+    expect(ticked()).toEqual([false, false, false]);
+    expect(
+      (screen.queryByRole("button", { name: "Importar selecionados" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    await click("Marcar todos");
+    expect(ticked()).toEqual([true, true, false]);
+  });
+
+  test("a config whose names are all saved already says so and offers only to close", async () => {
+    await open([entry("vps", true), entry("db", true)]);
+    await click("Importar do SSH config");
+    expect(screen.queryByText("Todos os nomes já estão cadastrados.")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Importar selecionados" })).toBeNull();
+    expect(screen.queryByText("Marque ao menos um destino.")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Marcar todos" })).toBeNull();
+    await click("Fechar");
+    expect(screen.queryByRole("heading", { name: "Destinos do SSH config" })).toBeNull();
   });
 });

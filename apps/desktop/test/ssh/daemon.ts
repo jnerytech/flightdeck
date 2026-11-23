@@ -21,6 +21,8 @@ export interface SshDaemonOptions {
   feature?: boolean;
   /** Commands the daemon answers with an error (an older or a broken host). */
   refuse?: string[];
+  /** Commands the daemon keeps unanswered until `release(type)` (a slow host). */
+  hold?: string[];
 }
 
 /** A target as the daemon stores it, with the defaults `ssh.save` fills in. */
@@ -158,6 +160,7 @@ export function sshDaemon(cleanups: Array<() => unknown>, options: SshDaemonOpti
     }
   };
   const sockets = new Set<{ send(data: string): unknown }>();
+  const held: Array<{ type: string; send(): unknown }> = [];
   const server = Bun.serve({
     port: 0,
     fetch: (req, srv) => (srv.upgrade(req) ? undefined : new Response("", { status: 426 })),
@@ -171,14 +174,18 @@ export function sshDaemon(cleanups: Array<() => unknown>, options: SshDaemonOpti
       message(ws, raw): void {
         const { id, type, payload = {} } = JSON.parse(String(raw));
         commands.push({ type, payload });
-        const out = answer(type, payload);
-        ws.send(
-          JSON.stringify(
-            "error" in out
-              ? { type: "ack", id, ok: false, error: out.error }
-              : { type: "ack", id, ok: true, data: out.data },
-          ),
-        );
+        const reply = () => {
+          const out = answer(type, payload);
+          ws.send(
+            JSON.stringify(
+              "error" in out
+                ? { type: "ack", id, ok: false, error: out.error }
+                : { type: "ack", id, ok: true, data: out.data },
+            ),
+          );
+        };
+        if (options.hold?.includes(type)) held.push({ type, send: reply });
+        else reply();
       },
     },
   });
@@ -192,6 +199,13 @@ export function sshDaemon(cleanups: Array<() => unknown>, options: SshDaemonOpti
     /** Sends a frame to every connected app, as the daemon does for `askpass.request`. */
     push: (frame: unknown) => {
       for (const ws of sockets) ws.send(JSON.stringify(frame));
+    },
+    /** Answers what `hold` kept of this type, and stops holding it. */
+    release: (type: string) => {
+      options.hold = (options.hold ?? []).filter((kind) => kind !== type);
+      const now = held.filter((one) => one.type === type);
+      held.splice(0, held.length, ...held.filter((one) => one.type !== type));
+      for (const pending of now) pending.send();
     },
     sent: (type: string) => commands.filter((c) => c.type === type).map((c) => c.payload),
     /** Closes the daemon and every connection to it: the host goes offline. */

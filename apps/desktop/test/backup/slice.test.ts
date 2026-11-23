@@ -31,6 +31,30 @@ function slice(over: Partial<BackupCore> = {}) {
   return { backup: new BackupSlice(core), saved, failed };
 }
 
+describe("backup slice: restart after a restore (#4347)", () => {
+  test("a core that can restart is offered and restarts; one that cannot offers nothing", async () => {
+    let restarts = 0;
+    const can = slice({
+      restart: async () => {
+        restarts += 1;
+      },
+    });
+    await can.backup.restart();
+    expect([can.backup.canRestart, restarts, slice().backup.canRestart]).toEqual([true, 1, false]);
+  });
+
+  test("a restart that fails is told to the person, not thrown", async () => {
+    const boom = new Error("relaunch failed");
+    const failing = slice({
+      restart: async () => {
+        throw boom;
+      },
+    });
+    await failing.backup.restart();
+    expect(failing.failed).toEqual([boom]);
+  });
+});
+
 describe("backup slice: the whole-app backup", () => {
   test("create saves the armored text as one file, and a cancelled dialog is a reason, not a save", async () => {
     const ok = slice();

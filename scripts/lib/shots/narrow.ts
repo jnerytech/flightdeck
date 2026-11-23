@@ -82,6 +82,7 @@ export const NARROW_SHOTS: readonly string[] = [
   // #4252: the Timeline sheet and its refusals, the Undo dialog and an open long prompt, at every width.
   "linha-do-tempo",
   "linha-do-tempo-voltar-recusa-aplicar",
+  "linha-do-tempo-voltar-lista-longa",
   "linha-do-tempo-arquivos-falhou",
   "linha-do-tempo-desfazer",
   "linha-do-tempo-prompt-longo-aberto",
@@ -111,6 +112,11 @@ export const NARROW_SHOTS: readonly string[] = [
   "host-saude-falta",
   "host-saude-correcoes",
   "host-saude-ok-aberto",
+  // #4351: the Claude account card with every window, a long name, a failed read and a refresh under way.
+  "host-conta-conectada",
+  "host-conta-desconectada",
+  "host-conta-desconhecida-erro",
+  "host-conta-atualizando",
   // #1328: Settings > Backup schedule, waiting for the passphrase.
   "configuracoes-backup-agenda",
   // #1354: the selection bar and Start N's confirm, compact at 390.
@@ -154,8 +160,15 @@ export const NARROW_SHOTS: readonly string[] = [
   // #4194: Costs with no cost and after a refused read, and the settings panel with its error.
   "custos-vazio",
   "custos-recusado",
+  "custos-parcial",
+  "custos-projeto-vazio",
   "roi-ajustes",
   "roi-ajustes-numero-ruim",
+  // #4194: the filters in use, the export's refusal line, the quota charts and a budget being edited at 390.
+  "custos-filtros",
+  "custos-exportar-falhou",
+  "custos-cota",
+  "configuracoes-orcamentos-editar",
   // #4190: the Automations form's first step and its field errors at 390.
   "automacoes-gatilho",
   "automacoes-form-erros",

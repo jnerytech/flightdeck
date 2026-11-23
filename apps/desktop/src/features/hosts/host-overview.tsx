@@ -31,6 +31,7 @@ export function HostOverview(
     onSeeAllSessions(): void;
     onSeeAllProjects(): void;
     onNewSession(): void;
+    onAddProject(): void;
   }>,
 ) {
   const { store, state, host } = props;
@@ -117,9 +118,19 @@ export function HostOverview(
         label={t("hostHome.projectsTitle", { host: host.name })}
       >
         {projects.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            {away ? t("hostHome.noProjectsAway", { host: host.name }) : t("hostHome.noProjects")}
-          </p>
+          <Stack gap={2}>
+            <p className="text-muted-foreground text-sm">
+              {away ? t("hostHome.noProjectsAway", { host: host.name }) : t("hostHome.noProjects")}
+            </p>
+            {/* The first step after pairing: the host cannot take a project while it does not answer. */}
+            {!away && (
+              <div>
+                <Button size="sm" onClick={props.onAddProject}>
+                  {t("hostHome.addProject")}
+                </Button>
+              </div>
+            )}
+          </Stack>
         ) : (
           <>
             <ul className="card-grid">

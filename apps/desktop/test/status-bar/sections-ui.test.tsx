@@ -221,6 +221,7 @@ describe("status bar items open their host section (#1484)", () => {
         onSeeAllSessions={() => {}}
         onSeeAllProjects={() => {}}
         onNewSession={() => {}}
+        onAddProject={() => {}}
         onRemove={() => {}}
       />
     </TContext.Provider>

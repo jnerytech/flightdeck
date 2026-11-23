@@ -104,7 +104,7 @@ describe("shots-holds: the page's WebSocket", () => {
 
   test("the wrapped socket sends as it came and hands the app the rewritten answer", () => {
     const target = { WebSocket: FakeSocket as unknown as typeof WebSocket };
-    installHolds(target, holdsRewriter);
+    installHolds(target, () => holdsRewriter());
     const socket = new target.WebSocket("ws://x") as unknown as FakeSocket;
     const got: unknown[] = [];
     socket.addEventListener("message", (event) => got.push(event.data));
@@ -149,6 +149,24 @@ describe("shots-holds: the page's WebSocket", () => {
     socket.send(ask("r1", "budget.list"));
     socket.play(ack("r1", { budgets: [notify] }));
     expect(JSON.parse(String(got[0])).data.budgets).toHaveLength(2);
+  });
+
+  // #4194: a rewriter may depend on the host a socket talks to, so `make` is given the socket's url.
+  test("each wrapped socket's rewriter is made with the url of that socket", () => {
+    class UrlSocket extends FakeSocket {
+      constructor(readonly url: string) {
+        super();
+      }
+    }
+    const made: string[] = [];
+    const target = { WebSocket: UrlSocket as unknown as typeof WebSocket };
+    installHolds(target, (url) => {
+      made.push(url);
+      return { fromApp: (frame) => frame, fromHost: (frame) => frame };
+    });
+    new target.WebSocket("ws://127.0.0.1:4711/v1/ws");
+    new target.WebSocket("ws://127.0.0.1:4712/v1/ws");
+    expect(made).toEqual(["ws://127.0.0.1:4711/v1/ws", "ws://127.0.0.1:4712/v1/ws"]);
   });
 
   // From the review of #1418: a helper Bun's transpile puts outside a function would be missing in

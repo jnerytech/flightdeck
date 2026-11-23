@@ -225,8 +225,10 @@ describe("conexoes-ui: the form", () => {
     await tick("Encaminhar o agente (ForwardAgent)");
     await click("Cancelar");
     expect(
-      (screen.queryByLabelText("Encaminhar o agente (ForwardAgent)") as HTMLInputElement).checked,
-    ).toBe(false);
+      screen
+        .queryByRole("switch", { name: "Encaminhar o agente (ForwardAgent)" })
+        ?.getAttribute("aria-checked"),
+    ).toBe("false");
     await click("Salvar destino");
     const sent = d.sent("ssh.save")[0] as { options: Record<string, unknown>; confirm?: boolean };
     expect(sent.options.forwardAgent).toBeUndefined();
@@ -357,5 +359,254 @@ describe("conexoes-ui: the connection test", () => {
     await click("Cancelar");
     expect(screen.queryByRole("button", { name: "Salvar destino" })).toBeNull();
     expect(d.sent("ssh.save")).toEqual([]);
+  });
+});
+
+describe("conexoes-ui: the form explains itself (#4333)", () => {
+  const save = () => screen.queryByRole("button", { name: "Salvar destino" }) as HTMLButtonElement;
+
+  test("a disabled Salvar destino names the required fields still empty, and the reason goes when they are filled", async () => {
+    await open({ targets: [] });
+    await click("Novo destino");
+    expect(save().disabled).toBe(true);
+    expect(screen.queryByText("Preencha para salvar: Nome, Host, Usuário.")).not.toBeNull();
+    await fill("Nome", "x");
+    expect(screen.queryByText("Preencha para salvar: Host, Usuário.")).not.toBeNull();
+    await fill("Host", "x.example.com");
+    await fill("Usuário", "me");
+    expect(screen.queryByText(/Preencha para salvar/)).toBeNull();
+    expect(save().disabled).toBe(false);
+    await fill("Autenticação", "vault-key");
+    expect(screen.queryByText("Preencha para salvar: Chave do cofre.")).not.toBeNull();
+    expect(save().disabled).toBe(true);
+  });
+
+  test("the required fields are marked for a screen reader, and the optional ones are not", async () => {
+    await open({ targets: [] });
+    await click("Novo destino");
+    for (const label of ["Nome", "Host", "Usuário"]) {
+      expect(screen.queryByLabelText(label)?.getAttribute("aria-required")).toBe("true");
+    }
+    for (const label of ["Porta", "Etiquetas (separadas por vírgula)"]) {
+      expect(screen.queryByLabelText(label)?.getAttribute("aria-required")).toBeNull();
+    }
+  });
+
+  test("the Nome field has the focus when the form opens, for a new destino and for an edit", async () => {
+    await open();
+    await click("Novo destino");
+    const focused = () => document.activeElement === screen.queryByLabelText("Nome");
+    expect(focused()).toBe(true);
+    await click("Cancelar");
+    await click("Editar lab");
+    expect(focused()).toBe(true);
+  });
+
+  test("the fields that are easy to misread say what they take", async () => {
+    await open({ targets: [] });
+    await click("Novo destino");
+    expect(screen.queryByText(/O host que executa o ssh deste destino/)).not.toBeNull();
+    expect(
+      screen.queryByText(/Outro destino salvo pelo qual a conexão passa antes/),
+    ).not.toBeNull();
+    expect(screen.queryByText(/por exemplo 8080:localhost:80/)).not.toBeNull();
+    expect(screen.queryByText(/O caminho é lido no host que executa o ssh/)).toBeNull();
+    await fill("Autenticação", "key-file");
+    expect(screen.queryByText(/O caminho é lido no host que executa o ssh/)).not.toBeNull();
+  });
+
+  test("a local forward that the daemon would refuse is flagged on its line and blocks the save", async () => {
+    const { d } = await open({ targets: [] });
+    await click("Novo destino");
+    await fill("Nome", "x");
+    await fill("Host", "x.example.com");
+    await fill("Usuário", "me");
+    const lines = "Encaminhamentos locais (um por linha)";
+    for (const bad of ["bad line", "0:localhost:80", "8080:localhost:70000", "8080:localhost"]) {
+      await fill(lines, `8080:localhost:80\n${bad}`);
+      expect(
+        screen.queryByText(`"${bad}" não é porta-local:host:porta-remota (portas de 1 a 65535).`),
+      ).not.toBeNull();
+      expect(screen.queryByText("Corrija os campos marcados para salvar.")).not.toBeNull();
+      expect(save().disabled).toBe(true);
+    }
+    await fill(lines, "8080:localhost:80\n\n127.0.0.1:9090:db:5432");
+    expect(screen.queryByText(/não é porta-local:host:porta-remota/)).toBeNull();
+    expect(save().disabled).toBe(false);
+    await click("Salvar destino");
+    expect(d.sent("ssh.save")[0]).toMatchObject({
+      options: { localForward: ["8080:localhost:80", "127.0.0.1:9090:db:5432"] },
+    });
+  });
+
+  test("more than 20 local forwards are flagged, as the daemon refuses them", async () => {
+    await open({ targets: [] });
+    await click("Novo destino");
+    await fill("Nome", "x");
+    await fill("Host", "x.example.com");
+    await fill("Usuário", "me");
+    const many = Array.from({ length: 21 }, (_, i) => `${8000 + i}:db:5432`).join("\n");
+    await fill("Encaminhamentos locais (um por linha)", many);
+    expect(screen.queryByText("Use no máximo 20 encaminhamentos.")).not.toBeNull();
+    expect(save().disabled).toBe(true);
+  });
+});
+
+describe("conexoes-ui: the advanced options fold away (#4333)", () => {
+  const SUMMARY = "Opções avançadas";
+  const ADVANCED = sshTarget({ id: "t3", name: "adv", options: { compression: true } });
+  const fold = () => screen.queryByText(SUMMARY)?.closest("details") ?? null;
+
+  test("the basics stay in view and the rest folds under one closed summary", async () => {
+    await open({ targets: [VPS] });
+    await click("Novo destino");
+    const advanced = fold();
+    expect(advanced).not.toBeNull();
+    expect(advanced?.open).toBe(false);
+    for (const label of [
+      "Aberto pelo host",
+      "Salto (ProxyJump)",
+      "Manter a conexão viva (segundos)",
+    ]) {
+      expect(advanced?.contains(screen.queryByLabelText(label))).toBe(true);
+    }
+    for (const label of ["Encaminhamentos locais (um por linha)", "Compressão"]) {
+      expect(advanced?.contains(screen.queryByLabelText(label))).toBe(true);
+    }
+    for (const label of ["Nome", "Host", "Usuário", "Porta", "Etiquetas (separadas por vírgula)"]) {
+      const field = screen.queryByLabelText(label);
+      expect(field).not.toBeNull();
+      expect(advanced?.contains(field)).toBe(false);
+    }
+  });
+
+  test("a destino with an advanced option opens with the fold open; one without keeps it closed", async () => {
+    await open({ targets: [VPS, ADVANCED] });
+    await click("Editar vps");
+    expect(fold()?.open).toBe(false);
+    await click("Cancelar");
+    await click("Editar adv");
+    expect(fold()?.open).toBe(true);
+  });
+
+  test("Compressão and the agent are switches, and a saved option shows on", async () => {
+    await open({ targets: [ADVANCED] });
+    await click("Editar adv");
+    const compression = screen.queryByRole("switch", { name: "Compressão" });
+    expect(compression?.getAttribute("aria-checked")).toBe("true");
+    const agent = screen.queryByRole("switch", { name: "Encaminhar o agente (ForwardAgent)" });
+    expect(agent?.getAttribute("aria-checked")).toBe("false");
+  });
+
+  test("a value the fold holds that blocks Salvar destino keeps the fold open", async () => {
+    await open({ targets: [VPS] });
+    await click("Novo destino");
+    await fill("Manter a conexão viva (segundos)", "abc");
+    expect(fold()).not.toBeNull();
+    const advanced = fold() as HTMLDetailsElement;
+    await act(async () => {
+      advanced.open = true;
+      advanced.dispatchEvent(new Event("toggle"));
+    });
+    await act(async () => {
+      advanced.open = false;
+      advanced.dispatchEvent(new Event("toggle"));
+    });
+    expect(fold()?.open).toBe(true);
+  });
+  test("a destino whose stored options are all off or empty keeps the fold closed", async () => {
+    const OFF = sshTarget({
+      id: "t4",
+      name: "off",
+      options: { compression: false, forwardAgent: false, localForward: [] },
+    });
+    await open({ targets: [OFF] });
+    await click("Editar off");
+    expect(fold()).not.toBeNull();
+    expect(fold()?.open).toBe(false);
+  });
+
+  test("a forwards line that blocks Salvar destino keeps the fold open too", async () => {
+    await open({ targets: [VPS] });
+    await click("Novo destino");
+    await fill("Encaminhamentos locais (um por linha)", "not a forward");
+    expect(fold()).not.toBeNull();
+    const advanced = fold() as HTMLDetailsElement;
+    await act(async () => {
+      advanced.open = false;
+      advanced.dispatchEvent(new Event("toggle"));
+    });
+    expect(fold()?.open).toBe(true);
+  });
+});
+
+describe("conexoes-ui: focus after the form closes (#4333)", () => {
+  /** Whether the focus is on the named button: a boolean, so a failure prints no DOM node. */
+  const focusOn = (name: string) => {
+    const button = screen.queryByRole("button", { name });
+    return button !== null && document.activeElement === button;
+  };
+
+  test("Cancelar on Novo destino puts the focus back on Novo destino", async () => {
+    await open({ targets: [VPS, LAB] });
+    await click("Novo destino");
+    await click("Cancelar");
+    expect(screen.queryByRole("button", { name: "Salvar destino" })).toBeNull();
+    expect(focusOn("Novo destino")).toBe(true);
+  });
+
+  test("Cancelar on a row's Editar puts the focus back on that row's Editar", async () => {
+    await open({ targets: [VPS, LAB] });
+    await click("Editar lab");
+    await click("Cancelar");
+    expect(focusOn("Editar lab")).toBe(true);
+  });
+
+  test("Salvar destino on a row's Editar puts the focus back on that row's Editar", async () => {
+    const { d } = await open({ targets: [VPS, LAB] });
+    await click("Editar vps");
+    await click("Salvar destino");
+    await settle(() => d.sent("ssh.save").length === 1);
+    await uiIdle();
+    expect(screen.queryByRole("button", { name: "Salvar destino" })).toBeNull();
+    expect(focusOn("Editar vps")).toBe(true);
+  });
+
+  test("Salvar destino on Novo destino puts the focus back on Novo destino", async () => {
+    const { d } = await open({ targets: [VPS] });
+    await click("Novo destino");
+    await fill("Nome", "nova");
+    await fill("Host", "nova.example.com");
+    await fill("Usuário", "me");
+    await click("Salvar destino");
+    await settle(() => d.sent("ssh.save").length === 1);
+    await uiIdle();
+    expect(screen.queryByRole("button", { name: "Salvar destino" })).toBeNull();
+    expect(focusOn("Novo destino")).toBe(true);
+  });
+  test("when the edited destino is filtered out of the list, Cancelar puts the focus on Novo destino instead (#4333)", async () => {
+    await open({ targets: [VPS, LAB] });
+    await click("Editar vps");
+    await fill("Buscar destino", "lab");
+    expect(screen.queryByRole("button", { name: "Editar vps" })).toBeNull();
+    await click("Cancelar");
+    expect(focusOn("Novo destino")).toBe(true);
+  });
+
+  test("a focus the person moved while the host was saving stays where it is (#4333)", async () => {
+    const { d } = await open({ targets: [VPS, LAB], hold: ["ssh.save"] });
+    await click("Editar vps");
+    await click("Salvar destino");
+    await settle(() => d.sent("ssh.save").length === 1);
+    const search = screen.queryByLabelText("Buscar destino") as HTMLElement;
+    await act(async () => {
+      search.focus();
+    });
+    await act(async () => {
+      d.release("ssh.save");
+    });
+    await uiIdle();
+    expect(screen.queryByRole("button", { name: "Salvar destino" })).toBeNull();
+    expect(document.activeElement === search).toBe(true);
   });
 });

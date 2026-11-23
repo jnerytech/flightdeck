@@ -11,6 +11,8 @@ export interface SecretPickerProps {
   /** Shows only secrets of these types. */
   types?: SecretType[];
   label: string;
+  /** The form cannot be saved without a choice: said to a screen reader. */
+  required?: boolean;
 }
 
 /** Picks a secret by id. It only ever sees metadata, so no value can reach the screen. */
@@ -22,6 +24,7 @@ export function SecretPicker(props: Readonly<SecretPickerProps>) {
   return (
     <select
       aria-label={props.label}
+      aria-required={props.required || undefined}
       value={props.value}
       onChange={(e) => props.onChange(e.target.value)}
       className="h-9 rounded-md border border-input bg-transparent px-3 text-sm dark:bg-input/30"

@@ -58,6 +58,7 @@ async function settings(language: "en" | "pt-BR", features: string[]) {
         onSeeAllSessions={() => {}}
         onSeeAllProjects={() => {}}
         onNewSession={() => {}}
+        onAddProject={() => {}}
         onRemove={() => {}}
       />
     </TContext.Provider>

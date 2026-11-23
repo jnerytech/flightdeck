@@ -16,8 +16,28 @@ import type { AppState, AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
 import { Inline, Stack } from "@/shared/layout/index.ts";
 
+function giveFocusBack(opener: Element | null) {
+  if (opener instanceof HTMLElement && opener !== document.body) {
+    opener.focus();
+    // A control turned off or hidden meanwhile (Connect, while it waited for the password) takes no focus.
+    if (document.activeElement === opener) return;
+  }
+  const main = document.querySelector<HTMLElement>("main");
+  if (!main) return;
+  // The main area of the simple view is not focusable by itself.
+  if (!main.hasAttribute("tabindex")) main.tabIndex = -1;
+  main.focus();
+}
+
 /** One request: the secret lives only in this field, and goes to the daemon only in the answer. */
-function Prompt(props: Readonly<{ store: AppStore; item: AppState["askpass"][number] }>) {
+function Prompt(
+  props: Readonly<{
+    store: AppStore;
+    item: AppState["askpass"][number];
+    /** What had the focus when the first request of the queue came. */
+    opener: Element | null;
+  }>,
+) {
   const t = useT();
   const { store, item } = props;
   const { request } = item;
@@ -41,7 +61,15 @@ function Prompt(props: Readonly<{ store: AppStore; item: AppState["askpass"][num
         if (!open && !answered.current) answer(null);
       }}
     >
-      <AlertDialogContent>
+      <AlertDialogContent
+        onCloseAutoFocus={(event) => {
+          // The dialog has no trigger to give the focus back to: it goes to what had it when the request came,
+          // or, when that is gone, to the main area, never to the end of the page (#4331).
+          event.preventDefault();
+          // Only after the last request: another one's field has the focus by then.
+          if (props.store.getState().askpass.length === 0) giveFocusBack(props.opener);
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>
             {t(`connections.askpass.title.${request.kind}`, { name: request.targetName })}
@@ -103,5 +131,22 @@ export const AskpassPrompt = memo(function AskpassPrompt(props: { store: AppStor
   const { store } = props;
   const state = useStoreSlice(store, ASKPASSPROMPT_KEYS);
   const first = state.askpass[0];
-  return first ? <Prompt key={first.request.requestId} store={props.store} item={first} /> : null;
+  // Taken in the render where the queue stops being empty, before the first dialog moves the focus into its field.
+  const opener = useRef<Element | null>(null);
+  const recorded = useRef(false);
+  if (!first) {
+    recorded.current = false;
+    opener.current = null;
+  } else if (!recorded.current) {
+    recorded.current = true;
+    opener.current = document.activeElement;
+  }
+  return first ? (
+    <Prompt
+      key={first.request.requestId}
+      store={props.store}
+      item={first}
+      opener={opener.current}
+    />
+  ) : null;
 });

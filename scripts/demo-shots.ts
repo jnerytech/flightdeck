@@ -28,6 +28,7 @@ import { narrowSizes, unknownNarrowShots } from "./lib/shots/narrow.ts";
 import { releasesScript } from "./lib/shots/releases.ts";
 import { ALFA, DEMO_CLIENTS, DEMO_ROI, type Shot } from "./lib/shots/shot.ts";
 import { sshScript } from "./lib/shots/ssh-frames.ts";
+import { accountShots } from "./lib/shots/table-account.ts";
 import { activityShots } from "./lib/shots/table-activity.ts";
 import { agentShots } from "./lib/shots/table-agent.ts";
 import { contextShots, filesShots } from "./lib/shots/table-agent-files.ts";
@@ -115,6 +116,7 @@ function shots(ids: DemoIds): Shot[] {
     ...backupFailShots(ids),
     ...vaultBackupShots(ids),
     ...healthShots(ids),
+    ...accountShots(ids),
     ...harnessShots(ids),
     ...automationShots(ids),
     ...knowledgeShots(ids),
@@ -329,7 +331,8 @@ async function installScripts(page: Page, shot: Shot): Promise<void> {
   if (shot.maintenance) await page.addInitScript({ content: maintenanceScript(shot.maintenance) });
   if (shot.releases) await page.addInitScript({ content: releasesScript(shot.releases) });
   if (shot.wire) await page.addInitScript({ content: wireScript(shot.wire) });
-  if (shot.ssh) await page.addInitScript({ content: sshScript(shot.askpass === true) });
+  if (shot.ssh)
+    await page.addInitScript({ content: sshScript(shot.askpass === true, shot.sshReplies) });
   if (shot.teleport) {
     await page.addInitScript({ content: teleportScript(shot.teleport === "refuses") });
   }

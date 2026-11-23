@@ -68,4 +68,38 @@ describe("layout-list-row: the title wins the width", () => {
     expect(row.className).toContain("min-w-0");
     expect(row.className).toContain("extra");
   });
+
+  test("a wrapping row lets the row wrap and the title and meta break instead of truncating (#4343)", () => {
+    const { container } = render(
+      <ListRow wrap title="A long name" meta="alfa" trailing={<button type="button">×</button>} />,
+    );
+    const row = container.firstElementChild as HTMLElement;
+    expect(row.className).toContain("flex-wrap");
+    for (const name of ["title", "meta"]) {
+      expect(part(container, name)?.className ?? "").toContain("break-words");
+      expect(part(container, name)?.className ?? "").not.toContain("truncate");
+    }
+    expect(part(container, "trailing")?.className ?? "").toContain("shrink-0");
+  });
+
+  test("a wrapping title has a small basis, so the leading mark stays beside it and the ends drop first", () => {
+    const { container } = render(<ListRow wrap leading={<span>●</span>} title="A long name" />);
+    expect(part(container, "title")?.className ?? "").toContain("basis-32");
+    expect(part(container, "title")?.className ?? "").not.toContain("flex-auto");
+  });
+
+  test("a wrapping row's trailing group is never wider than the row, so its controls can wrap (#4392)", () => {
+    const { container } = render(
+      <ListRow wrap title="A long name" trailing={<button type="button">×</button>} />,
+    );
+    expect(part(container, "trailing")?.className ?? "").toContain("max-w-full");
+    const plain = render(<ListRow title="Fix" trailing={<button type="button">×</button>} />);
+    expect(part(plain.container, "trailing")?.className ?? "").not.toContain("max-w-full");
+  });
+
+  test("a row that does not ask to wrap is unchanged", () => {
+    const { container } = render(<ListRow title="Fix" meta="alfa" />);
+    expect((container.firstElementChild as HTMLElement).className).not.toContain("flex-wrap");
+    expect(part(container, "title")?.className ?? "").not.toContain("break-words");
+  });
 });

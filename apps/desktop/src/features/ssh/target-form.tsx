@@ -10,10 +10,21 @@ import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { useBusy } from "@/shared/hooks/index.ts";
-import { Field, Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";
+import {
+  Field,
+  Form,
+  FormActions,
+  NativeSelect,
+  Stack,
+  SwitchField,
+} from "@/shared/layout/index.ts";
 import {
   AUTH_KEY,
   AUTHS,
+  forwardsProblem,
+  hasAdvanced,
+  MAX_FORWARDS,
+  missingFields,
   secretRefOf,
   split,
   unsaved,
@@ -65,13 +76,19 @@ export const TargetForm = memo(function TargetForm(props: {
   const saving = useBusy();
   const portBad = !validPort(port);
   const aliveBad = !validAlive(alive);
-  const ready =
-    !portBad &&
-    !aliveBad &&
-    name.trim() !== "" &&
-    host.trim() !== "" &&
-    user.trim() !== "" &&
-    (auth !== "vault-key" || secretId !== "");
+  const forwardsBad = forwardsProblem(forwards);
+  const advancedBad = aliveBad || forwardsBad !== null;
+  const [advancedOpen, setAdvancedOpen] = useState(hasAdvanced(target));
+  const missing = missingFields({ name, host, user, auth, secretId });
+  const ready = !portBad && !aliveBad && forwardsBad === null && missing.length === 0;
+  const disabledReason =
+    missing.length > 0
+      ? t("connections.form.missing", {
+          fields: missing.map((field) => t(`connections.form.${field}`)).join(", "),
+        })
+      : portBad || aliveBad || forwardsBad
+        ? t("connections.form.fixFields")
+        : undefined;
 
   const changed =
     target !== null &&
@@ -151,14 +168,19 @@ export const TargetForm = memo(function TargetForm(props: {
       }}
     >
       {
-        <Field label={t("connections.form.name")}>
+        <Field label={t("connections.form.name")} required>
           {(control) => (
-            <Input {...control} value={name} onChange={(event) => setName(event.target.value)} />
+            <Input
+              {...control}
+              autoFocus
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
           )}
         </Field>
       }
       {
-        <Field label={t("connections.form.host")}>
+        <Field label={t("connections.form.host")} required>
           {(control) => (
             <Input {...control} value={host} onChange={(event) => setHost(event.target.value)} />
           )}
@@ -180,7 +202,7 @@ export const TargetForm = memo(function TargetForm(props: {
         </Field>
       }
       {
-        <Field label={t("connections.form.user")}>
+        <Field label={t("connections.form.user")} required>
           {(control) => (
             <Input {...control} value={user} onChange={(event) => setUser(event.target.value)} />
           )}
@@ -204,7 +226,7 @@ export const TargetForm = memo(function TargetForm(props: {
         </Field>
       }
       {auth === "key-file" && (
-        <Field label={t("connections.form.keyFile")}>
+        <Field label={t("connections.form.keyFile")} help={t("connections.form.keyFileHelp")}>
           {(control) => (
             <Input
               {...control}
@@ -217,6 +239,7 @@ export const TargetForm = memo(function TargetForm(props: {
       {auth === "vault-key" && (
         <SecretPicker
           label={t("connections.form.vaultKey")}
+          required
           secrets={state.secrets}
           types={["ssh-key"]}
           value={secretId}
@@ -233,89 +256,109 @@ export const TargetForm = memo(function TargetForm(props: {
         />
       )}
       {
-        <Field label={t("connections.form.via")}>
-          {(control) => (
-            <NativeSelect {...control} value={via} onChange={(event) => setVia(event.target.value)}>
-              <option value="">{t("connections.thisHost")}</option>
-              {state.hosts.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.name}
-                </option>
-              ))}
-            </NativeSelect>
-          )}
-        </Field>
-      }
-      {
-        <Field label={t("connections.form.jump")}>
-          {(control) => (
-            <NativeSelect
-              {...control}
-              value={jump}
-              onChange={(event) => setJump(event.target.value)}
-            >
-              <option value="">{t("connections.form.noJump")}</option>
-              {props.others.map((other) => (
-                <option key={other.id} value={other.id}>
-                  {other.name}
-                </option>
-              ))}
-            </NativeSelect>
-          )}
-        </Field>
-      }
-      {
         <Field label={t("connections.form.tags")}>
           {(control) => (
             <Input {...control} value={tags} onChange={(event) => setTags(event.target.value)} />
           )}
         </Field>
       }
-      {
-        <Field
-          label={t("connections.form.alive")}
-          error={aliveBad ? t("connections.form.aliveInvalid") : undefined}
-        >
-          {(control) => (
-            <Input
-              {...control}
-              value={alive}
-              inputMode="numeric"
-              onChange={(event) => setAlive(event.target.value)}
-            />
-          )}
-        </Field>
-      }
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={compression}
-          onChange={(event) => setCompression(event.target.checked)}
-        />
-        {t("connections.form.compression")}
-      </label>
-      {
-        <Field label={t("connections.form.forwards")}>
-          {(control) => (
-            <Textarea
-              {...control}
-              value={forwards}
-              onChange={(event) => setForwards(event.target.value)}
-            />
-          )}
-        </Field>
-      }
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={forwardAgent}
-          onChange={(event) => {
-            if (event.target.checked) setAskingAgent(true);
-            else setForwardAgent(false);
-          }}
-        />
-        {t("connections.form.forwardAgent")}
-      </label>
+      <details
+        className="host-fold"
+        open={advancedOpen || advancedBad}
+        onToggle={(event) => {
+          // A value in here that blocks Save is not left behind a closed summary.
+          if (!event.currentTarget.open && advancedBad) event.currentTarget.open = true;
+          setAdvancedOpen(event.currentTarget.open);
+        }}
+      >
+        <summary>{t("connections.form.advanced")}</summary>
+        <Stack gap={4}>
+          {
+            <Field label={t("connections.form.via")} help={t("connections.form.viaHelp")}>
+              {(control) => (
+                <NativeSelect
+                  {...control}
+                  value={via}
+                  onChange={(event) => setVia(event.target.value)}
+                >
+                  <option value="">{t("connections.thisHost")}</option>
+                  {state.hosts.map((h) => (
+                    <option key={h.id} value={h.id}>
+                      {h.name}
+                    </option>
+                  ))}
+                </NativeSelect>
+              )}
+            </Field>
+          }
+          {
+            <Field label={t("connections.form.jump")} help={t("connections.form.jumpHelp")}>
+              {(control) => (
+                <NativeSelect
+                  {...control}
+                  value={jump}
+                  onChange={(event) => setJump(event.target.value)}
+                >
+                  <option value="">{t("connections.form.noJump")}</option>
+                  {props.others.map((other) => (
+                    <option key={other.id} value={other.id}>
+                      {other.name}
+                    </option>
+                  ))}
+                </NativeSelect>
+              )}
+            </Field>
+          }
+          {
+            <Field
+              label={t("connections.form.alive")}
+              error={aliveBad ? t("connections.form.aliveInvalid") : undefined}
+            >
+              {(control) => (
+                <Input
+                  {...control}
+                  value={alive}
+                  inputMode="numeric"
+                  onChange={(event) => setAlive(event.target.value)}
+                />
+              )}
+            </Field>
+          }
+          <SwitchField checked={compression} onChange={setCompression}>
+            {t("connections.form.compression")}
+          </SwitchField>
+          {
+            <Field
+              label={t("connections.form.forwards")}
+              help={t("connections.form.forwardsHelp")}
+              error={
+                forwardsBad?.kind === "line"
+                  ? t("connections.form.forwardInvalid", { line: forwardsBad.line })
+                  : forwardsBad?.kind === "many"
+                    ? t("connections.form.forwardsTooMany", { max: MAX_FORWARDS })
+                    : undefined
+              }
+            >
+              {(control) => (
+                <Textarea
+                  {...control}
+                  value={forwards}
+                  onChange={(event) => setForwards(event.target.value)}
+                />
+              )}
+            </Field>
+          }
+          <SwitchField
+            checked={forwardAgent}
+            onChange={(on) => {
+              if (on) setAskingAgent(true);
+              else setForwardAgent(false);
+            }}
+          >
+            {t("connections.form.forwardAgent")}
+          </SwitchField>
+        </Stack>
+      </details>
       {hostKey && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span>{t("connections.form.hostKey")}</span>
@@ -330,7 +373,7 @@ export const TargetForm = memo(function TargetForm(props: {
         submit={t("connections.form.save")}
         busy={saving.busy}
         disabled={!ready}
-        disabledReason={portBad || aliveBad ? t("connections.form.fixFields") : undefined}
+        disabledReason={disabledReason}
         cancel={t("common.cancel")}
         onCancel={props.onClose}
         extra={

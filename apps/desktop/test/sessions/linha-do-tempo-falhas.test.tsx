@@ -876,3 +876,100 @@ describe("linha-do-tempo-falhas", () => {
     expect(box()?.hasAttribute("aria-describedby")).toBe(false);
   });
 });
+
+// #4375: the result of a fork into the terminal replaces the Fork button, so it is announced and the focus goes to Copy.
+describe("linha-do-tempo-falhas: the result of a fork into the terminal", () => {
+  const forkResult = {
+    "snapshots.list": async () => SNAPSHOTS,
+    "session.fork": async () => ({ claudeSessionId: "c2", command: "claude --resume c2" }),
+  };
+  const toTerminal = async (names: { fork: string }, terminal: string, fork: string) => {
+    await click(names.fork);
+    await tick(terminal, "radio");
+    await click(fork);
+  };
+
+  test("the result is a status that holds the sentence and the command, and Copy has the focus", async () => {
+    const { names } = await timeline("en", forkResult);
+    await toTerminal(names, "Open in the terminal", "Fork");
+    const status = screen
+      .queryAllByRole("status")
+      .find((el) => /Conversation forked/.test(el.textContent ?? ""));
+    expect(status?.textContent?.includes("claude --resume c2")).toBe(true);
+    const copy = screen.queryByRole("button", { name: "Copy the command" });
+    expect(document.activeElement === copy).toBe(true);
+    // A screen reader that skips a live region inserted with its text still reads it with the focused button.
+    expect(copy?.getAttribute("aria-describedby") === status?.id && !!status?.id).toBe(true);
+  });
+
+  test("the same holds in Portuguese", async () => {
+    const { names } = await timeline("pt-BR", forkResult);
+    await toTerminal(names, "Abrir no terminal", "Bifurcar");
+    const status = screen
+      .queryAllByRole("status")
+      .find((el) => /Conversa bifurcada/.test(el.textContent ?? ""));
+    expect(status?.textContent?.includes("claude --resume c2")).toBe(true);
+    const copy = screen.queryByRole("button", { name: "Copiar o comando" });
+    expect(document.activeElement === copy).toBe(true);
+  });
+});
+
+// #4374: the list of files in a dialog can outgrow its box, so it takes the keyboard focus and has a name.
+describe("linha-do-tempo-falhas: the list of files in a dialog", () => {
+  const filesList = (name: string) => screen.queryByRole("list", { name });
+  const scrolls = (name: string) => filesList(name)?.getAttribute("tabindex") === "0";
+
+  test("the Rewind dialog's files are a named list the keyboard can reach", async () => {
+    const { names } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "rewind.preview": async () => PREVIEW,
+    });
+    await click(names.rewind);
+    expect(filesList("Files this rewind changes")).not.toBeNull();
+    expect(scrolls("Files this rewind changes")).toBe(true);
+  });
+
+  test("the Undo dialog's files are a named list the keyboard can reach", async () => {
+    await timeline("en", {
+      "snapshots.list": async () => SAFETY,
+      "rewind.undoPreview": async () => PREVIEW,
+    });
+    await click("Undo rewind");
+    expect(filesList("Files this undo restores")).not.toBeNull();
+    expect(scrolls("Files this undo restores")).toBe(true);
+  });
+
+  test("the Fork dialog's files are a named list the keyboard can reach once they are asked for", async () => {
+    const { names } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "rewind.preview": async () => PREVIEW,
+    });
+    await click(names.fork);
+    expect(filesList("Files this fork rewinds")).toBeNull();
+    await tick("Also rewind the files");
+    expect(filesList("Files this fork rewinds")).not.toBeNull();
+    expect(scrolls("Files this fork rewinds")).toBe(true);
+  });
+
+  test("the names read in Portuguese", async () => {
+    const { names } = await timeline("pt-BR", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "rewind.preview": async () => PREVIEW,
+    });
+    await click(names.rewind);
+    expect(scrolls("Arquivos que esta volta altera")).toBe(true);
+    await click("Cancelar");
+    await click(names.fork);
+    await tick("Voltar os arquivos também");
+    expect(scrolls("Arquivos que esta bifurcação volta")).toBe(true);
+  });
+
+  test("the Undo name reads in Portuguese", async () => {
+    await timeline("pt-BR", {
+      "snapshots.list": async () => SAFETY,
+      "rewind.undoPreview": async () => PREVIEW,
+    });
+    await click("Desfazer volta");
+    expect(scrolls("Arquivos que este desfazer restaura")).toBe(true);
+  });
+});

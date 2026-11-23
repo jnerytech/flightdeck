@@ -28,6 +28,7 @@ async function open(
     clientId?: string | null;
     signedIn?: boolean;
     files?: number[];
+    restart?: () => Promise<void>;
   } = {},
 ) {
   const source = memoryPlatform(false, "en");
@@ -46,6 +47,7 @@ async function open(
   };
   platform.vault.canPick = true;
   platform.openExternal = async () => {};
+  if (options.restart) platform.restart = options.restart;
   platform.oauthLoopback = {
     listen: async (state: string) => ({
       port: 4567,
@@ -89,6 +91,60 @@ async function type(label: string, value: string) {
   if (input) await act(async () => fireEvent.change(input, { target: { value } }));
   return input !== null;
 }
+
+/** Drive restore up to the Restore press, so a test can look at what comes after it. */
+async function restoreFromDrive() {
+  await waitFor(() => control("Google Drive") !== null);
+  await click("Google Drive");
+  await click("Look in Google Drive");
+  await waitFor(() => control(NAME(9)) !== null);
+  await click(NAME(9));
+  await type("File passphrase", PASS);
+  await click("Read backup");
+  await waitFor(() => shown("Settings: 1 new"));
+  await click("Restore");
+  await waitFor(() => shown("Restored: 1 new"));
+}
+
+describe("backup-drive-restore-ui: restart after a restore (#4347)", () => {
+  test("where the app can restart, the restore result offers Restart now and it restarts once", async () => {
+    let restarts = 0;
+    await open({
+      restart: async () => {
+        restarts += 1;
+      },
+    });
+    await restoreFromDrive();
+    const offered = control("Restart now") !== null;
+    await click("Restart now");
+    expect({ offered, restarts }).toEqual({ offered: true, restarts: 1 });
+  });
+
+  test("pressing Restart now twice while it runs restarts once and shows it is busy", async () => {
+    let restarts = 0;
+    let release: (() => void) | null = null;
+    await open({
+      restart: () => {
+        restarts += 1;
+        return new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      },
+    });
+    await restoreFromDrive();
+    await click("Restart now");
+    await click("Restart now");
+    const busy = (control("Restart now") as HTMLButtonElement | null)?.disabled;
+    await act(async () => release?.());
+    expect({ restarts, busy }).toEqual({ restarts: 1, busy: true });
+  });
+
+  test("where the app cannot restart, the result offers no Restart now", async () => {
+    await open();
+    await restoreFromDrive();
+    expect(control("Restart now") === null).toBe(true);
+  });
+});
 
 describe("backup-drive-restore-ui: restore from Google Drive (#1462)", () => {
   test("with no client id the restore is the file's alone and Drive is not mentioned", async () => {

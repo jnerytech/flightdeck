@@ -101,6 +101,7 @@ const page = (store: ReturnType<typeof fakeStore>, section: "health" | undefined
         onSeeAllSessions={() => {}}
         onSeeAllProjects={() => {}}
         onNewSession={() => {}}
+        onAddProject={() => {}}
         onRemove={() => {}}
       />
     </TooltipProvider>

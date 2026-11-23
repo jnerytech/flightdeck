@@ -31,9 +31,12 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
   const [preview, setPreview] = useState<RestorePreview | null>(null);
   const [source, setSource] = useState("");
   const [choice, setChoice] = useState<ConflictChoice>("skip");
-  const [importNote, setImportNote] = useState<{ tone: "info" | "error"; text: string } | null>(
-    null,
-  );
+  // `restart`: the note is a finished restore, which the app reads again only when it starts (#4347).
+  const [importNote, setImportNote] = useState<{
+    tone: "info" | "error";
+    text: string;
+    restart?: boolean;
+  } | null>(null);
   const [replacing, setReplacing] = useState(false);
   // Issue #1462: where the backup to restore comes from. Drive is offered only with a client id.
   const scheduler = store.backupScheduler;
@@ -49,6 +52,7 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
   const exporting = useBusy();
   const reading = useBusy();
   const restoring = useBusy();
+  const restarting = useBusy();
 
   const doExport = async () => {
     setExportNote(null);
@@ -96,7 +100,11 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
     if (!preview) return;
     const outcome = await store.backup.restore(preview, choice);
     if (outcome.ok) {
-      setImportNote({ tone: "info", text: t("backupAll.result", { ...outcome.result }) });
+      setImportNote({
+        tone: "info",
+        text: t("backupAll.result", { ...outcome.result }),
+        restart: store.backup.canRestart,
+      });
     } else {
       setImportNote({ tone: "error", text: t("backupAll.error.failed") });
     }
@@ -364,6 +372,15 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
               </section>
             )}
             {importNote && <InlineNotice tone={importNote.tone}>{importNote.text}</InlineNotice>}
+            {importNote?.restart && (
+              <Button
+                type="button"
+                disabled={restarting.busy}
+                onClick={() => restarting.run(() => store.backup.restart())}
+              >
+                {t("backupAll.restart")}
+              </Button>
+            )}
           </Stack>
         </section>
         {replacing && preview && (

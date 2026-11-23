@@ -185,6 +185,8 @@ export interface Platform {
      */
     sign(daemonId: string, message: string, lang: string, payload?: string): Promise<string>;
   };
+  /** Starts the app again (#4347); absent in a browser, where there is no app to restart. */
+  restart?(): Promise<void>;
   /** Whether the system showed it (false: notifications are blocked for the app). */
   notify(notification: Notification): Promise<boolean>;
   isFocused(): boolean;

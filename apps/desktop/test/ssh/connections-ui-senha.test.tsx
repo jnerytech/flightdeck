@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, spyOn, test } from "bun:test";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
-import { uiIdle, waiter } from "../wait.ts";
+import { settleMaybe, uiIdle, waiter } from "../wait.ts";
 import { sshDaemon, sshTarget } from "./daemon.ts";
 
 registerDom();
@@ -258,5 +258,90 @@ describe("conexoes-ui: ssh asks for a password", () => {
     await settle(() => store.getState().hosts[0]?.status === "online");
     expect(store.getState().hosts[0]?.status).toBe("online");
     expect(store.getState().notices).toEqual([]);
+  });
+});
+
+describe("conexoes-ui: where the focus goes when the askpass dialog closes (#4331)", () => {
+  const opener = async () => {
+    const button = screen.queryByRole("button", { name: "SSH" }) as HTMLElement | null;
+    expect(button).not.toBeNull();
+    button?.focus();
+    expect(document.activeElement === button).toBe(true);
+    return button as HTMLElement;
+  };
+
+  test("an answer, a cancel and Escape each give the focus back to what had it when the request came", async () => {
+    const { d } = await open();
+    const button = await opener();
+    const closers: Array<[string, () => Promise<void>]> = [
+      ["answer", async () => click("Enviar")],
+      ["cancel", async () => click("Cancelar")],
+      [
+        "escape",
+        async () => {
+          await act(async () => {
+            fireEvent.keyDown(dialog() as HTMLElement, { key: "Escape" });
+          });
+          await uiIdle();
+        },
+      ],
+    ];
+    const restored: Record<string, boolean> = {};
+    for (const [index, [name, close]] of closers.entries()) {
+      await ask(d, request(`r${index}`));
+      expect(document.activeElement === button).toBe(false);
+      await act(async () => {
+        fireEvent.change(screen.queryByLabelText("Senha") as HTMLElement, {
+          target: { value: SECRET },
+        });
+      });
+      await close();
+      await settleMaybe(() => dialog() === null);
+      await settleMaybe(() => document.activeElement === button);
+      restored[name] = document.activeElement === button;
+    }
+    expect(restored).toEqual({ answer: true, cancel: true, escape: true });
+  });
+
+  test("when what had the focus is gone, the focus goes to the main area, not to the page's end", async () => {
+    const { d } = await open();
+    const gone = document.createElement("button");
+    document.body.append(gone);
+    gone.focus();
+    await ask(d, request("r1"));
+    gone.remove();
+    await click("Cancelar");
+    await settleMaybe(() => dialog() === null);
+    await settleMaybe(() => document.activeElement === document.querySelector("main"));
+    expect(document.activeElement === document.querySelector("main")).toBe(true);
+  });
+
+  test("with two requests queued the focus goes to the second field, and back to the first place only after the last", async () => {
+    const { d } = await open();
+    const button = await opener();
+    await ask(d, request("r1"));
+    await ask(d, request("r2"));
+    await click("Cancelar");
+    await settleMaybe(() => document.activeElement === screen.queryByLabelText("Senha"));
+    expect(document.activeElement === screen.queryByLabelText("Senha")).toBe(true);
+    await click("Cancelar");
+    await settleMaybe(() => dialog() === null);
+    await settleMaybe(() => document.activeElement === button);
+    expect(document.activeElement === button).toBe(true);
+  });
+
+  test("when what had the focus can no longer take it (a button turned off while it waited), the focus goes to the main area", async () => {
+    const { d } = await open();
+    const waiting = document.createElement("button");
+    document.body.append(waiting);
+    waiting.focus();
+    await ask(d, request("r1"));
+    waiting.disabled = true;
+    await click("Cancelar");
+    await settleMaybe(() => dialog() === null);
+    await settleMaybe(() => document.activeElement === document.querySelector("main"));
+    expect(document.activeElement === waiting).toBe(false);
+    expect(document.activeElement === document.querySelector("main")).toBe(true);
+    waiting.remove();
   });
 });
