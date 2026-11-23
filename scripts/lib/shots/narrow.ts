@@ -42,6 +42,8 @@ export const NARROW_SHOTS: readonly string[] = [
   "cota-cartao-quente",
   "cota-cartao-trava-leitura",
   "cota-cartao-conta-compartilhada",
+  // #4308: the status bar's quota popover, its guards and buttons, at 390.
+  "cota-popover",
   // #1244: Merge PR's confirmation on a card with an open PR.
   "card-merge-pr",
   "workflows-modelos",

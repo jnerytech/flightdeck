@@ -62,6 +62,9 @@ const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** A text in both languages, as a pattern that must match the whole text. */
 const both = (en: string, pt: string) => new RegExp(`^(${literal(en)}|${literal(pt)})$`);
 const GUARD = /^(New cards wait from|Cartões novos esperam a partir de)/;
+const PAGE_BUTTON = /^(Open the page of|Abrir a página de)/;
+const SHOW_RUNNING = /^(Show what is running|Mostrar o que está rodando)$/;
+const POPOVER = both("Plan quota of the hosts", "Cota do plano dos hosts");
 
 /** The card's text `text` shows, and the pointer is away from it. */
 async function textShown(page: Page, text: RegExp): Promise<void> {
@@ -75,6 +78,78 @@ async function barsShown(page: Page): Promise<void> {
   await page.getByRole("meter").first().waitFor({ timeout: WAIT });
   await page.mouse.move(1000, 700);
   await page.waitForTimeout(400);
+}
+
+/**
+ * The first stop of the popover's Tab order that is not the one expected, or null when the order is
+ * right: for each host (in the order given) its guard and then its page button, and last "Show what
+ * is running". A control named after another host is a wrong stop.
+ */
+export function tabOrderProblem(names: readonly string[], hosts: readonly string[]): string | null {
+  if (hosts.length === 0) return "no host in the popover";
+  const expected: [string, (name: string) => boolean][] = [];
+  for (const host of hosts) {
+    expected.push(
+      [`the guard of ${host}`, (name) => GUARD.test(name) && name.endsWith(host)],
+      [`the page button of ${host}`, (name) => PAGE_BUTTON.test(name) && name.endsWith(host)],
+    );
+  }
+  expected.push(["Show what is running", (name) => SHOW_RUNNING.test(name)]);
+  for (const [index, [what, matches]] of expected.entries()) {
+    const got = names[index];
+    if (got === undefined || !matches(got)) {
+      return `stop ${index + 1} was ${got === undefined ? "nothing" : `"${got}"`}, expected ${what}`;
+    }
+  }
+  return null;
+}
+
+const popover = (page: Page) => page.getByRole("dialog", { name: POPOVER });
+
+/** Opens the status bar's quota popover, waits for its bars and keeps the pointer off it. */
+async function openPopover(page: Page): Promise<void> {
+  await page.locator("button.status-quota").click({ timeout: WAIT });
+  await popover(page).getByRole("meter").first().waitFor({ timeout: WAIT });
+  await page.mouse.move(1000, 700);
+}
+
+/** The name of the control that has the focus: its label, or else the start of its text. */
+const focusedName = (page: Page): Promise<string | null> =>
+  page.evaluate(() => {
+    const el = document.activeElement;
+    return el?.getAttribute("aria-label") ?? el?.textContent?.trim().slice(0, 80) ?? null;
+  });
+
+/**
+ * Tab goes through the popover as the screen reads it, and Escape gives the focus back to the quota
+ * item; the print throws when it does not, so the finding shows in the PR's run (#4308).
+ */
+async function checkKeyboard(page: Page): Promise<void> {
+  const hosts = await popover(page).getByRole("heading").allTextContents();
+  // Radix moves the focus in after the dialog shows.
+  await page.waitForFunction(
+    () => document.activeElement?.closest('[role="dialog"]') != null,
+    undefined,
+    { timeout: WAIT },
+  );
+  const stops = [await focusedName(page)];
+  for (let stop = 1; stop <= hosts.length * 2; stop++) {
+    await page.keyboard.press("Tab");
+    stops.push(await focusedName(page));
+  }
+  const problem = tabOrderProblem(
+    stops.map((name) => name ?? ""),
+    hosts,
+  );
+  if (problem) throw new Error(`The quota popover's Tab order: ${problem}`);
+  await page.keyboard.press("Escape");
+  await popover(page).waitFor({ state: "detached", timeout: WAIT });
+  const back = await focusedName(page);
+  if (
+    !(await page.locator("button.status-quota").evaluate((el) => el === document.activeElement))
+  ) {
+    throw new Error(`Escape did not give the focus back to the quota item; it is on "${back}"`);
+  }
 }
 
 export function quotaShots(_ids: DemoIds): Shot[] {
@@ -145,6 +220,19 @@ export function quotaShots(_ids: DemoIds): Shot[] {
           page,
           /^(Could not refresh: this is the last reading|Não foi possível atualizar)/,
         ),
+    },
+    {
+      // The status bar's quota item, open on a page that has no card: every host's bars, guard and
+      // page button, and the button that shows what is running.
+      name: "cota-popover",
+      route: { name: "activity" },
+      wire: card(HOT_WINDOWS),
+      prepare: async (page) => {
+        await openPopover(page);
+        await checkKeyboard(page);
+        await openPopover(page);
+        await page.waitForTimeout(400);
+      },
     },
   ];
 }
