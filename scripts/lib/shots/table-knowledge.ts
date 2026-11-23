@@ -2,7 +2,7 @@
 import type { KnowledgeEntry } from "@flightdeck/protocol";
 import type { Locator, Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
-import { ALFA, agentRoute, type Shot } from "./shot.ts";
+import { ALFA, agentRoute, type Shot, toastSettled } from "./shot.ts";
 
 /** A document's path in the library; built, so the guard that checks the docs the code names does not look for a real file. */
 const doc = (kind: string, file: string) => `docs/${kind}/${file}`;
@@ -370,6 +370,7 @@ export function memoryShots(ids: DemoIds): Shot[] {
           // The notice in the panel, not the toast whose detail starts the same way.
           .getByText(/^(O arquivo mudou no disco desde que|The file changed on disk since)/)
           .waitFor({ timeout: 15_000 });
+        await toastSettled(page);
       },
     },
     {
