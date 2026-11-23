@@ -120,6 +120,25 @@ describe("backup-drive-restore-ui: restart after a restore (#4347)", () => {
     expect({ offered, restarts }).toEqual({ offered: true, restarts: 1 });
   });
 
+  test("pressing Restart now twice while it runs restarts once and shows it is busy", async () => {
+    let restarts = 0;
+    let release: (() => void) | null = null;
+    await open({
+      restart: () => {
+        restarts += 1;
+        return new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      },
+    });
+    await restoreFromDrive();
+    await click("Restart now");
+    await click("Restart now");
+    const busy = (control("Restart now") as HTMLButtonElement | null)?.disabled;
+    await act(async () => release?.());
+    expect({ restarts, busy }).toEqual({ restarts: 1, busy: true });
+  });
+
   test("where the app cannot restart, the result offers no Restart now", async () => {
     await open();
     await restoreFromDrive();
