@@ -161,9 +161,14 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
     >
       {/* Folded, the whole card is this one row: the headline gives way, so the board starts right
           under the toolbar (#1031). */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 max-sm:flex-wrap">
         <h2 className="shrink-0 font-medium text-sm">{t("roiUi.title")}</h2>
-        {!open && <p className="min-w-0 flex-1 truncate text-sm">{headlineText}</p>}
+        {/* Below 640 px the headline sits under the title row and wraps, never cut mid-sentence (#4411). */}
+        {!open && (
+          <p className="min-w-0 flex-1 truncate text-sm max-sm:order-last max-sm:basis-full max-sm:whitespace-normal">
+            {headlineText}
+          </p>
+        )}
         <Button
           size="sm"
           variant="ghost"
