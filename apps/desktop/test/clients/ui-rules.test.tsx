@@ -93,6 +93,31 @@ const click = async (name: string | RegExp) => {
 };
 
 describe("clients-ui: the rules of a client", () => {
+  test("a client's name and a rule's path wrap instead of being cut at a narrow width (#4343)", async () => {
+    await open({
+      v: 1,
+      clients: [
+        {
+          id: "acme",
+          name: "Acme",
+          color: "indigo",
+          rules: [
+            { id: "r1", kind: "folder", path: "/home/u/some-long-project/packages/frontend" },
+          ],
+          defaults: { vaultScope: false },
+        },
+      ],
+      overrides: {},
+    });
+    const title = (inner: string) =>
+      screen.queryByText(inner)?.closest("[data-row-title]") as HTMLElement | null;
+    for (const text of ["Acme", "/home/u/some-long-project/packages/frontend"]) {
+      expect(title(text)).not.toBeNull();
+      expect(title(text)?.className ?? "").not.toContain("truncate");
+      expect(title(text)?.className ?? "").toContain("break-words");
+    }
+  });
+
   test("a remote rule is previewed with the projects it claims, then added to the client", async () => {
     const { store } = await open(acme());
     expect(rules()).toEqual([]);
