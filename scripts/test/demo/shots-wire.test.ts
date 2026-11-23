@@ -169,6 +169,16 @@ describe("shots-wire: a held, a replied, a sequenced and a trimmed command (#415
     expect([reply.data.path, left >= 25_000 && left < 27_000]).toEqual(["a.ts", true]);
   });
 
+  test("a reply's `{in -Ns}` is the time N seconds before the answer, so a step that started a minute ago reads a minute (#4287)", () => {
+    const wire = wireRewriter([{ command: "run.get", reply: { startedAt: "{in -90s}" } }]);
+    const before = Date.now();
+    const reply = JSON.parse(wire.answer?.(ask("r1", "run.get")) ?? "{}") as {
+      data: { startedAt: string };
+    };
+    const age = before - Date.parse(reply.data.startedAt);
+    expect(age >= 89_000 && age < 92_000).toBe(true);
+  });
+
   test("a reply with nothing to say is an answer with no data, not a crash (#4229)", () => {
     const wire = wireRewriter([{ command: "changes.revert", reply: undefined }]);
     expect(JSON.parse(wire.answer?.(ask("r1", "changes.revert")) ?? "{}")).toEqual({

@@ -102,6 +102,57 @@ describe("layout-guards narrow: what the page function finds at a narrow width",
     ]);
   });
 
+  // #4287: a reason that the scrolling page-body cuts off at its bottom edge is not drawn over the status
+  // bar under that edge: only the part a person sees can cover text.
+  test("narrow (#4287): a reason cut off by the scrolling page is not over the text under the page; the part that shows still is", () => {
+    page(`
+      <div data-slot="page-body" style="overflow-y: auto" data-rect="0,0,640,776">
+        <section data-slot="details" data-rect="16,16,600,900">
+          <div data-rect="32,764,584,800">
+            <span style="position: relative" data-rect="480,764,584,780">
+              <button data-rect="480,764,584,780">Save spec file</button>
+              <span class="action-reason" style="position: absolute" data-rect="300,780,584,796">Type the spec file's path to save it.</span>
+            </span>
+          </div>
+          <div data-slot="hours" data-rect="32,700,584,740">
+            <span style="position: relative" data-rect="32,700,200,740">
+              <button data-rect="32,700,200,740">Save hours</button>
+              <span class="action-reason" style="position: absolute" data-rect="32,742,200,780">Type the hours.</span>
+            </span>
+          </div>
+          <p data-rect="32,750,584,768">Estimated hours of this card</p>
+        </section>
+      </div>
+      <div data-slot="status-bar" data-rect="0,776,640,800">
+        <span data-rect="560,780,620,796">3/6</span>
+      </div>`);
+    expect(narrow()).toEqual([
+      "reason-over: page-body > details > hours > span.action-reason (over page-body > details > p, 168x18 px)",
+    ]);
+  });
+
+  // #4287's review: an absolute box is cut only by the boxes from its containing block up; a scrolling
+  // box in between that is not positioned does not cut it, and a fixed one floats over the page.
+  test("narrow (#4287): a reason that a scrolling box around it does not cut, or that is fixed, is still drawn over the text beside it", () => {
+    page(`
+      <div data-slot="page-body" data-rect="0,0,640,800">
+        <div style="position: relative" data-rect="16,16,624,400">
+          <div data-slot="list" style="overflow-y: auto" data-rect="16,16,624,300">
+            <span data-slot="row" class="action-reason" style="position: absolute" data-rect="300,290,584,330">Type the hours.</span>
+          </div>
+          <p data-rect="32,310,584,326">Estimated hours of this card</p>
+        </div>
+        <section data-slot="panel" style="overflow-y: auto" data-rect="16,420,624,500">
+          <span data-slot="note" class="action-reason" style="position: fixed" data-rect="300,490,584,530">Type the path.</span>
+          <p data-rect="32,510,584,526">Spec file</p>
+        </section>
+      </div>`);
+    expect(narrow()).toEqual([
+      "reason-over: page-body > list > row (over page-body > p, 284x16 px)",
+      "reason-over: page-body > panel > note (over page-body > panel > p, 284x16 px)",
+    ]);
+  });
+
   // #1338's review: a reason in a dialog or a full-window sheet floats over the page with it, so the
   // page's text behind the modal is not under it; the dialog's own text is. A tooltip drawn over a
   // reason is a floating layer too. And text is judged by its own lines: a paragraph's box can reach
