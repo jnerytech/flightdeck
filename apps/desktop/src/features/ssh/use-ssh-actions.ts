@@ -32,6 +32,8 @@ export function useSshActions(props: {
   const t = useT();
   const { store, hosts, hostId, go } = props;
   const [targets, setTargets] = useState<SshTarget[]>([]);
+  /** Whether the list is in: the empty state is only true once `ssh.list` answered. */
+  const [listing, setListing] = useState<"loading" | "failed" | "ready">("loading");
   const [importing, setImporting] = useState<SshImportEntry[] | null>(null);
   const [importMessage, setImportMessage] = useState<string[]>([]);
   const [removing, setRemoving] = useState<SshTarget | null>(null);
@@ -42,10 +44,16 @@ export function useSshActions(props: {
     if (!hostId) return;
     const result = await store.hostCommand(hostId, "ssh.list", {});
     if (result) setTargets(result.targets);
+    setListing(result ? "ready" : "failed");
   }, [store, hostId]);
   useEffect(() => {
+    setListing("loading");
     void reload();
   }, [reload]);
+  const retry = async () => {
+    setListing("loading");
+    await reload();
+  };
 
   const open = async (runner: string, target: SshTarget) => {
     // A vault key goes to the host that runs ssh now, in the connect command and nowhere else.
@@ -150,6 +158,8 @@ export function useSshActions(props: {
 
   return {
     targets,
+    listing,
+    retry,
     error,
     importing,
     setImporting,

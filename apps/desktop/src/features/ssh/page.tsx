@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
-import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { EmptyState, Field, NativeSelect, Page } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
@@ -44,6 +44,8 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
   const [editing, setEditing] = useState<SshTarget | "new" | null>(null);
   const {
     targets,
+    listing,
+    retry,
     error,
     importing,
     setImporting,
@@ -71,6 +73,8 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
   const offlineHost = hostId
     ? undefined
     : state.hosts.find((h) => hasFeature(h.hostInfo?.features, "ssh", false));
+  /** The host to open when none keeps the destinations: the offline one, or the first the person has. */
+  const hostToOpen = offlineHost ?? state.hosts[0];
   const clearFilters = () => {
     setSearch("");
     setTag("");
@@ -143,7 +147,7 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
           onClose={() => setEditing(null)}
         />
       )}
-      {hostId && (
+      {hostId && listing === "ready" && targets.length > 0 && (
         <div className="flex flex-wrap gap-3">
           <Field label={t("connections.search")}>
             {(control) => (
@@ -197,23 +201,42 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
               ? t("connections.hostOffline", { host: offlineHost.name })
               : t("connections.noHost")
           }
+          action={
+            hostToOpen && (
+              <Button onClick={() => props.go({ name: "host", host: hostToOpen.id })}>
+                {t("connections.openHost", { host: hostToOpen.name })}
+              </Button>
+            )
+          }
         />
       )}
-      {hostId && targets.length === 0 && (
+      {hostId && listing === "loading" && (
+        <p role="status" className="text-muted-foreground text-sm">
+          {t("connections.loading")}
+        </p>
+      )}
+      {hostId && listing === "failed" && (
+        <EmptyState
+          icon={Network}
+          title={t("connections.loadFailed")}
+          action={<ActionButton onClick={retry}>{t("connections.retry")}</ActionButton>}
+        />
+      )}
+      {hostId && listing === "ready" && targets.length === 0 && (
         <EmptyState
           icon={Network}
           title={t("connections.empty")}
           action={<Button onClick={() => setEditing("new")}>{t("connections.emptyAction")}</Button>}
         />
       )}
-      {hostId && targets.length > 0 && shown.length === 0 && (
+      {hostId && listing === "ready" && targets.length > 0 && shown.length === 0 && (
         <EmptyState
           icon={Network}
           title={t("connections.noMatch")}
           action={<Button onClick={clearFilters}>{t("connections.clearFilters")}</Button>}
         />
       )}
-      {hostId && shown.length > 0 && (
+      {hostId && listing !== "loading" && shown.length > 0 && (
         <ul aria-label={t("connections.list")} className="flex flex-col gap-2">
           {shown.map((target) => (
             <li key={target.id} className="flex flex-col gap-2 rounded-lg border p-3">
@@ -230,20 +253,21 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
               </div>
               <div className="flex gap-2">
                 {(["connect", "edit", "duplicate", "remove"] as const).map((verb) => (
-                  <Button
+                  <ActionButton
                     key={verb}
                     variant="outline"
                     size="sm"
                     aria-label={t(`connections.${verb}For`, { name: target.name })}
                     onClick={() => {
-                      if (verb === "connect") void connect(target);
-                      else if (verb === "edit") setEditing(target);
-                      else if (verb === "duplicate") void duplicate(target);
+                      // The promise of Connect and Duplicate keeps the button busy until the host answered.
+                      if (verb === "connect") return connect(target);
+                      if (verb === "duplicate") return duplicate(target);
+                      if (verb === "edit") setEditing(target);
                       else setRemoving(target);
                     }}
                   >
                     {t(`connections.${verb}`)}
-                  </Button>
+                  </ActionButton>
                 ))}
               </div>
             </li>
