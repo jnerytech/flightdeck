@@ -626,4 +626,98 @@ describe("webhook-ui: focus and words after each row action (#2677)", () => {
     expect(screen.queryByRole("button", { name: "Remove Team" })).not.toBeNull();
     expect(said("Team removed")).toBe(false);
   });
+
+  describe("a half-typed form is not dropped without asking (#4404)", () => {
+    const addTeam = async () => {
+      await fill("Name", "Team");
+      await fill("Webhook URL", SECRET);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+      });
+      await click("Save webhook");
+      await settle(() => screen.queryByRole("button", { name: "Edit Team" }) !== null);
+    };
+    const nameValue = () => (screen.getByLabelText("Name") as HTMLInputElement).value;
+    const discardAsked = () => screen.queryByRole("alertdialog") !== null;
+
+    test("Edit on a row asks before it replaces text typed in the Add form; Cancel keeps the text, Discard loads the row", async () => {
+      await open("en");
+      await addTeam();
+      await fill("Name", "Half typed");
+      await click("Edit Team");
+      await settleMaybe(discardAsked);
+      expect(discardAsked()).toBe(true);
+      const dialog = screen.getByRole("alertdialog");
+      expect(
+        within(dialog).queryByText("Discard what you typed in this form? It will be lost."),
+      ).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+      });
+      await settle(() => !discardAsked());
+      expect(nameValue()).toBe("Half typed");
+      await click("Edit Team");
+      await settleMaybe(discardAsked);
+      expect(discardAsked()).toBe(true);
+      const again = screen.getByRole("alertdialog");
+      await act(async () => {
+        fireEvent.click(within(again).getByRole("button", { name: "Discard" }));
+      });
+      await settle(() => nameValue() === "Team");
+      expect(screen.queryByRole("heading", { name: "Edit Team" })).not.toBeNull();
+    });
+
+    test("Cancel on an edit with a changed field asks; Discard closes the edit, keeping the stored webhook", async () => {
+      await open("en");
+      await addTeam();
+      await click("Edit Team");
+      await fill("Name", "Renamed");
+      await click("Cancel");
+      await settleMaybe(discardAsked);
+      expect(discardAsked()).toBe(true);
+      const dialog = screen.getByRole("alertdialog");
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+      });
+      await settle(() => !discardAsked());
+      expect(nameValue()).toBe("Renamed");
+      await click("Cancel");
+      await settleMaybe(discardAsked);
+      expect(discardAsked()).toBe(true);
+      const again = screen.getByRole("alertdialog");
+      await act(async () => {
+        fireEvent.click(within(again).getByRole("button", { name: "Discard" }));
+      });
+      await settle(() => nameValue() === "");
+      expect(screen.queryByText("Team")).not.toBeNull();
+    });
+
+    test("an empty Add form and an edit with nothing changed act at once, with no question", async () => {
+      await open("en");
+      await addTeam();
+      await click("Edit Team");
+      expect(nameValue()).toBe("Team");
+      expect(discardAsked()).toBe(false);
+      await click("Cancel");
+      expect(discardAsked()).toBe(false);
+      expect(nameValue()).toBe("");
+    });
+
+    test("the question is in Portuguese too", async () => {
+      await open("pt-BR");
+      await addSlack();
+      await settle(() => screen.queryByRole("button", { name: "Editar Team" }) !== null);
+      await fill("Nome", "Metade");
+      await click("Editar Team");
+      await settleMaybe(discardAsked);
+      expect(discardAsked()).toBe(true);
+      const dialog = screen.getByRole("alertdialog");
+      expect(
+        within(dialog).queryByText(
+          "Descartar o que você digitou neste formulário? Isso será perdido.",
+        ),
+      ).not.toBeNull();
+      expect(within(dialog).queryByRole("button", { name: "Descartar" })).not.toBeNull();
+    });
+  });
 });
