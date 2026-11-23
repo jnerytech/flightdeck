@@ -90,6 +90,24 @@
 }
 
 /*
+ * A button whose label holds a name a person chose (#4269): the label wraps inside the window instead
+ * of pushing the button past it. The base button is nowrap with a fixed height and does not shrink,
+ * so the rule carries the button's own attribute to outrank it.
+ */
+@utility wrap-button {
+  &[data-slot="button"] {
+    height: auto;
+    min-height: 2rem;
+    max-width: 100%;
+    flex-shrink: 1;
+    padding-block: 0.25rem;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+/*
  * A tab strip with more tabs than a narrow window holds (#4278: the Agent screen's six at 390 px):
  * it wraps onto a second line instead of running past its container. The vendored list is a
  * fixed-height inline flex row and sets its height through a group variant, so the rule carries
