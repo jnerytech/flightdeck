@@ -82,6 +82,12 @@ describe("layout-list-row: the title wins the width", () => {
     expect(part(container, "trailing")?.className ?? "").toContain("shrink-0");
   });
 
+  test("a wrapping title has a small basis, so the leading mark stays beside it and the ends drop first", () => {
+    const { container } = render(<ListRow wrap leading={<span>●</span>} title="A long name" />);
+    expect(part(container, "title")?.className ?? "").toContain("basis-32");
+    expect(part(container, "title")?.className ?? "").not.toContain("flex-auto");
+  });
+
   test("a row that does not ask to wrap is unchanged", () => {
     const { container } = render(<ListRow title="Fix" meta="alfa" />);
     expect((container.firstElementChild as HTMLElement).className).not.toContain("flex-wrap");
