@@ -108,6 +108,20 @@ describe("clients-ui: the transfer outcome is announced and the export can be co
     expect(said("alert", "Isso não é uma exportação de clientes.")).toBe(true);
   });
 
+  test("a second identical failure is announced again, as a new alert", async () => {
+    await open([acme]);
+    await act(async () => {
+      fireEvent.change(box("Colar uma exportação"), { target: { value: "isso não é json" } });
+    });
+    await click("Importar");
+    const first = document.querySelector("[role=alert]");
+    expect(first).not.toBeNull();
+    await click("Importar");
+    const second = document.querySelector("[role=alert]");
+    expect(second).not.toBeNull();
+    expect(second === first).toBe(false);
+  });
+
   test("an import that worked is a polite status line", async () => {
     await open([acme]);
     const incoming = { v: 1, clients: [{ ...acme, id: "beta", name: "Beta" }], overrides: {} };
