@@ -159,9 +159,12 @@ export class VaultSecretsSlice {
 
   async applyImport(preview: ImportPreview, onConflict: ConflictChoice): Promise<ImportResult> {
     const { applyImport } = await import("./domain/vault-backup.ts");
-    const result = await applyImport(this.core.vault, preview, onConflict);
-    this.core.secretsChanged();
-    return result;
+    try {
+      return await applyImport(this.core.vault, preview, onConflict);
+    } finally {
+      // Secrets are restored one by one: a failure halfway leaves some in, and the list shows them.
+      this.core.secretsChanged();
+    }
   }
 
   /** A backup's own refusal is a code for the screen; anything else is an error to show. */
