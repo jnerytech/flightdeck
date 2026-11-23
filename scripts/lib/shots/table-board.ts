@@ -5,13 +5,17 @@ import { DEMO_UPDATE_CARDS } from "../e2e/journeys.ts";
 import { ALFA, type Shot, selectCards, toastSettled } from "./shot.ts";
 
 /** A card's ⋯ menu button: its name carries the title, so two cards never share one. */
-const actionsOf = (title: string) => new RegExp(`^(Actions for ${title}|Ações de ${title})$`);
+const actionsOf = (title: string) => {
+  const exact = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`^(Actions for ${exact}|Ações de ${exact})$`);
+};
 
 /** Delete… from a card's menu, and the confirmation it opens. */
 async function openDeleteDialog(page: Page, title: string): Promise<void> {
   await page.getByRole("button", { name: actionsOf(title) }).click();
   await page.getByRole("menuitem", { name: /^(Delete…|Excluir…)$/ }).click();
   await page.getByRole("alertdialog").waitFor();
+  // timing: the dialog's open animation (about 200 ms) ends before the shot.
   await page.waitForTimeout(400);
 }
 
@@ -195,6 +199,7 @@ export function boardShots(ids: DemoIds): Shot[] {
           .getByRole("button", { name: /^(Discard…|Descartar…)$/ })
           .click();
         await page.getByRole("alertdialog").waitFor();
+        // timing: the dialog's open animation (about 200 ms) ends before the shot.
         await page.waitForTimeout(400);
       },
     },
@@ -208,6 +213,7 @@ export function boardShots(ids: DemoIds): Shot[] {
           .click();
         await page.getByRole("dialog").waitFor();
         await page.getByText(/^(Give the card a title|Dê um título ao card)$/).waitFor();
+        // timing: the dialog's open animation (about 200 ms) ends before the shot.
         await page.waitForTimeout(400);
       },
     },
