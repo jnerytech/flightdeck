@@ -285,7 +285,8 @@ describe("shots-ssh: the answers a print makes in the host's place", () => {
     const got: Array<{ data: unknown }> = [];
     socket.addEventListener("message", (event) => got.push(JSON.parse(String(event.data))));
     (socket as unknown as { send(data: string): void }).send(ask("r9", "ssh.test"));
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    // The answer is queued as a microtask: one await lets it through.
+    await Promise.resolve();
     expect(got.map((frame) => frame.data)).toEqual([{ ok: true, error: null }]);
   });
 });
