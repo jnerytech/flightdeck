@@ -115,6 +115,34 @@ describe("conexoes-ui: ssh asks for a password", () => {
     expect(dialog()).toBeNull();
   });
 
+  test("a held Enter sends once, and an Enter that only confirms an IME composition sends nothing (#4331)", async () => {
+    const { d } = await open();
+    await ask(d, request("r1"));
+    const field = await type(SECRET);
+    await act(async () => {
+      fireEvent.keyDown(field, { key: "Enter", isComposing: true });
+      fireEvent.keyDown(field, { key: "Process", keyCode: 229 });
+      fireEvent.keyDown(field, { key: "Enter", keyCode: 229 });
+    });
+    expect(d.sent("askpass.answer")).toEqual([]);
+    await act(async () => {
+      fireEvent.keyDown(field, { key: "Enter" });
+      fireEvent.keyDown(field, { key: "Enter", repeat: true });
+      fireEvent.keyDown(field, { key: "Enter" });
+    });
+    await uiIdle();
+    expect(d.sent("askpass.answer")).toEqual([{ requestId: "r1", secret: SECRET }]);
+  });
+
+  test("the shown field is out of spellcheck, and the focus stays in the field after the toggle (#4331)", async () => {
+    const { d } = await open();
+    await ask(d, request("r1"));
+    const field = await type(SECRET);
+    await click("Mostrar o que foi digitado");
+    expect(field.getAttribute("spellcheck")).toBe("false");
+    expect(document.activeElement === field).toBe(true);
+  });
+
   test("a show control lets the person check what was typed, and hides it again (#4331)", async () => {
     const { d } = await open();
     await ask(d, request("r1"));
