@@ -201,6 +201,19 @@ describe("clients-vault: the scope control says why it is off and what it did (#
     expect(within(itemOf("Acme")).queryByText(/Salve uma tag do cofre primeiro/)).toBeNull();
   });
 
+  test("a scope that is on stays switchable when its vault tag is cleared", async () => {
+    const { store, acme } = await open({ tag: "client:acme" });
+    store.clients.setDefaults(acme, { vaultScope: true });
+    await act(async () => {
+      store.clients.setDefaults(acme, { vaultTag: "" });
+    });
+    await settle(() => within(itemOf("Acme")).queryByRole("switch") !== null);
+    const control = scopeSwitch();
+    expect(control).not.toBeNull();
+    expect((control as HTMLButtonElement).disabled).toBe(false);
+    expect(within(itemOf("Acme")).queryByText(/Salve uma tag do cofre primeiro/)).toBeNull();
+  });
+
   test("turning it on and off each say the result in a status line", async () => {
     await open({ tag: "client:acme" });
     await click(scopeSwitch());
