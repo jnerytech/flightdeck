@@ -24,6 +24,8 @@ const CLEAR_MS = 30_000;
 const WARN_MS = 5_000;
 /** How long the "hidden" notice stays in the status line before it is cleared. */
 const HIDDEN_NOTICE_MS = 5_000;
+/** How long what the page says about a change that has closed its form stays on screen. */
+const NOTICE_MS = 5_000;
 
 /** The secret a removal hands the focus to: the next one in the list, else the one before it, else none. */
 function neighbourOf(list: readonly SecretMeta[], id: string): string | null {
@@ -56,6 +58,8 @@ export const VaultPage = memo(function VaultPage(props: {
     () => state.secrets.find((s) => s.id === props.rule?.secretId) ?? null,
   );
   const [removing, setRemoving] = useState<SecretMeta | null>(null);
+  // What the page says about a change whose form has closed (a secret saved), politely announced.
+  const [notice, setNotice] = useState("");
   const [shown, setShown] = useState<{ id: string; value: string } | null>(null);
 
   // What a screen reader hears about the value (never the value): shown, about to hide, hidden.
@@ -87,6 +91,12 @@ export const VaultPage = memo(function VaultPage(props: {
       clearTimeout(soon);
     };
   }, [shown, revealMs]);
+
+  useEffect(() => {
+    if (notice === "") return;
+    const timer = setTimeout(() => setNotice(""), NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   // "Hidden" is said once: it does not stay in the status line for good.
   useEffect(() => {
@@ -158,7 +168,12 @@ export const VaultPage = memo(function VaultPage(props: {
       )}
       {editing && (
         <OpenedPanel key={editing.id} opener={`edit:${editing.id}`}>
-          <EditSecretForm store={store} secret={editing} onClose={() => setEditing(null)} />
+          <EditSecretForm
+            store={store}
+            secret={editing}
+            onSaved={(name) => setNotice(t("vault.savedAs", { name }))}
+            onClose={() => setEditing(null)}
+          />
         </OpenedPanel>
       )}
       {ruling && (
@@ -171,6 +186,9 @@ export const VaultPage = memo(function VaultPage(props: {
           />
         </OpenedPanel>
       )}
+      <div aria-live="polite" className="text-muted-foreground text-sm empty:sr-only">
+        {notice}
+      </div>
       <Tabs defaultValue="secrets">
         <TabsList aria-label={t("vault.tabs")}>
           <TabsTrigger value="secrets">{t("vault.tabSecrets")}</TabsTrigger>

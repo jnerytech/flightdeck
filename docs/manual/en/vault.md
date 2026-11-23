@@ -12,6 +12,10 @@ the tags and a description of the secret.
   the temporary file and shows the public key, ready to **Copy public key**. **Import key file**
   reads a key file you choose in the system dialog; the original stays where it is unless you tick
   **Delete the original file after importing**.
+- **Edit** changes a secret's name, description, tags and allowed hosts, never its value. **Save
+  changes** is off, with the reason beside it, while the name is empty. When the form closes, a line
+  at the top of the page says the secret was saved. If you uncheck every allowed host the form warns
+  that no host will be able to use the secret, and its row then says so; you can still save.
 - Each row shows what is safe to show: a key's public key fingerprint, a token's start and end
   (`ghp_…WXYZ`, and nothing for a short one) or the names of an env set. A password shows nothing.
 - **Reveal** asks you to type the word `reveal`, then shows the value for 10 seconds. **Copy** puts

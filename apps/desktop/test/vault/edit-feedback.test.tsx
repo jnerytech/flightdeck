@@ -77,7 +77,7 @@ describe("cofre-ui: the Edit form says what happened (#4418)", () => {
     expect(screen.queryByLabelText("Nome")).toBeNull();
     const status = screen.queryByText("deploy prod salvo");
     expect(status).not.toBeNull();
-    expect((status as HTMLElement).tagName).toBe("OUTPUT");
+    expect((status as HTMLElement).closest("[aria-live=polite]")).not.toBeNull();
   });
 
   test("a cancelled edit says nothing was saved", async () => {
