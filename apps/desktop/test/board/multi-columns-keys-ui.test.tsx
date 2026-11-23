@@ -121,8 +121,8 @@ describe("board-multi-ui: counts under a filter (issue #161)", () => {
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Filter cards"), { target: { value: "about B" } });
     });
-    expect(count("Backlog")).toBe("1 / 3");
-    expect(count("In progress")).toBe("0 / 1");
+    expect(count("Backlog")).toBe("1/3");
+    expect(count("In progress")).toBe("0/1");
     expect(within(lane("In progress")).getByText("No matches")).toBeTruthy();
     expect(
       within(lane("In progress")).queryByRole("button", { name: "Empty, Add card" }),
@@ -351,5 +351,97 @@ describe("board-multi-ui: selecting with the keys and the checks (#1354)", () =>
       within(li("A")).queryByRole("checkbox", { name: "Selecionar A" }) !== null,
       live(),
     ]).toEqual([true, "1 selecionado"]);
+  });
+});
+
+/** What each language says (#4409); the label of the field is the one the toolbar already has. */
+const WORDS = {
+  en: {
+    field: "Filter cards",
+    none: "No cards match the filter.",
+    clearAll: "Clear filters",
+    clearText: "Clear filter text",
+    announce: "1 of 5 cards",
+  },
+  "pt-BR": {
+    field: "Filtrar cards",
+    none: "Nenhum card corresponde ao filtro.",
+    clearAll: "Limpar filtros",
+    clearText: "Limpar o texto do filtro",
+    announce: "1 de 5 cards",
+  },
+} as const;
+
+const status = () => document.querySelector("[data-slot='board-status']")?.textContent ?? "";
+
+async function filterWith(field: string, value: string) {
+  await act(async () => {
+    fireEvent.change(screen.getByLabelText(field), { target: { value } });
+  });
+}
+
+describe("board-multi-ui: a filter that matches nothing (#4409)", () => {
+  for (const language of ["en", "pt-BR"] as const) {
+    const w = WORDS[language];
+
+    test(`${language}: the board says no card matches, and Clear filters brings every card back with the focus on the filter`, async () => {
+      setup({ language });
+      await settle(() => screen.queryByLabelText(w.field) !== null);
+      expect(screen.queryByText(w.none)).toBeNull();
+      await filterWith(w.field, "nothing like this");
+      expect(screen.queryByText(w.none)).not.toBeNull();
+      const clear = screen.queryByRole("button", { name: w.clearAll });
+      expect(clear).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(clear as HTMLElement);
+      });
+      expect(screen.queryByText(w.none)).toBeNull();
+      expect(screen.queryByLabelText(`Card A`)).not.toBeNull();
+      expect((screen.getByLabelText(w.field) as HTMLInputElement).value).toBe("");
+      expect(document.activeElement === screen.getByLabelText(w.field)).toBe(true);
+    });
+
+    test(`${language}: a filter that leaves some cards shows no board message, and the live region says how many are left`, async () => {
+      setup({ language });
+      await settle(() => screen.queryByLabelText(w.field) !== null);
+      expect(status()).toBe("");
+      await filterWith(w.field, "about B");
+      expect(screen.queryByText(w.none)).toBeNull();
+      expect(status()).toBe(w.announce);
+      await filterWith(w.field, "");
+      expect(status()).toBe("");
+    });
+
+    test(`${language}: the text field has a clear control only while it holds text`, async () => {
+      setup({ language });
+      await settle(() => screen.queryByLabelText(w.field) !== null);
+      expect(screen.queryByRole("button", { name: w.clearText })).toBeNull();
+      await filterWith(w.field, "about B");
+      const clear = screen.queryByRole("button", { name: w.clearText });
+      expect(clear).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(clear as HTMLElement);
+      });
+      expect((screen.getByLabelText(w.field) as HTMLInputElement).value).toBe("");
+      expect(screen.queryByRole("button", { name: w.clearText })).toBeNull();
+      expect(document.activeElement === screen.getByLabelText(w.field)).toBe(true);
+      expect(li("C")).not.toBeNull();
+    });
+  }
+
+  test("a board with no card at all gets the empty state, not the filter message", async () => {
+    setup({ cards: [] });
+    await ready();
+    await filterWith("Filter cards", "x");
+    expect(screen.queryByText(WORDS.en.none)).toBeNull();
+  });
+
+  test("the count of a filtered column is compact, so a column name keeps its room", async () => {
+    setup();
+    await ready();
+    await filterWith("Filter cards", "about B");
+    const count = (name: string) => lane(name).querySelector(".column-count")?.textContent;
+    expect([count("Backlog"), count("In progress")]).toEqual(["1/3", "0/1"]);
+    expect(within(lane("Backlog")).queryByRole("img", { name: "1 of 3 cards" })).not.toBeNull();
   });
 });

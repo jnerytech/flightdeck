@@ -164,9 +164,9 @@ describe("board-multi: the counts (issue #161)", () => {
   test("a number, or n / total while a filter hides some", () => {
     expect(columnCount(3)).toBe("3");
     expect(columnCount(0)).toBe("0");
-    expect(filteredColumnCount(2, 5)).toBe("2 / 5");
-    expect(filteredColumnCount(0, 4)).toBe("0 / 4");
-    expect(filteredColumnCount(3, 3)).toBe("3 / 3");
+    expect(filteredColumnCount(2, 5)).toBe("2/5");
+    expect(filteredColumnCount(0, 4)).toBe("0/4");
+    expect(filteredColumnCount(3, 3)).toBe("3/3");
     expect(filteredColumnCount(0, 0)).toBe("0");
   });
 
