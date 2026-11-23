@@ -3,6 +3,7 @@ import { useId } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { InlineNotice } from "@/shared/feedback/index.ts";
 import { Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import { formatAgo, formatDuration } from "../../i18n/format.ts";
 import type { Key } from "../../i18n/index.ts";
@@ -107,12 +108,12 @@ function WindowMeter(
           className={cn(METER, METER_COLOR[reading.status])}
         />
       )}
-      {reset !== null && reading.resetsAt && (
-        <span
-          className="text-muted-foreground text-xs"
-          title={t("quota.resets", { time: formatTime(reading.resetsAt) })}
-        >
-          {reset}
+      {left !== null && reading.resetsAt && (
+        <span className="text-muted-foreground text-xs">
+          {t("account.resetsInAt", {
+            d: formatDuration(left, t),
+            time: formatTime(reading.resetsAt),
+          })}
         </span>
       )}
     </div>
@@ -126,18 +127,21 @@ function SignedOutBody(
   props: Readonly<{
     state: AccountState;
     copied: boolean;
+    copyFailed: boolean;
     onCopy: () => void;
     onTerminal: () => void;
   }>,
 ) {
   const t = useT();
-  const { state, copied, onCopy, onTerminal } = props;
+  const { state, copied, copyFailed, onCopy, onTerminal } = props;
   return (
     <>
       <p className="font-medium text-sm">{t("account.signedOut.title")}</p>
       <p className="text-muted-foreground text-sm">{t("account.signedOut.steps")}</p>
       <code className="code-chip rounded bg-muted font-mono text-sm">{state.loginCommand}</code>
-      <output className="sr-only">{copied ? t("account.copied") : ""}</output>
+      <output className={copyFailed ? "text-sm text-status-needs-you" : "sr-only"}>
+        {copyFailed ? t("account.copyFailed") : copied ? t("account.copied") : ""}
+      </output>
       <div className="row-gap2">
         <Button type="button" variant="outline" size="sm" onClick={onCopy}>
           {copied ? t("account.copied") : t("account.copy")}
@@ -221,7 +225,7 @@ function SignedInBody(
           formatTime={formatTime}
         />
       ))}
-      {state.stale && <p className="text-sm text-status-needs-you">{t("account.stale")}</p>}
+      {state.stale && <InlineNotice tone="warn">{t("account.stale")}</InlineNotice>}
       <div className="row-wrap-loose text-muted-foreground text-xs">
         <output>
           {refreshing
@@ -291,6 +295,7 @@ export function AccountCard(props: Readonly<AccountCardProps>) {
       <SignedOutBody
         state={state}
         copied={props.copied}
+        copyFailed={props.copyFailed === true}
         onCopy={props.onCopy}
         onTerminal={props.onTerminal}
       />

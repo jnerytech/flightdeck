@@ -458,7 +458,7 @@ describe("conta-cartao-ui: pt-BR", () => {
   test("the card speaks Portuguese in each state", () => {
     const { unmount } = show({ state: state() }, "pt-BR");
     expect(inCard().queryByText("5 horas")).not.toBeNull();
-    expect(inCard().queryByText("reinicia em 3 h")).not.toBeNull();
+    expect(inCard().queryByText("reinicia em 3 h, às 15:00")).not.toBeNull();
     expect(inCard().queryByText("Última leitura há 2 min")).not.toBeNull();
     expect(inCard().queryByRole("meter", { name: "5 horas de alfa" })).not.toBeNull();
     unmount();
