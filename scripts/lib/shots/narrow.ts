@@ -51,6 +51,12 @@ export const NARROW_SHOTS: readonly string[] = [
   "configuracoes-restaurar-drive-vazio",
   "configuracoes-restaurar-drive-auth",
   "configuracoes-restaurar-drive-falhou",
+  // #4348: Scheduled backups with Google Drive as the target, and a Keep number that is not valid.
+  "configuracoes-agendado-drive-saida",
+  "configuracoes-agendado-drive-conectado",
+  "configuracoes-agendado-drive-recusado",
+  "configuracoes-agendado-drive-aguardando",
+  "configuracoes-agendado-manter-invalido",
   // #1244: Merge PR's confirmation on a card with an open PR.
   "card-merge-pr",
   "workflows-modelos",
