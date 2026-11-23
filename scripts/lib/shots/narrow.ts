@@ -62,6 +62,20 @@ export const NARROW_SHOTS: readonly string[] = [
   "configuracoes-restaurar-drive-vazio",
   "configuracoes-restaurar-drive-auth",
   "configuracoes-restaurar-drive-falhou",
+  // #4348: Scheduled backups with Google Drive as the target, and a Keep number that is not valid.
+  "configuracoes-agendado-drive-saida",
+  "configuracoes-agendado-drive-conectado",
+  "configuracoes-agendado-drive-recusado",
+  "configuracoes-agendado-drive-aguardando",
+  "configuracoes-agendado-manter-invalido",
+  // #4348: Back up everything refused: the form's fields, and the notice or the reason under them, narrow.
+  "configuracoes-backup-erro-diferente",
+  "configuracoes-backup-erro-curta",
+  "configuracoes-backup-erro-grande",
+  // #4348: Restore a backup refused (a restore that fails, nothing to restore) and a prune that fails: the notice or the reason beside the buttons narrows.
+  "configuracoes-backup-restaurar-falhou",
+  "configuracoes-backup-nada-a-restaurar",
+  "configuracoes-agenda-limpeza-falhou",
   // #1244: Merge PR's confirmation on a card with an open PR.
   "card-merge-pr",
   "workflows-modelos",

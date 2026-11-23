@@ -48,6 +48,17 @@ describe("the Scheduled backups prints (#4001)", () => {
       expect(written).toEqual([]);
     });
 
+    test("the first writes pass when some are allowed, and the next ones refuse", () => {
+      const { win, written } = fakeWindow();
+      failFolderWrites(win, "flightdeck.demoBackupFolder", 1);
+      const write = (value: string) =>
+        win.Storage.prototype.setItem.call({}, "flightdeck.demoBackupFolder", value);
+      expect(() => write("saved")).not.toThrow();
+      expect(() => write("pruned")).toThrow();
+      expect(() => write("pruned again")).toThrow();
+      expect(written).toEqual(["saved"]);
+    });
+
     test("any other key is written as before", () => {
       const { win, written } = fakeWindow();
       failFolderWrites(win, "flightdeck.demoBackupFolder");

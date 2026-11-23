@@ -36,7 +36,9 @@ import { mcpShots } from "./lib/shots/table-agent-mcp.ts";
 import { assistantShots, demoAssistantPrefs } from "./lib/shots/table-assistant.ts";
 import { automationShots } from "./lib/shots/table-automations.ts";
 import { backgroundShots } from "./lib/shots/table-background.ts";
-import { backupDriveShots } from "./lib/shots/table-backup-drive.ts";
+import { backupDriveShots, backupScheduleShots } from "./lib/shots/table-backup-drive.ts";
+import { backupExportShots } from "./lib/shots/table-backup-export.ts";
+import { backupFailShots } from "./lib/shots/table-backup-fail.ts";
 import { boardShots } from "./lib/shots/table-board.ts";
 import { changesShots } from "./lib/shots/table-changes.ts";
 import { costsShots } from "./lib/shots/table-costs.ts";
@@ -108,6 +110,9 @@ function shots(ids: DemoIds): Shot[] {
     ...timelineShots(ids),
     ...hostShots(ids),
     ...backupDriveShots(ids),
+    ...backupScheduleShots(ids),
+    ...backupExportShots(ids),
+    ...backupFailShots(ids),
     ...healthShots(ids),
     ...accountShots(ids),
     ...harnessShots(ids),
