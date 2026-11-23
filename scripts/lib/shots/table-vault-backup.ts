@@ -6,7 +6,7 @@
  */
 import type { Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
-import { keepSaves, offerBackup } from "./save-file.ts";
+import { keepFiles } from "./backup-steps.ts";
 import { type Shot, showSection } from "./shot.ts";
 
 const PHRASE = "a long enough passphrase";
@@ -26,8 +26,7 @@ async function store(page: Page, name: string, value: string): Promise<void> {
 
 /** Secrets stored and exported: the file the save dialog would take is kept in the page. */
 async function exported(page: Page, secrets: Array<[name: string, value: string]>): Promise<void> {
-  await page.evaluate(`(${keepSaves.toString()})(window)`);
-  await page.evaluate(`(${offerBackup.toString()})(window)`);
+  await keepFiles(page);
   for (const [name, value] of secrets) await store(page, name, value);
   await page.getByRole("tab", { name: "Backup" }).click();
   await page.getByLabel(/^(Passphrase|Frase-senha)$/).fill(PHRASE);
