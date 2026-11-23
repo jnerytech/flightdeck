@@ -15,6 +15,8 @@ export function ListRow(
     boxed?: boolean;
     /** The row of the item that is open. */
     selected?: boolean;
+    /** Wraps instead of truncating: a long title is read whole and the ends drop to the next line. */
+    wrap?: boolean;
     className?: string;
   }>,
 ) {
