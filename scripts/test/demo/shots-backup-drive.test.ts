@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import type { DemoIds } from "../../demo-seed.ts";
 import { narrowSizes } from "../../lib/shots/narrow.ts";
 import { backupDriveShots } from "../../lib/shots/table-backup-drive.ts";
+import { recordingPage } from "./recording-page.ts";
 
 const shots = () => backupDriveShots({} as DemoIds);
 
@@ -31,6 +32,48 @@ describe("the Drive restore prints (#4348)", () => {
     expect(EXPECTED.map(([name]) => narrowSizes("dark", name).length)).toEqual(
       EXPECTED.map(() => 3),
     );
+  });
+
+  const SECTION = "evaluate text[Restore a backup]";
+  const SIGNED_IN = [
+    "check group[Where to save] > radio[Google Drive]",
+    "click button[Sign in with Google]",
+    "waitFor text[Signed in to Google]",
+  ];
+  const FROM_DRIVE = "check group[Restore from] > radio[Google Drive]";
+  const LOOKED_IN = [...SIGNED_IN, FROM_DRIVE, "click button[Look in Google Drive]"];
+
+  /** What each print drives on the page, in order, before it shows the section. */
+  const STEPS: Array<[string, string[]]> = [
+    ["configuracoes-restaurar-fonte", [SECTION]],
+    [
+      "configuracoes-restaurar-drive-entrar",
+      [FROM_DRIVE, "waitFor text[Sign in to Google under]", SECTION],
+    ],
+    [
+      "configuracoes-restaurar-drive-lista",
+      [...LOOKED_IN, "waitFor text[flightdeck-backup-20261122-060000.fdbackup]", SECTION],
+    ],
+    [
+      "configuracoes-restaurar-drive-vazio",
+      [...LOOKED_IN, "waitFor text[No backups on Google Drive yet]", SECTION],
+    ],
+    [
+      "configuracoes-restaurar-drive-auth",
+      [...LOOKED_IN, "waitFor text[Google Drive does not accept]", SECTION],
+    ],
+    [
+      "configuracoes-restaurar-drive-falhou",
+      [...LOOKED_IN, "waitFor text[Google Drive could not be read]", SECTION],
+    ],
+  ];
+
+  test.each(STEPS)("%s drives the page the way its state needs", async (name, expected) => {
+    const { page, steps } = recordingPage();
+    await shots()
+      .find((shot) => shot.name === name)
+      ?.prepare?.(page);
+    expect(steps).toEqual(expected);
   });
 
   test("demo:shots prints the table", () => {
