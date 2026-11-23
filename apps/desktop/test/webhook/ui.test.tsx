@@ -834,5 +834,18 @@ describe("webhook-ui: focus and words after each row action (#2677)", () => {
       expect(field("Webhook URL").type).toBe("password");
       expect(screen.queryByRole("button", { name: "Show Webhook URL" })).not.toBeNull();
     });
+
+    test("a revealed field is kept from the spellchecker, and switching the type hides it again", async () => {
+      await open("en");
+      expect(field("Webhook URL").getAttribute("spellcheck")).toBe("false");
+      await click("Show Webhook URL");
+      expect(field("Webhook URL").type).toBe("text");
+      expect(field("Webhook URL").getAttribute("spellcheck")).toBe("false");
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText("Type"), { target: { value: "ntfy" } });
+      });
+      expect(field("Topic URL").type).toBe("password");
+      expect(screen.queryByRole("button", { name: "Show Topic URL" })).not.toBeNull();
+    });
   });
 });
