@@ -6,7 +6,7 @@
 import type { Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
 import { backedUp, backedUpThenEdited, RESTORE, readBackup } from "./backup-steps.ts";
-import { failFolderWrites } from "./folder-fail.ts";
+import { refuseWritesScript } from "./folder-fail.ts";
 import { type Shot, showSection } from "./shot.ts";
 
 const RESTORE_FORM = /^(Restore a backup|Restaurar um backup)$/;
@@ -18,9 +18,7 @@ const OLD_BACKUP = "flightdeck-backup-20200101-000000.fdbackup";
 
 /** Makes the page's storage refuse `key` after `allowed` writes of it. */
 async function refuseWrites(page: Page, key: string, allowed: number): Promise<void> {
-  await page.evaluate(
-    `(${failFolderWrites.toString()})(window, ${JSON.stringify(key)}, ${allowed})`,
-  );
+  await page.evaluate(refuseWritesScript(key, allowed));
 }
 
 export function backupFailShots(_ids: DemoIds): Shot[] {
