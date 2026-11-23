@@ -8,6 +8,8 @@ import { recordingPage } from "./recording-page.ts";
 const shots = () => backupExportShots({} as DemoIds);
 
 const SECTION = "evaluate text[Back up everything]";
+/** The pointer leaves the button it clicked: its hover color is not what the contrast check should see. */
+const AWAY = "mouse.move 1000,700";
 const PASSPHRASE = 'fill "a long enough passphrase" label[Passphrase]';
 
 /** Name → what the print drives on the page, in order, before it shows the section. */
@@ -18,6 +20,7 @@ const STEPS: Array<[string, string[]]> = [
       PASSPHRASE,
       'fill "another long passphrase" label[Confirm passphrase]',
       "click button[Back up now]",
+      AWAY,
       "waitFor text[The passphrases do not match.]",
       SECTION,
     ],
@@ -38,6 +41,7 @@ const STEPS: Array<[string, string[]]> = [
       PASSPHRASE,
       'fill "a long enough passphrase" label[Confirm passphrase]',
       "click button[Back up now]",
+      AWAY,
       "waitFor text[This backup is too big to be restored later]",
       SECTION,
     ],
