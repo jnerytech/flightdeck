@@ -130,6 +130,8 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
   const [epoch, setEpoch] = useState(0);
   const secretKeepKey = draft.type === "ntfy" ? "webhooks.tokenKeep" : "webhooks.signingKeep";
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
+  const latest = useRef(draft);
+  latest.current = draft;
   const replaceDraft = (next: Draft) => {
     setDraft(next);
     setEpoch((n) => n + 1);
@@ -212,7 +214,8 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
       return;
     }
     // A form that was editing this webhook goes back to an empty Add form, without its save error.
-    if (draft.id === target.id) replaceDraft(EMPTY);
+    // The latest draft: the person may have started to edit this target while the removal was in flight.
+    if (latest.current.id === target.id) replaceDraft(EMPTY);
     setError(null);
     // The next row's first button, the one before it for the last row, else the Add form.
     focusAfter.current = (section) => {
@@ -377,7 +380,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
               )}
             </Field>
             <PasswordField
-              key={`url-${epoch}`}
+              key={`url-${draft.type}-${epoch}`}
               label={urlLabel}
               help={urlHelp(Boolean(editing), draft.type, t)}
               value={draft.url}
@@ -389,7 +392,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
             />
             {takesSecret(draft.type) && (
               <PasswordField
-                key={`secret-${epoch}`}
+                key={`secret-${draft.type}-${epoch}`}
                 label={secretLabel}
                 help={editing ? t(secretKeepKey) : undefined}
                 value={draft.signing}

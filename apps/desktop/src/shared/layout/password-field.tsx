@@ -30,6 +30,10 @@ export function PasswordField(
             ref={props.inputRef}
             type={shown ? "text" : "password"}
             autoComplete="off"
+            // A revealed secret must not reach a spellchecker.
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
             value={props.value}
             onChange={(event) => props.onChange(event.target.value)}
           />
