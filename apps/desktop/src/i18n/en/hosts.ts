@@ -438,6 +438,7 @@ export const hosts = {
     seeAllProjects: "See all projects",
     noSessions: "No sessions on this host yet.",
     noProjects: "No projects on this host yet.",
+    addProject: "Add a project",
     newSession: "New session",
     noSessionsAway: "The sessions show here once {host} answers.",
     noProjectsAway: "The projects show here once {host} answers.",

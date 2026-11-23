@@ -445,6 +445,7 @@ export const hosts = {
     seeAllProjects: "Ver todos os projetos",
     noSessions: "Nenhuma sessão neste host ainda.",
     noProjects: "Nenhum projeto neste host ainda.",
+    addProject: "Adicionar um projeto",
     newSession: "Nova sessão",
     noSessionsAway: "As sessões aparecem aqui quando {host} responder.",
     noProjectsAway: "Os projetos aparecem aqui quando {host} responder.",

@@ -166,6 +166,7 @@ export function HostPage(
                     onSeeAllSessions={props.onSeeAllSessions}
                     onSeeAllProjects={props.onSeeAllProjects}
                     onNewSession={props.onNewSession}
+                    onAddProject={() => store.router.push({ name: "projects", host: host.id })}
                   />
                   {hasFeature(info?.features, "account", false) && (
                     <HostAccount store={store} host={host} />

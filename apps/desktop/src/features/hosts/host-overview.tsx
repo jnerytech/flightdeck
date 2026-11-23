@@ -31,6 +31,7 @@ export function HostOverview(
     onSeeAllSessions(): void;
     onSeeAllProjects(): void;
     onNewSession(): void;
+    onAddProject(): void;
   }>,
 ) {
   const { store, state, host } = props;
