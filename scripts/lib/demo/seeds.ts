@@ -156,3 +156,36 @@ export function demoVaultUsage(hostId: string): string {
     line("3", "delivered", 50, "release", "", "workflow"),
   ]);
 }
+
+/**
+ * The Webhooks prints' list (#4405): a healthy row, a failing one and a disabled one, one type each. The app keeps the list in its storage
+ * with no address (the web build holds it in memory), so a row can show its host and its last answer and never a secret.
+ */
+export function demoWebhooks(): string {
+  const lastAt = "2026-11-20T12:00:00.000Z";
+  const target = (n: number, name: string, type: string, urlHost: string, extra = {}) => ({
+    id: `demo-webhook-${n}`,
+    name,
+    type,
+    hostScope: null,
+    kinds: ["needs_you", "session_failed"],
+    clientId: null,
+    enabled: true,
+    urlHost,
+    status: "ok",
+    lastHttpStatus: 200,
+    lastAt,
+    ...extra,
+  });
+  return JSON.stringify([
+    target(1, "Platform team Slack", "slack", "hooks.slack.example.test"),
+    target(2, "Phone alerts", "ntfy", "ntfy.example.test", {
+      status: "failing",
+      lastHttpStatus: 500,
+    }),
+    target(3, "Audit trail", "generic", "audit.example.test", {
+      enabled: false,
+      lastHttpStatus: 204,
+    }),
+  ]);
+}

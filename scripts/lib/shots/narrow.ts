@@ -219,6 +219,10 @@ export const NARROW_SHOTS: readonly string[] = [
   "clientes-longo",
   "clientes-renomear",
   "clientes-cofre-achados",
+  // #4405: Settings > Notifications > Webhooks: a row with its four buttons, the ntfy form and the edit form.
+  "webhooks-lista",
+  "webhooks-ntfy",
+  "webhooks-editar",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */

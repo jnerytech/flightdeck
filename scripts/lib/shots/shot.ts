@@ -36,6 +36,8 @@ export interface Shot {
   secrets?: boolean | "wide";
   /** #3602: the vault's usage log kept in the page's storage before it loads. */
   vaultUsage?: boolean;
+  /** #4405: the Webhooks section's list kept in the page's storage before it loads: a healthy, a failing and a disabled row. */
+  webhooks?: boolean;
   /** #3982: what the page's sockets do to a command (a host's answer refused or replaced, a request sent as another), for a state the demo's hosts cannot be left in. */
   wire?: WireRule[];
   /** #3943: the hosts answer Connections with fake destinos, config names and an askpass prompt (`sshScript`). */
