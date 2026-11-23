@@ -309,8 +309,10 @@ describe("conexoes-ui: the screen", () => {
       ],
     });
     const vps = within(rows()[0] as HTMLElement);
+    // The three facts are the items of a list, so a screen reader pauses between them.
+    expect(vps.queryAllByRole("listitem")).toHaveLength(3);
     expect(vps.queryByText("Chave em arquivo")).not.toBeNull();
-    expect(vps.queryByText("Aberto por Este host")).not.toBeNull();
+    expect(vps.queryByText("Aberto por este host")).not.toBeNull();
     expect(vps.queryByText("Chave do servidor confirmada")).not.toBeNull();
     expect(vps.queryByText("Chave do servidor ainda não confirmada")).toBeNull();
     const lab = within(rows()[1] as HTMLElement);
