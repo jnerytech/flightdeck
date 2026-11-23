@@ -96,6 +96,7 @@ export function hostScreen(props: ScreenProps, host: HostInfo): ReactNode {
       }}
       onSeeAllProjects={() => go({ name: "all-projects", host: host.id })}
       onNewSession={() => go({ name: "new-session", host: host.id })}
+      onAddProject={() => go({ name: "projects", host: host.id })}
       onRemove={() => {
         go({ name: "hub" });
         void store.roster.remove(host.id);
