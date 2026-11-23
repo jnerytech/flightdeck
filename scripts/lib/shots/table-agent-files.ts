@@ -2,7 +2,7 @@
 import type { ContextBudget } from "@flightdeck/protocol";
 import type { Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
-import { agentRoute, type Shot } from "./shot.ts";
+import { agentRoute, type Shot, toastSettled } from "./shot.ts";
 import type { WireRule } from "./wire.ts";
 
 const tab = (page: Page, name: RegExp | string) => page.getByRole("tab", { name }).click();
@@ -51,6 +51,7 @@ export function filesShots(ids: DemoIds): Shot[] {
       prepare: async (page) => {
         await tab(page, AGENTS);
         await button(page, /^(Try again|Tentar de novo)$/).waitFor({ timeout: 15_000 });
+        await toastSettled(page);
       },
     },
     {
@@ -208,6 +209,7 @@ export function contextShots(ids: DemoIds): Shot[] {
       prepare: async (page) => {
         await contextTab(page);
         await button(page, /^(Try again|Tentar de novo)$/).waitFor({ timeout: 15_000 });
+        await toastSettled(page);
       },
     },
   ];
