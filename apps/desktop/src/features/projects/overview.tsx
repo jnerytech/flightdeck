@@ -16,6 +16,7 @@ import {
 } from "./domain/project-cards.ts";
 import { NewProject } from "./new-project.tsx";
 import { ProjectCardTile } from "./project-card-tile.tsx";
+import { ReadFailed } from "./read-failed.tsx";
 import { useProjectCardsRead } from "./use-project-cards.ts";
 
 const SORTS: ProjectSort[] = ["activity", "name", "cost", "attention"];
@@ -24,7 +25,8 @@ const SORTS: ProjectSort[] = ["activity", "name", "cost", "attention"];
 export function ProjectsOverview(
   props: Readonly<{
     store: AppStore;
-    state: Pick<AppState, "projects" | "cards" | "hosts"> & Omit<HubRowState, "hosts">;
+    state: Pick<AppState, "projects" | "projectsFailed" | "cards" | "hosts"> &
+      Omit<HubRowState, "hosts">;
     onOpen(card: ProjectCard): void;
     /** A project was added from here (issue #931): the screen goes to it. */
     onAdded?(hostId: string, project: Project): void;
@@ -58,6 +60,10 @@ export function ProjectsOverview(
     !inView.some((host) => host.status === "online");
   const offline = one !== undefined && one.status !== "online" && one.status !== "connecting";
   const loading = useMinLoading(scoped.length === 0 && (connecting || (!read && !offline)));
+  // A host that is online but refused its list has no projects to show: it says so, not "no projects" (#4397).
+  const refused = inView.filter(
+    (host) => host.status === "online" && state.projectsFailed[host.id],
+  );
 
   return (
     <Page
@@ -111,7 +117,10 @@ export function ProjectsOverview(
       }
     >
       {scoped.length === 0 && loading && <LoadingState label={t("states.loadingProjects")} />}
-      {scoped.length === 0 && !loading && (
+      {scoped.length === 0 && !loading && refused.length > 0 && (
+        <ReadFailed store={store} onRetry={() => store.palette.load()} />
+      )}
+      {scoped.length === 0 && !loading && refused.length === 0 && (
         <EmptyState
           icon={FolderGit2}
           title={
