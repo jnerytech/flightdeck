@@ -12,12 +12,18 @@ nome, o tipo, as etiquetas e uma descrição do segredo.
   e mostra a chave pública, pronta para **Copiar chave pública**. **Importar arquivo de chave** lê
   um arquivo que você escolhe no diálogo do sistema; o original fica onde está, a menos que você
   marque **Apagar o arquivo original depois de importar**.
+- **Editar** muda o nome, a descrição, as etiquetas e os hosts permitidos de um segredo, nunca o
+  valor. **Salvar alterações** fica desligado, com o motivo ao lado, enquanto o nome está vazio.
+  Quando o formulário fecha, uma linha no alto da página diz que o segredo foi salvo. Se você
+  desmarcar todos os hosts permitidos, o formulário avisa que nenhum host poderá usar o segredo e a
+  linha dele passa a dizer isso; você ainda pode salvar.
 - Cada linha mostra só o que é seguro mostrar: a impressão digital da chave pública, o começo e o
   fim de um token (`ghp_…WXYZ`, e nada para um token curto) ou os nomes de um conjunto de
   variáveis. Uma senha não mostra nada.
-- **Revelar** pede que você digite a palavra `revelar` e então mostra o valor por 10 segundos.
-  **Copiar** coloca o valor na área de transferência e a limpa 30 segundos depois. **Remover** pede
-  que você digite o nome do segredo e apaga também o valor do cofre do sistema.
+- **Revelar** pede que você digite a palavra `revelar` e então mostra o valor por 10 segundos,
+  na própria linha, com um aviso que cita o segredo e um botão **Ocultar agora**. **Copiar** coloca
+  o valor na área de transferência e a limpa 30 segundos depois. **Remover** pede que você digite o
+  nome do segredo e apaga também o valor do cofre do sistema.
 - **Uso** é o registro de cada pedido feito ao cofre: o segredo, o host, a finalidade, quem pediu
   (você, o Claude, uma automação ou um workflow) e o resultado (entregue, negado ou usado). Ele
   nunca guarda um valor. Filtre por segredo ou por quem pediu.
