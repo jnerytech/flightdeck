@@ -54,11 +54,17 @@ export class BackupSlice {
 
   /** Whether the app can start again, so a restore can offer it (#4347). */
   get canRestart(): boolean {
-    return false;
+    return this.core.restart !== undefined;
   }
 
   /** Starts the app again so it reads what a restore wrote; a failure is told to the person. */
-  async restart(): Promise<void> {}
+  async restart(): Promise<void> {
+    try {
+      await this.core.restart?.();
+    } catch (error) {
+      this.core.fail(error);
+    }
+  }
 
   /** Issue #1241: saves the whole backup as one encrypted file; the reason when refused or cancelled. */
   async create(

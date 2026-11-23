@@ -43,6 +43,7 @@ export function wireBackup(
     },
     driveNames: () => scheduler.driveBackups(),
     driveText: (name) => scheduler.driveBackupText(name),
+    ...(platform.restart && { restart: platform.restart.bind(platform) }),
     fail: (error) => kernel.fail(error),
   });
 }
