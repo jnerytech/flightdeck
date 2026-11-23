@@ -124,12 +124,12 @@ describe("conexoes-ui with the vault: the form", () => {
     const { d, password } = await open();
     await click("Editar vps");
     await choose("Autenticação", "password");
-    const picker = screen.queryByLabelText("Senha no cofre") as HTMLSelectElement | null;
+    const picker = screen.queryByLabelText("Senha no cofre (opcional)") as HTMLSelectElement | null;
     expect([...(picker?.options ?? [])].map((o) => o.textContent)).toEqual([
       "Nenhum segredo",
       "box password",
     ]);
-    await choose("Senha no cofre", password.id);
+    await choose("Senha no cofre (opcional)", password.id);
     await click("Salvar destino");
     expect(d.sent("ssh.save").at(-1)).toMatchObject({ auth: "password", secretRef: password.id });
   });
