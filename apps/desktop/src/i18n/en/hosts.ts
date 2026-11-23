@@ -83,6 +83,7 @@ export const hosts = {
       alive: "Keep the connection alive (seconds)",
       aliveInvalid: "Use a whole number of 0 or more, or leave it empty.",
       fixFields: "Fix the marked fields to save.",
+      advanced: "Advanced options",
       compression: "Compression",
       forwards: "Local forwards (one per line)",
       forwardAgent: "Forward the agent (ForwardAgent)",
