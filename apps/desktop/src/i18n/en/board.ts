@@ -642,7 +642,6 @@ export const board = {
     doneHint: "A finished turn you did not open, for 2 hours. After that it is Idle.",
     idleHiddenOne: "1 idle session hidden",
     idleHidden: "{n} idle sessions hidden",
-    noHost: "No host yet. Add one to see its sessions here.",
     loading: "Reaching your hosts…",
   },
 };
