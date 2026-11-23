@@ -224,6 +224,14 @@ describe("projetos-lista-ui: the Projects overview", () => {
     expect(screen.queryByText("Could not read this host's projects.")).toBeNull();
   });
 
+  test("one host refused its list while another has projects: the cards show and the notice says some are missing", async () => {
+    const { view, state } = setup();
+    render(view({ ...state, projectsFailed: { h2: true } } as never));
+    await waitFor(() => expect(names().length).toBeGreaterThan(0));
+    expect(screen.queryByText("Could not read this host's projects.")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeNull();
+  });
+
   test("before the project lists are read it shows the loading state, not the empty one", async () => {
     const { store, view, state } = setup();
     // The palette's load has not answered yet: the lists are unknown, not empty.
