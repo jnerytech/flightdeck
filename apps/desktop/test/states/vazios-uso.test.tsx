@@ -3,7 +3,7 @@ import { registerDom } from "../dom.ts";
 import { uiIdle } from "../wait.ts";
 
 registerDom();
-const { act, cleanup, render } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render } = await import("@testing-library/react");
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
 const { UsagePanel } = await import("../../src/features/costs/usage-panel.tsx");
@@ -60,5 +60,133 @@ describe("estados-vazios: usage of a host", () => {
     await uiIdle();
     expect(view.container.querySelector("table")?.textContent).toContain("kA");
     expect(view.container.textContent).not.toContain(EMPTY.en);
+  });
+});
+
+const TEXT = {
+  en: {
+    loading: "Loading the usage…",
+    failed: "Could not read the usage of this host.",
+    retry: "Try again",
+    offline: "This host is offline: the usage shows again when it is back.",
+  },
+  "pt-BR": {
+    loading: "Carregando o uso…",
+    failed: "Não foi possível ler o uso deste host.",
+    retry: "Tentar de novo",
+    offline: "Este host está offline: o uso aparece de novo quando ele voltar.",
+  },
+};
+
+const ROWS = { byDay: [{ day: "2026-10-31", projectKey: "kA", costUsd: 1.5, tokens: 1200 }] };
+
+/** A store whose answers come from `answers`, one per call, in order; `calls` counts the asks. */
+function scriptedStore(answers: Array<unknown | Promise<unknown>>) {
+  const calls: string[] = [];
+  const store = {
+    today: () => "2026-11-01",
+    hostCommand: (host: string) => {
+      calls.push(host);
+      return Promise.resolve(answers[calls.length - 1]);
+    },
+  } as unknown as AppStore;
+  return { store, calls };
+}
+
+function mount(
+  language: "en" | "pt-BR",
+  store: AppStore,
+  props: { hostId?: string; online?: boolean } = {},
+) {
+  const element = (hostId: string, online: boolean) => (
+    <TContext.Provider value={translator(language)}>
+      <UsagePanel store={store} hostId={hostId} online={online} costs />
+    </TContext.Provider>
+  );
+  const view = render(element(props.hostId ?? "h", props.online ?? true));
+  return {
+    view,
+    show: (hostId: string, online = true) => view.rerender(element(hostId, online)),
+  };
+}
+
+const status = (container: HTMLElement) => container.querySelector('[role="status"]');
+const alert = (container: HTMLElement) => container.querySelector('[role="alert"]');
+
+describe("usage of a host: loading, refused, stale and offline states (#4429)", () => {
+  for (const language of ["en", "pt-BR"] as const) {
+    test(`until the host answers, a loading status names what is loading, in ${language}`, async () => {
+      const { store } = scriptedStore([new Promise(() => {})]);
+      const { view } = mount(language, store);
+      await uiIdle();
+      expect(status(view.container)?.getAttribute("aria-label")).toBe(TEXT[language].loading);
+    });
+
+    test(`a refused read says so with Try again, not the empty text, in ${language}`, async () => {
+      const { store } = scriptedStore([null]);
+      const { view } = mount(language, store);
+      await uiIdle();
+      expect(alert(view.container)?.textContent ?? "").toContain(TEXT[language].failed);
+      expect(alert(view.container)?.textContent ?? "").toContain(TEXT[language].retry);
+      expect(view.container.textContent).not.toContain(EMPTY[language]);
+    });
+
+    test(`an offline host says it is offline and asks nothing, in ${language}`, async () => {
+      const { store, calls } = scriptedStore([ROWS]);
+      const { view } = mount(language, store, { online: false });
+      await uiIdle();
+      expect(view.container.textContent).toContain(TEXT[language].offline);
+      expect(calls).toEqual([]);
+    });
+  }
+
+  test("Try again asks the host again and shows what it answers", async () => {
+    const { store, calls } = scriptedStore([null, ROWS]);
+    const { view } = mount("en", store);
+    await uiIdle();
+    const retry = alert(view.container)?.querySelector("button") ?? null;
+    expect(retry).not.toBeNull();
+    await act(async () => {
+      if (retry) fireEvent.click(retry);
+    });
+    await uiIdle();
+    expect(calls).toEqual(["h", "h"]);
+    expect(view.container.querySelector("table")?.textContent).toContain("kA");
+    expect(alert(view.container)).toBeNull();
+  });
+
+  test("a read that answered with no rows still shows the empty text, not an error", async () => {
+    const { store } = scriptedStore([{ byDay: [] }]);
+    const { view } = mount("en", store);
+    await uiIdle();
+    expect(view.container.textContent).toContain(EMPTY.en);
+    expect(alert(view.container)).toBeNull();
+  });
+
+  test("switching host drops the first host's rows until the second answers", async () => {
+    const { store } = scriptedStore([ROWS, new Promise(() => {})]);
+    const { view, show } = mount("en", store);
+    await uiIdle();
+    expect(view.container.querySelector("table")?.textContent).toContain("kA");
+    show("other");
+    await uiIdle();
+    expect(view.container.querySelector("table")).toBeNull();
+    expect(status(view.container)).not.toBeNull();
+  });
+
+  test("the first host's late answer does not replace the second host's rows", async () => {
+    let late: (value: unknown) => void = () => {};
+    const slow = new Promise((resolve) => {
+      late = resolve;
+    });
+    const { store } = scriptedStore([slow, { byDay: [] }]);
+    const { view, show } = mount("en", store);
+    await uiIdle();
+    show("other");
+    await uiIdle();
+    await act(async () => late(ROWS));
+    await uiIdle();
+    expect(view.container.querySelector("table")).toBeNull();
+    expect(view.container.textContent).toContain(EMPTY.en);
   });
 });

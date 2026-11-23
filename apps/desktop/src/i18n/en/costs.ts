@@ -299,5 +299,9 @@ export const costs = {
     managedOnly: "Managed sessions only; the cost is the estimate the SDK reports.",
     empty:
       "No usage in the last 7 days. The cost appears here after a session has run on this host.",
+    loading: "Loading the usage…",
+    failed: "Could not read the usage of this host.",
+    retry: "Try again",
+    offline: "This host is offline: the usage shows again when it is back.",
   },
 };
