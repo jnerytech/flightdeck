@@ -765,4 +765,69 @@ describe("webhook-ui: focus and words after each row action (#2677)", () => {
       expect(test.getAttribute("aria-describedby")).toBeNull();
     });
   });
+
+  describe("the address field can be shown, and is hidden again (#4402)", () => {
+    const field = (label: string) => screen.getByLabelText(label) as HTMLInputElement;
+    const add = async (name: string) => {
+      await fill("Name", name);
+      await fill("Webhook URL", SECRET);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+      });
+      await click("Save webhook");
+      await settle(() => screen.queryByRole("button", { name: `Edit ${name}` }) !== null);
+    };
+
+    test("the address starts hidden; Show reveals it, Hide hides it, and the control's name flips", async () => {
+      await open("en");
+      await fill("Webhook URL", SECRET);
+      expect(field("Webhook URL").type).toBe("password");
+      expect(screen.queryByRole("button", { name: "Show Webhook URL" })).not.toBeNull();
+      await click("Show Webhook URL");
+      expect(field("Webhook URL").type).toBe("text");
+      expect(field("Webhook URL").value).toBe(SECRET);
+      expect(screen.queryByRole("button", { name: "Show Webhook URL" })).toBeNull();
+      await click("Hide Webhook URL");
+      expect(field("Webhook URL").type).toBe("password");
+    });
+
+    test("an ntfy topic URL and the signing secret have the control too", async () => {
+      await open("en");
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText("Type"), { target: { value: "ntfy" } });
+      });
+      expect(screen.queryByRole("button", { name: "Show Topic URL" })).not.toBeNull();
+      await click("Show Topic URL");
+      expect(field("Topic URL").type).toBe("text");
+      await click("Show Access token (optional)");
+      expect(field("Access token (optional)").type).toBe("text");
+    });
+
+    test("the control is named in Portuguese", async () => {
+      await open("pt-BR");
+      expect(screen.queryByRole("button", { name: "Mostrar URL do webhook" })).not.toBeNull();
+      await click("Mostrar URL do webhook");
+      expect(screen.queryByRole("button", { name: "Ocultar URL do webhook" })).not.toBeNull();
+    });
+
+    test("a saved, cancelled or switched form hides the address again", async () => {
+      await open("en");
+      await add("One");
+      await add("Two");
+      await fill("Webhook URL", SECRET);
+      expect(screen.queryByRole("button", { name: "Show Webhook URL" })).not.toBeNull();
+      await click("Show Webhook URL");
+      await click("Save webhook");
+      expect(screen.queryByRole("button", { name: "Show Webhook URL" })).not.toBeNull();
+      expect(field("Webhook URL").type).toBe("password");
+      await click("Edit One");
+      await click("Show Webhook URL");
+      await click("Edit Two");
+      expect(field("Webhook URL").type).toBe("password");
+      await click("Show Webhook URL");
+      await click("Cancel");
+      expect(field("Webhook URL").type).toBe("password");
+      expect(screen.queryByRole("button", { name: "Show Webhook URL" })).not.toBeNull();
+    });
+  });
 });
