@@ -702,14 +702,19 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     const visiblePart = (el: Element) => {
       const whole = rectOf(el);
       const part = { left: whole.left, top: whole.top, right: whole.right, bottom: whole.bottom };
+      const own = getComputedStyle(el).position;
+      // A fixed box floats over the page. An absolute one is cut only from its containing block up.
+      if (own === "fixed") return part;
+      let reached = own !== "absolute";
       for (let up = el.parentElement; up && up !== document.body; up = up.parentElement) {
         const style = getComputedStyle(up);
+        if (style.position !== "static" && style.position !== "") reached = true;
         const room = rectOf(up);
-        if (clips(style.overflowX) || scrolls(style.overflowX)) {
+        if (reached && (clips(style.overflowX) || scrolls(style.overflowX))) {
           part.left = Math.max(part.left, room.left);
           part.right = Math.min(part.right, room.right);
         }
-        if (clips(style.overflowY) || scrolls(style.overflowY)) {
+        if (reached && (clips(style.overflowY) || scrolls(style.overflowY))) {
           part.top = Math.max(part.top, room.top);
           part.bottom = Math.min(part.bottom, room.bottom);
         }
