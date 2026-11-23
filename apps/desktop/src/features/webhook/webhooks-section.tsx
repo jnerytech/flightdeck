@@ -58,6 +58,33 @@ interface Draft {
 
 const EMPTY: Draft = { name: "", type: "slack", url: "", signing: "", hostScope: "", kinds: [] };
 
+/** The form an Edit loads: the stored fields, with the address and the secret empty (an empty one keeps the stored). */
+const draftOf = (target: WebhookTarget): Draft => ({
+  id: target.id,
+  name: target.name,
+  type: target.type,
+  url: "",
+  signing: "",
+  hostScope: target.hostScope ?? "",
+  kinds: target.kinds,
+});
+
+const sameKinds = (a: WebhookKind[], b: WebhookKind[]) =>
+  a.length === b.length && a.every((kind) => b.includes(kind));
+
+/** Whether the form holds anything a replacement would lose: against the target it edits, or the empty form (#4404). */
+function typedIn(draft: Draft, target: WebhookTarget | undefined): boolean {
+  const base = target ? draftOf(target) : EMPTY;
+  return (
+    draft.name !== base.name ||
+    draft.type !== base.type ||
+    draft.url !== base.url ||
+    draft.signing !== base.signing ||
+    draft.hostScope !== base.hostScope ||
+    !sameKinds(draft.kinds, base.kinds)
+  );
+}
+
 /**
  * Phase 30: where the app sends a message when something needs you. A target's address is a vault
  * secret: the list shows only the host it sends to, and an empty address field on edit keeps it.
@@ -73,6 +100,8 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
   // The row whose test is out: its button shows it is sending.
   const [testingId, setTestingId] = useState<string | null>(null);
   const [removing, setRemoving] = useState<WebhookTarget | null>(null);
+  // The form an Edit or a Cancel would load while the person decides to discard what they typed (#4404).
+  const [replacing, setReplacing] = useState<{ next: Draft; focus: boolean } | null>(null);
   // #2677: what a row action did, said politely, and the problem of one that failed.
   const [said, setSaid] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
@@ -95,6 +124,13 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
   const editing = targets.find((target) => target.id === draft.id);
   const secretKeepKey = draft.type === "ntfy" ? "webhooks.tokenKeep" : "webhooks.signingKeep";
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
+  // Edit and Cancel load another form: they ask first when this one holds typed text.
+  const load = (next: Draft, focus: boolean) => {
+    if (typedIn(draft, editing)) return setReplacing({ next, focus });
+    setProblem(null);
+    if (focus) focusAfter.current = (section) => section.querySelector("form input");
+    setDraft(next);
+  };
   const complete =
     draft.name.trim() !== "" && draft.kinds.length > 0 && (editing || draft.url.trim() !== "");
 
@@ -255,19 +291,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
                             size="sm"
                             aria-label={t("webhooks.edit", { name: target.name })}
                             data-action="edit"
-                            onClick={() => {
-                              setProblem(null);
-                              focusAfter.current = (section) => section.querySelector("form input");
-                              setDraft({
-                                id: target.id,
-                                name: target.name,
-                                type: target.type,
-                                url: "",
-                                signing: "",
-                                hostScope: target.hostScope ?? "",
-                                kinds: target.kinds,
-                              });
-                            }}
+                            onClick={() => load(draftOf(target), true)}
                           >
                             {t("webhooks.edit", { name: "" }).trim()}
                           </Button>
@@ -415,12 +439,28 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
               disabled={!complete}
               disabledReason={t("webhooks.needs")}
               {...(editing
-                ? { cancel: t("webhooks.cancel"), onCancel: () => setDraft(EMPTY) }
+                ? { cancel: t("webhooks.cancel"), onCancel: () => load(EMPTY, false) }
                 : {})}
             />
           </Form>
         </Stack>
       </Panel>
+      {replacing && (
+        <ConfirmDialog
+          message={t("webhooks.discardMessage")}
+          confirmLabel={t("webhooks.discardConfirm")}
+          destructive
+          onConfirm={() => {
+            setProblem(null);
+            if (replacing.focus) {
+              focusAfter.current = (section) => section.querySelector("form input");
+            }
+            setDraft(replacing.next);
+            setReplacing(null);
+          }}
+          onCancel={() => setReplacing(null)}
+        />
+      )}
       {removing && (
         <ConfirmDialog
           message={t("webhooks.removeMessage", { name: removing.name })}

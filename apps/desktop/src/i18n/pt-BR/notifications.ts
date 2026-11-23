@@ -61,6 +61,8 @@ export const notifications = {
       pr_watch: "Vigia do PR",
     },
     save: "Salvar webhook",
+    discardMessage: "Descartar o que você digitou neste formulário? Isso será perdido.",
+    discardConfirm: "Descartar",
     saveChanges: "Salvar alterações",
     cancel: "Cancelar",
     edit: "Editar {name}",

@@ -60,6 +60,8 @@ export const notifications = {
       pr_watch: "PR watch",
     },
     save: "Save webhook",
+    discardMessage: "Discard what you typed in this form? It will be lost.",
+    discardConfirm: "Discard",
     saveChanges: "Save changes",
     cancel: "Cancel",
     edit: "Edit {name}",
