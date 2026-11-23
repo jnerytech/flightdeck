@@ -242,6 +242,17 @@ describe("shots-wire: a held, a replied, a sequenced and a trimmed command (#415
     ).toEqual({ type: "ack", id: "r1", ok: true, data: { name: "alfa", features: ["a", "d"] } });
   });
 
+  test("with adds the named entries to an array of the answer, once, and keeps everything else", () => {
+    const wire = wireRewriter([{ command: "host.info", with: { features: ["b", "z"] } }]);
+    wire.fromApp(ask("r1", "host.info"));
+    expect(read(wire.fromHost(ack("r1", { name: "alfa", features: ["a", "b"] })))).toEqual({
+      type: "ack",
+      id: "r1",
+      ok: true,
+      data: { name: "alfa", features: ["a", "b", "z"] },
+    });
+  });
+
   test("the page's socket never sends a replied command and answers it to the app", async () => {
     const page = { WebSocket: FakeSocket as unknown as typeof WebSocket };
     new Function("window", wireScript([{ command: "approval.revoke", reply: {} }]))(page);

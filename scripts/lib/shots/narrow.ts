@@ -73,6 +73,11 @@ export const NARROW_SHOTS: readonly string[] = [
   "card-gate",
   // #3999: the Maintenance panel's three buttons must wrap, not overflow, in the narrow window.
   "host-manutencao",
+  // #4325: the Health & dependencies panel's missing tool, fixes and folded list, where a command and a path wrap.
+  "host-saude",
+  "host-saude-falta",
+  "host-saude-correcoes",
+  "host-saude-ok-aberto",
   // #1328: Settings > Backup schedule, waiting for the passphrase.
   "configuracoes-backup-agenda",
   // #1354: the selection bar and Start N's confirm, compact at 390.
