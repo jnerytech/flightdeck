@@ -94,10 +94,10 @@ export function HostOfflineBanner(
   })();
   // A first try, or one right after a connection that worked: nothing has failed, so no reason or hint applies yet (#4412).
   const untried = connecting && retry === null;
-  const failure = t(`hostOffline.${kind}` as const, { url: host.url });
   const reason = (() => {
     if (host.status === "unauthorized") return t("hostOffline.unauthorized");
     if (untried) return t("hostOffline.connectingTo", { url: host.url });
+    const failure = t(`hostOffline.${kind}` as const, { url: host.url });
     // While the next try runs, the reason belongs to the one before it.
     return connecting ? t("hostOffline.lastFailed", { reason: failure }) : failure;
   })();
