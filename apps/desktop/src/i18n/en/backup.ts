@@ -44,6 +44,7 @@ export const backup = {
     keep: "Keep what is here",
     replace: "Replace with the backup",
     restore: "Restore",
+    restart: "Restart now",
     replaceMessage: "Replace {names} with what is in the backup? What is here is lost.",
     replaceConfirm: "Replace",
     result:

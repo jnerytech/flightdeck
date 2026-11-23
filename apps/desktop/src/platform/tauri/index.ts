@@ -145,6 +145,7 @@ export function tauriPlatform(
     },
     isFocused: () => win.document.hasFocus(),
     openExternal: (url) => openUrl(url),
+    restart: () => relaunch(),
     // Through the shell's own command, which opens only plain documents of this machine.
     openPath: (path) => call("open_result", { path, reveal: false }),
     revealPath: (path) => call("open_result", { path, reveal: true }),
