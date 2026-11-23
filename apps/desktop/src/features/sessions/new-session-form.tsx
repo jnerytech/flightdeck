@@ -149,16 +149,12 @@ export function NewSessionForm(
       done.then(finished, finished);
     }
   };
-  // The dead end of a host with no allowed folder: the reason and the way out, shown in the Folder field and under the button.
-  const needFolder = (
-    <span>
-      {t("newSession.needFolder")}{" "}
-      {props.onAddFolder && (
-        <Button type="button" variant="link" onClick={props.onAddFolder}>
-          {t("newSession.addFolder", { host: props.host.name })}
-        </Button>
-      )}
-    </span>
+  // The dead end of a host with no allowed folder: the reason, shown in the Folder field and under the button; the way out is in the field only, so it is one tab stop.
+  const needFolder = <span>{t("newSession.needFolder")}</span>;
+  const addFolder = props.onAddFolder && (
+    <Button type="button" variant="link" onClick={props.onAddFolder}>
+      {t("newSession.addFolder", { host: props.host.name })}
+    </Button>
   );
   return (
     <Page title={t("newSession.title", { host: props.host.name })}>
@@ -238,7 +234,9 @@ export function NewSessionForm(
           // No allowed folder: no session can start, so the field says it here, not only under the button (#4388).
           <Stack gap={1}>
             <span className="text-sm">{t("newSession.folder")}</span>
-            <p className="text-muted-foreground text-sm">{needFolder}</p>
+            <p className="text-muted-foreground text-sm">
+              {needFolder} {addFolder}
+            </p>
           </Stack>
         )}
         {canBrowse && folders.length > 0 && (
