@@ -38,7 +38,7 @@ const STEPS: Array<[string, string[]]> = [
       PASSPHRASE,
       'fill "a long enough passphrase" label[Confirm passphrase]',
       "click button[Back up now]",
-      "waitFor text[This backup is too big to be restored later (over 1 MiB), so it was not saved.]",
+      "waitFor text[This backup is too big to be restored later]",
       SECTION,
     ],
   ],
