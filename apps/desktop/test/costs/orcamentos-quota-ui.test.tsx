@@ -49,6 +49,9 @@ const WORDS = {
     hostLabel: "host budget (5-hour window)",
     note: "alfa: host budget (5-hour window) at 50% of its 50% of the plan",
     dollarRow: "host budget (day) · notify · US$ 0.00 of US$ 10.00 (0%)",
+    scopes: ["Host", "Project"],
+    periods: ["Day", "Month"],
+    actions: ["Notify", "Hold new cards"],
   },
   "pt-BR": {
     region: "Orçamentos de alfa",
@@ -71,6 +74,9 @@ const WORDS = {
     hostLabel: "orçamento do host (janela de 5 horas)",
     note: "alfa: orçamento do host (janela de 5 horas) em 50% de 50% do plano",
     dollarRow: "orçamento do host (dia) · notificar · US$ 0,00 de US$ 10,00 (0%)",
+    scopes: ["Host", "Projeto"],
+    periods: ["Dia", "Mês"],
+    actions: ["Notificar", "Segurar cards novos"],
   },
 } as const;
 
@@ -151,6 +157,14 @@ for (const language of ["en", "pt-BR"] as const) {
       expect(screen.queryByLabelText(w.period)).toBeNull();
       expect(screen.queryByLabelText(w.limit)).toBeNull();
       expect(screen.queryByLabelText(w.limitPct)).not.toBeNull();
+    });
+
+    // #4437: the options reused the lowercase words of the row sentence; every other Settings select is capitalised.
+    test("the scope, period and action selects list capitalised options, while the row sentence stays lowercase", async () => {
+      const { w } = await online(language);
+      expect(optionTexts(w.scope)).toEqual([...w.scopes]);
+      expect(optionTexts(w.period)).toEqual([...w.periods]);
+      expect(optionTexts(w.action)).toEqual([...w.actions]);
     });
 
     test("create, read as a share of the plan, edit, and change back to dollars", async () => {
