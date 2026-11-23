@@ -131,6 +131,14 @@ describe("webhook-ui", () => {
     expect((screen.getByLabelText("URL do webhook") as HTMLInputElement).type).toBe("password");
   });
 
+  test("a webhook row wraps its details and buttons instead of running past the page (narrow prints, #4405)", async () => {
+    await open();
+    await addSlack();
+    await settle(() => screen.queryByText("Team") !== null);
+    const row = document.querySelector("[data-webhook] [data-row-meta]")?.parentElement;
+    expect(row?.classList.contains("flex-wrap")).toBe(true);
+  });
+
   test("the form says what is missing and what is wrong with the address", async () => {
     await open("en");
     expect(screen.queryByText("Give it a name, a URL and at least one event.")).not.toBeNull();
