@@ -134,6 +134,11 @@ export const NARROW_SHOTS: readonly string[] = [
   "custos-recusado",
   "roi-ajustes",
   "roi-ajustes-numero-ruim",
+  // #4194: the filters in use, the export's refusal line, the quota charts and a budget being edited at 390.
+  "custos-filtros",
+  "custos-exportar-falhou",
+  "custos-cota",
+  "configuracoes-orcamentos-editar",
   // #4190: the Automations form's first step and its field errors at 390.
   "automacoes-gatilho",
   "automacoes-form-erros",
