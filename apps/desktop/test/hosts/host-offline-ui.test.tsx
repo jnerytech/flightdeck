@@ -99,6 +99,40 @@ describe("host-offline-ui", () => {
     expect(shown).toMatch(/Próxima tentativa em \d+ s/);
   });
 
+  test("a host that connects for the first time says it is connecting, with no reason and no command for a try that has not failed (#4412)", async () => {
+    for (const language of ["en", "pt-BR"] as const) {
+      const region = await banner(
+        { url: "ws://127.0.0.1:7420/v1/ws", status: "connecting", retry: null },
+        { language },
+      );
+      const words = region.textContent ?? "";
+      expect(words).toContain(language === "en" ? "Connecting…" : "Conectando…");
+      expect(/not running|não está rodando/.test(words)).toBe(false);
+      expect(words.includes("systemctl")).toBe(false);
+      expect(region.querySelectorAll("button").length).toBe(1);
+      cleanup();
+    }
+  });
+
+  test("a host that connects again after a failed try labels the reason as the last try's (#4412)", async () => {
+    const expected = {
+      en: ["The last try failed:", "Nothing answered at ws://127.0.0.1:7420/v1/ws."],
+      "pt-BR": ["A última tentativa falhou:", "Nada respondeu em ws://127.0.0.1:7420/v1/ws."],
+    } as const;
+    for (const language of ["en", "pt-BR"] as const) {
+      const region = await banner({ ...OFFLINE, status: "connecting" }, { language });
+      const words = region.textContent ?? "";
+      expect(expected[language].every((part) => words.includes(part))).toBe(true);
+      cleanup();
+    }
+  });
+
+  test("an offline host keeps its reason without the last-try label (#4412)", async () => {
+    const region = await banner({ ...OFFLINE }, { language: "en" });
+    expect((region.textContent ?? "").includes("The last try failed:")).toBe(false);
+    expect((region.textContent ?? "").includes("Nothing answered at")).toBe(true);
+  });
+
   test("a refused connection to a loopback host shows the Linux and WSL commands", async () => {
     await offlineHost();
     await waitFor(() => expect(text()).toContain("systemctl --user status flightdeckd"));
