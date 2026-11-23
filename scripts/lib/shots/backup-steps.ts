@@ -23,14 +23,19 @@ const personas = (page: Page, list: Array<{ id: string; name: string }>) =>
     `localStorage.setItem("flightdeck.personas", ${JSON.stringify(JSON.stringify(list))})`,
   );
 
+/** `keepSaves` keeps the file the save dialog would take, and `offerBackup` hands it to the file input. */
+export async function keepFiles(page: Page): Promise<void> {
+  await page.evaluate(`(${keepSaves.toString()})(window)`);
+  await page.evaluate(`(${offerBackup.toString()})(window)`);
+}
+
 /**
  * Settings > Backup, with a backup of the demo's personas taken (#4001). `keepSaves` keeps the file
  * the save dialog would take, and `offerBackup` hands it to the file input the Restore a backup form
  * opens.
  */
 export async function backedUp(page: Page): Promise<void> {
-  await page.evaluate(`(${keepSaves.toString()})(window)`);
-  await page.evaluate(`(${offerBackup.toString()})(window)`);
+  await keepFiles(page);
   await personas(page, [
     { id: "p-review", name: "Reviewer" },
     { id: "p-write", name: "Writer" },

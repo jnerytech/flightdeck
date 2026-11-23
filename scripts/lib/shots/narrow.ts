@@ -76,6 +76,12 @@ export const NARROW_SHOTS: readonly string[] = [
   "configuracoes-backup-restaurar-falhou",
   "configuracoes-backup-nada-a-restaurar",
   "configuracoes-agenda-limpeza-falhou",
+  // #4348: Vault > Backup: the exported message, the preview, a wrong passphrase, the Replace dialog and the result.
+  "cofre-backup-exportado",
+  "cofre-backup-previa",
+  "cofre-backup-frase-errada",
+  "cofre-backup-substituir",
+  "cofre-backup-resultado",
   // #1244: Merge PR's confirmation on a card with an open PR.
   "card-merge-pr",
   "workflows-modelos",
