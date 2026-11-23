@@ -51,6 +51,8 @@ function show(
     state?: AccountState | undefined;
     online?: boolean;
     refreshing?: boolean;
+    cooling?: boolean;
+    timedOut?: boolean;
     copied?: boolean;
   },
   language: "en" | "pt-BR" = "en",
@@ -65,6 +67,8 @@ function show(
         now={NOW}
         formatTime={utcTime}
         refreshing={merged.refreshing}
+        cooling={props.cooling}
+        timedOut={props.timedOut}
         copied={merged.copied}
         onRefresh={noop}
         onCopy={noop}
@@ -433,5 +437,63 @@ describe("conta-cartao-ui: pt-BR", () => {
     expect(
       inCard().queryByText("Este host usa uma chave de API. Os limites do plano não se aplicam."),
     ).not.toBeNull();
+  });
+});
+
+describe("conta-cartao-ui: what the card says after a read and when the host is silent (#4349)", () => {
+  const REFRESH = "Refresh the account of alfa";
+
+  test("a finished read shows when it was read, not Reading…, and the button says why it is off", () => {
+    show({ state: state(), cooling: true });
+    expect(inCard().queryByRole("status")?.textContent).toBe("Last read 2 min ago");
+    const button = inCard().queryByRole("button", { name: REFRESH });
+    expect(button?.getAttribute("aria-disabled")).toBe("true");
+    const hint = button?.getAttribute("aria-describedby");
+    expect(hint !== null && hint !== undefined && document.getElementById(hint)?.textContent).toBe(
+      "A host reads its account at most every 30 seconds.",
+    );
+  });
+
+  test("a read in flight still says Reading…, and a card not cooling gives no reason", () => {
+    const { unmount } = show({ state: state(), refreshing: true, cooling: true });
+    expect(inCard().queryByRole("status")?.textContent).toBe("Reading…");
+    unmount();
+    show({ state: state() });
+    expect(
+      inCard().queryByRole("button", { name: REFRESH })?.getAttribute("aria-describedby"),
+    ).toBeNull();
+  });
+
+  test("a host that never answers ends the loading with an alert and a Try again button", () => {
+    show({ state: undefined, timedOut: true });
+    expect(inCard().queryByText("Reading the account…")).toBeNull();
+    expect(
+      inCard().queryByRole("alert")?.textContent?.includes("The account could not be read."),
+    ).toBe(true);
+    expect(inCard().queryByRole("button", { name: "Try again" })).not.toBeNull();
+  });
+
+  test("while Try again asks, the card says it is reading again instead of keeping the alert", () => {
+    show({ state: undefined, timedOut: true, refreshing: true });
+    expect(inCard().queryByRole("status")?.textContent).toBe("Reading the account…");
+    expect(inCard().queryByRole("alert")).toBeNull();
+  });
+
+  test("a sign-in the app does not know has a Refresh button", () => {
+    show({ state: state({ status: "unknown", name: null, plan: null, windows: [], error: null }) });
+    expect(inCard().queryByRole("button", { name: REFRESH })).not.toBeNull();
+  });
+
+  test("the reason, the alert and the button are in pt-BR too", () => {
+    const { unmount } = show({ state: state(), cooling: true }, "pt-BR");
+    const hint = inCard()
+      .queryByRole("button", { name: "Atualizar a conta de alfa" })
+      ?.getAttribute("aria-describedby");
+    expect(hint !== null && hint !== undefined && document.getElementById(hint)?.textContent).toBe(
+      "Um host lê a conta no máximo a cada 30 segundos.",
+    );
+    unmount();
+    show({ state: undefined, timedOut: true }, "pt-BR");
+    expect(inCard().queryByRole("button", { name: "Tentar de novo" })).not.toBeNull();
   });
 });

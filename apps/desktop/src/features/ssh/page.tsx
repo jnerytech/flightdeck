@@ -1,16 +1,6 @@
 import type { SshTarget } from "@flightdeck/protocol";
 import { Network } from "lucide-react";
 import { memo, useState } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
@@ -20,6 +10,7 @@ import { EmptyState, Field, NativeSelect, Page } from "@/shared/layout/index.ts"
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature } from "../../lib/version.ts";
+import { HostKeyDialog } from "./host-key-dialog";
 import { ImportPanel } from "./import-panel";
 import { TargetForm } from "./target-form";
 import { useSshActions } from "./use-ssh-actions.ts";
@@ -268,45 +259,15 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
           onCancel={() => setRemoving(null)}
         />
       )}
-      {keyCheck && (
-        <AlertDialog open onOpenChange={(isOpen) => !isOpen && setKeyCheck(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {keyCheck.check.status === "changed"
-                  ? t("connections.hostKey.changedTitle")
-                  : t("connections.hostKey.confirmTitle", { name: keyCheck.target.name })}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {keyCheck.check.status === "changed"
-                  ? t("connections.hostKey.changedMessage", { name: keyCheck.target.name })
-                  : t("connections.hostKey.confirmMessage", { name: keyCheck.target.name })}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            {keyCheck.check.status === "changed" && keyCheck.check.pinned && (
-              <p className="text-sm">
-                {t("connections.hostKey.pinned")}:{" "}
-                <code className="break-all">{keyCheck.check.pinned}</code>
-              </p>
-            )}
-            <p className="text-sm">
-              {keyCheck.check.status === "changed" && `${t("connections.hostKey.current")}: `}
-              <code className="break-all">{keyCheck.check.fingerprint}</code>
-            </p>
-            <AlertDialogFooter>
-              <AlertDialogCancel>
-                {keyCheck.check.status === "changed"
-                  ? t("connections.hostKey.close")
-                  : t("common.cancel")}
-              </AlertDialogCancel>
-              {keyCheck.check.status === "unknown" && (
-                <AlertDialogAction onClick={() => void confirmKey()}>
-                  {t("connections.hostKey.confirm")}
-                </AlertDialogAction>
-              )}
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+      {keyCheck && keyCheck.check.status !== "pinned" && (
+        <HostKeyDialog
+          store={store}
+          target={keyCheck.target}
+          check={keyCheck.check}
+          onConfirm={() => void confirmKey()}
+          onEdit={() => setEditing(keyCheck.target)}
+          onClose={() => setKeyCheck(null)}
+        />
       )}
     </Page>
   );

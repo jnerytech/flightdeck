@@ -77,6 +77,11 @@ export const NARROW_SHOTS: readonly string[] = [
   "card-gate",
   // #3999: the Maintenance panel's three buttons must wrap, not overflow, in the narrow window.
   "host-manutencao",
+  // #4325: the Health & dependencies panel's missing tool, fixes and folded list, where a command and a path wrap.
+  "host-saude",
+  "host-saude-falta",
+  "host-saude-correcoes",
+  "host-saude-ok-aberto",
   // #1328: Settings > Backup schedule, waiting for the passphrase.
   "configuracoes-backup-agenda",
   // #1354: the selection bar and Start N's confirm, compact at 390.
@@ -142,6 +147,14 @@ export const NARROW_SHOTS: readonly string[] = [
   "card-ambiente-caiu",
   "card-ambiente-falhou",
   "card-ambiente-recusado",
+  // #4287: the preview page and the workflow timeline's states: a long step line and the budget meter wrap at 390.
+  "previa-ambiente",
+  "previa-recusada",
+  "card-run-rodando",
+  "card-run-cota",
+  "card-run-falhou",
+  "card-run-tentativa",
+  "card-run-passo-longo",
   // #4215: the Personas list, the editor of one, its field errors and the row with the most buttons; they wrap at 390.
   "personas",
   "personas-editor-existing",

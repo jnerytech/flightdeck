@@ -40,6 +40,7 @@ import { changesShots } from "./lib/shots/table-changes.ts";
 import { costsShots } from "./lib/shots/table-costs.ts";
 import { devicesShots } from "./lib/shots/table-devices.ts";
 import { harnessShots } from "./lib/shots/table-harness.ts";
+import { healthShots } from "./lib/shots/table-health.ts";
 import { hostShots } from "./lib/shots/table-hosts.ts";
 import { issuesShots } from "./lib/shots/table-issues.ts";
 import { knowledgeShots, memoryShots } from "./lib/shots/table-knowledge.ts";
@@ -47,6 +48,7 @@ import { messagingShots } from "./lib/shots/table-messaging.ts";
 import { permissionShots } from "./lib/shots/table-permissions.ts";
 import { personaShots } from "./lib/shots/table-personas.ts";
 import { quotaShots } from "./lib/shots/table-quota.ts";
+import { runViewShots } from "./lib/shots/table-run-views.ts";
 import { runenvShots } from "./lib/shots/table-runenv.ts";
 import { shellShots } from "./lib/shots/table-shell.ts";
 import { snippetShots } from "./lib/shots/table-snippets.ts";
@@ -95,6 +97,7 @@ function shots(ids: DemoIds): Shot[] {
     ...boardShots(ids),
     ...changesShots(ids),
     ...runenvShots(ids),
+    ...runViewShots(ids),
     ...agentShots(ids),
     ...mcpShots(ids),
     ...activityShots(ids),
@@ -102,6 +105,7 @@ function shots(ids: DemoIds): Shot[] {
     ...contextShots(ids),
     ...timelineShots(ids),
     ...hostShots(ids),
+    ...healthShots(ids),
     ...harnessShots(ids),
     ...automationShots(ids),
     ...knowledgeShots(ids),

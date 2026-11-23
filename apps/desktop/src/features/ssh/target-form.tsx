@@ -16,6 +16,7 @@ import {
   AUTHS,
   secretRefOf,
   split,
+  unsaved,
   validAlive,
   validPort,
 } from "./domain/target-form.ts";
@@ -71,6 +72,25 @@ export const TargetForm = memo(function TargetForm(props: {
     host.trim() !== "" &&
     user.trim() !== "" &&
     (auth !== "vault-key" || secretId !== "");
+
+  const changed =
+    target !== null &&
+    unsaved(target, {
+      name,
+      host,
+      port,
+      user,
+      auth,
+      keyFile,
+      secretId,
+      via,
+      jump,
+      tags,
+      alive,
+      compression,
+      forwards,
+      forwardAgent,
+    });
 
   const save = async () => {
     const interval = Number(alive);
@@ -305,7 +325,7 @@ export const TargetForm = memo(function TargetForm(props: {
           </Button>
         </div>
       )}
-      {testResult && <output className="block">{testResult}</output>}
+      {testResult && !changed && <output className="block">{testResult}</output>}
       <FormActions
         submit={t("connections.form.save")}
         busy={saving.busy}
@@ -314,9 +334,17 @@ export const TargetForm = memo(function TargetForm(props: {
         cancel={t("common.cancel")}
         onCancel={props.onClose}
         extra={
-          <ActionButton type="button" variant="outline" disabled={!target} onClick={() => test()}>
-            {t("connections.form.test")}
-          </ActionButton>
+          target && (
+            <ActionButton
+              type="button"
+              variant="outline"
+              disabled={changed}
+              disabledReason={t("connections.form.saveToTest")}
+              onClick={() => test()}
+            >
+              {t("connections.form.test")}
+            </ActionButton>
+          )
         }
       />
       {forgetting && (
