@@ -201,7 +201,73 @@ describe("nova-sessao-ux: the form says what it needs", () => {
       (screen.queryByRole("button", { name: "Create session" }) as HTMLButtonElement | null)
         ?.disabled,
     ).toBe(true);
-    expect(screen.queryByText("This host has no allowed folder.")).not.toBeNull();
+    // The reason is in the Folder field and under the button (#4388).
+    expect(screen.queryAllByText("This host has no allowed folder.")).toHaveLength(2);
+  });
+
+  // #4388: the Folder field says the dead end where it is, instead of an empty select.
+  for (const [language, folder, reason, add] of [
+    ["en", "Folder", "This host has no allowed folder.", "Add a folder on vazio's page"],
+    [
+      "pt-BR",
+      "Pasta",
+      "Este host não tem pasta permitida.",
+      "Adicionar uma pasta na página de vazio",
+    ],
+  ] as const) {
+    test(`a host with no allowed folder shows the reason and the add link in the Folder field, with no empty select (${language}, #4388)`, async () => {
+      const { TContext } = await import("../../src/i18n/context.tsx");
+      const { translator } = await import("../../src/i18n/index.ts");
+      const empty = {
+        id: "h2",
+        name: "vazio",
+        info: { allowedRoots: [] },
+      } as unknown as typeof host;
+      const added: string[] = [];
+      const { container } = render(
+        <TContext.Provider value={translator(language)}>
+          <NewSessionForm host={empty} onCreate={() => {}} onAddFolder={() => added.push("add")} />
+        </TContext.Provider>,
+      );
+      expect(screen.queryByRole("combobox", { name: folder })).toBeNull();
+      expect(container.querySelector("select[id]")).toBeNull();
+      const field = screen.queryByText(folder)?.parentElement ?? null;
+      expect(field?.textContent).toContain(reason);
+      const link = within(field as HTMLElement).queryByRole("button", { name: add });
+      expect(link).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(link as HTMLElement);
+      });
+      expect(added).toEqual(["add"]);
+      // The button keeps its reason, and the same link.
+      expect(screen.queryAllByRole("button", { name: add })).toHaveLength(2);
+    });
+  }
+
+  test("a host with no allowed folder offers no Browse button, since no session can start there (#4388)", async () => {
+    const { TContext } = await import("../../src/i18n/context.tsx");
+    const { translator } = await import("../../src/i18n/index.ts");
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    const hostWith = (allowedRoots: string[]) =>
+      ({
+        id: "h2",
+        name: "vazio",
+        info: { allowedRoots },
+        hostInfo: { features: ["fs.dirs"] },
+      }) as unknown as typeof host;
+    const view = render(
+      <TContext.Provider value={translator("en")}>
+        <NewSessionForm host={hostWith(["/work"])} store={store} onCreate={() => {}} />
+      </TContext.Provider>,
+    );
+    expect(screen.queryByRole("button", { name: "Browse…" }) !== null).toBe(true);
+    view.rerender(
+      <TContext.Provider value={translator("en")}>
+        <NewSessionForm host={hostWith([])} store={store} onCreate={() => {}} />
+      </TContext.Provider>,
+    );
+    expect(screen.queryByRole("button", { name: "Browse…" }) === null).toBe(true);
   });
 
   test("every field of the form has the same width, and the button sits at the fields' left edge", async () => {
