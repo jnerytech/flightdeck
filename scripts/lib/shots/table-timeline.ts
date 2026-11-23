@@ -8,6 +8,7 @@ import type { WireRule } from "./wire.ts";
 const WAIT = 8000;
 const REWIND_TURN_2 = /^(Voltar arquivos até aqui|Rewind files to here) \((turno|turn) 2\)$/;
 const TRY_AGAIN = /^(Tentar de novo|Try again)$/;
+const REWIND_FILES = /^(Voltar arquivos|Rewind files)$/;
 const SHOW_MORE = /^(Mostrar mais|Show more)$/;
 const SHOW_LESS = /^(Mostrar menos|Show less)$/;
 
@@ -25,6 +26,12 @@ const UNDO_LISTED: WireRule = {
     deletions: 1,
   },
 };
+
+/** A rewind that touches more files than fit in the dialog's list box (15 rem), to show its scroll (#4374). */
+const MANY_FILES = Array.from({ length: 26 }, (_, i) => ({
+  path: `src/checkout/step-${String(i + 1).padStart(2, "0")}.ts`,
+  change: (["modified", "created", "deleted"] as const)[i % 3],
+}));
 
 const LONG_PROMPT = [
   "Round the cart total to two decimals before it is shown, and make the discount apply to the subtotal, not to the shipping.",
@@ -147,6 +154,28 @@ export function timelineShots(ids: DemoIds): Shot[] {
           .getByText(/^(Nada para voltar|Nothing to rewind)/)
           .first()
           .waitFor({ timeout: WAIT });
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      // #4374: the list of files is taller than its box, so it scrolls (the print shows the box and the cut; the keyboard focus is checked by the dialog tests).
+      name: "linha-do-tempo-voltar-lista-longa",
+      route,
+      wire: [
+        {
+          command: "rewind.preview",
+          data: { via: "snapshot", files: MANY_FILES, insertions: 120, deletions: 48 },
+        },
+      ],
+      prepare: async (page) => {
+        await openRewind(page);
+        await page
+          .getByRole("list", {
+            name: /^(Arquivos que esta volta altera|Files this rewind changes)$/,
+          })
+          .waitFor({ timeout: WAIT });
+        await page.getByRole("button", { name: REWIND_FILES }).waitFor({ timeout: WAIT });
+        await page.mouse.move(1000, 700);
         await page.waitForTimeout(400);
       },
     },
