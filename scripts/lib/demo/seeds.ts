@@ -111,7 +111,7 @@ const hoursAgo = (hours: number) => DEMO_VAULT_NOW - hours * 3_600_000;
  * `hostId`. Only the list: the web build keeps values in memory, so no secret has one and no value
  * is ever on a print.
  */
-export function demoSecrets(hostId: string): string {
+export function demoSecrets(hostId: string, _alsoOn: string[] = []): string {
   const secret = (id: string, name: string, type: string, extra = {}) => ({
     id: `demo-secret-${id}`,
     name,

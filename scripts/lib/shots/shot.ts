@@ -17,7 +17,7 @@ export interface Shot {
    * Clients kept in the page's storage before it loads (phase 29), and the one selected; the other
    * prints have none, so they look as they did before clients existed.
    */
-  clients?: { selected?: string };
+  clients?: { selected?: string; data?: string };
   /** Simple mode on the demo's first host (phase 33): the print starts at its Home. */
   simple?: boolean;
   /** Phase 36: an hourly rate and one person kept in the page's storage before it loads. */
@@ -31,7 +31,7 @@ export interface Shot {
   /** #1414: the hosts answer with their memory and a budget over their holds (`holdsScript`). */
   holds?: boolean;
   /** #3602: the vault's list kept in the page's storage before it loads (the secrets' rows, with no value). */
-  secrets?: boolean;
+  secrets?: boolean | "wide";
   /** #3602: the vault's usage log kept in the page's storage before it loads. */
   vaultUsage?: boolean;
   /** #3982: what the page's sockets do to a command (a host's answer refused or replaced, a request sent as another), for a state the demo's hosts cannot be left in. */
