@@ -137,7 +137,7 @@ async function exportCsv(page: Page): Promise<void> {
     .click({ timeout: WAIT });
 }
 
-export function costsShots(_ids: DemoIds): Shot[] {
+export function costsShots(ids: DemoIds): Shot[] {
   return [
     {
       // A period with no cost: the empty text and the way out to a longer period.
@@ -158,6 +158,38 @@ export function costsShots(_ids: DemoIds): Shot[] {
       prepare: async (page) => {
         await page
           .getByRole("button", { name: both("Try again", "Tentar de novo") })
+          .first()
+          .waitFor({ timeout: WAIT });
+      },
+    },
+    {
+      // One host refuses the read and the others answer: their costs, and a line naming the one that did not.
+      name: "custos-parcial",
+      route: { name: "costs" },
+      wire: [
+        {
+          command: "costs.summary",
+          refuse: "The costs could not be read on this host.",
+          port: ids.alfaPairing.port,
+        },
+      ],
+      prepare: async (page) => {
+        await page
+          .getByText(/^(No answer from|Sem resposta de): /)
+          .first()
+          .waitFor({ timeout: WAIT });
+        await page.mouse.move(1000, 700);
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      // Costs of one project in a period it has no cost in: the notice and the way back to every host.
+      name: "custos-projeto-vazio",
+      route: { name: "costs", projectKey: `github.com/acme/${ids.projectName}` },
+      wire: [NO_COST],
+      prepare: async (page) => {
+        await page
+          .getByText(/(has no costs in this period|não tem custos neste período)\.\s*$/)
           .first()
           .waitFor({ timeout: WAIT });
       },

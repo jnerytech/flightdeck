@@ -67,20 +67,19 @@ export interface ActivityBoardData {
   hiddenIdle: number;
 }
 
-/** What the board is: waiting for a first answer, empty of hosts, or the columns. */
-export type ActivityStage = "no_host" | "loading" | "board";
+/** What the board is: waiting for a first answer, or the columns. */
+export type ActivityStage = "loading" | "board";
 
 /**
- * With no host there is nothing to read; until the saved hosts are read, or while no host has
- * answered yet and one is being reached, with no session known, the board is not a quiet day
- * either (#4241). `known` counts every session the hosts told, the ones Idle hides too.
+ * Until the saved hosts are read, or while no host has answered yet and one is being reached, with
+ * no session known, the board is not a quiet day (#4241). `known` counts every session the hosts
+ * told, the ones Idle hides too. The no-host state is the shell's: Add host shows before any route.
  */
 export function activityStage(
   state: { hosts: readonly { status: string }[]; hostsLoaded: boolean },
   known: number,
 ): ActivityStage {
   if (!state.hostsLoaded) return "loading";
-  if (state.hosts.length === 0) return "no_host";
   const reaching =
     state.hosts.some((host) => host.status === "connecting") &&
     !state.hosts.some((host) => host.status === "online");

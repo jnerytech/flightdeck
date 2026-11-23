@@ -359,3 +359,93 @@ describe("conexoes-ui: the connection test", () => {
     expect(d.sent("ssh.save")).toEqual([]);
   });
 });
+
+describe("conexoes-ui: the form explains itself (#4333)", () => {
+  const save = () => screen.queryByRole("button", { name: "Salvar destino" }) as HTMLButtonElement;
+
+  test("a disabled Salvar destino names the required fields still empty, and the reason goes when they are filled", async () => {
+    await open({ targets: [] });
+    await click("Novo destino");
+    expect(save().disabled).toBe(true);
+    expect(screen.queryByText("Preencha para salvar: Nome, Host, Usuário.")).not.toBeNull();
+    await fill("Nome", "x");
+    expect(screen.queryByText("Preencha para salvar: Host, Usuário.")).not.toBeNull();
+    await fill("Host", "x.example.com");
+    await fill("Usuário", "me");
+    expect(screen.queryByText(/Preencha para salvar/)).toBeNull();
+    expect(save().disabled).toBe(false);
+    await fill("Autenticação", "vault-key");
+    expect(screen.queryByText("Preencha para salvar: Chave do cofre.")).not.toBeNull();
+    expect(save().disabled).toBe(true);
+  });
+
+  test("the required fields are marked for a screen reader, and the optional ones are not", async () => {
+    await open({ targets: [] });
+    await click("Novo destino");
+    for (const label of ["Nome", "Host", "Usuário"]) {
+      expect(screen.queryByLabelText(label)?.getAttribute("aria-required")).toBe("true");
+    }
+    for (const label of ["Porta", "Etiquetas (separadas por vírgula)"]) {
+      expect(screen.queryByLabelText(label)?.getAttribute("aria-required")).toBeNull();
+    }
+  });
+
+  test("the Nome field has the focus when the form opens, for a new destino and for an edit", async () => {
+    await open();
+    await click("Novo destino");
+    const focused = () => document.activeElement === screen.queryByLabelText("Nome");
+    expect(focused()).toBe(true);
+    await click("Cancelar");
+    await click("Editar lab");
+    expect(focused()).toBe(true);
+  });
+
+  test("the fields that are easy to misread say what they take", async () => {
+    await open({ targets: [] });
+    await click("Novo destino");
+    expect(screen.queryByText(/O host que executa o ssh deste destino/)).not.toBeNull();
+    expect(
+      screen.queryByText(/Outro destino salvo pelo qual a conexão passa antes/),
+    ).not.toBeNull();
+    expect(screen.queryByText(/por exemplo 8080:localhost:80/)).not.toBeNull();
+    expect(screen.queryByText(/O caminho é lido no host que executa o ssh/)).toBeNull();
+    await fill("Autenticação", "key-file");
+    expect(screen.queryByText(/O caminho é lido no host que executa o ssh/)).not.toBeNull();
+  });
+
+  test("a local forward that the daemon would refuse is flagged on its line and blocks the save", async () => {
+    const { d } = await open({ targets: [] });
+    await click("Novo destino");
+    await fill("Nome", "x");
+    await fill("Host", "x.example.com");
+    await fill("Usuário", "me");
+    const lines = "Encaminhamentos locais (um por linha)";
+    for (const bad of ["bad line", "0:localhost:80", "8080:localhost:70000", "8080:localhost"]) {
+      await fill(lines, `8080:localhost:80\n${bad}`);
+      expect(
+        screen.queryByText(`"${bad}" não é porta-local:host:porta-remota (portas de 1 a 65535).`),
+      ).not.toBeNull();
+      expect(screen.queryByText("Corrija os campos marcados para salvar.")).not.toBeNull();
+      expect(save().disabled).toBe(true);
+    }
+    await fill(lines, "8080:localhost:80\n\n127.0.0.1:9090:db:5432");
+    expect(screen.queryByText(/não é porta-local:host:porta-remota/)).toBeNull();
+    expect(save().disabled).toBe(false);
+    await click("Salvar destino");
+    expect(d.sent("ssh.save")[0]).toMatchObject({
+      options: { localForward: ["8080:localhost:80", "127.0.0.1:9090:db:5432"] },
+    });
+  });
+
+  test("more than 20 local forwards are flagged, as the daemon refuses them", async () => {
+    await open({ targets: [] });
+    await click("Novo destino");
+    await fill("Nome", "x");
+    await fill("Host", "x.example.com");
+    await fill("Usuário", "me");
+    const many = Array.from({ length: 21 }, (_, i) => `${8000 + i}:db:5432`).join("\n");
+    await fill("Encaminhamentos locais (um por linha)", many);
+    expect(screen.queryByText("Use no máximo 20 encaminhamentos.")).not.toBeNull();
+    expect(save().disabled).toBe(true);
+  });
+});

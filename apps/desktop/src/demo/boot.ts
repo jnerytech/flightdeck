@@ -9,6 +9,7 @@ import type { Platform } from "../platform/types.ts";
 // The file, not the barrel: the e2e loads this module in Node.
 import { parseJsonText, readStored, validValues } from "../shared/lib/stored-json.ts";
 import { demoApprovalKeys } from "./approval-keys.ts";
+import { type DemoGoogle, demoGoogle, withDemoGoogle } from "./google.ts";
 
 const DemoHost = z.object({ id: z.string(), name: z.string(), url: z.string(), token: z.string() });
 
@@ -98,6 +99,14 @@ export { entryHtml } from "./entry-html.ts";
 export function demoStoreOptions(
   hosts: DemoHost[],
   search = "",
+): { baseDelayMs?: number; maxDelayMs?: number; google?: DemoGoogle } {
+  const google = demoGoogle(search);
+  return { ...reconnectDelays(hosts, search), ...(google && { google }) };
+}
+
+function reconnectDelays(
+  hosts: DemoHost[],
+  search: string,
 ): { baseDelayMs?: number; maxDelayMs?: number } {
   if (hosts.length === 0) return {};
   if (new URLSearchParams(search).get("reconnect") === "fast") {
@@ -166,10 +175,12 @@ export function demoBackupFolder(platform: Platform): NonNullable<Platform["back
  */
 export function demoPlatform(platform: Platform, search = ""): Platform {
   const params = new URLSearchParams(search);
+  // #4348: `?google=` gives the page a Google client and a fake Google, for the backup prints.
+  const shell = withDemoGoogle(platform, search);
   const folderPlatform =
     params.get("backupFolder") === "demo"
-      ? { ...platform, backupFolder: demoBackupFolder(platform) }
-      : platform;
+      ? { ...shell, backupFolder: demoBackupFolder(shell) }
+      : shell;
   // #4154: the prints of the approving-devices panel need a key store; the page's dataset tells them which host it asked about.
   const keysMode = params.get("approvalKeys");
   const withKeys =
