@@ -215,3 +215,27 @@ describe("inbox-ui", () => {
     expect(opened).toEqual(["https://git.test/acme/api/pull/7"]);
   });
 });
+
+describe("inbox-ui: the same announcement twice in a row (#4523)", () => {
+  test("Mark all as read said again after a new notification changes the live region again", async () => {
+    const { store } = await setup(ENTRIES);
+    await open();
+    const markAll = () => screen.getByRole("button", { name: "Marcar todas como lidas" });
+    await act(async () => {
+      fireEvent.click(markAll());
+    });
+    const first = liveText();
+    await act(async () => {
+      store.inbox.notify({ title: "Orçamento", body: "alfa · 90%" });
+    });
+    await act(async () => {
+      fireEvent.click(markAll());
+    });
+    const second = liveText();
+    const words = (text: string) => text.replaceAll("\u200b", "");
+    expect({ sameWords: words(second) === words(first), textChanged: second !== first }).toEqual({
+      sameWords: true,
+      textChanged: true,
+    });
+  });
+});

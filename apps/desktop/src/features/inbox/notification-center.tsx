@@ -192,6 +192,9 @@ const keysOf = (request: RowRequest): Key => {
 
 const reason = (request: RowRequest) => (request.reason ? { reason: request.reason } : {});
 
+/** Nothing said: one shared object, so resetting to it again re-renders nothing. */
+const SILENT = { words: "", marked: false };
+
 /** The panel under the bell: unread first, Today then Earlier, a session's repeats as one row. */
 export function NotificationCenter(
   props: Readonly<{
@@ -226,8 +229,14 @@ export function NotificationCenter(
   const titleId = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   const list = useRef<HTMLDivElement>(null);
-  /** What the last answer was, said once its row has left (a region that is in the panel before). */
-  const [said, setSaid] = useState("");
+  /**
+   * What the last action said, in a region that is in the panel before: once its row has left for an
+   * answer. A live region speaks when its text changes, so the same words twice in a row carry an
+   * invisible mark that changes between the two (#4523).
+   */
+  const [said, setSaid] = useState(SILENT);
+  const say = (words: string) =>
+    setSaid((before) => ({ words, marked: words === before.words && !before.marked }));
   /**
    * What the last Clear dropped, kept for its Undo. It lives with the open panel: closing the panel ends
    * the offer and the clear stands.
@@ -237,11 +246,11 @@ export function NotificationCenter(
   useEffect(() => {
     if (open) return;
     setCleared(null);
-    setSaid("");
+    setSaid(SILENT);
   }, [open]);
   /** Says what a head button did and moves the focus off it (it is disabled now), to the heading. */
   const announce = (words: string) => {
-    setSaid(words);
+    say(words);
     heading.current?.focus();
   };
   /**
@@ -305,7 +314,7 @@ export function NotificationCenter(
     }
     if (row && !waiting.stays) return;
     settling.current = null;
-    setSaid(waiting.words);
+    say(waiting.words);
     const picks = [...(list.current?.querySelectorAll<HTMLElement>(".inbox-pick") ?? [])];
     (picks[Math.min(waiting.at, picks.length - 1)] ?? heading.current)?.focus();
   });
@@ -367,7 +376,7 @@ export function NotificationCenter(
         </Inline>
       )}
       <output data-slot="inbox-live" className="sr-only">
-        {said}
+        {said.marked ? `${said.words}\u200b` : said.words}
       </output>
       {groups.length === 0 ? (
         <Stack gap={2} className="items-center py-6 text-center">

@@ -33,3 +33,29 @@ describe("the mark control on a pointer that cannot hover (#4202)", () => {
     expect(body.includes("position: static")).toBe(true);
   });
 });
+
+/** A whole `@utility` block, nested rules included. */
+const utility = (name: string): string => {
+  const at = css.indexOf(`@utility ${name} {`);
+  if (at < 0) return "";
+  let depth = 0;
+  for (let i = css.indexOf("{", at); i < css.length; i++) {
+    if (css[i] === "{") depth++;
+    if (css[i] === "}" && --depth === 0) return css.slice(at, i + 1);
+  }
+  return "";
+};
+
+describe("a long word and a short window (#4521, #4522)", () => {
+  test("a row breaks a long path or URL instead of widening the panel (#4521)", () => {
+    expect(utility("inbox-item").includes("overflow-wrap: anywhere")).toBe(true);
+  });
+
+  test("the panel is never taller than the room the popover has (#4522)", () => {
+    expect(
+      ruleOf("@utility inbox-panel").includes(
+        "max-height: min(28rem, var(--radix-popover-content-available-height",
+      ),
+    ).toBe(true);
+  });
+});
