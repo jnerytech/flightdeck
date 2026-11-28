@@ -252,6 +252,17 @@ describe("shots-wire: a held, a replied, a sequenced and a trimmed command (#415
     ).toEqual({ type: "ack", id: "r1", ok: true, data: { name: "alfa", features: ["a", "d"] } });
   });
 
+  test("set puts the given fields into the answer's data and keeps the others, so a host answers as a far one (#4435)", () => {
+    const wire = wireRewriter([{ command: "host.info", set: { near: false } }]);
+    wire.fromApp(ask("r1", "host.info"));
+    expect(read(wire.fromHost(ack("r1", { name: "alfa", near: true, features: ["a"] })))).toEqual({
+      type: "ack",
+      id: "r1",
+      ok: true,
+      data: { name: "alfa", near: false, features: ["a"] },
+    });
+  });
+
   test("without with * takes every entry out of the array, for a host whose entries the print cannot name (#4388)", () => {
     const wire = wireRewriter([{ command: "hello", without: { allowedRoots: ["*"] } }]);
     wire.fromApp(ask("r1", "hello"));

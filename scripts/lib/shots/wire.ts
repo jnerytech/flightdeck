@@ -22,6 +22,7 @@ export type WireRule = (
   | { command: string; stall: true }
   | { command: string; without: Record<string, string[]> }
   | { command: string; with: Record<string, string[]> }
+  | { command: string; set: Record<string, unknown> }
 ) & { port?: number };
 
 /**
