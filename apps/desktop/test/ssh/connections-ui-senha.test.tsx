@@ -140,7 +140,7 @@ describe("conexoes-ui: ssh asks for a password", () => {
     const field = await type(SECRET);
     await click("Mostrar o que foi digitado");
     expect(field.getAttribute("spellcheck")).toBe("false");
-    expect(document.activeElement === field).toBe(true);
+    expect(document.activeElement).toBe(field);
   });
 
   test("a show control lets the person check what was typed, and hides it again (#4331)", async () => {
@@ -266,7 +266,7 @@ describe("conexoes-ui: where the focus goes when the askpass dialog closes (#433
     const button = screen.queryByRole("button", { name: "SSH" }) as HTMLElement | null;
     expect(button).not.toBeNull();
     button?.focus();
-    expect(document.activeElement === button).toBe(true);
+    expect(document.activeElement).toBe(button);
     return button as HTMLElement;
   };
 
@@ -289,7 +289,7 @@ describe("conexoes-ui: where the focus goes when the askpass dialog closes (#433
     const restored: Record<string, boolean> = {};
     for (const [index, [name, close]] of closers.entries()) {
       await ask(d, request(`r${index}`));
-      expect(document.activeElement === button).toBe(false);
+      expect(document.activeElement).not.toBe(button);
       await act(async () => {
         fireEvent.change(screen.queryByLabelText("Senha") as HTMLElement, {
           target: { value: SECRET },
@@ -313,7 +313,7 @@ describe("conexoes-ui: where the focus goes when the askpass dialog closes (#433
     await click("Cancelar");
     await settleMaybe(() => dialog() === null);
     await settleMaybe(() => document.activeElement === document.querySelector("main"));
-    expect(document.activeElement === document.querySelector("main")).toBe(true);
+    expect(document.activeElement).toBe(document.querySelector("main"));
   });
 
   test("with two requests queued the focus goes to the second field, and back to the first place only after the last", async () => {
@@ -323,11 +323,11 @@ describe("conexoes-ui: where the focus goes when the askpass dialog closes (#433
     await ask(d, request("r2"));
     await click("Cancelar");
     await settleMaybe(() => document.activeElement === screen.queryByLabelText("Senha"));
-    expect(document.activeElement === screen.queryByLabelText("Senha")).toBe(true);
+    expect(document.activeElement).toBe(screen.queryByLabelText("Senha"));
     await click("Cancelar");
     await settleMaybe(() => dialog() === null);
     await settleMaybe(() => document.activeElement === button);
-    expect(document.activeElement === button).toBe(true);
+    expect(document.activeElement).toBe(button);
   });
 
   test("when what had the focus can no longer take it (a button turned off while it waited), the focus goes to the main area", async () => {
@@ -340,8 +340,8 @@ describe("conexoes-ui: where the focus goes when the askpass dialog closes (#433
     await click("Cancelar");
     await settleMaybe(() => dialog() === null);
     await settleMaybe(() => document.activeElement === document.querySelector("main"));
-    expect(document.activeElement === waiting).toBe(false);
-    expect(document.activeElement === document.querySelector("main")).toBe(true);
+    expect(document.activeElement).not.toBe(waiting);
+    expect(document.activeElement).toBe(document.querySelector("main"));
     waiting.remove();
   });
 });

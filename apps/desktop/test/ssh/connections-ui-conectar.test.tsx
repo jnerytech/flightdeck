@@ -131,7 +131,7 @@ describe("conexoes-ui: connect", () => {
     await click("Cancelar");
     const edit = screen.queryByRole("button", { name: "Editar vps" });
     expect(edit).not.toBeNull();
-    expect(document.activeElement === edit).toBe(true);
+    expect(document.activeElement).toBe(edit);
   });
 
   test("a changed server key names its two values Chave salva and Chave oferecida agora", async () => {

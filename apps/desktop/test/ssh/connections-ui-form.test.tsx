@@ -607,6 +607,6 @@ describe("conexoes-ui: focus after the form closes (#4333)", () => {
     });
     await uiIdle();
     expect(screen.queryByRole("button", { name: "Salvar destino" })).toBeNull();
-    expect(document.activeElement === search).toBe(true);
+    expect(document.activeElement).toBe(search);
   });
 });
