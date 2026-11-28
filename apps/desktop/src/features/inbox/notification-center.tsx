@@ -192,6 +192,9 @@ const keysOf = (request: RowRequest): Key => {
 
 const reason = (request: RowRequest) => (request.reason ? { reason: request.reason } : {});
 
+/** Nothing said: one shared object, so resetting to it again re-renders nothing. */
+const SILENT = { words: "", marked: false };
+
 /** The panel under the bell: unread first, Today then Earlier, a session's repeats as one row. */
 export function NotificationCenter(
   props: Readonly<{
@@ -231,7 +234,7 @@ export function NotificationCenter(
    * answer. A live region speaks when its text changes, so the same words twice in a row carry an
    * invisible mark that changes between the two (#4523).
    */
-  const [said, setSaid] = useState({ words: "", marked: false });
+  const [said, setSaid] = useState(SILENT);
   const say = (words: string) =>
     setSaid((before) => ({ words, marked: words === before.words && !before.marked }));
   /**
@@ -243,7 +246,7 @@ export function NotificationCenter(
   useEffect(() => {
     if (open) return;
     setCleared(null);
-    setSaid({ words: "", marked: false });
+    setSaid(SILENT);
   }, [open]);
   /** Says what a head button did and moves the focus off it (it is disabled now), to the heading. */
   const announce = (words: string) => {

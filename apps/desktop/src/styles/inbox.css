@@ -4,7 +4,7 @@
   flex-direction: column;
   gap: 0.5rem;
   /* #4522: never taller than the room the popover has, so a short window keeps the last rows. */
-  max-height: min(28rem, var(--radix-popover-content-available-height));
+  max-height: min(28rem, var(--radix-popover-content-available-height, 28rem));
   padding: 0.75rem;
 }
 @utility inbox-head {

@@ -53,7 +53,9 @@ describe("a long word and a short window (#4521, #4522)", () => {
 
   test("the panel is never taller than the room the popover has (#4522)", () => {
     expect(
-      ruleOf("@utility inbox-panel").includes("var(--radix-popover-content-available-height)"),
+      ruleOf("@utility inbox-panel").includes(
+        "max-height: min(28rem, var(--radix-popover-content-available-height",
+      ),
     ).toBe(true);
   });
 });
