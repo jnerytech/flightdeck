@@ -1,6 +1,6 @@
 import type { CommandPayload, EffortLevel, PermissionMode } from "@flightdeck/protocol";
 import { ChevronRight } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -114,6 +114,7 @@ export function NewSessionForm(
   const [openCodeModels, setOpenCodeModels] = useState<ModelRead>("loading");
   /** Try again bumps it, and the read below runs again. */
   const [modelReads, setModelReads] = useState(0);
+  const modelSelect = useRef<HTMLSelectElement>(null);
   const [effort, setEffort] = useState<EffortLevel | "">("");
   const { store } = props;
   const hostId = props.host.id;
@@ -305,27 +306,42 @@ export function NewSessionForm(
             </>
           )}
         </Field>
-        <Field
-          label={t("session.modelLabel")}
-          help={modelsHelp?.kind === "failed" ? undefined : modelsHelp?.text}
-          error={modelsHelp?.kind === "failed" ? modelsHelp.text : undefined}
-        >
+        <Field label={t("session.modelLabel")}>
           {(control) => (
             <>
-              <NativeSelect {...control} value={model} onChange={(e) => setModel(e.target.value)}>
+              <NativeSelect
+                {...control}
+                ref={modelSelect}
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+              >
                 <option value="">{t("session.modelDefault")}</option>
                 <ModelOptions models={models} />
               </NativeSelect>
+              {/* Not the Field's help or error: the default model is still a valid choice, so the
+                  select is not marked invalid, and the wait is announced politely. */}
               {modelsHelp?.kind === "failed" && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="self-start"
-                  onClick={() => setModelReads((n) => n + 1)}
-                >
-                  {t("newSession.modelsRetry")}
-                </Button>
+                <>
+                  <p role="alert" className="text-status-error text-xs">
+                    {modelsHelp.text}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="self-start"
+                    onClick={() => {
+                      // The button leaves with the failure: keep the focus in the field.
+                      modelSelect.current?.focus();
+                      setModelReads((n) => n + 1);
+                    }}
+                  >
+                    {t("newSession.modelsRetry")}
+                  </Button>
+                </>
+              )}
+              {modelsHelp && modelsHelp.kind !== "failed" && (
+                <output className="text-muted-foreground text-xs">{modelsHelp.text}</output>
               )}
             </>
           )}
