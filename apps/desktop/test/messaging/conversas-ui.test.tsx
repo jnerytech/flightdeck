@@ -256,7 +256,7 @@ describe("conversas-ui: a cut list says so (#4292)", () => {
 
   test("a host that answers as many messages as the limit asked makes the page say the list is cut", async () => {
     await openWith(200);
-    expect(screen.queryByText(cutText) !== null).toBe(true);
+    expect(screen.queryByText(cutText)).not.toBeNull();
   });
 
   test("a host that answers fewer than the limit leaves the page without the notice", async () => {
@@ -269,9 +269,8 @@ describe("conversas-ui: a cut list says so (#4292)", () => {
     const asked = daemon.commands.find((c) => c.type === "messages.list");
     expect(asked?.payload).toEqual({ days: 30, limit: 200 });
     expect(
-      screen.queryByText("Mensagens entre sessões, em todos os hosts, dos últimos 30 dias") !==
-        null,
-    ).toBe(true);
+      screen.queryByText("Mensagens entre sessões, em todos os hosts, dos últimos 30 dias"),
+    ).not.toBeNull();
   });
 });
 
@@ -292,7 +291,7 @@ describe("conversas-ui: the filter counts and can be cleared (#4295)", () => {
     await act(async () => {
       fireEvent.change(filterField(), { target: { value: "t1" } });
     });
-    expect(screen.queryByText("1 de 2 mensagens") !== null).toBe(true);
+    expect(screen.queryByText("1 de 2 mensagens")).not.toBeNull();
     await act(async () => {
       fireEvent.change(filterField(), { target: { value: "" } });
     });
@@ -305,14 +304,14 @@ describe("conversas-ui: the filter counts and can be cleared (#4295)", () => {
       fireEvent.change(screen.getByLabelText("Estado"), { target: { value: "refused" } });
       fireEvent.change(filterField(), { target: { value: "zzz" } });
     });
-    expect(screen.queryByRole("button", { name: "Limpar filtro" }) !== null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Limpar filtro" })).not.toBeNull();
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Limpar filtro" }));
     });
     expect(list()?.children.length).toBe(2);
     expect(filterField().value).toBe("");
     expect((screen.getByLabelText("Estado") as HTMLSelectElement).value).toBe("");
-    expect(document.activeElement === filterField()).toBe(true);
+    expect(document.activeElement).toBe(filterField());
   });
 });
 
@@ -381,8 +380,8 @@ describe("conversas-ui: a row names its sessions (#4294)", () => {
     await settleMaybe(() => (row.textContent ?? "").includes("revisor"));
     expect(row.textContent).toContain("revisor");
     expect(row.textContent).toContain("autor");
-    expect(row.querySelector('[title="h/s1"]') !== null).toBe(true);
-    expect(row.querySelector('[title="h/s2"]') !== null).toBe(true);
+    expect(row.querySelector('[title="h/s1"]')).not.toBeNull();
+    expect(row.querySelector('[title="h/s2"]')).not.toBeNull();
   });
 
   test("two ends with the same name keep their addresses visible, so the row still tells them apart", async () => {
@@ -406,7 +405,7 @@ describe("conversas-ui: a row names its sessions (#4294)", () => {
     await settleMaybe(() => (row.textContent ?? "").includes("revisor"));
     expect(row.textContent).toContain("revisor");
     expect(row.textContent).toContain("h/s2");
-    expect(screen.queryByRole("button", { name: "Abrir a sessão de h/s2" }) !== null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Abrir a sessão de h/s2" })).not.toBeNull();
   });
 });
 
