@@ -156,6 +156,13 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
   const [rewinding, setRewinding] = useState<Turn | null>(null);
   const [forking, setForking] = useState<Turn | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Each result is a new notice, not the old text kept: a live region speaks what is put in it, so
+  // two rewinds to the same turn say the same words twice (#4530).
+  const [noticeId, setNoticeId] = useState(0);
+  const say = (words: string) => {
+    setNotice(words);
+    setNoticeId((id) => id + 1);
+  };
   // What the host would restore by an undo, from its own safety snapshot: the Undo is offered only
   // while it lists files, so it also survives the sheet closing and a fork that rewound (#4036).
   const [undoPreview, setUndoPreview] = useState<RewindPreview | null>(null);
@@ -214,23 +221,24 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
       setFiles(({ [turn.n]: _closed, ...rest }) => rest);
       return;
     }
-    const result = await store.hostCommand(hostId, "snapshots.files", {
+    // The row says a refusal itself: through `hostCommand` it would also go to the banner (#4529).
+    const result = await store.hostRequest(hostId, "snapshots.files", {
       claudeSessionId,
       n: turn.n,
     });
-    if (result) {
-      setFiles((all) => ({ ...all, [turn.n]: result }));
+    if (result.ok) {
+      setFiles((all) => ({ ...all, [turn.n]: result.data }));
       setFilesFailed(({ [turn.n]: _read, ...rest }) => rest);
     } else setFilesFailed((all) => ({ ...all, [turn.n]: true }));
   };
 
   const rewound = (turn: Turn) => {
-    setNotice(t("timeline.rewound", { n: turn.ordinal }));
+    say(t("timeline.rewound", { n: turn.ordinal }));
     void load();
   };
 
   const undone = () => {
-    setNotice(t("timeline.undone"));
+    say(t("timeline.undone"));
     setUndoPreview(null);
     refocus.current = true;
     void load();
@@ -243,7 +251,7 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4">
       {banner && (
-        <InlineNotice tone="info">
+        <InlineNotice key={noticeId} tone="info">
           <span>{banner}</span>{" "}
           {undoable && (
             <Button

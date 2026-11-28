@@ -17,13 +17,14 @@ export function TurnPrompt(props: Readonly<{ store: AppStore; prompt: string | n
   const [open, setOpen] = useState(false);
   const text = props.prompt?.trim() ?? "";
   if (text === "") return <p className="text-muted-foreground">{t("timeline.noPrompt")}</p>;
-  // Decided by the text, not by the layout: the same on every screen width.
+  // Decided by the text, not by the layout: the same on every screen width. `wrap-anywhere`, not
+  // `break-words`: in this column a long word would keep its whole width as the minimum (#4531).
   const long = text.split("\n").length > PROMPT_LINES || text.length > PROMPT_CHARS;
   return (
     <Stack gap={1} className="items-start">
       <p
         id={id}
-        className={`whitespace-pre-wrap break-words ${long && !open ? "line-clamp-3" : ""}`.trim()}
+        className={`whitespace-pre-wrap wrap-anywhere ${long && !open ? "line-clamp-3" : ""}`.trim()}
       >
         {text}
       </p>
