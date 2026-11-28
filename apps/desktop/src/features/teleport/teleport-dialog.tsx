@@ -70,7 +70,7 @@ const percentOf = (sent: number, total: number) =>
 
 export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialogProps) {
   const t = useT();
-  const [picked, setTarget] = useState("");
+  const [picked, setPicked] = useState("");
   const [repo, setRepo] = useState("");
   const [phase, setPhase] = useState<Phase>({ at: "pick" });
   // In the first step a host that is no longer offered (it went offline) counts as not picked.
@@ -132,7 +132,7 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
     stop.current = null;
     // The host may have gone offline while the move ran: a host the list no longer offers is dropped.
     if (!props.targets.some((h) => h.id === picked)) {
-      setTarget("");
+      setPicked("");
       setRepo("");
     }
     setPhase({ at: "pick" });
@@ -178,7 +178,7 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
               disabled={phase.at === "preparing"}
               value={target}
               onChange={(e) => {
-                setTarget(e.target.value);
+                setPicked(e.target.value);
                 // The repository was for the other host.
                 setRepo("");
               }}
