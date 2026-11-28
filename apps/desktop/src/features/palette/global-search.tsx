@@ -83,13 +83,21 @@ function walkOf(
 
 /**
  * What a screen reader hears as the list changes, and what a sighted person reads when it holds
- * nothing: how many rows and history hits are listed; that the text matches nothing and Enter
- * searches the history; or that the history search for this very text found nothing. A search
+ * nothing: how many rows and history hits match (the rows behind a "more" button count); that the
+ * text matches nothing and Enter searches the history; that the history search for this very text
+ * found nothing; or that no host answered it. A search
  * for other text is not this text's answer, so it only adds its hits to the count.
  */
 function statusOf(
   t: T,
-  o: { query: string; search: AppState["search"]; inActions: boolean; count: number },
+  o: {
+    query: string;
+    search: AppState["search"];
+    inActions: boolean;
+    count: number;
+    /** How many hosts are online and not silent: the ones the search can have heard from. */
+    answering: number;
+  },
 ) {
   const { query, search } = o;
   const hitCount = search?.hits.length ?? 0;
@@ -97,13 +105,22 @@ function statusOf(
   const current = search !== null && search.query.trim() === query.trim();
   const searching = current && search.waiting.length > 0;
   const noMatch = typed && o.count + hitCount === 0 && !current;
+  // The search for this text ended and every host it asked stayed silent: it did not run.
+  const noAnswer =
+    typed &&
+    current &&
+    !searching &&
+    hitCount === 0 &&
+    search.silent.length > 0 &&
+    o.answering === 0;
   const historyNone =
     typed && current && !searching && hitCount === 0 && search.silent.length === 0;
   let status = "";
   if (historyNone) status = t("searchUi.historyNone", { query: query.trim() });
+  else if (noAnswer) status = t("searchUi.noAnswer", { query: query.trim() });
   else if (noMatch) status = t("searchUi.noMatch", { query: query.trim() });
   else if (typed && !searching) status = t("searchUi.found", { n: o.count + hitCount });
-  return { status, noMatch, historyNone };
+  return { status, shown: noMatch || historyNone || noAnswer };
 }
 
 /** The chips of the scope the list is narrowed to: the host, and its project. */
@@ -373,12 +390,14 @@ export function GlobalSearch(
     setActionsOf(null);
     setActiveId(null);
   };
-  const rowCount = stops.filter((stop) => stop.kind === "item").length;
-  const { status, noMatch, historyNone } = statusOf(t, {
+  // Every row that matches, not only the ones on screen: a section keeps some behind "more".
+  const rowCount = sections.reduce((n, section) => n + section.items.length, 0);
+  const { status, shown: statusShown } = statusOf(t, {
     query,
     search,
     inActions: actionsOf !== null,
     count: rowCount,
+    answering: hosts.filter((h) => h.status === "online" && !search?.silent.includes(h.id)).length,
   });
 
   /** Opens an entry and remembers it for the Recent section (an action of the Tab list is not one). */
@@ -472,7 +491,7 @@ export function GlobalSearch(
       </form>
       <output
         data-slot="palette-status"
-        className={noMatch || historyNone ? "text-muted-foreground text-sm" : "sr-only"}
+        className={statusShown ? "text-muted-foreground text-sm" : "sr-only"}
       >
         {status}
       </output>

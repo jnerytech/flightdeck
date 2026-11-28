@@ -14,6 +14,14 @@ const STATE_TONE: Record<NonNullable<PaletteItem["stateKey"]>, StateTone> = {
   idle: "idle",
 };
 
+/** What describes a row: its state, when it has one, then its detail. */
+function describedBy(id: string, item: PaletteItem): string | undefined {
+  const ids = [item.stateKey ? `${id}-state` : "", item.detail ? `${id}-detail` : ""].filter(
+    Boolean,
+  );
+  return ids.length > 0 ? ids.join(" ") : undefined;
+}
+
 /**
  * One section of the Ctrl+K palette (issue #147): its title, its rows (the state of a session, a
  * card's icon, the label and where it is, its key) and, past its cap, a "more" button.
@@ -52,16 +60,22 @@ export function PaletteSectionView(
             role="option"
             tabIndex={-1}
             aria-label={item.label}
-            aria-describedby={item.detail ? `${props.idOf(item)}-detail` : undefined}
+            aria-describedby={describedBy(props.idOf(item), item)}
             aria-selected={props.selected(item)}
             className="palette-row flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
             onClick={() => props.onChoose(item)}
           >
             {item.stateKey && (
-              <StatusDot
-                tone={STATE_TONE[item.stateKey]}
-                label={t(`hub.stateDots.${item.stateKey}` as Key)}
-              />
+              <>
+                <StatusDot
+                  tone={STATE_TONE[item.stateKey]}
+                  label={t(`hub.stateDots.${item.stateKey}` as Key)}
+                />
+                {/* The row's name is its label, so the state is read as part of its description. */}
+                <span id={`${props.idOf(item)}-state`} className="sr-only">
+                  {t(`hub.stateDots.${item.stateKey}` as Key)}
+                </span>
+              </>
             )}
             {item.id.startsWith("card:") && (
               <SquareKanban
