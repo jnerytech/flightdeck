@@ -81,14 +81,22 @@ export const TargetForm = memo(function TargetForm(props: {
   const [advancedOpen, setAdvancedOpen] = useState(hasAdvanced(target));
   const missing = missingFields({ name, host, user, auth, secretId });
   const ready = !portBad && !aliveBad && forwardsBad === null && missing.length === 0;
+  const invalidReason =
+    portBad || aliveBad || forwardsBad ? t("connections.form.fixFields") : undefined;
   const disabledReason =
     missing.length > 0
       ? t("connections.form.missing", {
           fields: missing.map((field) => t(`connections.form.${field}`)).join(", "),
         })
-      : portBad || aliveBad || forwardsBad
-        ? t("connections.form.fixFields")
-        : undefined;
+      : invalidReason;
+  const tooManyForwards =
+    forwardsBad?.kind === "many"
+      ? t("connections.form.forwardsTooMany", { max: MAX_FORWARDS })
+      : undefined;
+  const forwardsError =
+    forwardsBad?.kind === "line"
+      ? t("connections.form.forwardInvalid", { line: forwardsBad.line })
+      : tooManyForwards;
 
   const changed =
     target !== null &&
@@ -331,13 +339,7 @@ export const TargetForm = memo(function TargetForm(props: {
             <Field
               label={t("connections.form.forwards")}
               help={t("connections.form.forwardsHelp")}
-              error={
-                forwardsBad?.kind === "line"
-                  ? t("connections.form.forwardInvalid", { line: forwardsBad.line })
-                  : forwardsBad?.kind === "many"
-                    ? t("connections.form.forwardsTooMany", { max: MAX_FORWARDS })
-                    : undefined
-              }
+              error={forwardsError}
             >
               {(control) => (
                 <Textarea
