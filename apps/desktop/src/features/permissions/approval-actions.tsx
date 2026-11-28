@@ -34,22 +34,24 @@ export function ApprovalActions(
   const t = useT();
   const pending = props.pending ?? false;
   const size = props.size ? { size: props.size } : {};
+  const approve =
+    props.risk === "high" ? (
+      <HoldButton
+        label={t("approval.hold")}
+        hint={t("approval.holdHint")}
+        clickHint={t("approval.holdClick")}
+        holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
+        disabled={pending}
+        onHeld={() => void props.onApprove(true)}
+      />
+    ) : (
+      <ActionButton {...size} pending={pending} onClick={() => props.onApprove(false)}>
+        {props.labels?.approve ?? t("approval.approve")}
+      </ActionButton>
+    );
   return (
     <>
-      {props.canApprove === false ? null : props.risk === "high" ? (
-        <HoldButton
-          label={t("approval.hold")}
-          hint={t("approval.holdHint")}
-          clickHint={t("approval.holdClick")}
-          holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
-          disabled={pending}
-          onHeld={() => void props.onApprove(true)}
-        />
-      ) : (
-        <ActionButton {...size} pending={pending} onClick={() => props.onApprove(false)}>
-          {props.labels?.approve ?? t("approval.approve")}
-        </ActionButton>
-      )}
+      {props.canApprove === false ? null : approve}
       <Button {...size} variant="outline" disabled={pending} onClick={() => void props.onDeny()}>
         {props.labels?.deny ?? t("approval.deny")}
       </Button>
