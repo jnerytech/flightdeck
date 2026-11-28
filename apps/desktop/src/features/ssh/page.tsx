@@ -26,13 +26,16 @@ const matches = (target: SshTarget, needle: string) =>
 
 const CONNECTIONSPAGE_KEYS = ["hosts"] as const;
 
+/** The form's target: a saved destination, a new one, or none (the form is closed). */
+type EditingTarget = SshTarget | "new" | null;
+
 /**
  * Closing the form (Save or Cancel) unmounts the focused button; the focus goes back to the one that
  * opened it: "New destination", or the Edit of the destination that was open, whoever asked for the
  * edit (its own button or the changed-server-key dialog); "New destination" when that row is gone.
  */
-function useFocusBackAfterForm(editing: SshTarget | "new" | null) {
-  const opened = useRef<SshTarget | "new" | null>(null);
+function useFocusBackAfterForm(editing: EditingTarget) {
+  const opened = useRef<EditingTarget>(null);
   useEffect(() => {
     if (editing !== null) {
       opened.current = editing;
@@ -69,7 +72,7 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
   const [search, setSearch] = useState("");
   const [tag, setTag] = useState("");
   const [via, setVia] = useState("");
-  const [editing, setEditing] = useState<SshTarget | "new" | null>(null);
+  const [editing, setEditing] = useState<EditingTarget>(null);
   useFocusBackAfterForm(editing);
   const {
     targets,
@@ -242,9 +245,7 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
         />
       )}
       {hostId && listing === "loading" && (
-        <p role="status" className="text-muted-foreground text-sm">
-          {t("connections.loading")}
-        </p>
+        <output className="block text-muted-foreground text-sm">{t("connections.loading")}</output>
       )}
       {hostId && listing === "failed" && (
         <div role="alert">
