@@ -268,7 +268,7 @@ const DEMO_LOG_LINES = [
 function demoLogs(): NonNullable<Platform["logs"]> {
   return {
     write: () => Promise.resolve(),
-    tail: (lines) => Promise.resolve(DEMO_LOG_LINES.slice(-lines)),
+    tail: (lines) => Promise.resolve(lines > 0 ? DEMO_LOG_LINES.slice(-lines) : []),
     openFolder: () => Promise.resolve(),
   };
 }

@@ -15,10 +15,9 @@ const SILENCE = Buffer.from(
 /** The Notifications section with a host and a project muted and a sound file chosen. */
 async function notificationsSet(page: Page): Promise<void> {
   await page.getByRole("checkbox", { name: /^(Mute|Silenciar) alfa$/ }).check({ timeout: WAIT });
-  await page
-    .getByRole("checkbox", { name: /^(Mute|Silenciar) .+ \(alfa\)$/ })
-    .first()
-    .check();
+  const project = page.getByRole("checkbox", { name: /^(Mute|Silenciar) .+ \(alfa\)$/ }).first();
+  await project.waitFor({ timeout: WAIT });
+  await project.check();
   await page.locator("#notify-sound").selectOption("file");
   await page
     .getByLabel(/^(Choose a sound file|Escolher um arquivo de som)/)

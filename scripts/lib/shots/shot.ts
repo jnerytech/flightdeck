@@ -67,7 +67,7 @@ export interface Shot {
   assistantReady?: boolean;
   /** #4168: what the host seems to answer to the wand's request, made in the page: it never reaches the host (`assistantScript`). */
   assistant?: AssistantMode;
-  /** Demo switches added to the address (`update=<version>`: the update card shows; `update=fail`: every check fails). */
+  /** Demo switches added to the address (`update=<version>`: the update card shows; `update=fail`: every check fails; `update=none`: every check answers up to date; `shortcut=taken`: the system refuses the global shortcut; `logs=demo`: the app has a log file; all read by `demoPlatform`). */
   query?: Record<string, string>;
   /** After the screen loads: open the palette, scroll a long list to its end… */
   prepare?(page: Page): Promise<void>;
