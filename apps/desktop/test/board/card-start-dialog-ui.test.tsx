@@ -3,7 +3,7 @@ import { en } from "../../src/i18n/en.ts";
 import { ptBR } from "../../src/i18n/pt-BR.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
-import { settle } from "../wait.ts";
+import { settle, settleMaybe } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -23,14 +23,27 @@ const WORKFLOW = {
   inputs: [],
 };
 
+/** What a host answers to `card.start`: the card, or a refusal. */
+type StartAnswer = { ok: true; data: unknown } | { ok: false; code: string; message: string };
+
 /** The dialog with a `workflow.list` that answers as the test says; every command is recorded. */
-function setup(lang: "en" | "pt-BR", list: () => Promise<unknown>) {
+function setup(
+  lang: "en" | "pt-BR",
+  list: () => Promise<unknown>,
+  startAnswers: StartAnswer[] = [{ ok: true, data: {} }],
+) {
   const store = new AppStore(memoryPlatform(false, lang).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   const commands: Array<[string, unknown]> = [];
+  const calls = { closed: 0, started: 0 };
   store.hostCommand = (async (_host: string, type: string, payload: unknown) => {
     commands.push([type, payload]);
     return type === "workflow.list" ? list() : {};
+  }) as never;
+  // A refusal comes back to the dialog, not to the banner (#4462).
+  store.hostRequest = (async (_host: string, type: string, payload: unknown) => {
+    commands.push([type, payload]);
+    return startAnswers.shift() ?? { ok: true, data: {} };
   }) as never;
   render(
     <TContext.Provider value={store.i18n.t}>
@@ -38,12 +51,16 @@ function setup(lang: "en" | "pt-BR", list: () => Promise<unknown>) {
         store={store}
         hostId="h1"
         card={CARD}
-        onClose={() => undefined}
-        onStarted={() => undefined}
+        onClose={() => {
+          calls.closed++;
+        }}
+        onStarted={() => {
+          calls.started++;
+        }}
       />
     </TContext.Provider>,
   );
-  return { commands };
+  return { commands, calls };
 }
 
 const starts = (commands: Array<[string, unknown]>) =>
@@ -124,6 +141,77 @@ for (const [lang, t, start] of [
       });
       await settle(() => starts(w.commands).length === 1);
       expect(starts(w.commands)).toEqual([["card.start", { cardId: "c1" }]]);
+    });
+    test("a refused start leaves the dialog open, the typed inputs in place and the reason in it, and Start asks the host again (#4462)", async () => {
+      const alertFlow = { ...WORKFLOW, name: "triage-alert", inputs: ["alert"] };
+      const w = setup(lang, async () => ({ workflows: [alertFlow] }), [
+        { ok: false, code: "card_refused", message: "The project has no folder" },
+        { ok: true, data: {} },
+      ]);
+      await settle(
+        () => !(screen.queryByRole("button", { name: start }) as HTMLButtonElement).disabled,
+      );
+      const typed = "What: login fails\nWhere: the cart\nWhy: a new build";
+      await act(async () => {
+        fireEvent.change(
+          screen.queryByRole("combobox", { name: t.cardUi.workflow }) as HTMLElement,
+          {
+            target: { value: "triage-alert" },
+          },
+        );
+      });
+      const field = () =>
+        screen.queryByRole("textbox", {
+          name: t.cardUi.input.replace("{name}", "alert"),
+        }) as HTMLTextAreaElement;
+      await act(async () => {
+        fireEvent.change(field(), { target: { value: typed } });
+      });
+      await act(async () => {
+        fireEvent.click(screen.queryByRole("button", { name: start }) as HTMLElement);
+      });
+      await settle(() => starts(w.commands).length === 1);
+      await settleMaybe(() => screen.queryByRole("alert") !== null);
+      expect({
+        closed: w.calls.closed,
+        started: w.calls.started,
+        inputs: field().value,
+        reasonShown: (screen.queryByRole("alert")?.textContent ?? "").includes(
+          "The project has no folder",
+        ),
+      }).toEqual({ closed: 0, started: 0, inputs: typed, reasonShown: true });
+      // The second press asks the host again; it accepts, and only then does the dialog close.
+      await settle(
+        () => !(screen.queryByRole("button", { name: start }) as HTMLButtonElement).disabled,
+      );
+      await act(async () => {
+        fireEvent.click(screen.queryByRole("button", { name: start }) as HTMLElement);
+      });
+      await settle(() => starts(w.commands).length === 2);
+      await settle(() => w.calls.started === 1);
+      expect(w.calls).toEqual({ closed: 1, started: 1 });
+    });
+
+    test("an accepted start closes the dialog and tells the caller, once (#4462)", async () => {
+      const w = setup(lang, async () => ({ workflows: [WORKFLOW] }));
+      await settle(
+        () => !(screen.queryByRole("button", { name: start }) as HTMLButtonElement).disabled,
+      );
+      await act(async () => {
+        fireEvent.click(screen.queryByRole("button", { name: start }) as HTMLElement);
+      });
+      await settle(() => w.calls.started === 1);
+      expect(w.calls).toEqual({ closed: 1, started: 1 });
+    });
+
+    test("while the list loads, Start names the loading line as its reason (#4462)", async () => {
+      setup(lang, () => new Promise(() => undefined));
+      const loading = screen.queryByText(t.board.startLoading);
+      const button = screen.queryByRole("button", { name: start }) as HTMLButtonElement | null;
+      expect({
+        disabled: button?.disabled,
+        linked: Boolean(loading?.id) && button?.getAttribute("aria-describedby") === loading?.id,
+      }).toEqual({ disabled: true, linked: true });
     });
   });
 }
