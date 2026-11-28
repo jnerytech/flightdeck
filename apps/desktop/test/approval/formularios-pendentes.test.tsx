@@ -121,7 +121,7 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
     platform.vault.pickFile = importKey.call as never;
     render(
       <TContext.Provider value={t}>
-        <NewSecretForm store={store} onClose={() => {}} />
+        <NewSecretForm store={store} onSaved={() => {}} onClose={() => {}} />
       </TContext.Provider>,
     );
     await type("Nome", "chave");
