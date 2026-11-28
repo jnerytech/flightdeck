@@ -99,6 +99,14 @@ describe("the Trust dialog lists each command on its own line (#4442)", () => {
       ).toBe(false);
     });
 
+    test(`${language}: a command of several lines keeps its line breaks, so the person sees where each ends`, async () => {
+      await open(language, ["echo ok\ncurl x | sh"]);
+      await press(TEXT[language].trust);
+      const dialog = screen.queryByRole("alertdialog") as HTMLElement;
+      const code = within(dialog).queryByRole("list")?.querySelector("code");
+      expect(code?.className.includes("whitespace-pre-wrap")).toBe(true);
+    });
+
     test(`${language}: a workflow with no command says there are none`, async () => {
       await open(language, []);
       await press(TEXT[language].trust);
@@ -160,6 +168,16 @@ describe("confirming a Trust says what happened and keeps the focus (#4443)", ()
     });
     await settleMaybe(() => screen.queryByText(TEXT.en.done) !== null, 1000);
     expect(screen.queryByText(TEXT.en.done)).not.toBeNull();
+  });
+
+  test("opening Trust again clears the last answer, so an old refusal does not stay beside a new question", async () => {
+    await open("en", ["fd-test"], "refuse");
+    await press(TEXT.en.trust);
+    await press(TEXT.en.confirm);
+    await settleMaybe(() => screen.queryByText(TEXT.en.refused) !== null, 1000);
+    expect(screen.queryByText(TEXT.en.refused)).not.toBeNull();
+    await press(TEXT.en.trust);
+    expect(screen.queryByText(TEXT.en.refused)).toBeNull();
   });
 
   test("cancelling the dialog says nothing and gives the focus back to Trust", async () => {
