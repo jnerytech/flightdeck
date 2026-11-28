@@ -1,4 +1,4 @@
-import type { InstalledPlugin, PluginList } from "@flightdeck/protocol";
+import type { InstalledPlugin, PluginChange, PluginList } from "@flightdeck/protocol";
 import { memo, useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
-import { AppDialogContent, ConfirmDialog } from "@/shared/feedback/index.ts";
+import { AppDialogContent, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import {
   EmptyState,
   ErrorState,
@@ -87,10 +87,18 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
   const [updating, setUpdating] = useState<InstalledPlugin | null>(null);
   const [asking, setAsking] = useState<Asking | null>(null);
   const [source, setSource] = useState("");
+  /**
+   * Why the CLI refused the last remove or marketplace change: shown until the next one (#4490). These four
+   * answer `ok`, `failed` or, when the marketplace declares a command the page cannot accept,
+   * `needs-command-confirmation`; the last two show the CLI's message.
+   */
+  const [refusal, setRefusal] = useState<string | null>(null);
 
-  /** A change that went through: the message of the CLI, and the lists again. */
-  const done = async (message: string | null, ok: boolean) => {
-    if (ok && message) store.success(message);
+  /** A change the CLI answered: its success text, or its reason when it refused; then the lists again. */
+  const done = async (message: string, change: PluginChange | null | undefined) => {
+    const went = change?.outcome === "ok";
+    if (went) store.success(message);
+    setRefusal(change && !went && change.message !== "" ? change.message : null);
     await reload();
   };
   const pin = async (plugin: InstalledPlugin) => {
@@ -105,7 +113,7 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
       ...(scope ? { scope } : {}),
       confirm: true,
     });
-    await done(t("pluginsUi.removed"), result?.outcome === "ok");
+    await done(t("pluginsUi.removed"), result);
   };
   const addMarketplace = async (id: string) => {
     // With a device enrolled the add is signed in the system's dialog; a no, or a source that dialog cannot
@@ -123,15 +131,16 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
     }
     if (made.kind === "declined") return;
     const result = await store.hostCommand(id, "plugins.marketplaceAdd", made.payload);
-    setSource("");
-    await done(t("pluginsUi.marketplaceAdded"), result?.outcome === "ok");
+    // The typed source goes only when the add did: a refused one stays to be corrected.
+    if (result?.outcome === "ok") setSource("");
+    await done(t("pluginsUi.marketplaceAdded"), result);
   };
   const removeMarketplace = async (id: string, name: string) => {
     const result = await store.hostCommand(id, "plugins.marketplaceRemove", {
       name,
       confirm: true,
     });
-    await done(t("pluginsUi.marketplaceRemoved"), result?.outcome === "ok");
+    await done(t("pluginsUi.marketplaceRemoved"), result);
   };
   const confirmed = async () => {
     const asked = asking;
@@ -144,7 +153,7 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
   const refreshMarketplace = async (name: string) => {
     if (!hostId) return;
     const result = await store.hostCommand(hostId, "plugins.marketplaceUpdate", { name });
-    await done(t("pluginsUi.marketplaceUpdated"), result?.outcome === "ok");
+    await done(t("pluginsUi.marketplaceUpdated"), result);
   };
 
   // The page has its own error and Try again (the toast's retry would drop the answer), so the
@@ -160,6 +169,7 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
     // Another host (or the same one coming back) starts from nothing: never its predecessor's list or error.
     setList(null);
     setFailed(false);
+    setRefusal(null);
     void reload();
   }, [reload]);
 
@@ -183,6 +193,7 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
       subtitle={host ? t("pluginsUi.subtitle", { host: host.name }) : undefined}
     >
       {failed && list !== null && loadError()}
+      {refusal !== null && <InlineNotice tone="error">{refusal}</InlineNotice>}
       {!hostId || list === null ? (
         standIn()
       ) : (
