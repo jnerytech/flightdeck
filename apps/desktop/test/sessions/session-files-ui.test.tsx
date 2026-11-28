@@ -20,6 +20,7 @@ afterEach(cleanup);
  */
 function show(language: "en" | "pt-BR", files: SessionFile[]) {
   const store = {
+    hostRequest: async () => ({ ok: true, data: { files } }),
     hostCommand: async () => ({ files }),
     formatDateTime: () => "today",
   };
@@ -96,14 +97,24 @@ const FILE = {
   lastAt: "2026-11-08T10:00:00.000Z",
 };
 
-/** A store whose `hostCommand` answers in turn: a list, or null for a refusal. */
+const REFUSAL = { ok: false, code: "busy", message: "The host is busy." };
+
+/**
+ * A store whose `hostRequest` answers in turn: a list, or null for a refusal. `banners` counts the
+ * reads that went through `hostCommand`, whose refusal raises the global banner on top of the block.
+ */
 function showAnswers(language: "en" | "pt-BR", answers: (SessionFile[] | null)[]) {
   let asked = 0;
+  let banners = 0;
   const store = {
-    hostCommand: async () => {
+    hostRequest: async () => {
       const answer = answers[Math.min(asked, answers.length - 1)] ?? null;
       asked += 1;
-      return answer === null ? null : { files: answer };
+      return answer === null ? REFUSAL : { ok: true, data: { files: answer } };
+    },
+    hostCommand: async () => {
+      banners += 1;
+      return null;
     },
     formatDateTime: () => "today",
   };
@@ -112,7 +123,7 @@ function showAnswers(language: "en" | "pt-BR", answers: (SessionFile[] | null)[]
       <SessionFiles store={store as never} hostId="h" claudeSessionId="s" />
     </TContext.Provider>,
   );
-  return { asked: () => asked };
+  return { asked: () => asked, banners: () => banners };
 }
 
 describe("session-files-ui: a refused read is not an empty list (#4489)", () => {
@@ -159,7 +170,19 @@ describe("session-files-ui: a refused read is not an empty list (#4489)", () => 
   });
 
   test("Try again keeps the focus on its button while the host is asked again", async () => {
-    const page = showAnswers("en", [null]);
+    const waiting: Array<(result: unknown) => void> = [];
+    const store = {
+      hostRequest: () => new Promise((resolve) => waiting.push(resolve)),
+      hostCommand: () => new Promise(() => {}),
+      formatDateTime: () => "today",
+    };
+    render(
+      <TContext.Provider value={translator("en")}>
+        <SessionFiles store={store as never} hostId="h" claudeSessionId="s" />
+      </TContext.Provider>,
+    );
+    expect(await settleMaybe(() => waiting.length === 1, 3000)).toBe(true);
+    await act(async () => waiting.shift()?.(REFUSAL));
     expect(
       await settleMaybe(() => screen.queryByRole("button", { name: "Try again" }) !== null, 3000),
     ).toBe(true);
@@ -167,8 +190,18 @@ describe("session-files-ui: a refused read is not an empty list (#4489)", () => 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     });
-    expect(await settleMaybe(() => page.asked() === 2, 3000)).toBe(true);
-    await settleMaybe(() => false, 300);
+    expect(await settleMaybe(() => waiting.length === 1, 3000)).toBe(true);
+    expect([
+      screen.queryByText("Reading the session's files…") !== null,
+      document.activeElement === screen.queryByRole("button", { name: "Try again" }),
+    ]).toEqual([true, true]);
+    await act(async () => waiting.shift()?.(REFUSAL));
+    expect(
+      await settleMaybe(
+        () => screen.queryByText("The session's files could not be read.") !== null,
+        3000,
+      ),
+    ).toBe(true);
     expect(document.activeElement === screen.queryByRole("button", { name: "Try again" })).toBe(
       true,
     );
@@ -186,5 +219,45 @@ describe("session-files-ui: a refused read is not an empty list (#4489)", () => 
       ),
     ).toBe(true);
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+});
+
+describe("session-files-ui: one notice, and no stale answer across sessions (#4489)", () => {
+  test("a refused read is shown by the block alone, without the global banner", async () => {
+    const page = showAnswers("en", [null]);
+    expect(
+      await settleMaybe(() => screen.queryByRole("button", { name: "Try again" }) !== null, 3000),
+    ).toBe(true);
+    expect(page.banners()).toBe(0);
+  });
+
+  test("another session starts blank: the failure of the first one is not shown under it", async () => {
+    const answers: unknown[] = [REFUSAL];
+    let release: (value: unknown) => void = () => {};
+    const store = {
+      hostRequest: () =>
+        answers.length > 0
+          ? Promise.resolve(answers.shift())
+          : new Promise((resolve) => {
+              release = resolve;
+            }),
+      hostCommand: () => new Promise(() => {}),
+      formatDateTime: () => "today",
+    };
+    const tree = (id: string) => (
+      <TContext.Provider value={translator("en")}>
+        <SessionFiles store={store as never} hostId="h" claudeSessionId={id} />
+      </TContext.Provider>
+    );
+    const view = render(tree("a"));
+    expect(
+      await settleMaybe(() => screen.queryByRole("button", { name: "Try again" }) !== null, 3000),
+    ).toBe(true);
+    view.rerender(tree("b"));
+    expect(
+      await settleMaybe(() => screen.queryByRole("button", { name: "Try again" }) === null, 3000),
+    ).toBe(true);
+    await act(async () => release({ ok: true, data: { files: [FILE] } }));
+    expect(await settleMaybe(() => screen.queryByText("src/app.ts") !== null, 3000)).toBe(true);
   });
 });
