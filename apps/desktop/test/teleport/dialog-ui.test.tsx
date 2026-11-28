@@ -703,3 +703,69 @@ describe("teleport-dialog-ui: the summary says where the session goes and flags 
     );
   });
 });
+
+/** The dialog drops a host that goes offline in the first step, and its summary breaks a long path (#4495, #4496). */
+describe("teleport-dialog-ui: a host that goes offline in the first step, a long path, the focus between steps", () => {
+  const dialog = (targets: ReadonlyArray<{ id: string; name: string }>) => (
+    <TContext.Provider value={translator("en")}>
+      <TeleportDialog
+        targets={targets}
+        repoField={(_hostId, value, onChange) => (
+          <input aria-label="repo-path" value={value} onChange={(e) => onChange(e.target.value)} />
+        )}
+        run={(args) => {
+          void args.confirm(SUMMARY);
+          return new Promise<TeleportOutcome>(() => {});
+        }}
+        onOpen={() => {}}
+        onClose={() => {}}
+      />
+    </TContext.Provider>
+  );
+
+  test("a host picked and then gone offline is dropped: Continue is off and no repository is asked for it", async () => {
+    const view = render(
+      dialog([
+        { id: "h2", name: "pi" },
+        { id: "h3", name: "nas" },
+      ]),
+    );
+    const host = screen.queryByRole("combobox", { name: "Host" });
+    await act(async () => {
+      fireEvent.change(host as HTMLElement, { target: { value: "h2" } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.queryByRole("textbox", { name: "repo-path" }) as HTMLElement, {
+        target: { value: "/work/app" },
+      });
+    });
+    await act(async () => {
+      view.rerender(dialog([{ id: "h3", name: "nas" }]));
+    });
+    expect({
+      continueOff: screen.queryByRole("button", { name: "Continue" })?.hasAttribute("disabled"),
+      repoField: screen.queryByRole("textbox", { name: "repo-path" }) !== null,
+    }).toEqual({ continueOff: true, repoField: false });
+  });
+
+  test("the summary's repository and branch break inside the dialog instead of widening it", async () => {
+    open("en", { ...SUMMARY, branch: "feature/a-very-long-branch-name-with-no-break-at-all" });
+    await start("en");
+    await shows(TEXT.en.secrets);
+    expect({
+      repo: document.querySelector("form p span.font-mono")?.className.includes("break-all"),
+      branch: document.querySelector("form bdi.font-mono")?.className.includes("break-all"),
+    }).toEqual({ repo: true, branch: true });
+  });
+
+  test("when the summary appears the focus is inside the dialog, not on the page behind it", async () => {
+    open("en");
+    await start("en");
+    await shows(TEXT.en.secrets);
+    const content = screen.queryByRole("dialog");
+    expect({
+      focusInside: content?.contains(document.activeElement) ?? false,
+      onBody: document.activeElement === document.body,
+    }).toEqual({ focusInside: true, onBody: false });
+  });
+});
