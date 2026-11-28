@@ -18,6 +18,10 @@ import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { isLocalUrl } from "../terminal/index.ts";
 import { AllowedFolders } from "./allowed-folders.tsx";
 
+/** The files of the open folder: listed (maybe cut short), or `failed` when the host refused. */
+type FileRead = { files: FsFilesResult["files"]; truncated: boolean } | "failed";
+const NO_FILES: FileRead = { files: [], truncated: false };
+
 /** Arrow keys move through the folder buttons, Enter opens the focused one; false for any other key. */
 function moveByKey(event: KeyboardEvent, list: HTMLElement): boolean {
   const entries = [...list.querySelectorAll<HTMLElement>("button")];
@@ -53,8 +57,9 @@ export function FolderPicker(
   /** The folder just clicked, current from the click until its listing arrives (`undefined` is the roots). */
   const [target, setTarget] = useState<{ path?: string } | null>(null);
   const [hidden, setHidden] = useState(false);
-  /** The files of the folder shown, when the picker takes files too. */
-  const [files, setFiles] = useState<FsFilesResult["files"]>([]);
+  /** The files of the folder shown, when the picker takes files too; `failed` when the host refused to list them. */
+  const [fileRead, setFileRead] = useState<FileRead>(NO_FILES);
+  const files = fileRead === "failed" ? [] : fileRead.files;
   const allowed = host.info?.allowedRoots ?? [];
 
   /** The folder being shown, kept apart from `listing` so a reload does not restart the effect. */
@@ -65,13 +70,15 @@ export function FolderPicker(
   const describe = (code: string, message: string) =>
     code === "forbidden_cwd" ? t("folderPicker.outside", { roots: allowed.join(", ") }) : message;
 
-  /** The files of a folder, or none when the host cannot list them. */
-  const filesOf = async (path: string) => {
+  /** The files of a folder, or `failed` when the host cannot list them (not the same as a folder with none). */
+  const filesOf = async (path: string): Promise<FileRead> => {
     const found = await store.hostRequest(host.id, "fs.files", {
       path,
       ...(hiddenNow.current ? { hidden: true } : {}),
     });
-    return found.ok && found.data ? (found.data as FsFilesResult).files : [];
+    if (!found.ok || !found.data) return "failed";
+    const { files: list, truncated } = found.data as FsFilesResult;
+    return { files: list, truncated };
   };
 
   const opening = useRef(0);
@@ -85,15 +92,18 @@ export function FolderPicker(
       ...(hiddenNow.current ? { hidden: true } : {}),
     });
     if (ticket !== opening.current) return;
+    if (!result.ok) {
+      setTarget(null);
+      return setError(describe(result.code, result.message));
+    }
+    // The files come with the folders, so the screen never says "nothing here" while they load.
+    const read = props.files && result.data.path ? await filesOf(result.data.path) : NO_FILES;
+    if (ticket !== opening.current) return;
     setTarget(null);
-    if (!result.ok) return setError(describe(result.code, result.message));
     setError(null);
     shown.current = result.data.path ?? undefined;
     setListing(result.data);
-    if (props.files && result.data.path) {
-      const list = await filesOf(result.data.path);
-      if (ticket === opening.current) setFiles(list);
-    } else setFiles([]);
+    setFileRead(read);
     if (path === undefined) setRoots(result.data.dirs.map((dir) => dir.path));
   };
   const openRef = useRef(open);
@@ -140,8 +150,12 @@ export function FolderPicker(
     <Dialog open onOpenChange={(isOpen) => !isOpen && props.onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("folderPicker.title")}</DialogTitle>
-          <DialogDescription>{t("folderPicker.description")}</DialogDescription>
+          <DialogTitle>
+            {t(props.files ? "folderPicker.titleFiles" : "folderPicker.title")}
+          </DialogTitle>
+          <DialogDescription>
+            {t(props.files ? "folderPicker.descriptionFiles" : "folderPicker.description")}
+          </DialogDescription>
         </DialogHeader>
         <nav
           aria-label={t("folderPicker.path")}
@@ -184,9 +198,21 @@ export function FolderPicker(
           !error && <p className="text-muted-foreground text-sm">{t("folderPicker.loading")}</p>
         ) : (
           <>
-            {listing.dirs.length === 0 && allowed.length > 0 && (
+            {listing.dirs.length === 0 && allowed.length > 0 && !props.files && (
               <p className="text-muted-foreground text-sm">{t("folderPicker.empty")}</p>
             )}
+            {props.files && fileRead === "failed" && (
+              <p role="alert" className="text-sm text-status-error">
+                {t("folderPicker.filesFailed")}
+              </p>
+            )}
+            {props.files &&
+              fileRead !== "failed" &&
+              listing.dirs.length === 0 &&
+              files.length === 0 &&
+              allowed.length > 0 && (
+                <p className="text-muted-foreground text-sm">{t("folderPicker.emptyFiles")}</p>
+              )}
             {listing.dirs.length === 0 && allowed.length === 0 && (
               <>
                 <output className="font-medium text-sm">{t("folderPicker.noRoots")}</output>
@@ -197,7 +223,7 @@ export function FolderPicker(
               <output className="text-muted-foreground text-sm">{t("folderPicker.loading")}</output>
             )}
             <ul
-              aria-label={t("folderPicker.list")}
+              aria-label={t(props.files ? "folderPicker.listFiles" : "folderPicker.list")}
               aria-busy={loading}
               className="flex max-h-72 min-w-0 flex-col overflow-y-auto aria-busy:opacity-60"
               ref={listRef}
@@ -240,11 +266,16 @@ export function FolderPicker(
                 {t("folderPicker.truncated", { n: String(listing.dirs.length) })}
               </p>
             )}
+            {fileRead !== "failed" && fileRead.truncated && (
+              <p className="text-muted-foreground text-xs">
+                {t("folderPicker.truncatedFiles", { n: String(files.length) })}
+              </p>
+            )}
           </>
         )}
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={hidden} onChange={(e) => setHidden(e.target.checked)} />
-          {t("folderPicker.hidden")}
+          {t(props.files ? "folderPicker.hiddenFiles" : "folderPicker.hidden")}
         </label>
         <DialogFooter>
           {/* The buttons wrap onto a second line in a narrow window; the reason a button is

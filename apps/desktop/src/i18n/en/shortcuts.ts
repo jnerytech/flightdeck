@@ -117,6 +117,13 @@ export const shortcuts = {
     loading: "Loading folders…",
     system: "Choose with the system dialog",
     browse: "Browse…",
+    titleFiles: "Choose file or folder",
+    descriptionFiles: "Browse the folders this host allows, then choose a file or a folder.",
+    listFiles: "Folders and files",
+    hiddenFiles: "Show hidden folders and files",
+    emptyFiles: "Nothing here: no subfolders and no files.",
+    filesFailed: "The files of this folder could not be read. Open the folder again to try again.",
+    truncatedFiles: "Only the first {n} files are shown: type the path to go further.",
     outside: "That folder is outside the folders the host allows. Choose one inside: {roots}",
   },
 };

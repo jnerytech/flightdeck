@@ -117,6 +117,15 @@ export const shortcuts = {
     loading: "Carregando as pastas…",
     system: "Escolher no sistema",
     browse: "Procurar…",
+    titleFiles: "Escolher arquivo ou pasta",
+    descriptionFiles:
+      "Navegue pelas pastas que este host permite e escolha um arquivo ou uma pasta.",
+    listFiles: "Pastas e arquivos",
+    hiddenFiles: "Mostrar pastas e arquivos ocultos",
+    emptyFiles: "Nada aqui: nenhuma subpasta e nenhum arquivo.",
+    filesFailed:
+      "Não foi possível ler os arquivos desta pasta. Abra a pasta de novo para tentar outra vez.",
+    truncatedFiles: "Só os primeiros {n} arquivos aparecem: digite o caminho para ir além.",
     outside: "Essa pasta está fora das pastas que o host permite. Escolha uma dentro de: {roots}",
   },
 } as const;
