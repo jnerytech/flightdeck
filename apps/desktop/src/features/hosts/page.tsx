@@ -22,6 +22,7 @@ import { HostOfflineBanner } from "./host-offline-banner.tsx";
 import { HostOverview } from "./host-overview.tsx";
 import { HostResources } from "./host-resources.tsx";
 import { HostSettingsPanel } from "./host-settings-panel.tsx";
+import { HostStateLive } from "./host-state-live.tsx";
 import { HostVersionLine } from "./host-version.tsx";
 import { RenameHostDialog } from "./rename-host-dialog.tsx";
 import { useHostTab } from "./use-host-tab.ts";
@@ -115,6 +116,7 @@ export function HostPage(
       }
     >
       <div className="flex flex-col gap-5">
+        <HostStateLive host={host} />
         {offline && (
           <HostOfflineBanner
             host={host}

@@ -52,6 +52,7 @@ export function HostsList(
           <button
             type="button"
             aria-label={t("sidebar.openHost", { host: host.name })}
+            aria-describedby={hostStateId(host)}
             aria-current={hereHost === host.id ? "page" : undefined}
             className={cn("rail-host", hereHost === host.id && "nav-active bg-sidebar-accent")}
             onClick={() => go({ name: "host", host: host.id })}
@@ -81,6 +82,7 @@ export function HostsList(
               )}
               aria-current={hereHost === host.id ? "page" : undefined}
               aria-label={t("sidebar.openHost", { host: host.name })}
+              aria-describedby={hostStateId(host)}
               onClick={() => go({ name: "host", host: host.id })}
             >
               <HostDot host={host} t={t} />
@@ -170,10 +172,19 @@ export function HostsList(
   );
 }
 
+/**
+ * The dot's id: its row's button points at it, so the state is read after the button's name (an
+ * aria-label replaces the button's content, and the dot sits inside it).
+ */
+function hostStateId(host: HostView): string {
+  return `host-state-${host.id}`;
+}
+
 /** A host's connection state as a dot. */
 function HostDot(props: Readonly<{ host: HostView; t: T }>) {
   return (
     <StatusDot
+      id={hostStateId(props.host)}
       dot
       {...hostDotView(props.host.status)}
       label={props.t("sidebar.hostState", {

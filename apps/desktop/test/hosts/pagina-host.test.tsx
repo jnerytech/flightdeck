@@ -90,6 +90,12 @@ describe("pagina-host", () => {
     expect(store.getState().hosts).toHaveLength(1);
   });
 
+  test("a página do host tem a região que diz o estado do host, para anunciar uma queda (#4501)", async () => {
+    await setup();
+    const regions = screen.queryAllByRole("status").map((region) => region.textContent);
+    expect(regions.includes("online")).toBe(true);
+  });
+
   test("as abas respondem ao teclado, e Configurações traz hooks e as ações do host", async () => {
     await setup();
     const overview = screen.getByRole("tab", { name: "Visão geral" });
