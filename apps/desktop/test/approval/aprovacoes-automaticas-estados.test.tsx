@@ -251,6 +251,7 @@ describe.each(["en", "pt-BR"] as const)(
       const { container } = view(store);
       await uiIdle();
       const field = within(container).getByLabelText(w.filter) as HTMLInputElement;
+      expect(within(container).queryByRole("status")?.textContent ?? "").toBe("");
       await act(async () => {
         fireEvent.change(field, { target: { value: "zzz" } });
       });
