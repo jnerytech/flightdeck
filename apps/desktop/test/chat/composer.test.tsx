@@ -114,3 +114,94 @@ describe("chat-composer: the status line", () => {
     expect(card().getAttribute("data-busy")).toBeNull();
   });
 });
+
+describe("chat-composer: a message the host refuses comes back to the box (#4466)", () => {
+  /** A session view whose send answers as the test says: one manual answer per call. */
+  function refusing() {
+    const answers: Array<(taken: boolean) => void> = [];
+    const sent: string[] = [];
+    const sender = {
+      ...actions,
+      send: (text: string) => {
+        sent.push(text);
+        return new Promise<boolean>((resolve) => answers.push(resolve));
+      },
+    };
+    render(
+      <SessionView
+        title="s"
+        session={{ ...emptySession(), status: "idle" }}
+        actions={sender}
+        images
+      />,
+    );
+    const box = () => screen.getByRole("textbox", { name: "Mensagem" }) as HTMLTextAreaElement;
+    const press = async () => {
+      await act(async () => {
+        fireEvent.keyDown(box(), { key: "Enter" });
+      });
+    };
+    const answer = async (taken: boolean) => {
+      await act(async () => {
+        answers.shift()?.(taken);
+      });
+    };
+    return { box, press, answer, sent };
+  }
+
+  test("a refused send puts the text back in the box and says so at the box", async () => {
+    const { box, press, answer } = refusing();
+    fireEvent.change(box(), { target: { value: "três\nlinhas\nlongas" } });
+    await press();
+    expect(box().value).toBe("");
+    await answer(false);
+    expect(box().value).toBe("três\nlinhas\nlongas");
+    expect(screen.queryByRole("alert")).not.toBeNull();
+    expect(screen.queryByText("Não enviada: a mensagem voltou para a caixa.")).not.toBeNull();
+  });
+
+  test("a refused send puts the images back too", async () => {
+    const { box, press, answer } = refusing();
+    const png = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "a.png", {
+      type: "image/png",
+    });
+    await act(async () => {
+      fireEvent.paste(box(), { clipboardData: { files: [png], items: [], getData: () => "" } });
+    });
+    await waitFor(() => screen.getByRole("img", { name: "Imagem anexada 1" }));
+    fireEvent.change(box(), { target: { value: "com imagem" } });
+    await press();
+    expect(screen.queryByRole("img", { name: "Imagem anexada 1" })).toBeNull();
+    await answer(false);
+    expect(screen.queryByRole("img", { name: "Imagem anexada 1" })).not.toBeNull();
+    expect(box().value).toBe("com imagem");
+  });
+
+  test("what was typed meanwhile stays, after the refused text", async () => {
+    const { box, press, answer } = refusing();
+    fireEvent.change(box(), { target: { value: "antiga" } });
+    await press();
+    fireEvent.change(box(), { target: { value: "nova" } });
+    await answer(false);
+    expect(box().value).toBe("antiga\n\nnova");
+  });
+
+  test("an accepted send leaves the box empty and says nothing", async () => {
+    const { box, press, answer } = refusing();
+    fireEvent.change(box(), { target: { value: "aceita" } });
+    await press();
+    await answer(true);
+    expect(box().value).toBe("");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test("the notice goes away with the next send", async () => {
+    const { box, press, answer } = refusing();
+    fireEvent.change(box(), { target: { value: "uma" } });
+    await press();
+    await answer(false);
+    expect(screen.queryByRole("alert")).not.toBeNull();
+    await press();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
