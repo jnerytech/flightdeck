@@ -615,7 +615,7 @@ export const board = {
     loading: "Lendo as worktrees…",
     readFailed: "Não foi possível ler as worktrees deste host.",
     retry: "Tentar de novo",
-    scanFailed: "A busca falhou. A lista abaixo é da última busca.",
+    scanFailed: "A verificação falhou. A lista abaixo é da última verificação.",
   },
   activityBoard: {
     quiet: "Em silêncio {span}",

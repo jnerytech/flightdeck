@@ -1,6 +1,6 @@
 import type { WorktreeItem, WorktreesResult } from "@flightdeck/protocol";
 import { TriangleAlert } from "lucide-react";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
@@ -92,8 +92,13 @@ export function HostWorktrees(props: Readonly<{ store: AppStore; host: HostView 
   const reading = offered && host.status === "online";
   // The host refused the last read: the banner says why, the panel says what it could not do.
   const [failed, setFailed] = useState(false);
+  // Only the latest read speaks: a slow older answer must not undo a newer one.
+  const latest = useRef(0);
   const read = useCallback(async () => {
+    const mine = ++latest.current;
+    setFailed(false);
     const next = await store.hostCommand(host.id, "worktree.list", {});
+    if (mine !== latest.current) return;
     setFailed(next === null);
     if (next) setData(next);
   }, [store, host.id]);

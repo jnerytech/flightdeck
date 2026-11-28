@@ -559,6 +559,20 @@ describe("worktrees-ui: the panel says what its read is doing (#4454)", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  test("Try again shows the reading state while it waits, and an older slow answer never undoes a newer one", async () => {
+    const w = setup();
+    const retry = open();
+    answering(w, [null, retry.pending]);
+    render(w.view());
+    expect(await settleMaybe(() => screen.queryByRole("alert") !== null, 1500)).toBe(true);
+    await click(screen.getByRole("button", { name: "Try again" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("status", { name: "Reading the worktrees…" })).not.toBeNull();
+    await act(async () => retry.settleRead(LIST));
+    expect(await settleMaybe(() => rows().length > 0, 1500)).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   test("Scan again is busy until the answer, and a second press starts no second scan", async () => {
     const w = setup();
     const second = open();
