@@ -1,5 +1,6 @@
 import type { HistoryMessage } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Note } from "@/shared/layout/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -24,6 +25,10 @@ export function EarlierTurns(
   const { store, hostId, claudeSessionId } = props;
   const { t } = store.i18n;
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
+  // Try again was pressed and the read is running again: the failure's block stays, so the focus does.
+  const [retrying, setRetrying] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` is what Try again changes, to read again
   useEffect(() => {
     let alive = true;
     void (async () => {
@@ -42,7 +47,10 @@ export function EarlierTurns(
             },
           );
         if (!alive) return;
-        if (!answer.ok) return setLoaded({ state: "failed", reason: answer.message });
+        if (!answer.ok) {
+          setRetrying(false);
+          return setLoaded({ state: "failed", reason: answer.message });
+        }
         messages.push(...answer.data.messages.filter((m) => m.kind === "message"));
         cursor = answer.data.nextCursor ?? undefined;
         if (!cursor) break;
@@ -51,18 +59,43 @@ export function EarlierTurns(
           break;
         }
       }
+      setRetrying(false);
       setLoaded({ state: "ok", messages: messages.slice(0, MAX_TURNS), more });
     })();
     return () => {
       alive = false;
     };
-  }, [store, hostId, claudeSessionId]);
+  }, [store, hostId, claudeSessionId, attempt]);
 
-  if (loaded.state === "loading") return null;
   return (
     <section aria-label={t("session.earlier.title")} className="flex flex-col gap-3">
+      {loaded.state === "loading" && (
+        <Note>
+          <output>{t("session.earlier.loading")}</output>
+        </Note>
+      )}
       {loaded.state === "failed" && (
-        <Note>{t("session.earlier.unreadable", { reason: loaded.reason })}</Note>
+        <Note>
+          {retrying ? (
+            <output>{t("session.earlier.loading")}</output>
+          ) : (
+            <p role="alert">{t("session.earlier.unreadable", { reason: loaded.reason })}</p>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-disabled={retrying}
+            className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
+            onClick={() => {
+              if (retrying) return;
+              setRetrying(true);
+              setAttempt((n) => n + 1);
+            }}
+          >
+            {t("session.earlier.retry")}
+          </Button>
+        </Note>
       )}
       {loaded.state === "ok" && loaded.messages.length === 0 && (
         <Note>{t("session.earlier.empty")}</Note>
