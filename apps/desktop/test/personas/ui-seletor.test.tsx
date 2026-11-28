@@ -161,7 +161,12 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     await act(async () => {
       fireEvent.click(within(startDialog()).getByRole("button", { name: "Iniciar" }));
     });
-    await uiIdle();
+    // The request leaves after a few async hops; one idle tick can land before it (#4532).
+    await settle(
+      () => asked.some((a) => a.type === "card.start" && a.via === "request"),
+      3000,
+      "the card.start request",
+    );
     expect(
       asked.find((a) => a.type === "card.start" && a.via === "request")?.payload,
     ).toMatchObject({
@@ -191,6 +196,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     });
     await uiIdle();
     await click("Iniciar");
+    await settle(() => asked.some((a) => a.type === "card.start"), 3000, "the card.start request");
     expect(asked.find((a) => a.type === "card.start")?.payload).toMatchObject({
       persona: { id: "dev", language: "pt-BR" },
     });
@@ -226,7 +232,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     await act(async () => {
       fireEvent.click(within(startDialog()).getByRole("button", { name: "Iniciar" }));
     });
-    await uiIdle();
+    await settle(() => asked.some((x) => x.type === "card.start"), 3000, "the card.start request");
     expect(asked.find((x) => x.type === "card.start")?.payload).toMatchObject({
       cardId: card.id,
       persona: { id: "security", language: "pt-BR" },
@@ -265,7 +271,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     await act(async () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Iniciar" }));
     });
-    await uiIdle();
+    await settle(() => asked.some((a) => a.type === "card.start"), 3000, "the card.start request");
     expect(asked.find((a) => a.type === "card.start")?.payload).toMatchObject({
       persona: { id: "qa", language: "pt-BR" },
     });
