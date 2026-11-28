@@ -15,9 +15,9 @@ export function GithubPanel(props: Readonly<{ store: AppStore; host: HostView }>
   const t = useT();
   const [status, setStatus] = useState<GithubStatusResult | null>(null);
   const [device, setDevice] = useState<GithubLoginResult | null>(null);
-  // The host refused the last read (it shows only while there is nothing to show yet).
+  // The host refused the last read: the panel says so, even when an older answer is still shown.
   const [unread, setUnread] = useState(false);
-  // What the host refused of the last action, said in the panel (the banner keeps the host's reason).
+  // What the host refused of the last action, said in the panel. A sign-in start also reaches the banner with the host's reason; a cancel and a sign-out do not (`hostRequest`).
   const [refused, setRefused] = useState<"startFailed" | "signOutFailed" | "cancelFailed" | null>(
     null,
   );
@@ -80,7 +80,7 @@ export function GithubPanel(props: Readonly<{ store: AppStore; host: HostView }>
     <Panel title={t("github.title")}>
       <p className="text-muted-foreground text-xs">{t("github.hint")}</p>
       {status === null && !unread && <LoadingState label={t("github.loading")} />}
-      {status === null && unread && (
+      {unread && (
         <ErrorState
           message={t("github.failed")}
           retryLabel={t("github.recheck")}

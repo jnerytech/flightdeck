@@ -27,7 +27,8 @@ export const github = {
     failed: "Could not read the GitHub sign-in of this host.",
     startFailed: "The sign-in did not start. Try again.",
     signOutFailed: "The host did not sign out. You are still signed in.",
-    cancelFailed: "The host did not cancel the sign-in. Cancel again, or wait for the code to expire.",
+    cancelFailed:
+      "The host did not cancel the sign-in. Cancel again, or wait for the code to expire.",
     codeExpires:
       "The code works for 15 minutes. If GitHub does not accept it, press Cancel and sign in again.",
   },
