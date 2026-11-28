@@ -548,3 +548,16 @@ describe("notify-prefs-ui: the bell can mark an entry unread (issue #149)", () =
     ).toBeNull();
   });
 });
+
+// #4435: the prints of the Notifications panel failed axe's target-size: the event, host and project
+// checkboxes sit in stacked rows less than 24 px apart. A checkbox here is a 24 px target on its own.
+describe("notify-prefs-ui: every checkbox is a 24 px target (#4435)", () => {
+  test("the master, event, team, host and project checkboxes carry the shared target class", () => {
+    settings();
+    const boxes = within(panel()).queryAllByRole("checkbox");
+    const small = boxes
+      .filter((el) => !el.className.split(" ").includes("hit-control"))
+      .map((el) => el.getAttribute("aria-labelledby") ?? el.parentElement?.textContent ?? "");
+    expect({ count: boxes.length > 8, small }).toEqual({ count: true, small: [] });
+  });
+});
