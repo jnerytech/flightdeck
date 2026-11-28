@@ -97,10 +97,9 @@ export const BoardView = memo(function BoardView(props: {
   /** Phase 31: only the cards that wait for a blocker. */
   const [onlyBlocked, setOnlyBlocked] = useState(false);
   const loading = useMinLoading(project === null && !loadFailed);
-  /** The host while it is neither online nor connecting: the board on screen is its last state (#4507). */
+  /** The host while it is offline: the board on screen is its last state (#4507). An unauthorized or incompatible host has its own reason on its page. */
   const thisHost = state.hosts.find((h) => h.id === hostId);
-  const hostOffline =
-    thisHost && thisHost.status !== "online" && thisHost.status !== "connecting" ? thisHost : null;
+  const hostOffline = thisHost?.status === "offline" ? thisHost : null;
   /** The new-card dialog. */
   const [creating, setCreating] = useState(props.newCard === true);
   // The ask is used up once the dialog is open, so coming back to this entry shows no dialog (#1582).
