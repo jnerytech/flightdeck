@@ -348,6 +348,11 @@ export const sessions = {
     agent: "Agente",
     agentClaude: "Claude Code",
     agentOpenCode: "OpenCode",
+    modelsLoading: "Lendo os modelos do OpenCode…",
+    modelsFailed:
+      "Não foi possível ler os modelos do OpenCode. O modelo padrão continua disponível.",
+    modelsRetry: "Tentar de novo",
+    modelsNone: "Este host não tem modelos do OpenCode para oferecer. Usa-se o modelo padrão.",
     effort: "Esforço",
     effortDefault: "Esforço padrão",
     create: "Criar sessão",

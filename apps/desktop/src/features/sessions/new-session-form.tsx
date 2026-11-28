@@ -1,6 +1,6 @@
 import type { CommandPayload, EffortLevel, PermissionMode } from "@flightdeck/protocol";
 import { ChevronRight } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,7 +9,7 @@ import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, NativeSelect, Page, Stack } from "@/shared/layout/index.ts";
-import type { Key } from "../../i18n/index.ts";
+import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { FolderPicker } from "../hosts/ui.ts";
 import {
@@ -30,6 +30,19 @@ type Runtime = "claude" | "opencode";
 /** `onCreate` may answer with a promise: the button stays busy until it settles. */
 const isThenable = (value: unknown): value is PromiseLike<unknown> =>
   typeof (value as PromiseLike<unknown> | undefined)?.then === "function";
+
+type ModelRead = "loading" | "failed" | { models: string[] };
+
+/** What the Model field says about the OpenCode list: waiting, refused, or really empty. */
+function modelsStatus(
+  read: ModelRead,
+  t: T,
+): { kind: "loading" | "failed" | "empty"; text: string } | null {
+  if (read === "loading") return { kind: "loading", text: t("newSession.modelsLoading") };
+  if (read === "failed") return { kind: "failed", text: t("newSession.modelsFailed") };
+  if (read.models.length === 0) return { kind: "empty", text: t("newSession.modelsNone") };
+  return null;
+}
 
 /** New session on a host: folder inside one of its allowedRoots, name, permission mode, prompt. */
 export function NewSessionForm(
@@ -97,20 +110,28 @@ export function NewSessionForm(
   const more = moreOpen ?? latched;
   const hasOpenCode =
     props.host.hostInfo?.runtimes?.some((r) => r.kind === "opencode" && r.available) === true;
-  const [openCodeModels, setOpenCodeModels] = useState<string[]>([]);
+  /** The OpenCode model list: being read, refused, or answered (an empty answer is not a refusal). */
+  const [openCodeModels, setOpenCodeModels] = useState<ModelRead>("loading");
+  /** Try again bumps it, and the read below runs again. */
+  const [modelReads, setModelReads] = useState(0);
+  const modelSelect = useRef<HTMLSelectElement>(null);
   const [effort, setEffort] = useState<EffortLevel | "">("");
   const { store } = props;
   const hostId = props.host.id;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: modelReads only asks for a new read
   useEffect(() => {
     if (!opencode || !store) return;
     let live = true;
+    setOpenCodeModels("loading");
     void store.hostRequest(hostId, "runtime.models", { runtime: "opencode" }).then((result) => {
-      if (live) setOpenCodeModels(result.ok ? result.data.models.map((m) => m.id) : []);
+      if (live) {
+        setOpenCodeModels(result.ok ? { models: result.data.models.map((m) => m.id) } : "failed");
+      }
     });
     return () => {
       live = false;
     };
-  }, [opencode, store, hostId]);
+  }, [opencode, store, hostId, modelReads]);
   const chooseRuntime = (next: Runtime) => {
     setRuntime(next);
     setModel("");
@@ -124,7 +145,10 @@ export function NewSessionForm(
   /** Bypass picked by hand asks again each time the session is created. */
   const [asking, setAsking] = useState(false);
   const modes = sessionModes(opencode, allowBypass);
-  const models = opencode ? openCodeModels : CLAUDE_MODELS;
+  const listed = typeof openCodeModels === "object" ? openCodeModels.models : [];
+  const models = opencode ? listed : CLAUDE_MODELS;
+  /** What the Model field says about the OpenCode list, apart from the list itself. */
+  const modelsHelp = opencode && store ? modelsStatus(openCodeModels, t) : null;
   const submit = (confirmed = false) => {
     if (!root || creating || missingPrompt) return;
     if (pickedMode === "bypassPermissions" && !confirmed) {
@@ -284,10 +308,42 @@ export function NewSessionForm(
         </Field>
         <Field label={t("session.modelLabel")}>
           {(control) => (
-            <NativeSelect {...control} value={model} onChange={(e) => setModel(e.target.value)}>
-              <option value="">{t("session.modelDefault")}</option>
-              <ModelOptions models={models} />
-            </NativeSelect>
+            <>
+              <NativeSelect
+                {...control}
+                ref={modelSelect}
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+              >
+                <option value="">{t("session.modelDefault")}</option>
+                <ModelOptions models={models} />
+              </NativeSelect>
+              {/* Not the Field's help or error: the default model is still a valid choice, so the
+                  select is not marked invalid, and the wait is announced politely. */}
+              {modelsHelp?.kind === "failed" && (
+                <>
+                  <p role="alert" className="text-status-error text-xs">
+                    {modelsHelp.text}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="self-start"
+                    onClick={() => {
+                      // The button leaves with the failure: keep the focus in the field.
+                      modelSelect.current?.focus();
+                      setModelReads((n) => n + 1);
+                    }}
+                  >
+                    {t("newSession.modelsRetry")}
+                  </Button>
+                </>
+              )}
+              {modelsHelp && modelsHelp.kind !== "failed" && (
+                <output className="text-muted-foreground text-xs">{modelsHelp.text}</output>
+              )}
+            </>
           )}
         </Field>
         <Button

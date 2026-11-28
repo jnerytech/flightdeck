@@ -18,6 +18,10 @@ import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { isLocalUrl } from "../terminal/index.ts";
 import { AllowedFolders } from "./allowed-folders.tsx";
 
+/** The files of the open folder: being read, listed (maybe cut short), or `failed` when the host refused. */
+type FileRead = { files: FsFilesResult["files"]; truncated: boolean } | "loading" | "failed";
+const NO_FILES: FileRead = { files: [], truncated: false };
+
 /** Arrow keys move through the folder buttons, Enter opens the focused one; false for any other key. */
 function moveByKey(event: KeyboardEvent, list: HTMLElement): boolean {
   const entries = [...list.querySelectorAll<HTMLElement>("button")];
@@ -53,8 +57,14 @@ export function FolderPicker(
   /** The folder just clicked, current from the click until its listing arrives (`undefined` is the roots). */
   const [target, setTarget] = useState<{ path?: string } | null>(null);
   const [hidden, setHidden] = useState(false);
-  /** The files of the folder shown, when the picker takes files too. */
-  const [files, setFiles] = useState<FsFilesResult["files"]>([]);
+  /** The files of the folder shown, when the picker takes files too; `failed` when the host refused to list them. */
+  const [fileRead, setFileRead] = useState<FileRead>(NO_FILES);
+  const files = typeof fileRead === "object" ? fileRead.files : [];
+  /** The folder whose files Try again is reading; its button stays so the focus stays. */
+  const [retryingAt, setRetryingAt] = useState<string | null>(null);
+  /** Set by Try again: once the read settles, the focus goes to the list instead of falling to the page. */
+  const refocus = useRef(false);
+  const listNode = useRef<HTMLUListElement | null>(null);
   const allowed = host.info?.allowedRoots ?? [];
 
   /** The folder being shown, kept apart from `listing` so a reload does not restart the effect. */
@@ -65,13 +75,15 @@ export function FolderPicker(
   const describe = (code: string, message: string) =>
     code === "forbidden_cwd" ? t("folderPicker.outside", { roots: allowed.join(", ") }) : message;
 
-  /** The files of a folder, or none when the host cannot list them. */
-  const filesOf = async (path: string) => {
+  /** The files of a folder, or `failed` when the host cannot list them (not the same as a folder with none). */
+  const filesOf = async (path: string): Promise<FileRead> => {
     const found = await store.hostRequest(host.id, "fs.files", {
       path,
       ...(hiddenNow.current ? { hidden: true } : {}),
     });
-    return found.ok && found.data ? (found.data as FsFilesResult).files : [];
+    if (!found.ok || !found.data) return "failed";
+    const { files: list, truncated } = found.data as FsFilesResult;
+    return { files: list, truncated };
   };
 
   const opening = useRef(0);
@@ -85,17 +97,45 @@ export function FolderPicker(
       ...(hiddenNow.current ? { hidden: true } : {}),
     });
     if (ticket !== opening.current) return;
+    if (!result.ok) {
+      setTarget(null);
+      // A files read of the folder still shown was dropped by this open: let it be read again.
+      setFileRead((read) => (read === "loading" ? "failed" : read));
+      return setError(describe(result.code, result.message));
+    }
     setTarget(null);
-    if (!result.ok) return setError(describe(result.code, result.message));
     setError(null);
     shown.current = result.data.path ?? undefined;
     setListing(result.data);
-    if (props.files && result.data.path) {
-      const list = await filesOf(result.data.path);
-      if (ticket === opening.current) setFiles(list);
-    } else setFiles([]);
+    // The folders show at once; the files follow, and "nothing here" waits for them.
+    const wanted = props.files ? result.data.path : null;
+    setFileRead(wanted ? "loading" : NO_FILES);
     if (path === undefined) setRoots(result.data.dirs.map((dir) => dir.path));
+    if (!wanted) return;
+    const read = await filesOf(wanted);
+    if (ticket === opening.current) setFileRead(read);
   };
+
+  /** Reads the files of the open folder again after a refusal. */
+  const retryFiles = async () => {
+    const at = shown.current;
+    if (!at || retryingAt === at) return;
+    const ticket = opening.current;
+    refocus.current = true;
+    setRetryingAt(at);
+    const read = await filesOf(at);
+    setRetryingAt((now) => (now === at ? null : now));
+    // Only the folder still shown takes the answer: a click on another folder may be on its way.
+    if (ticket === opening.current && shown.current === at) setFileRead(read);
+    else refocus.current = false;
+  };
+
+  // The Try again button leaves with the failure: hand the focus to the list.
+  useEffect(() => {
+    if (retryingAt !== null || !refocus.current) return;
+    refocus.current = false;
+    if (typeof fileRead === "object") listNode.current?.querySelector("button")?.focus();
+  }, [retryingAt, fileRead]);
   const openRef = useRef(open);
   openRef.current = open;
 
@@ -126,6 +166,7 @@ export function FolderPicker(
   // The keys of the folder buttons, caught on the list they bubble to. The list is not itself
   // interactive, so the listener goes on the element and not on a React prop of a `<ul>`.
   const listRef = useCallback((list: HTMLUListElement) => {
+    listNode.current = list;
     const onKeyDown = (event: KeyboardEvent) => {
       const moved = moveByKey(event, list);
       if (!moved && event.key !== "Backspace") return;
@@ -140,8 +181,12 @@ export function FolderPicker(
     <Dialog open onOpenChange={(isOpen) => !isOpen && props.onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("folderPicker.title")}</DialogTitle>
-          <DialogDescription>{t("folderPicker.description")}</DialogDescription>
+          <DialogTitle>
+            {t(props.files ? "folderPicker.titleFiles" : "folderPicker.title")}
+          </DialogTitle>
+          <DialogDescription>
+            {t(props.files ? "folderPicker.descriptionFiles" : "folderPicker.description")}
+          </DialogDescription>
         </DialogHeader>
         <nav
           aria-label={t("folderPicker.path")}
@@ -184,9 +229,37 @@ export function FolderPicker(
           !error && <p className="text-muted-foreground text-sm">{t("folderPicker.loading")}</p>
         ) : (
           <>
-            {listing.dirs.length === 0 && allowed.length > 0 && (
+            {listing.dirs.length === 0 && allowed.length > 0 && !props.files && (
               <p className="text-muted-foreground text-sm">{t("folderPicker.empty")}</p>
             )}
+            {props.files && fileRead === "failed" && (
+              <FieldRow>
+                {retryingAt !== null && retryingAt === listing?.path ? (
+                  <output className="text-muted-foreground text-sm">
+                    {t("folderPicker.filesLoading")}
+                  </output>
+                ) : (
+                  <p role="alert" className="text-sm text-status-error">
+                    {t("folderPicker.filesFailed")}
+                  </p>
+                )}
+                <Button type="button" variant="outline" size="xs" onClick={() => void retryFiles()}>
+                  {t("folderPicker.filesRetry")}
+                </Button>
+              </FieldRow>
+            )}
+            {props.files && fileRead === "loading" && (
+              <output className="text-muted-foreground text-sm">
+                {t("folderPicker.filesLoading")}
+              </output>
+            )}
+            {props.files &&
+              typeof fileRead === "object" &&
+              listing.dirs.length === 0 &&
+              files.length === 0 &&
+              allowed.length > 0 && (
+                <p className="text-muted-foreground text-sm">{t("folderPicker.emptyFiles")}</p>
+              )}
             {listing.dirs.length === 0 && allowed.length === 0 && (
               <>
                 <output className="font-medium text-sm">{t("folderPicker.noRoots")}</output>
@@ -197,7 +270,7 @@ export function FolderPicker(
               <output className="text-muted-foreground text-sm">{t("folderPicker.loading")}</output>
             )}
             <ul
-              aria-label={t("folderPicker.list")}
+              aria-label={t(props.files ? "folderPicker.listFiles" : "folderPicker.list")}
               aria-busy={loading}
               className="flex max-h-72 min-w-0 flex-col overflow-y-auto aria-busy:opacity-60"
               ref={listRef}
@@ -240,11 +313,16 @@ export function FolderPicker(
                 {t("folderPicker.truncated", { n: String(listing.dirs.length) })}
               </p>
             )}
+            {typeof fileRead === "object" && fileRead.truncated && (
+              <p className="text-muted-foreground text-xs">
+                {t("folderPicker.truncatedFiles", { n: String(files.length) })}
+              </p>
+            )}
           </>
         )}
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={hidden} onChange={(e) => setHidden(e.target.checked)} />
-          {t("folderPicker.hidden")}
+          {t(props.files ? "folderPicker.hiddenFiles" : "folderPicker.hidden")}
         </label>
         <DialogFooter>
           {/* The buttons wrap onto a second line in a narrow window; the reason a button is

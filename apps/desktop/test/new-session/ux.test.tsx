@@ -3,7 +3,7 @@ import { poll } from "../../../daemon/test/support/helpers.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { personasHost } from "../personas/ui-setup.ts";
-import { settle, uiIdle } from "../wait.ts";
+import { settle, settleMaybe, uiIdle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -313,5 +313,130 @@ describe("nova-sessao-ux: the form says what it needs", () => {
     expect(screen.queryByText("This host has no allowed folder.")).toBeNull();
     await press("Create session");
     expect(created).toEqual([{ cwd: "/work", prompt: "faça isto", permissionMode: "default" }]);
+  });
+});
+
+// #4469: the OpenCode model list came back empty for a refusal, a real empty answer and the wait alike.
+describe("nova-sessao-ux: the OpenCode model list says what it is doing (#4469)", () => {
+  const withOpenCode = {
+    id: "h1",
+    name: "pc",
+    info: { allowedRoots: ["/work"] },
+    hostInfo: { runtimes: [{ kind: "opencode", available: true }] },
+  } as unknown as Parameters<typeof NewSessionForm>[0]["host"];
+
+  type Answer = Awaited<ReturnType<InstanceType<typeof AppStore>["hostRequest"]>>;
+  const LIST = { ok: true, data: { models: [{ id: "gpt-x" }, { id: "kimi-y" }] } } as never;
+  const EMPTY = { ok: true, data: { models: [] } } as never;
+  const REFUSED = { ok: false, code: "internal", message: "no models" } as never;
+
+  /** The form on a host with OpenCode, its model reads answered in order (a promise stays pending). */
+  async function openCode(
+    answers: Array<Answer | Promise<Answer>>,
+    language: "en" | "pt-BR" = "en",
+  ) {
+    const { TContext } = await import("../../src/i18n/context.tsx");
+    const { translator } = await import("../../src/i18n/index.ts");
+    const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    let reads = 0;
+    store.hostRequest = (async (_host: string, type: string) => {
+      if (type !== "runtime.models") return { ok: true, data: {} };
+      return answers[Math.min(reads++, answers.length - 1)];
+    }) as never;
+    render(
+      <TContext.Provider value={translator(language)}>
+        <NewSessionForm host={withOpenCode} store={store} onCreate={() => {}} />
+      </TContext.Provider>,
+    );
+    await fill(language === "en" ? "Agent" : "Agente", "opencode");
+    return { reads: () => reads };
+  }
+  const has = (text: string) => screen.queryByText(text) !== null;
+  const options = () =>
+    Array.from((screen.queryByLabelText("Model") as HTMLSelectElement).options).map((o) => o.value);
+
+  test("while the models are read the field says so, and the default stays selectable", async () => {
+    await openCode([new Promise<Answer>(() => {})]);
+    expect(has("Reading the OpenCode models…")).toBe(true);
+    expect(options()).toEqual([""]);
+  });
+
+  test("a refused read says it could not read the models, and Try again reads them again", async () => {
+    const w = await openCode([REFUSED, LIST]);
+    expect(
+      await settleMaybe(
+        () => has("Could not read the OpenCode models. The default model is still available."),
+        1500,
+      ),
+    ).toBe(true);
+    expect(screen.queryByRole("alert")?.textContent).toContain(
+      "Could not read the OpenCode models",
+    );
+    expect(options()).toEqual([""]);
+    await press("Try again");
+    expect(await settleMaybe(() => options().includes("gpt-x"), 1500)).toBe(true);
+    expect(options()).toEqual(["", "gpt-x", "kimi-y"]);
+    expect(w.reads()).toBe(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
+  test("a real empty answer says the host has no models, with no failure and no Try again", async () => {
+    await openCode([EMPTY]);
+    expect(
+      await settleMaybe(
+        () => has("This host has no OpenCode models to offer. The default model is used."),
+        1500,
+      ),
+    ).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
+  test("a list of models is offered with no status line", async () => {
+    await openCode([LIST]);
+    expect(await settleMaybe(() => options().includes("gpt-x"), 1500)).toBe(true);
+    expect(options()).toEqual(["", "gpt-x", "kimi-y"]);
+    expect(has("Reading the OpenCode models…")).toBe(false);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test("the wait is announced politely, as a status", async () => {
+    await openCode([new Promise<Answer>(() => {})]);
+    const said = () =>
+      screen
+        .queryAllByRole("status")
+        .some((node) => node.textContent === "Reading the OpenCode models…");
+    expect(said()).toBe(true);
+  });
+
+  test("a refused read does not mark the Model select invalid, and the message comes before Try again", async () => {
+    await openCode([REFUSED]);
+    expect(await settleMaybe(() => screen.queryByRole("alert") !== null, 1500)).toBe(true);
+    const select = screen.queryByLabelText("Model") as HTMLSelectElement;
+    expect(select.getAttribute("aria-invalid")).not.toBe("true");
+    const alert = screen.queryByRole("alert") as HTMLElement;
+    const retry = screen.queryByRole("button", { name: "Try again" }) as HTMLElement;
+    expect((alert.compareDocumentPosition(retry) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0).toBe(
+      true,
+    );
+  });
+
+  test("after Try again the focus stays in the Model field instead of falling to the page", async () => {
+    await openCode([REFUSED, LIST]);
+    expect(await settleMaybe(() => screen.queryByRole("alert") !== null, 1500)).toBe(true);
+    await press("Try again");
+    expect(await settleMaybe(() => options().includes("gpt-x"), 1500)).toBe(true);
+    expect(document.activeElement === screen.queryByLabelText("Model")).toBe(true);
+  });
+
+  test("in Portuguese the failure and the retry are in Portuguese", async () => {
+    await openCode([REFUSED], "pt-BR");
+    expect(await settleMaybe(() => screen.queryByRole("alert") !== null, 1500)).toBe(true);
+    expect(screen.queryByRole("alert")?.textContent).toContain(
+      "Não foi possível ler os modelos do OpenCode",
+    );
+    expect(screen.queryByRole("button", { name: "Tentar de novo" }) !== null).toBe(true);
   });
 });

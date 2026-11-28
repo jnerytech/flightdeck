@@ -119,17 +119,17 @@ describe("desktop: interface", () => {
         fireEvent.click(screen.getByRole("button", { name: "Mencionar arquivo ou pasta" }));
       });
       await waitFor(() =>
-        expect(screen.getByRole("dialog", { name: "Escolher pasta" })).toBeTruthy(),
+        expect(screen.getByRole("dialog", { name: "Escolher arquivo ou pasta" })).toBeTruthy(),
       );
     };
     await open();
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     });
-    expect(screen.queryByRole("dialog", { name: "Escolher pasta" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Escolher arquivo ou pasta" })).toBeNull();
     expect((screen.getByLabelText("Mensagem") as HTMLTextAreaElement).value).toBe("");
     await open();
-    const dialog = within(screen.getByRole("dialog", { name: "Escolher pasta" }));
+    const dialog = within(screen.getByRole("dialog", { name: "Escolher arquivo ou pasta" }));
     await waitFor(() => expect(dialog.getAllByRole("button").length).toBeGreaterThan(2));
     const root = dialog
       .getAllByRole("button")
