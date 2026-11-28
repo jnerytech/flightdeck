@@ -51,12 +51,13 @@ const linked: BoardSyncStatus = {
 };
 
 async function open(status: BoardSyncStatus, unlink: "accepted" | "refused" = "accepted") {
-  const { store } = stubStore(status, [], unlink);
+  const { store, asked } = stubStore(status, [], unlink);
   render(<BoardSyncControl store={store} hostId="h" projectId="p" />);
   await act(async () => {
     fireEvent.click(screen.getByRole("button", { name: t.button }));
   });
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeNull());
+  return asked;
 }
 
 describe("board-sync-gaps: the Sync dialog", () => {
@@ -182,9 +183,10 @@ describe("board-sync-gaps: Unlink (#4467)", () => {
   });
 
   test("an accepted Unlink shows no error", async () => {
-    await open(linked, "accepted");
+    const asked = await open(linked, "accepted");
     const dialog = within(screen.getByRole("dialog"));
     await unlinkAndConfirm(dialog);
+    await waitFor(() => expect(asked.includes("boardsync.unlink")).toBe(true));
     expect(dialog.queryByRole("alert")).toBeNull();
   });
 });

@@ -96,7 +96,7 @@ export function CardRunForm(
       : null;
     const files = current?.files ?? [];
     const unsent = files.some((f) => f.uncommitted) || (files.length > 0 && !card.prUrl);
-    // A refused read is not a clean card: say the changes could not be checked (the banner says why).
+    // A refused read is not a clean card: say the changes could not be checked (the banner, behind this dialog, says why).
     const unread = card.worktreePath && current === null;
     let warning: string | null = null;
     if (unsent) warning = t("cardUi.unsent");
