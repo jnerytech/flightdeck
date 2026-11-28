@@ -83,6 +83,8 @@ export const vault = {
     noHost: "Nenhum host pode usar este segredo",
     noHostWarning: "Nenhum host poderá usar este segredo. Marque um host para permiti-lo.",
     savedAs: "{name} salvo",
+    generatedKey: "Chave SSH {name} salva no cofre. Copie a chave pública abaixo.",
+    importedKey: "Chave {name} importada e salva no cofre",
     neverUsed: "Nunca usado",
     lastUsed: "Último uso: {when}",
     copyPublicFor: "Copiar chave pública de {name}",

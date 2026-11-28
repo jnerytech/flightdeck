@@ -177,6 +177,7 @@ export const VaultPage = memo(function VaultPage(props: {
         <OpenedPanel opener="new">
           <NewSecretForm
             store={store}
+            onSaved={setNotice}
             onClose={() => setCreating(false)}
             {...(selected?.defaults.vaultTag ? { defaultTags: selected.defaults.vaultTag } : {})}
           />
