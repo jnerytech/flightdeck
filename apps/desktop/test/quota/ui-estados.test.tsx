@@ -245,11 +245,15 @@ describe.each(["en", "pt-BR"] as const)("the quota screens, states (%s)", (lang)
   });
 
   test("the Costs charts say they are loading, then that there is nothing to show", async () => {
-    const answers: Array<(value: null) => void> = [];
+    const answers: Array<() => void> = [];
     const store = {
       i18n: { t },
       formatTime: () => "16:00",
-      hostCommand: () => new Promise<null>((resolve) => answers.push(resolve)),
+      // The host answered: both windows hold no reading yet (a refused read is its own state, #4430).
+      hostCommand: (_host: string, _command: string, args: { window: string }) =>
+        new Promise<QuotaHistory>((resolve) =>
+          answers.push(() => resolve(history(args.window, null))),
+        ),
     } as never;
     render(
       <TContext.Provider value={t}>
@@ -257,7 +261,7 @@ describe.each(["en", "pt-BR"] as const)("the quota screens, states (%s)", (lang)
       </TContext.Provider>,
     );
     expect(screen.queryByRole("status", { name: t("quotaCharts.loading") })).not.toBeNull();
-    for (const answer of answers) answer(null);
+    for (const answer of answers) answer();
     await settle(() => screen.queryByText(t("quotaCharts.empty")) !== null);
     expect(screen.queryByText(t("quotaCharts.empty"))).not.toBeNull();
     expect(screen.queryByRole("status", { name: t("quotaCharts.loading") })).toBeNull();
@@ -279,13 +283,239 @@ describe.each(["en", "pt-BR"] as const)("the quota screens, states (%s)", (lang)
       </TContext.Provider>
     );
     const { rerender } = render(view("a"));
-    await settle(() => screen.queryAllByRole("region", { name: /./ }).length > 1);
+    await settle(() => screen.queryByText(t("quotaCharts.empty")) !== null);
     rerender(view("b"));
     await settleMaybe(
       () => screen.queryByRole("status", { name: t("quotaCharts.loading") }) !== null,
       600,
     );
     expect(screen.queryByRole("status", { name: t("quotaCharts.loading") })).not.toBeNull();
+  });
+
+  // #4430: the Costs charts say which window did not load, draw only what is known, and name their values.
+  describe("the Costs charts' states and plot (#4430)", () => {
+    const FIVE = t("quota.windows.five_hour");
+    const SEVEN = t("quota.windows.seven_day");
+    const sample = (hour: number, utilization: number | null) => ({
+      takenAt: `2026-11-21T${String(hour).padStart(2, "0")}:00:00.000Z`,
+      utilization,
+      status: "allowed",
+      resetsAt: null,
+    });
+    const answered = (window: string, ...samples: ReturnType<typeof sample>[]): QuotaHistory => ({
+      ...history(window, null),
+      samples,
+    });
+    /** A host that answers each window from `answers` (a missing one is a refused read) and counts its reads. */
+    function chartsStore(
+      answers: Record<string, QuotaHistory | null>,
+      when: (iso: string) => string = (iso) => iso.slice(11, 16),
+    ) {
+      const reads: string[] = [];
+      const store = {
+        i18n: { t },
+        formatTime: (iso: string) => iso.slice(11, 16),
+        formatWhen: when,
+        hostCommand: async (_host: string, _command: string, args: { window: string }) => {
+          reads.push(args.window);
+          return answers[args.window] ?? null;
+        },
+      } as never;
+      return { store, reads };
+    }
+    const mount = (store: never) =>
+      render(
+        <TContext.Provider value={t}>
+          <QuotaCharts store={store} hostId="a" />
+        </TContext.Provider>,
+      );
+    const dots = (window: string) =>
+      screen
+        .queryByRole("region", { name: t("quotaCharts.window", { label: window }) })
+        ?.querySelectorAll("[data-sample]").length ?? -1;
+
+    test("a refused window is named with Try again, and the other window still draws", async () => {
+      const { store } = chartsStore({ five_hour: answered("five_hour", sample(10, 0.4)) });
+      mount(store);
+      await settle(() => screen.queryAllByRole("alert").length > 0);
+      expect(screen.queryByText(t("quotaCharts.failed", { label: SEVEN }))).not.toBeNull();
+      expect(screen.queryByRole("button", { name: t("quotaCharts.retry") })).not.toBeNull();
+      expect(dots(FIVE)).toBe(1);
+      expect(screen.queryByText(t("quotaCharts.empty"))).toBeNull();
+    });
+
+    test("both windows refused is a failed state for each, not the empty text", async () => {
+      mount(chartsStore({}).store);
+      await settle(() => screen.queryAllByRole("alert").length > 0);
+      expect(screen.queryAllByRole("alert").length).toBe(2);
+      expect(screen.queryByText(t("quotaCharts.failed", { label: FIVE }))).not.toBeNull();
+      expect(screen.queryByText(t("quotaCharts.failed", { label: SEVEN }))).not.toBeNull();
+      expect(screen.queryByText(t("quotaCharts.empty"))).toBeNull();
+    });
+
+    test("Try again reads the windows again and draws the one that now answers", async () => {
+      const answers: Record<string, QuotaHistory | null> = {
+        five_hour: answered("five_hour", sample(10, 0.4)),
+      };
+      const { store, reads } = chartsStore(answers);
+      mount(store);
+      await settle(() => screen.queryAllByRole("alert").length > 0);
+      answers.seven_day = answered("seven_day", sample(10, 0.2));
+      const before = reads.length;
+      const retry = screen.queryByRole("button", { name: t("quotaCharts.retry") });
+      expect(retry).not.toBeNull();
+      await act(async () => {
+        (retry as HTMLElement).click();
+      });
+      await settle(() => dots(SEVEN) === 1);
+      expect(reads.length > before).toBe(true);
+      expect(screen.queryAllByRole("alert").length).toBe(0);
+    });
+
+    test("a reading with an unknown utilization has no dot, not a dot at 0%", async () => {
+      const { store } = chartsStore({
+        five_hour: answered("five_hour", sample(10, 0.2), sample(11, null), sample(12, 0.4)),
+        seven_day: answered("seven_day"),
+      });
+      mount(store);
+      await settle(() => dots(FIVE) >= 0);
+      expect(dots(FIVE)).toBe(2);
+    });
+
+    test("one reading says so, with its time", async () => {
+      const { store } = chartsStore({
+        five_hour: answered("five_hour", sample(10, 0.4)),
+        seven_day: answered("seven_day", sample(10, 0.2)),
+      });
+      mount(store);
+      await settle(() => screen.queryAllByText(t("quotaCharts.one", { time: "10:00" })).length > 0);
+      expect(screen.queryAllByText(t("quotaCharts.one", { time: "10:00" })).length).toBe(2);
+    });
+
+    test("the plot labels its 0 and 100% marks and the times it spans", async () => {
+      const { store } = chartsStore({
+        five_hour: answered("five_hour", sample(10, 0.2), sample(12, 0.6)),
+        seven_day: answered("seven_day"),
+      });
+      mount(store);
+      await settle(() => dots(FIVE) === 2);
+      const region = screen.queryByRole("region", {
+        name: t("quotaCharts.window", { label: FIVE }),
+      });
+      const marks = [...(region?.querySelectorAll("svg text") ?? [])].map((n) => n.textContent);
+      expect(marks).toEqual(["100%", "0%"]);
+      expect(
+        region?.textContent?.includes(t("quotaCharts.range", { from: "10:00", to: "12:00" })),
+      ).toBe(true);
+    });
+
+    test("a reading at 100% and one at 0% are drawn whole, inside the svg", async () => {
+      const { store } = chartsStore({
+        five_hour: answered("five_hour", sample(10, 0), sample(12, 1)),
+        seven_day: answered("seven_day"),
+      });
+      mount(store);
+      await settle(() => dots(FIVE) === 2);
+      const svg = screen
+        .queryByRole("region", { name: t("quotaCharts.window", { label: FIVE }) })
+        ?.querySelector("svg");
+      const [, , width = 0, height = 0] = (svg?.getAttribute("viewBox") ?? "")
+        .split(" ")
+        .map(Number);
+      const edges = [...(svg?.querySelectorAll("[data-sample]") ?? [])].map((c) => {
+        const [x, y, r] = ["cx", "cy", "r"].map((a) => Number(c.getAttribute(a)));
+        return [
+          (x ?? 0) - (r ?? 0) >= 0,
+          (x ?? 0) + (r ?? 0) <= width,
+          (y ?? 0) - (r ?? 0) >= 0,
+          (y ?? 0) + (r ?? 0) <= height,
+        ];
+      });
+      expect(edges.length).toBe(2);
+      expect(edges.flat().every(Boolean)).toBe(true);
+    });
+
+    test("the plot's accessible name carries the latest value and the range", async () => {
+      const { store } = chartsStore({
+        five_hour: answered("five_hour", sample(10, 0.2), sample(12, 0.4)),
+        seven_day: answered("seven_day", sample(10, 0.2), sample(12, null)),
+      });
+      mount(store);
+      const name = (window: string, value: string) =>
+        t("quotaCharts.utilization", { label: window, value, from: "10:00", to: "12:00" });
+      await settle(() => screen.queryByRole("img", { name: name(FIVE, "40") }) !== null);
+      expect(screen.queryByRole("img", { name: name(FIVE, "40") })).not.toBeNull();
+      expect(
+        screen.queryByRole("img", {
+          name: t("quotaCharts.utilizationUnknown", { label: SEVEN, from: "10:00", to: "12:00" }),
+        }),
+      ).not.toBeNull();
+    });
+
+    test("a window with no readings next to one with readings says so, not a bare card", async () => {
+      const { store } = chartsStore({
+        five_hour: answered("five_hour", sample(10, 0.4)),
+        seven_day: answered("seven_day"),
+      });
+      mount(store);
+      await settle(() => dots(FIVE) === 1);
+      const card = screen.queryByRole("region", {
+        name: t("quotaCharts.window", { label: SEVEN }),
+      });
+      expect(card?.textContent?.includes(t("quotaCharts.empty"))).toBe(true);
+    });
+
+    test("the range names the day of a reading that is not from today", async () => {
+      const { store } = chartsStore(
+        { seven_day: answered("seven_day", sample(10, 0.2), sample(12, 0.4)) },
+        (iso) => `${iso.slice(5, 10)} ${iso.slice(11, 16)}`,
+      );
+      mount(store);
+      await settle(() => dots(SEVEN) === 2);
+      expect(
+        screen.queryByText(t("quotaCharts.range", { from: "11-21 10:00", to: "11-21 12:00" })),
+      ).not.toBeNull();
+    });
+
+    test("the accessible name says 100% for a reading past 100%, as the plot draws it", async () => {
+      const { store } = chartsStore({
+        five_hour: answered("five_hour", sample(10, 0.2), sample(12, 1.2)),
+      });
+      mount(store);
+      await settle(() => dots(FIVE) === 2);
+      const name = t("quotaCharts.utilization", {
+        label: FIVE,
+        value: "100",
+        from: "10:00",
+        to: "12:00",
+      });
+      expect(screen.queryByRole("img", { name })).not.toBeNull();
+    });
+
+    test("the chart follows its card's width and a long project key wraps", async () => {
+      const key = "/home/ubuntu/repos/a-very-long-project-name-that-has-no-place-to-break-anywhere";
+      const { store } = chartsStore({
+        five_hour: {
+          ...answered("five_hour", sample(10, 0.4)),
+          consumers: [{ projectKey: key, costUsd: 3, share: 1 }],
+        },
+        seven_day: answered("seven_day"),
+      });
+      mount(store);
+      await settle(() => dots(FIVE) === 1);
+      const region = screen.queryByRole("region", {
+        name: t("quotaCharts.window", { label: FIVE }),
+      });
+      const svg = region?.querySelector("svg");
+      expect([svg?.hasAttribute("width"), svg?.classList.contains("w-full")]).toEqual([
+        false,
+        true,
+      ]);
+      const item = [...(region?.querySelectorAll("li") ?? [])].find((li) =>
+        li.textContent?.includes(key),
+      );
+      expect(item?.classList.contains("break-all")).toBe(true);
+    });
   });
 
   // #4303: the age of a reading moves while the screen is open, shows in the popover, and a stale reading says so.
