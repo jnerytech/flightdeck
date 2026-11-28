@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { FakeCli, FakeRule } from "../../../../scripts/test/fake-cli.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
-import { settle, uiIdle } from "../wait.ts";
+import { settle, settleMaybe, uiIdle } from "../wait.ts";
 import { ok, pluginsHost, write } from "./ui-setup.ts";
 
 registerDom();
@@ -30,10 +30,14 @@ const RULES = (_ctx: { installed: string; marketplace: string }): FakeRule[] => 
   { args: ["uninstall"], stdout: ok("uninstall") },
 ];
 
-async function open() {
+/** What the CLI answers when it refuses a change: a non-zero exit and its reason. */
+const FAILED = (message: string) =>
+  `${JSON.stringify({ command: "x", outcome: "failed", message })}\n`;
+
+async function open(refusals: FakeRule[] = []) {
   const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
-  const h = await pluginsHost(cleanups, store, fakes, RULES);
+  const h = await pluginsHost(cleanups, store, fakes, (ctx) => [...refusals, ...RULES(ctx)]);
   render(<App store={store} />);
   await settle(() => screen.queryByRole("button", { name: "Plugins" }) !== null);
   await act(async () => {
@@ -56,6 +60,8 @@ const calls = (fake: FakeCli) => fake.calls().map((c) => c.join(" "));
 const changes = (fake: FakeCli) =>
   calls(fake).filter((c) => /^plugin (update|uninstall|marketplace (add|remove|update))/.test(c));
 const dialog = (name: string) => screen.queryByRole("dialog", { name });
+/** The text of every error notice on the page, as strings: a failed check never prints a DOM node. */
+const alerts = () => screen.queryAllByRole("alert").map((node) => node.textContent ?? "");
 
 describe("plugins-ui: atualizar, fixar e remover", () => {
   test("Atualizar mostra de onde para onde e o que entra e sai; Cancelar não atualiza; confirmar atualiza e confere o que ficou", async () => {
@@ -134,6 +140,70 @@ describe("plugins-ui: atualizar, fixar e remover", () => {
     await click("Remover plugin", "button");
     await settle(() => changes(fake).length === 1);
     expect(changes(fake)).toEqual(["plugin uninstall deploy-tools@acme --scope user --json"]);
+  });
+});
+
+describe("plugins-ui: a change the CLI refuses says why (#4490)", () => {
+  async function marketplaces(refusals: FakeRule[]) {
+    const h = await open(refusals);
+    const tab = screen.queryByRole("tab", { name: "Marketplaces" });
+    await act(async () => {
+      fireEvent.mouseDown(tab as HTMLElement, { button: 0 });
+    });
+    await settle(() => screen.queryByRole("button", { name: "Remover marketplace acme" }) !== null);
+    return h;
+  }
+
+  test("a plugin the CLI cannot remove shows the CLI's reason and stays listed", async () => {
+    await open([{ args: ["uninstall"], code: 1, stdout: FAILED("o plugin está em uso") }]);
+    await click("Remover deploy-tools");
+    await click("Remover plugin", "button");
+    expect(
+      await settleMaybe(() => alerts().some((text) => text.includes("o plugin está em uso"))),
+    ).toBe(true);
+    expect(alerts()).toEqual(["o plugin está em uso"]);
+    expect(screen.queryByRole("button", { name: "Remover deploy-tools" }) !== null).toBe(true);
+  });
+
+  test("a marketplace the CLI cannot add shows the CLI's reason and keeps the typed source", async () => {
+    await marketplaces([
+      { args: ["marketplace", "add"], code: 1, stdout: FAILED("a pasta não existe") },
+    ]);
+    const field = screen.queryByLabelText("Fonte do marketplace") as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(field, { target: { value: "/nao/existe" } });
+    });
+    await click("Adicionar marketplace");
+    await click("Adicionar", "button");
+    expect(
+      await settleMaybe(() => alerts().some((text) => text.includes("a pasta não existe"))),
+    ).toBe(true);
+    expect(alerts()).toEqual(["a pasta não existe"]);
+    expect(field.value).toBe("/nao/existe");
+  });
+
+  test("a marketplace the CLI cannot remove shows the CLI's reason", async () => {
+    await marketplaces([
+      { args: ["marketplace", "remove"], code: 1, stdout: FAILED("há plugins instalados dele") },
+    ]);
+    await click("Remover marketplace acme");
+    await click("Remover", "button");
+    expect(
+      await settleMaybe(() => alerts().some((text) => text.includes("há plugins instalados dele"))),
+    ).toBe(true);
+    expect(alerts()).toEqual(["há plugins instalados dele"]);
+    expect(screen.queryByRole("button", { name: "Remover marketplace acme" }) !== null).toBe(true);
+  });
+
+  test("a marketplace the CLI cannot update shows the CLI's reason, and the next action clears it", async () => {
+    await marketplaces([{ args: ["marketplace", "update"], code: 1, stdout: FAILED("sem rede") }]);
+    await click("Atualizar marketplace acme");
+    expect(await settleMaybe(() => alerts().some((text) => text.includes("sem rede")))).toBe(true);
+    expect(alerts()).toEqual(["sem rede"]);
+    await click("Remover marketplace acme");
+    await click("Remover", "button");
+    expect(await settleMaybe(() => alerts().length === 0)).toBe(true);
+    expect(alerts()).toEqual([]);
   });
 });
 
