@@ -123,11 +123,30 @@ export class SettingsSlice {
       return;
     }
     const { globalShortcut } = this.core.platform;
-    if (this.shortcut) await globalShortcut.unregister(this.shortcut);
+    const previous = this.shortcut;
+    if (previous) await globalShortcut.unregister(previous);
     this.shortcut = null;
     if (await this.register(check.value)) {
       this.core.platform.storage.setItem(SHORTCUT_KEY, check.value);
+      return;
     }
+    // The OS refused the new key: the saved one keeps working, as the page says it does (#4511).
+    if (previous) await this.restore(previous);
+  }
+
+  /** Registers the key that was in use again, after a refused change; the refusal's notice stays. */
+  private async restore(accelerator: string): Promise<void> {
+    try {
+      await this.core.platform.globalShortcut.register(accelerator, () => this.press());
+      this.shortcut = accelerator;
+    } catch {
+      this.shortcut = null;
+    }
+  }
+
+  private press(): void {
+    void this.core.platform.showMainWindow();
+    this.core.onShortcut();
   }
 
   setAutoUpdate(enabled: boolean): void {
@@ -147,10 +166,7 @@ export class SettingsSlice {
 
   private async register(accelerator: string): Promise<boolean> {
     try {
-      await this.core.platform.globalShortcut.register(accelerator, () => {
-        void this.core.platform.showMainWindow();
-        this.core.onShortcut();
-      });
+      await this.core.platform.globalShortcut.register(accelerator, () => this.press());
       this.shortcut = accelerator;
       this.patch({ globalShortcut: accelerator, shortcutProblem: null, shortcutError: null });
       return true;
