@@ -15,6 +15,13 @@ import {
 } from "./domain/hub-view.ts";
 import type { HubProject } from "./use-hub-scope.ts";
 
+/** Every session the hub knows of, before its scope and filters: what a client's scope lets through. */
+export function allHubRows(store: AppStore, state: AppState) {
+  return store.clientScope
+    .get()
+    .filter(hubRows(state, store.i18n.t), state.clientSelection, (r) => r.projectKey);
+}
+
 /**
  * The hub's list: the rows of the hosts in scope, grouped by project and folded by what the person
  * opened, cut at the row cap. The filter, the scope and the project chip come from the hub.
@@ -36,8 +43,7 @@ export function useHubList(
   // Only what the rows are made of recomputes them (a typing indicator or an error does not).
   // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state, not all of it
   const allRows = useMemo(
-    () =>
-      store.clientScope.get().filter(hubRows(state, t), state.clientSelection, (r) => r.projectKey),
+    () => allHubRows(store, state),
     [
       store,
       state.hosts,

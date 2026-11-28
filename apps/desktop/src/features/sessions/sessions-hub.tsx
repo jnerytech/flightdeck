@@ -1,4 +1,4 @@
-import { Server, X } from "lucide-react";
+import { MessagesSquare, SearchX, Server, X } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { HostsBanner } from "@/features/hosts/ui.ts";
@@ -10,6 +10,7 @@ import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { InlineNotice } from "../../shared/feedback/index.ts";
 import { ALL_SCOPE, awayKey } from "../costs/index.ts";
 import type { HubFilter, HubRow, HubView } from "./domain/hub.ts";
+import { DEFAULT_HUB_FILTER } from "./domain/hub.ts";
 import { filterCount, hostlessHub, personasOf } from "./domain/hub-derive.ts";
 import { projectName } from "./domain/hub-scope.ts";
 import { HUB_ROW_CAP } from "./domain/hub-view.ts";
@@ -114,6 +115,21 @@ export function SessionsHub(
   const active = filterCount(filter);
   const starter = newSessionHost(state.hosts, state.selected);
   const hostless = hostlessHub(state.hosts, rows.length);
+  /** Nothing is listed, though the host is there: no session yet, or the filters left none. */
+  const nothingListed = !hostless && groups.length === 0;
+  /** A host whose list has not arrived yet has not said it has no session. */
+  const listsArrived = state.hosts.every((h) => h.status !== "online" || state.hub[h.id]);
+  const narrowed = Boolean(scoped) || Boolean(only) || Boolean(picked);
+  const showAll = () => {
+    clearOnly();
+    store.setWorktreeFilter(null);
+    if (scoped) showAllHosts();
+  };
+  const newSession = () => {
+    if (!starter) return;
+    store.subscriptions.select(starter.id, null);
+    store.router.push({ name: "new-session", host: starter.id });
+  };
   const toolbar = (
     <HubToolbar
       store={store}
@@ -140,13 +156,7 @@ export function SessionsHub(
       toolbar={toolbar}
       actions={
         starter && (
-          <Button
-            size="sm"
-            onClick={() => {
-              store.subscriptions.select(starter.id, null);
-              store.router.push({ name: "new-session", host: starter.id });
-            }}
-          >
+          <Button size="sm" onClick={newSession}>
             {t("sidebar.newSession")}
           </Button>
         )
@@ -191,6 +201,38 @@ export function SessionsHub(
             collapseLabel={t("hub.collapseAll")}
             onExpand={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, true])))}
             onCollapse={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, false])))}
+          />
+        )}
+        {nothingListed && rows.length > 0 && (
+          <EmptyState
+            icon={SearchX}
+            title={t("hub.noMatch")}
+            action={
+              active > 0 || filter.text.trim() !== "" ? (
+                <Button variant="outline" onClick={() => set(DEFAULT_HUB_FILTER)}>
+                  {t("hub.clearFilters")}
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={() => set({ showArchived: true })}>
+                  {t("hub.showArchived")}
+                </Button>
+              )
+            }
+          />
+        )}
+        {nothingListed && rows.length === 0 && listsArrived && !scopedProject && (
+          <EmptyState
+            icon={narrowed ? SearchX : MessagesSquare}
+            title={narrowed ? t("hub.noneHere") : t("hub.noSessions")}
+            action={
+              narrowed ? (
+                <Button variant="outline" onClick={showAll}>
+                  {t("scope.showAll")}
+                </Button>
+              ) : (
+                starter && <Button onClick={newSession}>{t("sidebar.newSession")}</Button>
+              )
+            }
           />
         )}
         {only && (

@@ -6,6 +6,8 @@ import { unfoldAll } from "../unfold.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react");
 const { AppStore } = await import("../../src/lib/app-store.ts");
+const { DEFAULT_HUB_FILTER } = await import("../../src/features/sessions/domain/hub.ts");
+const { sessionsSplit } = await import("../../src/features/sessions/sessions-split.tsx");
 const { SessionsHub } = await import("../../src/features/sessions/sessions-hub.tsx");
 const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");
 
@@ -24,7 +26,7 @@ const external = (id: string, cwd: string) => ({
   projectKey: `host:alfa:${cwd}`,
 });
 
-function setup(language = "en") {
+function setup(language = "en", sessions = true, patch: Record<string, unknown> = {}) {
   const store: Store = new AppStore(memoryPlatform(false, language).platform, {
     baseDelayMs: 600_000,
   });
@@ -47,11 +49,14 @@ function setup(language = "en") {
       },
     ],
     hub: { h1: { managed: [], history: [] } },
-    externals: {
-      "h1/a1": external("a1", "/work/api"),
-      "h1/a2": external("a2", "/work/api"),
-      "h1/w1": external("w1", "/work/web"),
-    },
+    externals: sessions
+      ? {
+          "h1/a1": external("a1", "/work/api"),
+          "h1/a2": external("a2", "/work/api"),
+          "h1/w1": external("w1", "/work/web"),
+        }
+      : {},
+    ...patch,
   } as never as ReturnType<Store["getState"]>;
   const view = (project?: Filter) => (
     <TooltipProvider>
@@ -65,7 +70,7 @@ function setup(language = "en") {
       />
     </TooltipProvider>
   );
-  return { view };
+  return { view, store, state };
 }
 
 const API = { hostId: "h1", projectKey: "host:alfa:/work/api", name: "api" };
@@ -121,3 +126,112 @@ describe("projetos-hub-filtro: the hub filtered to one project", () => {
     expect(screen.queryByRole("button", { name: "Limpar o filtro de projeto" })).not.toBeNull();
   });
 });
+
+describe.each(["en", "pt-BR"] as const)("the empty hub (%s, #4460)", (language) => {
+  const { t } = setup(language).store.i18n;
+  const text = (key: string) => t(key as never);
+  /** The empty state's own button: the header has its own New session button too. */
+  const inside = (title: string) => screen.getByText(title).parentElement as HTMLElement;
+
+  test("an online host with no session says so and offers New session", async () => {
+    const { view, store } = setup(language, false);
+    render(view());
+    await waitFor(() => expect(screen.queryByText(text("hub.noSessions"))).not.toBeNull());
+    const start = inside(text("hub.noSessions")).querySelector("button");
+    expect(start?.textContent).toBe(text("sidebar.newSession"));
+    fireEvent.click(start as HTMLElement);
+    expect(store.router.current).toEqual({ name: "new-session", host: "h1" });
+    expect(screen.queryByText(text("hub.noMatch"))).toBeNull();
+  });
+
+  test("filters that match nothing say so, and Clear filters brings the list back", async () => {
+    const { view, store } = setup(language);
+    store.viewPrefs.saveHubFilter({ ...DEFAULT_HUB_FILTER, state: "ended" });
+    render(view());
+    await waitFor(() => expect(screen.queryByText(text("hub.noMatch"))).not.toBeNull());
+    expect(rowsDrawn()).toBe(0);
+    expect(screen.queryByText(text("hub.noSessions"))).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: text("hub.clearFilters") }));
+    await unfoldAll(act);
+    await waitFor(() => expect(rowsDrawn()).toBe(3));
+    expect(screen.queryByText(text("hub.noMatch"))).toBeNull();
+  });
+
+  test("a typed text that matches nothing says so too", async () => {
+    const { view, store } = setup(language);
+    render(view());
+    await waitFor(() => expect(screen.queryByText(text("hub.noMatch"))).toBeNull());
+    fireEvent.change(screen.getByRole("textbox", { name: store.i18n.t("hub.filterLabel") }), {
+      target: { value: "no session has this name" },
+    });
+    await waitFor(() => expect(screen.queryByText(text("hub.noMatch"))).not.toBeNull());
+    expect(screen.queryByRole("button", { name: text("hub.clearFilters") })).not.toBeNull();
+  });
+
+  test("sessions that are all archived say so and offer Show archived, which brings them back", async () => {
+    const archived = { name: null, pinned: false, archived: true };
+    const { view, store } = setup(language, true, {
+      meta: { "h1/a1": archived, "h1/a2": archived, "h1/w1": archived },
+    });
+    render(view());
+    await waitFor(() => expect(screen.queryByText(text("hub.noMatch"))).not.toBeNull());
+    expect(screen.queryByRole("button", { name: text("hub.clearFilters") })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: text("hub.showArchived") }));
+    await unfoldAll(act);
+    await waitFor(() => expect(rowsDrawn()).toBe(3));
+    expect(store.viewPrefs.hubFilter().showArchived).toBe(true);
+  });
+
+  test("a project with no session here says so, and Show all brings the others back", async () => {
+    const { view } = setup(language);
+    render(view({ hostId: "h1", projectKey: "host:alfa:/work/none", name: "none" }));
+    await waitFor(() => expect(screen.queryByText(text("hub.noneHere"))).not.toBeNull());
+    expect(screen.queryByText(text("hub.noSessions"))).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: text("scope.showAll") }));
+    await unfoldAll(act);
+    await waitFor(() => expect(rowsDrawn()).toBe(3));
+    expect(screen.queryByText(text("hub.noneHere"))).toBeNull();
+  });
+
+  test("while the host's session list has not arrived, no empty state shows", async () => {
+    const { view } = setup(language, false, { hub: {} });
+    render(view());
+    await act(async () => {});
+    expect(screen.queryByText(text("hub.noSessions"))).toBeNull();
+    expect(screen.queryByText(text("hub.noMatch"))).toBeNull();
+  });
+
+  test("with sessions on screen no empty state shows", async () => {
+    const { view } = setup(language);
+    render(view());
+    await unfoldAll(act);
+    await waitFor(() => expect(rowsDrawn()).toBe(3));
+    expect(screen.queryByText(text("hub.noSessions"))).toBeNull();
+    expect(screen.queryByText(text("hub.noMatch"))).toBeNull();
+  });
+});
+
+describe.each(["en", "pt-BR"] as const)(
+  "the right pane of an empty hub (%s, #4460)",
+  (language) => {
+    const { t } = setup(language).store.i18n;
+    const pane = (sessions: boolean) => {
+      const { store, state } = setup(language, sessions);
+      const props = { store, state, density: "comfortable", go: () => {} } as never;
+      return render(
+        <TooltipProvider>{sessionsSplit(props, { name: "hub" } as never, null)}</TooltipProvider>,
+      );
+    };
+
+    test("with no session it does not ask for a choice", async () => {
+      pane(false);
+      await waitFor(() => expect(screen.queryByText(t("hub.noSessions"))).not.toBeNull());
+      expect(screen.queryByText(t("hub.pick"))).toBeNull();
+    });
+
+    test("with sessions it asks for a choice", async () => {
+      pane(true);
+      await waitFor(() => expect(screen.queryByText(t("hub.pick"))).not.toBeNull());
+    });
+  },
+);

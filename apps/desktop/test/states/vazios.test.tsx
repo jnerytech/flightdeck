@@ -41,7 +41,7 @@ describe("estados-vazios", () => {
     expect(added).toBe(1);
   });
 
-  test("the hub's empty pane offers a new session on the first online host", async () => {
+  test("the hub's empty list offers a new session on the first online host", async () => {
     const d = makeDaemon(cleanups);
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
@@ -51,10 +51,8 @@ describe("estados-vazios", () => {
     await settle(() => store.getState().hosts[0]?.status === "online");
     await sidebar.openHub();
     const main = screen.queryByRole("main") as HTMLElement;
-    await settle(
-      () => within(main).queryByText("Escolha uma sessão para ver a conversa.") !== null,
-    );
-    // The list header has its own New session button; this one is the empty pane's.
+    await settle(() => within(main).queryByText("Nenhuma sessão ainda") !== null);
+    // The list header has its own New session button; this one is the empty list's (#4460).
     const button =
       within(main)
         .queryAllByRole("button", { name: "Nova sessão" })
