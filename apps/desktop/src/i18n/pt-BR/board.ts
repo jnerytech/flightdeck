@@ -604,7 +604,8 @@ export const board = {
     removeConfirm: "Remover worktrees",
     removeNeeds: "Marque as worktrees a remover.",
     confirm:
-      "Remover {names} e os branches delas? Cerca de {size} serão liberados. Nada com alterações não commitadas ou commits não enviados é removido; pastas recriáveis na raiz (node_modules, saída de build, caches) vão junto.",
+      "Remover estas worktrees e os branches delas? Cerca de {size} serão liberados. Nada com alterações não commitadas ou commits não enviados é removido; pastas recriáveis na raiz (node_modules, saída de build, caches) vão junto.",
+    confirmList: "Worktrees a remover",
     confirmItem: '{name} (cartão "{card}", {column})',
     branchKept: "{branch}: pasta removida, branch mantido (tem trabalho mais novo)",
     noAnswer:

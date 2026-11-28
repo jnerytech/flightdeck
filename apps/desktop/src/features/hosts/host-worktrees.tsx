@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
-import { ErrorState, LoadingState, Panel } from "@/shared/layout/index.ts";
+import { ErrorState, LoadingState, Panel, Stack } from "@/shared/layout/index.ts";
 import { formatBytes } from "../../i18n/format.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
@@ -313,7 +313,6 @@ export function HostWorktrees(props: Readonly<{ store: AppStore; host: HostView 
       {confirming && (
         <ConfirmDialog
           message={t("worktrees.confirm", {
-            names: chosen.map(describe).join("; "),
             size: formatBytes(
               chosen.reduce((sum, i) => sum + (i.sizeBytes ?? 0), 0),
               lang,
@@ -326,7 +325,23 @@ export function HostWorktrees(props: Readonly<{ store: AppStore; host: HostView 
             setConfirming(false);
             void remove();
           }}
-        />
+        >
+          {/* One worktree per line, so a card title with a semicolon is not two; a long list scrolls
+              inside the dialog and takes the focus, so the keys can scroll it (#4455). */}
+          <Stack
+            as="ul"
+            gap={1}
+            scrolls
+            label={t("worktrees.confirmList")}
+            className="worktree-confirm-list text-sm focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            {chosen.map((item) => (
+              <li key={item.path} className="break-words">
+                {describe(item)}
+              </li>
+            ))}
+          </Stack>
+        </ConfirmDialog>
       )}
     </Panel>
   );

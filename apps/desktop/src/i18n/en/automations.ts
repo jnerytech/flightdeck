@@ -246,8 +246,11 @@ export const automations = {
     trustConfirm: "Trust",
     farOnly: "This works only from this computer or over Tailscale.",
     trustMessage:
-      "Trust the workflow {name}? It will be able to run these commands in the cards' worktrees: {commands}.",
-    none: "none",
+      "Trust the workflow {name}? It will be able to run these commands in the cards' worktrees:",
+    trustCommands: "Commands {name} will be able to run",
+    trustNone: "No commands.",
+    trustDone: "{name} trusted",
+    trustRefused: "The host did not trust {name}. Check the workflow and try again.",
     loading: "Loading workflows",
     empty: "No workflows on the base branch yet.",
     failed: "Could not read the workflows. Check that the host is connected.",

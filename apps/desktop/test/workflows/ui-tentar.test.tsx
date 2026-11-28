@@ -104,7 +104,7 @@ describe.each(["en", "pt-BR"] as const)("the Workflows page, a refused load (%s)
   test("a refused refresh after Trust keeps the list, shows the alert and Try again reloads it", async () => {
     const { asked } = await page(lang, (type, nth) => {
       if (type === "workflow.list") return nth === 2 ? null : { workflows: [WORKFLOW] };
-      return {};
+      return { ...WORKFLOW, trusted: true };
     });
     await settle(() => screen.queryByRole("listitem", { name: w.item }) !== null);
     await click(w.trust);

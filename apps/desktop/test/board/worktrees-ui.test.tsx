@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { WorktreeItem, WorktreesResult } from "@flightdeck/protocol";
 import { formatBytes } from "../../src/i18n/format.ts";
 import { liveScreen, registerDom } from "../dom.ts";
@@ -505,6 +507,71 @@ describe("worktrees-seguranca-ui: what is removed is what is on the screen (F7)"
     const region = () => screen.getByRole("region", { name: "Worktrees" }).textContent ?? "";
     await settle(() => region().includes("Removed 1 worktrees"));
     expect(region()).toContain("git said no");
+  });
+});
+
+// #4455: the removal's confirmation lists each worktree on its own line, as the Trust dialog lists commands.
+describe("worktrees-ui: the removal's confirmation is a list (#4455)", () => {
+  const LINES = {
+    en: {
+      remove: "Remove 3 worktrees",
+      lines: ['fd/a (card "Fix; retry", Done)', "fd/b", 'fd/c (card "Docs", Done)'],
+    },
+    "pt-BR": {
+      remove: "Remover 3 worktrees",
+      lines: ['fd/a (cartão "Fix; retry", Concluído)', "fd/b", 'fd/c (cartão "Docs", Concluído)'],
+    },
+  } as const;
+  const SEVERAL: WorktreesResult = {
+    worktrees: [
+      item("a", { cardId: "c1", cardTitle: "Fix; retry", column: "done" }),
+      item("b"),
+      item("c", { cardId: "c2", cardTitle: "Docs", column: "done" }),
+    ],
+    disks: [],
+  };
+
+  for (const language of ["en", "pt-BR"] as const) {
+    test(`${language}: one line per worktree, in order, a title with a semicolon on one line, and the sentence names none`, async () => {
+      const w = setup({ list: SEVERAL, language });
+      render(w.view());
+      await ready();
+      for (const name of ["a", "b", "c"]) await click(box(name));
+      await click(screen.queryByRole("button", { name: LINES[language].remove }) as HTMLElement);
+      const dialog = screen.queryByRole("alertdialog");
+      expect(dialog).not.toBeNull();
+      const list = within(dialog as HTMLElement).queryByRole("list");
+      expect(list).not.toBeNull();
+      expect([...(list?.querySelectorAll("li") ?? [])].map((li) => li.textContent)).toEqual([
+        ...LINES[language].lines,
+      ]);
+      const sentence = (dialog as HTMLElement).querySelector("[id*=description]")?.textContent;
+      expect((sentence ?? "").includes("fd/a")).toBe(false);
+      expect((sentence ?? "").includes("fd/b")).toBe(false);
+    });
+  }
+
+  test("a long list scrolls inside the dialog and takes the focus, so the keys can scroll it", async () => {
+    const many: WorktreesResult = {
+      worktrees: Array.from({ length: 30 }, (_, n) => item(`w${n}`)),
+      disks: [],
+    };
+    const w = setup({ list: many });
+    render(w.view());
+    await ready();
+    await click(screen.queryByRole("button", { name: "Select all that can go" }) as HTMLElement);
+    await click(screen.queryByRole("button", { name: "Remove 30 worktrees" }) as HTMLElement);
+    const dialog = screen.queryByRole("alertdialog") as HTMLElement;
+    const list = within(dialog).queryByRole("list");
+    expect(list).not.toBeNull();
+    expect(list?.className.includes("worktree-confirm-list")).toBe(true);
+    // The class caps the height and scrolls (the stylesheet is where that is decided).
+    const css = readFileSync(join(import.meta.dir, "../../src/styles/hosts.css"), "utf8");
+    const rule = /@utility worktree-confirm-list \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? "";
+    expect(/max-height:\s*\S+/.test(rule) && /overflow-y:\s*auto/.test(rule)).toBe(true);
+    expect(list?.getAttribute("tabindex")).toBe("0");
+    // The buttons stay in the dialog, below the list.
+    expect(within(dialog).queryByRole("button", { name: "Remove worktrees" })).not.toBeNull();
   });
 });
 
