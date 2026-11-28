@@ -2,6 +2,7 @@ import type { AutoApprovalRecord, AutoApproveSuspension } from "@flightdeck/prot
 import { ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
@@ -34,6 +35,7 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
   const [attempt, setAttempt] = useState(0);
   const suspendedList = useRef<HTMLElement>(null);
   const decisionsList = useRef<HTMLElement>(null);
+  const filterField = useRef<HTMLInputElement>(null);
   const resumeButtons = useRef(new Map<string, HTMLButtonElement>());
   const focusButtonOf = useRef<string | null>(null);
   const projects = store.getState().projects[hostId];
@@ -99,6 +101,11 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
     }
   };
 
+  // The button goes away with the empty result: the focus goes back to the field it cleared.
+  const clearFilter = () => {
+    setText("");
+    filterField.current?.focus();
+  };
   const needle = text.trim().toLowerCase();
   const shown = (decisions ?? []).filter(
     (d) =>
@@ -106,6 +113,7 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
       d.toolName.toLowerCase().includes(needle) ||
       d.reason.toLowerCase().includes(needle),
   );
+  const noMatch = decisions !== null && decisions.length > 0 && shown.length === 0;
 
   return (
     <Page
@@ -128,6 +136,7 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
             ))}
           </NativeSelect>
           <Input
+            ref={filterField}
             aria-label={t("autoApprovalsUi.filter")}
             placeholder={t("autoApprovalsUi.filterPlaceholder")}
             className="h-8 w-56 text-xs"
@@ -153,9 +162,9 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
               key={s.sessionKey}
               className="flex items-center justify-between gap-3 rounded-md border p-3 text-sm"
             >
-              <span className="flex flex-col">
-                <span className="font-mono text-xs">{s.sessionKey}</span>
-                <span>{s.reason}</span>
+              <span className="flex min-w-0 flex-col">
+                <span className="break-all font-mono text-xs">{s.sessionKey}</span>
+                <span className="break-words">{s.reason}</span>
               </span>
               <ActionButton
                 variant="outline"
@@ -201,8 +210,14 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
               }
             />
           )}
-          {decisions !== null && decisions.length > 0 && shown.length === 0 && (
-            <p className="text-muted-foreground text-sm">{t("autoApprovalsUi.noMatch")}</p>
+          {/* Always in the page, so a screen reader hears the text when it appears. */}
+          <output className="text-muted-foreground text-sm empty:sr-only">
+            {noMatch ? t("autoApprovalsUi.noMatch") : null}
+          </output>
+          {noMatch && (
+            <Button variant="outline" size="sm" className="self-start" onClick={clearFilter}>
+              {t("autoApprovalsUi.clearFilter")}
+            </Button>
           )}
           {shown.length > 0 && (
             <ul aria-label={t("autoApprovalsUi.list")} className="flex flex-col gap-2">
