@@ -253,7 +253,8 @@ Para testar: entre no GitHub na página do host, abra o **Board** de um projeto,
 - **Conclusão:** Concluir (com confirmação) ou o PR mesclado removem a worktree se `git status`
   estiver limpo. Senão, o card avisa e a worktree fica.
 - **Descarte:** Descartar (com confirmação, e um aviso se houver alterações não enviadas)
-  remove a worktree e a branch local.
+  remove a worktree e a branch local. Se o host recusar listar as mudanças do card, a confirmação
+  diz que não deu para conferi-las; Descartar continua possível.
 - **A página do card tem um botão que lidera:** o painel Execução mostra o que vem a seguir.
   **Iniciar** para um card que ainda não rodou, **Parar** enquanto roda, **Revisar mudanças**
   quando uma execução termina (mostra as Mudanças do card), depois **Abrir PR** e, com o PR aberto

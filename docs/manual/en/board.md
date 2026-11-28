@@ -247,7 +247,8 @@ To try it: sign in with GitHub on the host's page, open a project's **Board**, p
 - **Completion:** Complete (with confirmation) or a merged PR removes the worktree if
   `git status` is clean. Otherwise the card warns and the worktree stays.
 - **Discard:** Discard (with confirmation, and a warning if there are unpushed changes) removes
-  the worktree and the local branch.
+  the worktree and the local branch. If the host refuses to list the card's changes, the
+  confirmation says they could not be checked; Discard is still possible.
 - **The card page leads with one button:** its Run panel shows what comes next. **Start** for a card
   that has not run, **Stop** while it runs, **Review changes** once a run is done (it shows the
   card's Changes), then **Open PR**, and **Merge PR** once the PR is open and can be merged (the
