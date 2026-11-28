@@ -171,6 +171,8 @@ export const board = {
     countMany: "{n} cards",
     keysHint:
       "As setas passam de um card a outro, Enter abre, S inicia, M mostra as ações, X seleciona e Shift com uma seta seleciona um trecho. Esc limpa a seleção.",
+    hostOffline:
+      "{host} está offline. O board mostra o último estado; mover e criar cards precisam dele de volta.",
     columns: "Colunas",
     showColumn: "{column}, {count}",
     countOfMany: "{shown} de {total} cards",
@@ -350,6 +352,8 @@ export const board = {
     descriptionLabel: "Descrição do card",
     descriptionPlaceholder: "Descrição",
     newCard: "Novo card",
+    /** #4506: under the New card title, so a card made from a column's + is not a surprise. */
+    newCardIn: "Vai para a coluna {column}.",
     /** Issue #1201: the project's card templates, offered in New card. */
     template: "A partir de um modelo",
     templateNone: "Card em branco",

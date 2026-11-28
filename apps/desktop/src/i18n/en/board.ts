@@ -175,6 +175,9 @@ export const board = {
     /** The board's keys, said by each card's title (#1198). */
     keysHint:
       "Arrows move between the cards, Enter opens one, S starts it, M shows its actions, X selects it and Shift with an arrow selects a range. Esc clears the selection.",
+    /** The host dropped after the board loaded: what is on screen is the last state read (#4507). */
+    hostOffline:
+      "{host} is offline. The board shows its last state; moves and new cards need it back.",
     /** A narrow board shows one column at a time, picked here (#1198). */
     columns: "Columns",
     showColumn: "{column}, {count}",
@@ -355,6 +358,8 @@ export const board = {
     descriptionLabel: "Card description",
     descriptionPlaceholder: "Description",
     newCard: "New card",
+    /** #4506: under the New card title, so a card made from a column's + is not a surprise. */
+    newCardIn: "It goes in the {column} column.",
     /** Issue #1201: the project's card templates, offered in New card. */
     template: "From a template",
     templateNone: "Blank card",
