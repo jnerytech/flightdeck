@@ -56,7 +56,7 @@ describe("new-card-column: the New card dialog says which column the card goes t
       );
     });
     expect(screen.queryByRole("dialog", { name: "New card" }) !== null).toBe(true);
-    expect(described()).toBe("It goes to In progress.");
+    expect(described()).toBe("It goes in the In progress column.");
   });
 
   test("the + of a column opens the dialog naming that column (pt-BR)", async () => {
@@ -67,7 +67,7 @@ describe("new-card-column: the New card dialog says which column the card goes t
       );
     });
     expect(screen.queryByRole("dialog", { name: "Novo card" }) !== null).toBe(true);
-    expect(described()).toBe("Vai para Em revisão.");
+    expect(described()).toBe("Vai para a coluna Em revisão.");
   });
 
   test("the empty board's first card button names Backlog", async () => {
@@ -77,6 +77,6 @@ describe("new-card-column: the New card dialog says which column the card goes t
         screen.queryByRole("button", { name: "Create the first card" }) as HTMLElement,
       );
     });
-    expect(described()).toBe("It goes to Backlog.");
+    expect(described()).toBe("It goes in the Backlog column.");
   });
 });
