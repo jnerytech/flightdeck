@@ -51,23 +51,28 @@ export function FileEditor(
     else props.onClose();
   };
 
+  /** Read when a refusal is worded, so a language change does not read the open file again over the edits. */
+  const words = useRef(t);
+  words.current = t;
+
   /** The file as the host has it, or the reason it refused: each caller decides what a refusal does. */
   const read = useCallback(async () => {
     const result = await store.hostRequest(hostId, "file.read", { target, path });
     return result.ok
       ? { file: result.data, message: null }
-      : { file: null, message: refusalText(result.code, result.message, t, result) };
-  }, [store, hostId, target, path, t]);
+      : { file: null, message: refusalText(result.code, result.message, words.current, result) };
+  }, [store, hostId, target, path]);
 
   /** A refusal once the file is open: shown above the editor, which keeps what was typed. */
-  const fail = useCallback(
-    (message: string) =>
-      setPhase((current) => (current.name === "ready" ? { ...current, error: message } : current)),
-    [],
-  );
+  const fail = (message: string) =>
+    setPhase((current) => (current.name === "ready" ? { ...current, error: message } : current));
+  /** A new try starts: the last refusal goes, so a second one reads (and is announced) as new. */
+  const clearError = () =>
+    setPhase((current) => (current.name === "ready" ? { ...current, error: null } : current));
 
   /** Puts the disk's text in the editor and remembers its hash. */
-  const load = useCallback(async () => {
+  const load = async () => {
+    clearError();
     const { file, message } = await read();
     if (!file) return fail(message);
     const editor = view.current;
@@ -75,7 +80,7 @@ export function FileEditor(
     // The editor's own text, not the file's: CodeMirror turns CRLF into line breaks it keeps as "\n".
     initial.current = editor?.state.doc.toString() ?? file.text;
     setPhase({ name: "ready", hash: file.hash, conflict: false, error: null });
-  }, [read, fail]);
+  };
 
   useEffect(() => {
     let alive = true;
@@ -120,6 +125,7 @@ export function FileEditor(
   const write = async (expectedHash: string) => {
     const editor = view.current;
     if (!editor) return;
+    clearError();
     const text = editor.state.doc.toString();
     const result = await store.hostRequest(hostId, "file.write", {
       target,
@@ -143,6 +149,7 @@ export function FileEditor(
 
   /** "Sobrescrever": my text over what changed, with the hash of what is there now. */
   const overwrite = async () => {
+    clearError();
     const { file, message } = await read();
     if (file) await write(file.hash);
     else fail(message);
