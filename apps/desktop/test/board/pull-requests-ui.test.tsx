@@ -537,6 +537,19 @@ describe("pull-requests-ui: a host that could not be read is not an empty one (#
     });
   }
 
+  test("Try again shows the page reading while the host answers, instead of the old notice", async () => {
+    const { release } = open({ cards: {}, unread: [["h2"], []], hold: true });
+    release();
+    await settleMaybe(() => alert() !== null);
+    await click(screen.queryByRole("button", { name: "Try again" }));
+    expect({
+      loading: screen.queryByRole("status", { name: "Reading the pull requests…" }) !== null,
+      notice: alert() !== null,
+    }).toEqual({ loading: true, notice: false });
+    release();
+    await settle(() => screen.queryByText("No open pull requests.") !== null);
+  });
+
   test("every online host read and no PR open: the empty state, no notice", async () => {
     open({ cards: {}, unread: [[]] });
     await settle(() => screen.queryByText("No open pull requests.") !== null);
