@@ -215,3 +215,30 @@ describe("inbox-ui", () => {
     expect(opened).toEqual(["https://git.test/acme/api/pull/7"]);
   });
 });
+
+describe("inbox-ui: the same announcement twice in a row (#4523)", () => {
+  test("Mark all as read said again after a new notification changes the live region again", async () => {
+    const { store } = await setup(ENTRIES);
+    await open();
+    const live = screen.getByRole("dialog").querySelector('[data-slot="inbox-live"]') as Node;
+    const watcher = new MutationObserver(() => {});
+    watcher.observe(live, { childList: true, characterData: true, subtree: true });
+    const markAll = () => screen.getByRole("button", { name: "Marcar todas como lidas" });
+    await act(async () => {
+      fireEvent.click(markAll());
+    });
+    watcher.takeRecords();
+    await act(async () => {
+      store.inbox.notify({ title: "Orçamento", body: "alfa · 90%" });
+    });
+    await act(async () => {
+      fireEvent.click(markAll());
+    });
+    const changes = watcher.takeRecords().length;
+    watcher.disconnect();
+    expect({
+      said: liveText().includes("Todas marcadas como lidas"),
+      changed: changes > 0,
+    }).toEqual({ said: true, changed: true });
+  });
+});
