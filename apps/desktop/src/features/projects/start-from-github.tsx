@@ -222,6 +222,7 @@ export function StartFromGithub(
                       variant="outline"
                       size="xs"
                       aria-disabled={retrying}
+                      className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
                       onClick={() => !retrying && void pickRepo(repo, true)}
                     >
                       {t("githubStart.issuesRetry")}

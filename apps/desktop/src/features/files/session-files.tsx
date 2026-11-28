@@ -67,6 +67,7 @@ function SessionFilesRead(
             variant="outline"
             size="xs"
             aria-disabled={retrying}
+            className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
             onClick={() => {
               if (retrying) return;
               setRetrying(true);
