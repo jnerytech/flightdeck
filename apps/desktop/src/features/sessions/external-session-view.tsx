@@ -55,6 +55,11 @@ export function ExternalView(
 
   /** The host refused the last send and the message is back in the box (#4502). */
   const [refused, setRefused] = useState(false);
+  /** The box changed by hand, by a snippet or by the wand: the "not sent" line no longer describes it. */
+  const edit = (value: string) => {
+    setText(value);
+    setRefused(false);
+  };
 
   const send = () => {
     const value = text.trim();
@@ -170,7 +175,7 @@ export function ExternalView(
             prompts={props.prompts}
             text={text}
             label={t("session.snippets")}
-            onFill={setText}
+            onFill={edit}
             input={box}
           />
           {/* The AI wand (phase 40): it improves the message and never sends it. */}
@@ -183,7 +188,7 @@ export function ExternalView(
               openSettings: () => store.router.push({ name: "settings", section: "assistant" }),
             }}
             value={text}
-            onChange={setText}
+            onChange={edit}
             t={t}
           >
             {(assist) => (
@@ -197,8 +202,7 @@ export function ExternalView(
                   className="max-h-40 min-h-9 flex-1 resize-none"
                   rows={1}
                   onChange={(e) => {
-                    setText(e.target.value);
-                    setRefused(false);
+                    edit(e.target.value);
                   }}
                 />
                 <Button onClick={send}>{t("external.send")}</Button>
@@ -207,7 +211,7 @@ export function ExternalView(
           </AssistField>
           {refused && (
             <Note>
-              <p role="alert" className="text-status-error">
+              <p role="alert" className="text-status-error text-xs">
                 {t("session.sendRefused")}
               </p>
             </Note>
