@@ -176,6 +176,44 @@ describe("Choose an alert (issue #79)", () => {
     expect(listed() === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
+  test("a failed read offers Try again, which asks again, shows the loading state and then the list (#4444)", async () => {
+    const answers: Array<(value: unknown) => void> = [];
+    const { asked } = setup({
+      alerts: () => new Promise((resolve) => answers.push(resolve)),
+    });
+    await press("Choose an alert");
+    await act(async () => answers[0]?.(null));
+    await settleMaybe(() => button("Try again") !== null);
+    expect(button("Try again")).not.toBeNull();
+    await press("Try again");
+    expect(asked()).toHaveLength(2);
+    expect(screen.queryByRole("status", { name: "Loading alerts" })).not.toBeNull();
+    expect(screen.queryByText(/Could not read the alerts/) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    await act(async () => answers[1]?.({ alerts: [CODE], unavailable: [] }));
+    await settleMaybe(() => listed() !== null);
+    expect(listed()).not.toBeNull();
+    expect(button("Try again") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+  });
+
+  test("Try again that fails again keeps the error and the button (#4444)", async () => {
+    const { asked } = setup({ alerts: async () => null });
+    await press("Choose an alert");
+    await settleMaybe(() => button("Try again") !== null);
+    await press("Try again");
+    await settleMaybe(() => asked().length === 2);
+    await settleMaybe(() => button("Try again") !== null);
+    expect(asked()).toHaveLength(2);
+    expect(button("Try again")).not.toBeNull();
+    expect(screen.queryByText(/Could not read the alerts/)).not.toBeNull();
+  });
+
+  test("in Portuguese a failed read offers Tentar de novo (#4444)", async () => {
+    setup({ language: "pt-BR", alerts: async () => null });
+    await press("Escolher um alerta");
+    await settleMaybe(() => button("Tentar de novo") !== null);
+    expect(button("Tentar de novo")).not.toBeNull();
+  });
+
   test("a source that could not be read is said, by name and by reason, beside the others", async () => {
     setup({
       alerts: async () => ({

@@ -11,7 +11,9 @@ the tags and a description of the secret.
   `ed25519` pair with the `ssh-keygen` of this computer, keeps the private key in the vault, deletes
   the temporary file and shows the public key, ready to **Copy public key**. **Import key file**
   reads a key file you choose in the system dialog; the original stays where it is unless you tick
-  **Delete the original file after importing**.
+  **Delete the original file after importing**. Each of them says what it did, by name, in a line
+  a screen reader announces: the key is saved in the vault (the form stays open for the public key),
+  the key file is imported, or the secret is saved (these two once the form has closed).
 - **Edit** changes a secret's name, description, tags and allowed hosts, never its value. **Save
   changes** is off, with the reason beside it, while the name is empty. When the form closes, a line
   at the top of the page says the secret was saved. If you uncheck every allowed host the form warns

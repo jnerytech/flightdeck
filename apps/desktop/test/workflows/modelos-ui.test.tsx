@@ -473,6 +473,74 @@ describe("adding a template to the project from the app (issue #1221)", () => {
     expect(button("Add to the project")?.getAttribute("aria-describedby")).toBeNull();
   });
 
+  test("Back while the host works keeps the result: reopened, the template shows its branch, not Add again (#4441)", async () => {
+    const addBy: Array<(answer: object | null) => void> = [];
+    const { adds } = setup({ features: OFFERED, addBy });
+    await open("Add from a template", "Show Alert fixer");
+    await press("Add to the project");
+    await press("Open the pull request");
+    await press("Back to the templates");
+    await settleMaybe(() => button("Show Alert fixer") !== null);
+    await act(async () => addBy[0]?.(ADDED));
+    await press("Show Alert fixer");
+    await settleMaybe(() => button("View the pull request") !== null);
+    expect(button("View the pull request")).not.toBeNull();
+    expect(document.querySelector('[data-slot="add-status"]')?.textContent ?? "").toContain(
+      ADDED.branch,
+    );
+    expect(button("Add to the project") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(adds()).toHaveLength(1);
+  });
+
+  test("a template opened again while its add still runs shows it busy, and sends no second add (#4441)", async () => {
+    const addBy: Array<(answer: object | null) => void> = [];
+    const { adds } = setup({ features: OFFERED, addBy });
+    await open("Add from a template", "Show Alert fixer");
+    await press("Add to the project");
+    await press("Open the pull request");
+    await press("Back to the templates");
+    await press("Show Alert fixer");
+    expect(button("Opening the pull request…")).not.toBeNull();
+    expect(button("Add to the project") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    await press("Opening the pull request…");
+    expect(adds()).toHaveLength(1);
+    await act(async () => addBy[0]?.(ADDED));
+    await settleMaybe(() => button("View the pull request") !== null);
+    expect(button("View the pull request")).not.toBeNull();
+  });
+
+  test("closing the dialog with Escape while the host works keeps the result for the next opening (#4441)", async () => {
+    const addBy: Array<(answer: object | null) => void> = [];
+    const { adds } = setup({ features: OFFERED, addBy });
+    await open("Add from a template", "Show Alert fixer");
+    await press("Add to the project");
+    await press("Open the pull request");
+    await act(async () => {
+      fireEvent.keyDown(dialog("Workflow templates") ?? document.body, { key: "Escape" });
+    });
+    await settleMaybe(() => dialog("Workflow templates") === null);
+    await act(async () => addBy[0]?.(ADDED));
+    await open("Add from a template", "Show Alert fixer");
+    await settleMaybe(() => button("View the pull request") !== null);
+    expect(button("View the pull request")).not.toBeNull();
+    expect(button("Add to the project") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(adds()).toHaveLength(1);
+  });
+
+  test("an add that the host refused while the person was on the list offers Add again (#4441)", async () => {
+    const addBy: Array<(answer: object | null) => void> = [];
+    setup({ features: OFFERED, addBy });
+    await open("Add from a template", "Show Alert fixer");
+    await press("Add to the project");
+    await press("Open the pull request");
+    await press("Back to the templates");
+    await act(async () => addBy[0]?.(null));
+    await press("Show Alert fixer");
+    await settleMaybe(() => button("Add to the project") !== null);
+    expect(button("Add to the project")).not.toBeNull();
+    expect(button("View the pull request") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+  });
+
   test("in Portuguese the add, its question and its note follow the language", async () => {
     setup({ features: OFFERED, language: "pt-BR" });
     await open("Adicionar de um modelo", "Ver Corretor de alertas");

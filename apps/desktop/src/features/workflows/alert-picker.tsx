@@ -13,7 +13,7 @@ import {
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import { AppDialogContent, InlineNotice } from "@/shared/feedback/index.ts";
-import { LoadingState, Stack } from "@/shared/layout/index.ts";
+import { ErrorState, LoadingState, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 
@@ -41,17 +41,19 @@ export function AlertPicker(
   const host = store.getState().hosts.find((h) => h.id === hostId);
   if (!hasFeature(host?.hostInfo?.features, "alerts", false)) return null;
 
-  const onOpenChange = (next: boolean) => {
-    setOpen(next);
-    if (!next) return;
+  /** Asks the host for the alerts, showing the loading state again; opening and Try again share it. */
+  const load = async () => {
     setAlerts(null);
     setUnavailable([]);
     setFailed(false);
-    void store.hostCommand(hostId, "alert.list", { projectId }).then((result) => {
-      setFailed(result === null);
-      setAlerts(result?.alerts ?? null);
-      setUnavailable(result?.unavailable ?? []);
-    });
+    const result = await store.hostCommand(hostId, "alert.list", { projectId });
+    setFailed(result === null);
+    setAlerts(result?.alerts ?? null);
+    setUnavailable(result?.unavailable ?? []);
+  };
+  const onOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (next) void load();
   };
   const pick = (alert: RepoAlert) => {
     setOpen(false);
@@ -72,7 +74,13 @@ export function AlertPicker(
           <DialogTitle>{t("alertsUi.title")}</DialogTitle>
           <DialogDescription>{t("alertsUi.intro")}</DialogDescription>
         </DialogHeader>
-        {failed && <InlineNotice tone="error">{t("alertsUi.failed")}</InlineNotice>}
+        {failed && (
+          <ErrorState
+            message={t("alertsUi.failed")}
+            retryLabel={t("workflowsUi.retry")}
+            onRetry={() => void load()}
+          />
+        )}
         {!failed && alerts === null && <LoadingState label={t("alertsUi.loading")} />}
         {unavailable.map((source) => (
           <InlineNotice key={source.kind} tone="warn">
