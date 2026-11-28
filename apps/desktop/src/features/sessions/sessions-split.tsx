@@ -9,6 +9,7 @@ import { QuotaPanel } from "../quota/ui.ts";
 import { openedSession, rowIsOpen, SESSIONS_ROUTES } from "./domain/sessions-split.ts";
 import { newSessionHost, rowRoute } from "./index.ts";
 import { SessionsHub } from "./sessions-hub.tsx";
+import { allHubRows } from "./use-hub-list.ts";
 
 /** What the Sessões split reads from a screen's props. */
 interface SessionsSplitProps {
@@ -18,28 +19,33 @@ interface SessionsSplitProps {
   go(route: Route): void;
 }
 
-/** What the right side shows when no session is open: a hint, the new-session button and the quota. */
+/**
+ * What the right side shows when no session is open: a hint to choose one (when there is one to
+ * choose, the list says what is empty otherwise), the new-session button and the quota.
+ */
 function sessionsEmpty(props: SessionsSplitProps): ReactNode {
   const { store, state, go } = props;
   const firstHost = newSessionHost(state.hosts, state.selected);
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
-      <EmptyState
-        icon={MessagesSquare}
-        title={store.i18n.t("hub.pick")}
-        action={
-          firstHost && (
-            <Button
-              onClick={() => {
-                store.subscriptions.select(firstHost.id, null);
-                go({ name: "new-session", host: firstHost.id });
-              }}
-            >
-              {store.i18n.t("sidebar.newSession")}
-            </Button>
-          )
-        }
-      />
+      {allHubRows(store, state).length > 0 && (
+        <EmptyState
+          icon={MessagesSquare}
+          title={store.i18n.t("hub.pick")}
+          action={
+            firstHost && (
+              <Button
+                onClick={() => {
+                  store.subscriptions.select(firstHost.id, null);
+                  go({ name: "new-session", host: firstHost.id });
+                }}
+              >
+                {store.i18n.t("sidebar.newSession")}
+              </Button>
+            )
+          }
+        />
+      )}
       <QuotaPanel store={store} />
     </div>
   );

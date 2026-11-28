@@ -1,4 +1,4 @@
-import { Server, X } from "lucide-react";
+import { MessagesSquare, SearchX, Server, X } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { HostsBanner } from "@/features/hosts/ui.ts";
@@ -10,6 +10,7 @@ import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { InlineNotice } from "../../shared/feedback/index.ts";
 import { ALL_SCOPE, awayKey } from "../costs/index.ts";
 import type { HubFilter, HubRow, HubView } from "./domain/hub.ts";
+import { DEFAULT_HUB_FILTER } from "./domain/hub.ts";
 import { filterCount, hostlessHub, personasOf } from "./domain/hub-derive.ts";
 import { projectName } from "./domain/hub-scope.ts";
 import { HUB_ROW_CAP } from "./domain/hub-view.ts";
@@ -114,6 +115,13 @@ export function SessionsHub(
   const active = filterCount(filter);
   const starter = newSessionHost(state.hosts, state.selected);
   const hostless = hostlessHub(state.hosts, rows.length);
+  /** Nothing is listed, though the host is there: no session yet, or the filters left none. */
+  const nothingListed = !hostless && groups.length === 0;
+  const newSession = () => {
+    if (!starter) return;
+    store.subscriptions.select(starter.id, null);
+    store.router.push({ name: "new-session", host: starter.id });
+  };
   const toolbar = (
     <HubToolbar
       store={store}
@@ -140,13 +148,7 @@ export function SessionsHub(
       toolbar={toolbar}
       actions={
         starter && (
-          <Button
-            size="sm"
-            onClick={() => {
-              store.subscriptions.select(starter.id, null);
-              store.router.push({ name: "new-session", host: starter.id });
-            }}
-          >
+          <Button size="sm" onClick={newSession}>
             {t("sidebar.newSession")}
           </Button>
         )
@@ -191,6 +193,24 @@ export function SessionsHub(
             collapseLabel={t("hub.collapseAll")}
             onExpand={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, true])))}
             onCollapse={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, false])))}
+          />
+        )}
+        {nothingListed && rows.length > 0 && (
+          <EmptyState
+            icon={SearchX}
+            title={t("hub.noMatch")}
+            action={
+              <Button variant="outline" onClick={() => set(DEFAULT_HUB_FILTER)}>
+                {t("hub.clearFilters")}
+              </Button>
+            }
+          />
+        )}
+        {nothingListed && rows.length === 0 && !scopedProject && !only && !picked && (
+          <EmptyState
+            icon={MessagesSquare}
+            title={t("hub.noSessions")}
+            action={starter && <Button onClick={newSession}>{t("sidebar.newSession")}</Button>}
           />
         )}
         {only && (
