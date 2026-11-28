@@ -31,10 +31,12 @@ async function openCard(
       "card.get": (payload: { cardId: string }) => {
         asks++;
         if (answer === "not-found" || (answer === "refused-then-gone" && asks > 1)) {
-          throw new RequestError("card_not_found", "no such card");
+          throw new RequestError("not_found", "no such card", "card_not_found", {
+            id: payload.cardId,
+          });
         }
         if (answer === "refused" || answer === "refused-then-gone") {
-          throw new RequestError("search_busy", "busy");
+          throw new RequestError("busy", "busy", "search_busy");
         }
         return new Promise((resolve) => {
           release = () => resolve(null);
@@ -157,9 +159,9 @@ describe("card-not-found-ui", () => {
 
   test("in Portuguese the failure speaks Portuguese", async () => {
     await openCard("refused", "pt-BR");
-    expect(
-      await settleMaybe(() => failure().includes("Não foi possível ler o card."), 3000),
-    ).toBe(true);
+    expect(await settleMaybe(() => failure().includes("Não foi possível ler o card."), 3000)).toBe(
+      true,
+    );
     expect(screen.queryByRole("button", { name: "Tentar de novo" }) !== null).toBe(true);
   });
 });
