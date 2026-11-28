@@ -14,7 +14,7 @@ describe("the quota plot (#4430)", () => {
       { takenAt: at(11), utilization: 0.5 },
       { takenAt: at(12), utilization: 1 },
     ]);
-    expect(dots).toEqual([
+    expect(dots.map(({ x, y }) => ({ x, y }))).toEqual([
       { x: left, y: bottom },
       { x: (left + right) / 2, y: (top + bottom) / 2 },
       { x: right, y: top },

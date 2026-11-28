@@ -307,11 +307,15 @@ describe.each(["en", "pt-BR"] as const)("the quota screens, states (%s)", (lang)
       samples,
     });
     /** A host that answers each window from `answers` (a missing one is a refused read) and counts its reads. */
-    function chartsStore(answers: Record<string, QuotaHistory | null>) {
+    function chartsStore(
+      answers: Record<string, QuotaHistory | null>,
+      when: (iso: string) => string = (iso) => iso.slice(11, 16),
+    ) {
       const reads: string[] = [];
       const store = {
         i18n: { t },
         formatTime: (iso: string) => iso.slice(11, 16),
+        formatWhen: when,
         hostCommand: async (_host: string, _command: string, args: { window: string }) => {
           reads.push(args.window);
           return answers[args.window] ?? null;
@@ -446,6 +450,46 @@ describe.each(["en", "pt-BR"] as const)("the quota screens, states (%s)", (lang)
           name: t("quotaCharts.utilizationUnknown", { label: SEVEN, from: "10:00", to: "12:00" }),
         }),
       ).not.toBeNull();
+    });
+
+    test("a window with no readings next to one with readings says so, not a bare card", async () => {
+      const { store } = chartsStore({
+        five_hour: answered("five_hour", sample(10, 0.4)),
+        seven_day: answered("seven_day"),
+      });
+      mount(store);
+      await settle(() => dots(FIVE) === 1);
+      const card = screen.queryByRole("region", {
+        name: t("quotaCharts.window", { label: SEVEN }),
+      });
+      expect(card?.textContent?.includes(t("quotaCharts.empty"))).toBe(true);
+    });
+
+    test("the range names the day of a reading that is not from today", async () => {
+      const { store } = chartsStore(
+        { seven_day: answered("seven_day", sample(10, 0.2), sample(12, 0.4)) },
+        (iso) => `${iso.slice(5, 10)} ${iso.slice(11, 16)}`,
+      );
+      mount(store);
+      await settle(() => dots(SEVEN) === 2);
+      expect(
+        screen.queryByText(t("quotaCharts.range", { from: "11-21 10:00", to: "11-21 12:00" })),
+      ).not.toBeNull();
+    });
+
+    test("the accessible name says 100% for a reading past 100%, as the plot draws it", async () => {
+      const { store } = chartsStore({
+        five_hour: answered("five_hour", sample(10, 0.2), sample(12, 1.2)),
+      });
+      mount(store);
+      await settle(() => dots(FIVE) === 2);
+      const name = t("quotaCharts.utilization", {
+        label: FIVE,
+        value: "100",
+        from: "10:00",
+        to: "12:00",
+      });
+      expect(screen.queryByRole("img", { name })).not.toBeNull();
     });
 
     test("the chart follows its card's width and a long project key wraps", async () => {
