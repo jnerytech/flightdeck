@@ -15,6 +15,13 @@ import type { AppStore } from "../../lib/app-store.ts";
 export function SessionFiles(
   props: Readonly<{ store: AppStore; hostId: string; claudeSessionId: string }>,
 ) {
+  // Another session starts blank: the old one's list or failure is not shown under it.
+  return <SessionFilesRead key={`${props.hostId}:${props.claudeSessionId}`} {...props} />;
+}
+
+function SessionFilesRead(
+  props: Readonly<{ store: AppStore; hostId: string; claudeSessionId: string }>,
+) {
   const t = useT();
   const { store, hostId, claudeSessionId } = props;
   const titleId = useId();
@@ -27,9 +34,10 @@ export function SessionFiles(
   // biome-ignore lint/correctness/useExhaustiveDependencies: `reads` only asks again, after Try again
   useEffect(() => {
     let live = true;
-    void store.hostCommand(hostId, "session.files", { claudeSessionId }).then((result) => {
+    // `hostRequest`, not `hostCommand`: the block explains a refusal itself, no banner on top.
+    void store.hostRequest(hostId, "session.files", { claudeSessionId }).then((result) => {
       if (!live) return;
-      setFiles(result ? result.files : "failed");
+      setFiles(result.ok ? result.data.files : "failed");
       setRetrying(false);
     });
     return () => {
@@ -58,6 +66,7 @@ export function SessionFiles(
             type="button"
             variant="outline"
             size="xs"
+            aria-disabled={retrying}
             onClick={() => {
               if (retrying) return;
               setRetrying(true);
