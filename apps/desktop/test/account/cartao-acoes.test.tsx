@@ -208,7 +208,7 @@ describe("conta-cartao-acoes: signed out", () => {
         (o.textContent ?? "").startsWith("Could not copy."),
       ),
     );
-    expect(button("Copy command") !== null).toBe(true);
+    expect(button("Copy command")).not.toBeNull();
     await settle(() =>
       [...document.querySelectorAll("output")].every(
         (o) => !(o.textContent ?? "").startsWith("Could not copy."),

@@ -104,7 +104,7 @@ describe("activity cards: a long title and a request the board cannot answer (#4
     await act(async () => {
       if (open) fireEvent.click(open);
     });
-    expect(opened.length).toBe(1);
+    expect(opened).toHaveLength(1);
     expect(opened[0]?.[0]).toBe(card?.getAttribute("aria-label") ?? "");
     expect(opened[0]?.[1]).toBe(false);
   });

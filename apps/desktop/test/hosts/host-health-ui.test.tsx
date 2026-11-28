@@ -567,7 +567,7 @@ describe("host-health-ui: the result of a check, a failed read, an offline host,
         ),
     );
     expect((live()?.textContent ?? "").includes("Claude Code hooks: fixed")).toBe(true);
-    expect(document.activeElement === live()).toBe(true);
+    expect(document.activeElement === live()).toBe(true); // NOSONAR: a failed toBe or toBeNull on a DOM node prints its whole happy-dom graph; the boolean fails in one line
   });
 
   test("the result line is the answer to what was asked: a later read nobody asked for does not rewrite it", async () => {

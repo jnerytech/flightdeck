@@ -897,7 +897,7 @@ describe("linha-do-tempo-falhas: the result of a fork into the terminal", () => 
       .find((el) => /Conversation forked/.test(el.textContent ?? ""));
     expect(status?.textContent?.includes("claude --resume c2")).toBe(true);
     const copy = screen.queryByRole("button", { name: "Copy the command" });
-    expect(document.activeElement === copy).toBe(true);
+    expect(document.activeElement === copy).toBe(true); // NOSONAR: a failed toBe or toBeNull on a DOM node prints its whole happy-dom graph; the boolean fails in one line
     // A screen reader that skips a live region inserted with its text still reads it with the focused button.
     expect(copy?.getAttribute("aria-describedby") === status?.id && !!status?.id).toBe(true);
   });
@@ -910,7 +910,7 @@ describe("linha-do-tempo-falhas: the result of a fork into the terminal", () => 
       .find((el) => /Conversa bifurcada/.test(el.textContent ?? ""));
     expect(status?.textContent?.includes("claude --resume c2")).toBe(true);
     const copy = screen.queryByRole("button", { name: "Copiar o comando" });
-    expect(document.activeElement === copy).toBe(true);
+    expect(document.activeElement === copy).toBe(true); // NOSONAR: a failed toBe or toBeNull on a DOM node prints its whole happy-dom graph; the boolean fails in one line
   });
 });
 

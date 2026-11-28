@@ -211,13 +211,13 @@ describe("conta-cartao-ui: signed in", () => {
     const line = inCard()
       .queryAllByRole("status")
       .find((el) => el.textContent === "Could not refresh: this is the last reading.");
-    expect(line === undefined).toBe(false);
+    expect(line).toBeDefined();
     unmount();
     show({ state: state({ stale: true, error: "account_unavailable" }) }, "pt-BR");
     const pt = inCard()
       .queryAllByRole("status")
       .find((el) => el.textContent === "Não foi possível atualizar: esta é a última leitura.");
-    expect(pt === undefined).toBe(false);
+    expect(pt).toBeDefined();
   });
 
   test("the reset time is in the text in pt-BR too (#4350)", () => {

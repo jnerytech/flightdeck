@@ -142,7 +142,7 @@ describe("backup-drive-restore-ui: restart after a restore (#4347)", () => {
   test("where the app cannot restart, the result offers no Restart now", async () => {
     await open();
     await restoreFromDrive();
-    expect(control("Restart now") === null).toBe(true);
+    expect(control("Restart now") === null).toBe(true); // NOSONAR: a failed toBe or toBeNull on a DOM node prints its whole happy-dom graph; the boolean fails in one line
   });
 });
 

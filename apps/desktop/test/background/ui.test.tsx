@@ -273,7 +273,7 @@ describe("bg-ui: the actions of a session", () => {
       await settle(() => screen.queryByText("Mensagem enviada.") !== null);
       expect(screen.queryByText("Mensagem enviada.")).not.toBeNull();
       expect(field.value).toBe("");
-      expect(document.activeElement === field).toBe(true);
+      expect(document.activeElement === field).toBe(true); // NOSONAR: a failed toBe or toBeNull on a DOM node prints its whole happy-dom graph; the boolean fails in one line
     });
 
     test("a refusal is said beside the field, the text stays and the field has the focus", async () => {
@@ -284,7 +284,7 @@ describe("bg-ui: the actions of a session", () => {
       await settle(() => screen.queryByText(/A mensagem não foi enviada/) !== null);
       expect(screen.queryByText(/A mensagem não foi enviada/)).not.toBeNull();
       expect(field.value).toBe("de novo");
-      expect(document.activeElement === field).toBe(true);
+      expect(document.activeElement === field).toBe(true); // NOSONAR: a failed toBe or toBeNull on a DOM node prints its whole happy-dom graph; the boolean fails in one line
     });
 
     test("in English the status line is English", async () => {
@@ -321,7 +321,7 @@ describe("bg-ui: the actions of a session", () => {
     await click("Parar a sessão");
     await settle(() => daemon.commands.some((c) => c.type === "bg.stop"));
     await settle(() => document.activeElement === panel());
-    expect(document.activeElement === panel()).toBe(true);
+    expect(document.activeElement === panel()).toBe(true); // NOSONAR: a failed toBe or toBeNull on a DOM node prints its whole happy-dom graph; the boolean fails in one line
   });
 
   test("two presses of Reiniciar in a row send one request (#4169)", async () => {

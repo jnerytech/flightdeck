@@ -106,8 +106,8 @@ describe("host-offline-ui", () => {
       for (const url of ["ws://127.0.0.1:7420/v1/ws", "ws://192.168.1.9:7420/v1/ws"]) {
         const region = await banner({ url, status: "connecting", retry: null }, { language });
         expect(region.textContent ?? "").toContain(`${reaching[language]} ${url}…`);
-        expect(region.querySelectorAll("p").length).toBe(1);
-        expect(region.querySelectorAll("button").length).toBe(1);
+        expect(region.querySelectorAll("p")).toHaveLength(1);
+        expect(region.querySelectorAll("button")).toHaveLength(1);
         cleanup();
       }
     }

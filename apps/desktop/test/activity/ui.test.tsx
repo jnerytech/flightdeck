@@ -684,7 +684,7 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     expect(has(screen.queryByText("Reaching your hosts…"))).toBe(true);
     cleanup();
     render(setup(SPECS).view(SPECS));
-    expect(columnNames().length).toBe(3);
+    expect(columnNames()).toHaveLength(3);
     expect(has(screen.queryByText("Reaching your hosts…"))).toBe(false);
   });
 
@@ -704,7 +704,7 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     const w = setup(SPECS, { hosts: "one-online" });
     render(w.view([]));
     expect(has(screen.queryByText("Reaching your hosts…"))).toBe(false);
-    expect(columnNames().length).toBe(3);
+    expect(columnNames()).toHaveLength(3);
   });
 
   test("sessions that Idle hides are known sessions: no loading line while a host is still being reached (#4241)", () => {
