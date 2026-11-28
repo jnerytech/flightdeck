@@ -42,6 +42,10 @@ interface Setup {
   /** #1406: answers by request, before `reply`; undefined falls through to it. */
   answer?(hostId: string, type: string, payload: { cardId?: string; target?: string }): unknown;
   language?: "en" | "pt-BR";
+  /** #4461: the hosts each read of the boards could not read, in order; the last one repeats. */
+  unread?: string[][];
+  /** #4461: a read that waits until the test lets it answer. */
+  hold?: boolean;
 }
 
 function open(setup: Setup = {}) {
@@ -53,7 +57,14 @@ function open(setup: Setup = {}) {
   const opened: string[] = [];
   const went: object[] = [];
   // The boards are read through the host connections, which a test does not have: the cards are seeded.
-  store.palette.load = (async () => {}) as never;
+  let loads = 0;
+  const release: Array<() => void> = [];
+  store.palette.loadAndReport = (async () => {
+    const unread = setup.unread?.[Math.min(loads, setup.unread.length - 1)] ?? [];
+    loads += 1;
+    if (setup.hold) await new Promise<void>((resolve) => release.push(resolve));
+    return { unread };
+  }) as never;
   store.hostCommand = (async () => null) as never;
   store.hostRequest = (async (hostId: string, type: string, payload: unknown) => {
     asked.push([hostId, type, payload]);
@@ -80,7 +91,16 @@ function open(setup: Setup = {}) {
       <PullRequestsPage store={store} go={(route) => void went.push(route)} />
     </TContext.Provider>,
   );
-  return { store, asked, opened, went };
+  return {
+    store,
+    asked,
+    opened,
+    went,
+    loads: () => loads,
+    release: () => {
+      for (const resolve of release.splice(0)) resolve();
+    },
+  };
 }
 
 const rows = () => [...document.querySelectorAll<HTMLElement>("[data-slot='pr-row']")];
@@ -490,5 +510,77 @@ describe("pull-requests-ui: Update from the base for every listed PR (#1406)", (
     expect(summary()).toBe(
       "Atualizados: Card a. Já em dia: Card b. Conflito, ficou como estava: Card c (Atualizar com main dá conflito em: src/c.ts).",
     );
+  });
+});
+
+// #4461: a host whose boards could not be read is not a host with no PR: the page names it and offers to
+// read again, and says "No open pull requests." only when every online host was read.
+describe("pull-requests-ui: a host that could not be read is not an empty one (#4461)", () => {
+  const alert = () => screen.queryByRole("alert");
+
+  for (const [language, empty, tryAgain, said] of [
+    ["en", "No open pull requests.", "Try again", /beta/],
+    ["pt-BR", "Nenhum pull request aberto.", "Tentar de novo", /beta/],
+  ] as const) {
+    test(`${language}: a host that could not be read is named, the empty state is not shown, and Try again reads again`, async () => {
+      const { loads } = open({ language, cards: {}, unread: [["h2"], []] });
+      await settleMaybe(() => alert() !== null);
+      expect({
+        named: said.test(alert()?.textContent ?? ""),
+        empty: screen.queryByText(empty) !== null,
+        retry: screen.queryByRole("button", { name: tryAgain }) !== null,
+        loads: loads(),
+      }).toEqual({ named: true, empty: false, retry: true, loads: 1 });
+      await click(screen.queryByRole("button", { name: tryAgain }));
+      await settle(() => screen.queryByText(empty) !== null);
+      expect({ alert: alert() !== null, loads: loads() }).toEqual({ alert: false, loads: 2 });
+    });
+  }
+
+  test("Try again shows the page reading while the host answers, instead of the old notice", async () => {
+    const { release } = open({ cards: {}, unread: [["h2"], []], hold: true });
+    release();
+    await settleMaybe(() => alert() !== null);
+    await click(screen.queryByRole("button", { name: "Try again" }));
+    expect({
+      loading: screen.queryByRole("status", { name: "Reading the pull requests…" }) !== null,
+      notice: alert() !== null,
+    }).toEqual({ loading: true, notice: false });
+    release();
+    await settle(() => screen.queryByText("No open pull requests.") !== null);
+  });
+
+  test("every online host read and no PR open: the empty state, no notice", async () => {
+    open({ cards: {}, unread: [[]] });
+    await settle(() => screen.queryByText("No open pull requests.") !== null);
+    expect(alert()).toBeNull();
+  });
+
+  test("a host that could not be read next to rows of another: the rows stay and the notice names it", async () => {
+    open({ cards: { "h1/a": card("a") }, unread: [["h2"]] });
+    await settleMaybe(() => alert() !== null);
+    expect({
+      rows: rows().length,
+      named: /beta/.test(alert()?.textContent ?? ""),
+      alphaNamed: /alpha/.test(alert()?.textContent ?? ""),
+    }).toEqual({ rows: 1, named: true, alphaNamed: false });
+  });
+
+  test("a host that comes back is read again, and until then the page is loading, not empty", async () => {
+    const { store, loads, release } = open({ cards: {}, unread: [[]], hold: true });
+    release();
+    await settle(() => screen.queryByText("No open pull requests.") !== null);
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({
+        hosts: [host("h1", "alpha", [], "offline"), host("h2", "beta", [], "online")],
+      });
+    });
+    await settle(() => loads() === 2);
+    expect({
+      loading: screen.queryByRole("status", { name: "Reading the pull requests…" }) !== null,
+      empty: screen.queryByText("No open pull requests.") !== null,
+    }).toEqual({ loading: true, empty: false });
+    release();
+    await settle(() => screen.queryByText("No open pull requests.") !== null);
   });
 });

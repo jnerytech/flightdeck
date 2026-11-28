@@ -195,11 +195,12 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
     await openBoard(repo);
     await createCard("Login");
     const asked: string[] = [];
-    const command = store.hostCommand.bind(store);
-    store.hostCommand = (async (id: string, type: never, payload: never) => {
+    // The Start dialog asks through hostRequest, so a refusal stays in the dialog (#4462).
+    const request = store.hostRequest.bind(store);
+    store.hostRequest = ((id: string, type: never, payload: never) => {
       asked.push(type);
-      return command(id, type, payload);
-    }) as typeof store.hostCommand;
+      return request(id, type, payload);
+    }) as typeof store.hostRequest;
     await openCardMenu("Login");
     await act(async () => {
       fireEvent.click(screen.getByRole("menuitem", { name: "Iniciar card" }));

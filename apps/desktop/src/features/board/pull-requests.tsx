@@ -1,8 +1,15 @@
 import { GitPullRequest } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { refusalText } from "@/i18n/errors";
 import { ActionButton } from "@/shared/feedback/index.ts";
-import { EmptyState, Inline, LoadingState, Page, Stack } from "@/shared/layout/index.ts";
+import {
+  EmptyState,
+  ErrorState,
+  Inline,
+  LoadingState,
+  Page,
+  Stack,
+} from "@/shared/layout/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { useStoreSlice } from "../../lib/use-store.ts";
@@ -26,7 +33,15 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
   const { t } = store.i18n;
   const state = useStoreSlice(store, SLICE);
   const rows = useMemo(() => openPullRequests(state), [state]);
-  const [loaded, setLoaded] = useState(false);
+  /** The hosts the last read could not read (#4461); `null` while a read is on its way. */
+  const [unread, setUnread] = useState<string[] | null>(null);
+  const latest = useRef(0);
+  const read = useCallback(async () => {
+    const mine = ++latest.current;
+    const result = await store.palette.loadAndReport();
+    // An answer that comes after a newer read was sent is dropped.
+    if (mine === latest.current) setUnread(result.unread);
+  }, [store]);
   /** The card whose merge is being asked, or was last asked: its outcome stays above the list. */
   const [merging, setMerging] = useState<{ hostId: string; cardId: string } | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -35,8 +50,16 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
   const hostKey = state.hosts.map((h) => `${h.id}:${h.status}`).join(",");
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again when the set of hosts or their status changes
   useEffect(() => {
-    void store.palette.load().finally(() => setLoaded(true));
-  }, [store, hostKey]);
+    // A host that connects (or reconnects) is read from scratch: until it answers the page is loading, not empty.
+    setUnread(null);
+    void read();
+    return () => {
+      latest.current += 1;
+    };
+  }, [read, hostKey]);
+  const unreadNames = state.hosts
+    .filter((h) => h.status === "online" && unread?.includes(h.id))
+    .map((h) => h.name);
 
   // The watch of each card comes with the page, for the cards whose host watches and has none yet.
   const toWatch = rows.filter(
@@ -150,9 +173,9 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
     );
   } else if (!state.hosts.some((host) => host.status === "online")) {
     body = <EmptyState icon={GitPullRequest} title={t("pullRequests.noHosts")} />;
-  } else if (!loaded) {
+  } else if (unread === null) {
     body = <LoadingState label={t("pullRequests.loading")} />;
-  } else {
+  } else if (unreadNames.length === 0) {
     body = (
       <EmptyState
         icon={GitPullRequest}
@@ -192,6 +215,17 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
           </Stack>
         )}
         <output className="block text-sm empty:hidden">{summary}</output>
+        {unreadNames.length > 0 && (
+          <ErrorState
+            message={t("pullRequests.unread", { hosts: unreadNames.join(", ") })}
+            retryLabel={t("pullRequests.retry")}
+            onRetry={() => {
+              // The notice gives way to the loading state, so the click shows it did something.
+              setUnread(null);
+              void read();
+            }}
+          />
+        )}
         {refusal && <PrRefusal text={refusal} />}
         {merging && target && (
           <CardMergePr
