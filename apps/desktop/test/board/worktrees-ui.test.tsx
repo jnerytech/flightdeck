@@ -507,3 +507,64 @@ describe("worktrees-seguranca-ui: what is removed is what is on the screen (F7)"
     expect(region()).toContain("git said no");
   });
 });
+
+// #4455: the removal's confirmation lists each worktree on its own line, as the Trust dialog lists commands.
+describe("worktrees-ui: the removal's confirmation is a list (#4455)", () => {
+  const LINES = {
+    en: {
+      remove: "Remove 3 worktrees",
+      lines: ['fd/a (card "Fix; retry", Done)', "fd/b", 'fd/c (card "Docs", Done)'],
+    },
+    "pt-BR": {
+      remove: "Remover 3 worktrees",
+      lines: ['fd/a (cartão "Fix; retry", Concluídas)', "fd/b", 'fd/c (cartão "Docs", Concluídas)'],
+    },
+  } as const;
+  const SEVERAL: WorktreesResult = {
+    worktrees: [
+      item("a", { cardId: "c1", cardTitle: "Fix; retry", column: "done" }),
+      item("b"),
+      item("c", { cardId: "c2", cardTitle: "Docs", column: "done" }),
+    ],
+    disks: [],
+  };
+
+  for (const language of ["en", "pt-BR"] as const) {
+    test(`${language}: one line per worktree, in order, a title with a semicolon on one line, and the sentence names none`, async () => {
+      const w = setup({ list: SEVERAL, language });
+      render(w.view());
+      await ready();
+      for (const name of ["a", "b", "c"]) await click(box(name));
+      await click(screen.queryByRole("button", { name: LINES[language].remove }) as HTMLElement);
+      const dialog = screen.queryByRole("alertdialog");
+      expect(dialog).not.toBeNull();
+      const list = within(dialog as HTMLElement).queryByRole("list");
+      expect(list).not.toBeNull();
+      expect([...(list?.querySelectorAll("li") ?? [])].map((li) => li.textContent)).toEqual([
+        ...LINES[language].lines,
+      ]);
+      const sentence = (dialog as HTMLElement).querySelector("[id*=description]")?.textContent;
+      expect((sentence ?? "").includes("fd/a")).toBe(false);
+      expect((sentence ?? "").includes("fd/b")).toBe(false);
+    });
+  }
+
+  test("a long list scrolls inside the dialog and takes the focus, so the keys can scroll it", async () => {
+    const many: WorktreesResult = {
+      worktrees: Array.from({ length: 30 }, (_, n) => item(`w${n}`)),
+      disks: [],
+    };
+    const w = setup({ list: many });
+    render(w.view());
+    await ready();
+    await click(screen.queryByRole("button", { name: "Select all that can go" }) as HTMLElement);
+    await click(screen.queryByRole("button", { name: "Remove 30 worktrees" }) as HTMLElement);
+    const dialog = screen.queryByRole("alertdialog") as HTMLElement;
+    const list = within(dialog).queryByRole("list");
+    expect(list).not.toBeNull();
+    expect(list?.className.includes("overflow-y-auto")).toBe(true);
+    expect(list?.getAttribute("tabindex")).toBe("0");
+    // The buttons stay in the dialog, below the list.
+    expect(within(dialog).queryByRole("button", { name: "Remove worktrees" })).not.toBeNull();
+  });
+});
