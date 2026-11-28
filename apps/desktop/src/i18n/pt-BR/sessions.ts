@@ -257,6 +257,8 @@ export const sessions = {
     pruned: "conversa removida pela retenção",
     earlier: {
       title: "Antes de retomar",
+      loading: "Carregando os turnos anteriores…",
+      retry: "Tentar de novo",
       unreadable: "Não foi possível ler os turnos anteriores: {reason}",
       empty: "O transcript não tem turnos anteriores para mostrar.",
       truncated:

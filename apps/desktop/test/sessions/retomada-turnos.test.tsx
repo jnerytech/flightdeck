@@ -80,7 +80,7 @@ function scriptedStore(
   const store = {
     i18n: { t: translator(language) },
     hostRequest: async () => {
-      const answer = answers[Math.min(asked, answers.length - 1)];
+      const answer = answers[Math.min(asked, answers.length - 1)] ?? null;
       asked += 1;
       if (answer === null) return new Promise<never>(() => {});
       if (!answer.ok) return { ok: false, code: "refused", message: answer.message };
