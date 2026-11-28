@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { translator } from "../../src/i18n/index.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
-import { settle, uiIdle } from "../wait.ts";
+import { settle, settleMaybe, uiIdle } from "../wait.ts";
 import { personasHost } from "./ui-setup.ts";
 
 registerDom();
@@ -164,6 +165,33 @@ describe("personas-ui: the editor", () => {
     await click("Salvar persona");
     expect(screen.queryByRole("alert")?.textContent).toContain("A persona tem um segredo");
     expect(store.personas.global.list()).toEqual([]);
+  });
+
+  test("a saved persona is confirmed by name, whether it goes to the host or the app (#4533)", async () => {
+    await open();
+    await newPersona();
+    await click("Salvar persona");
+    expect(await settleMaybe(() => screen.queryByText("Persona salva: Meu QA") !== null)).toBe(
+      true,
+    );
+    cleanup();
+    await open();
+    await newPersona();
+    await fill("Onde guardar", "app");
+    await click("Salvar persona");
+    expect(await settleMaybe(() => screen.queryByText("Persona salva: Meu QA") !== null)).toBe(
+      true,
+    );
+  });
+
+  test("a refused save is not confirmed, and the English words are the dictionary's (#4533)", async () => {
+    await open();
+    await newPersona();
+    await fill("Instruções", "Use o token ghp_abcdefghijklmnopqrstuvwxyz0123456789 no deploy.");
+    await click("Salvar persona");
+    expect(screen.queryByRole("alert")?.textContent).toContain("A persona tem um segredo");
+    expect(screen.queryByText("Persona salva: Meu QA") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(translator("en")("personas.editor.saved", { name: "QA" })).toBe("Persona saved: QA");
   });
 
   test("the icon typed is kept with the persona", async () => {

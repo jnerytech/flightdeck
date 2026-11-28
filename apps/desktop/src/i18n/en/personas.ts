@@ -78,6 +78,7 @@ export const personas = {
       iconHelp: "Optional. Lowercase letters, digits and dashes, up to 30.",
       iconInvalid: "Use lowercase letters, digits and dashes, up to 30.",
       saveOff: "To save, fill in or fix: {fields}.",
+      saved: "Persona saved: {name}",
       placeOption: {
         host: "On the host",
         app: "In the app (global)",
