@@ -18,9 +18,11 @@ import {
   activityBoard,
   activityOptions,
   activityStage,
+  clampFilter,
   NO_ACTIVITY_FILTER,
 } from "./domain/activity.ts";
 import { useBoardTransition } from "./use-board-transition.ts";
+import { useKeptTitleFocus } from "./use-kept-title-focus.ts";
 
 /** How often the board reads the clock again. */
 const CLOCK_TICK_MS = 30_000;
@@ -52,8 +54,11 @@ export function ActivityBoard(
     return () => clearInterval(id);
   }, [props.tickMs]);
   const nowMs = store.now();
-  const data = activityBoard(state, nowMs, filter, showIdle);
   const options = activityOptions(state);
+  // #4508: a filter value that no live session has any more is dropped, so the controls and the cards agree.
+  const kept = clampFilter(filter, options);
+  if (kept !== filter) setFilter(kept);
+  const data = activityBoard(state, nowMs, kept, showIdle);
   const signature = ACTIVITY_COLUMNS.flatMap((column) =>
     data.columns[column].map((card) => `${card.row.key}:${column}`),
   ).join("|");
@@ -65,6 +70,7 @@ export function ActivityBoard(
   // nothing: the focus stays on the button and nothing is said.
   const titles = useRef(new Map<string, HTMLButtonElement>());
   const answered = useRef<{ key: string; requestId: string; said: string } | null>(null);
+  const keepTitleFocus = useKeptTitleFocus(titles);
   const [said, setSaid] = useState("");
   useEffect(() => {
     const done = answered.current;
@@ -112,7 +118,7 @@ export function ActivityBoard(
   };
   const stage = activityStage(state, data.total + data.hiddenIdle);
   const searchRef = useRef<HTMLInputElement>(null);
-  const set = (patch: Partial<ActivityFilter>) => setFilter({ ...filter, ...patch });
+  const set = (patch: Partial<ActivityFilter>) => setFilter({ ...kept, ...patch });
   return (
     <Page
       title={t("activityBoard.title")}
@@ -124,14 +130,14 @@ export function ActivityBoard(
             placeholder={t("activityBoard.searchPlaceholder")}
             className="activity-search"
             ref={searchRef}
-            value={filter.text}
+            value={kept.text}
             onChange={(e) => set({ text: e.target.value })}
           />
           <NativeSelect
             compact
             inline
             aria-label={t("activityBoard.host")}
-            value={filter.host}
+            value={kept.host}
             onChange={(e) => set({ host: e.target.value })}
           >
             <option value="">{t("activityBoard.allHosts")}</option>
@@ -145,7 +151,7 @@ export function ActivityBoard(
             compact
             inline
             aria-label={t("activityBoard.project")}
-            value={filter.project}
+            value={kept.project}
             onChange={(e) => set({ project: e.target.value })}
           >
             <option value="">{t("activityBoard.allProjects")}</option>
@@ -160,7 +166,7 @@ export function ActivityBoard(
               compact
               inline
               aria-label={t("activityBoard.persona")}
-              value={filter.persona}
+              value={kept.persona}
               onChange={(e) => set({ persona: e.target.value })}
             >
               <option value="">{t("activityBoard.allPersonas")}</option>
@@ -247,6 +253,7 @@ export function ActivityBoard(
                     ? { failure: t("activityBoard.answerFailed", { reason: failed.reason }) }
                     : {})}
                   onOpen={(newTab) => props.onOpen(card.row, newTab)}
+                  onTitleFocus={(on) => keepTitleFocus(card.row.key, on)}
                   titleRef={(button) => {
                     if (button) titles.current.set(card.row.key, button);
                     else titles.current.delete(card.row.key);

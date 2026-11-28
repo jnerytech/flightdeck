@@ -164,6 +164,8 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  /* #4510: a long URL or path with no spaces breaks inside the card instead of being cut. */
+  overflow-wrap: anywhere;
   color: var(--muted-foreground);
   font-size: 0.75rem;
 }
