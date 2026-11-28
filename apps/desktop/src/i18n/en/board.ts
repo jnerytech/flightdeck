@@ -614,6 +614,10 @@ export const board = {
     keptItem: "Kept: {branch} ({reason})",
     lowDisk: "Free disk space is under 10%: {free} of {total} left.",
     empty: "No worktrees under .flightdeck/worktrees.",
+    loading: "Reading the worktrees…",
+    readFailed: "The worktrees of this host could not be read.",
+    retry: "Try again",
+    scanFailed: "The scan failed. The list below is from the last scan.",
   },
   activityBoard: {
     quiet: "Quiet {span}",

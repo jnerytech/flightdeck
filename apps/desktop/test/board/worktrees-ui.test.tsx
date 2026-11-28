@@ -5,7 +5,7 @@ import type { WorktreeItem, WorktreesResult } from "@flightdeck/protocol";
 import { formatBytes } from "../../src/i18n/format.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
-import { settle } from "../wait.ts";
+import { settle, settleMaybe } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -572,5 +572,131 @@ describe("worktrees-ui: the removal's confirmation is a list (#4455)", () => {
     expect(list?.getAttribute("tabindex")).toBe("0");
     // The buttons stay in the dialog, below the list.
     expect(within(dialog).queryByRole("button", { name: "Remove worktrees" })).not.toBeNull();
+  });
+});
+
+// #4454: the panel said nothing while it read, after a refused read, or while a scan ran.
+describe("worktrees-ui: the panel says what its read is doing (#4454)", () => {
+  type Answer = WorktreesResult | null;
+  /** Answers worktree.list from `answers` in turn: a promise stays open until the test settles it. */
+  function answering(w: ReturnType<typeof setup>, answers: Array<Answer | Promise<Answer>>) {
+    let reads = 0;
+    const real = w.store.hostCommand;
+    w.store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
+      if (type !== "worktree.list")
+        return (real as (...args: unknown[]) => unknown)(hostId, type, payload);
+      w.asked.push([type, payload]);
+      const answer = answers[Math.min(reads, answers.length - 1)];
+      reads += 1;
+      return answer;
+    }) as never;
+  }
+  const open = () => {
+    let settleRead: (value: Answer) => void = () => {};
+    const pending = new Promise<Answer>((resolve) => {
+      settleRead = resolve;
+    });
+    return { pending, settleRead };
+  };
+  const reads = (w: ReturnType<typeof setup>) => w.asked.filter(([t]) => t === "worktree.list");
+
+  test("before the first answer the panel says it is reading", async () => {
+    const w = setup();
+    const first = open();
+    answering(w, [first.pending]);
+    render(w.view());
+    expect(screen.queryByRole("status", { name: "Reading the worktrees…" })).not.toBeNull();
+    await act(async () => first.settleRead(LIST));
+    expect(await settleMaybe(() => rows().length > 0, 1500)).toBe(true);
+    expect(screen.queryByRole("status", { name: "Reading the worktrees…" })).toBeNull();
+  });
+
+  test("a refused first read is an error with Try again, and Try again reads again", async () => {
+    const w = setup();
+    answering(w, [null, LIST]);
+    render(w.view());
+    expect(await settleMaybe(() => screen.queryByRole("alert") !== null, 1500)).toBe(true);
+    expect(screen.getByRole("alert").textContent).toContain(
+      "The worktrees of this host could not be read.",
+    );
+    expect(screen.queryByRole("status", { name: "Reading the worktrees…" })).toBeNull();
+    await click(screen.getByRole("button", { name: "Try again" }));
+    expect(await settleMaybe(() => rows().length > 0, 1500)).toBe(true);
+    expect(reads(w)).toHaveLength(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test("Try again shows the reading state while it waits, and an older slow answer never undoes a newer one", async () => {
+    const w = setup();
+    const retry = open();
+    answering(w, [null, retry.pending]);
+    render(w.view());
+    expect(await settleMaybe(() => screen.queryByRole("alert") !== null, 1500)).toBe(true);
+    await click(screen.getByRole("button", { name: "Try again" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("status", { name: "Reading the worktrees…" })).not.toBeNull();
+    await act(async () => retry.settleRead(LIST));
+    expect(await settleMaybe(() => rows().length > 0, 1500)).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test("Scan again is busy until the answer, and a second press starts no second scan", async () => {
+    const w = setup();
+    const second = open();
+    answering(w, [LIST, second.pending]);
+    render(w.view());
+    expect(await settleMaybe(() => rows().length > 0, 1500)).toBe(true);
+    const scan = () => screen.getByRole("button", { name: "Scan again" }) as HTMLButtonElement;
+    await click(scan());
+    expect([scan().disabled, scan().getAttribute("aria-busy")]).toEqual([true, "true"]);
+    await click(scan());
+    expect(reads(w)).toHaveLength(2);
+    await act(async () => second.settleRead(LIST));
+    expect(await settleMaybe(() => !scan().disabled, 1500)).toBe(true);
+    expect(scan().getAttribute("aria-busy")).toBeNull();
+  });
+
+  test("a refused scan keeps the list and says the scan failed", async () => {
+    const w = setup();
+    answering(w, [LIST, null, LIST]);
+    render(w.view());
+    expect(await settleMaybe(() => rows().length > 0, 1500)).toBe(true);
+    await click(screen.getByRole("button", { name: "Scan again" }));
+    expect(await settleMaybe(() => screen.queryByRole("alert") !== null, 1500)).toBe(true);
+    expect(screen.getByRole("alert").textContent).toContain("The scan failed");
+    expect(rows()).toHaveLength(5);
+    await click(screen.getByRole("button", { name: "Scan again" }));
+    expect(await settleMaybe(() => screen.queryByRole("alert") === null, 1500)).toBe(true);
+    expect(rows()).toHaveLength(5);
+  });
+
+  test("a new scan clears the lines about the last removal", async () => {
+    const w = setup();
+    render(w.view());
+    expect(await settleMaybe(() => rows().length > 0, 1500)).toBe(true);
+    await click(box("merged"));
+    await click(screen.getByRole("button", { name: "Remove 1 worktree" }));
+    await click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Remove worktrees" }),
+    );
+    expect(await settleMaybe(() => screen.queryByText("Freed 250 MB") !== null, 1500)).toBe(true);
+    await click(screen.getByRole("button", { name: "Scan again" }));
+    expect(await settleMaybe(() => reads(w).length >= 3, 1500)).toBe(true);
+    expect(await settleMaybe(() => screen.queryByText("Freed 250 MB") === null, 1500)).toBe(true);
+  });
+
+  test("the new texts exist in pt-BR", async () => {
+    const w = setup({ language: "pt-BR" });
+    const first = open();
+    answering(w, [first.pending, LIST]);
+    render(w.view());
+    expect(screen.queryByRole("status", { name: "Lendo as worktrees…" })).not.toBeNull();
+    await act(async () => first.settleRead(null));
+    expect(await settleMaybe(() => screen.queryByRole("alert") !== null, 1500)).toBe(true);
+    expect(screen.getByRole("alert").textContent).toContain(
+      "Não foi possível ler as worktrees deste host.",
+    );
+    await click(screen.getByRole("button", { name: "Tentar de novo" }));
+    expect(await settleMaybe(() => rows().length > 0, 1500)).toBe(true);
   });
 });

@@ -30,6 +30,8 @@ const splitTags = (text: string): string[] =>
 export function NewSecretForm(
   props: Readonly<{
     store: AppStore;
+    /** Told what to say, already translated, about a secret saved or imported before the form closes. */
+    onSaved(message: string): void;
     onClose(): void;
     /** The tags a new secret starts with: the selected client's vault tag (phase 29). */
     defaultTags?: string;
@@ -45,16 +47,22 @@ export function NewSecretForm(
   const [tags, setTags] = useState(props.defaultTags ?? "");
   const [deleteOriginal, setDeleteOriginal] = useState(false);
   const [publicKey, setPublicKey] = useState<string | null>(null);
+  // What the form says about the key it just made: the form stays open for its public key.
+  const [made, setMade] = useState("");
 
   const save = async () => {
     const meta = await store.secrets.add({ name: name.trim(), type, value, tags: splitTags(tags) });
-    if (meta) props.onClose();
+    if (!meta) return;
+    props.onSaved(t("vault.savedAs", { name: meta.name }));
+    props.onClose();
   };
 
   const generate = async () => {
-    const made = await store.secrets.generateKey({ name: name.trim(), tags: splitTags(tags) });
-    if (!made) return;
-    setPublicKey(made.publicKey);
+    setMade("");
+    const key = await store.secrets.generateKey({ name: name.trim(), tags: splitTags(tags) });
+    if (!key) return;
+    setPublicKey(key.publicKey);
+    setMade(t("vault.generatedKey", { name: key.meta.name }));
     setName("");
   };
 
@@ -64,7 +72,9 @@ export function NewSecretForm(
       tags: splitTags(tags),
       deleteOriginal,
     });
-    if (meta) props.onClose();
+    if (!meta) return;
+    props.onSaved(t("vault.importedKey", { name: meta.name }));
+    props.onClose();
   };
 
   const saving = useBusy();
@@ -164,6 +174,9 @@ export function NewSecretForm(
       </label>
       <p id={`${id}-delete-hint`} className="text-muted-foreground text-xs">
         {t("vault.deleteOriginalHint")}
+      </p>
+      <p aria-live="polite" className="text-sm empty:sr-only">
+        {made}
       </p>
       {publicKey && (
         <div className="flex flex-col gap-1 text-sm">

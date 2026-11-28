@@ -613,6 +613,10 @@ export const board = {
     keptItem: "Mantida: {branch} ({reason})",
     lowDisk: "O espaço livre em disco está abaixo de 10%: restam {free} de {total}.",
     empty: "Nenhuma worktree em .flightdeck/worktrees.",
+    loading: "Lendo as worktrees…",
+    readFailed: "Não foi possível ler as worktrees deste host.",
+    retry: "Tentar de novo",
+    scanFailed: "A verificação falhou. A lista abaixo é da última verificação.",
   },
   activityBoard: {
     quiet: "Em silêncio {span}",
