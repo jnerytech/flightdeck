@@ -208,7 +208,7 @@ describe("badge-icon: the taskbar badge (issue #632)", () => {
 describe("the tray's top-level item is not called like a request's action (#4119)", () => {
   test.each(["en", "pt-BR"] as const)("in %s the two labels differ", (lang) => {
     const { labels } = trayMenu([], translator(lang));
-    expect(labels.show === labels.open).toBe(false);
+    expect(labels.show).not.toBe(labels.open);
   });
 
   test("the top-level item names the app, the action stays plain", () => {

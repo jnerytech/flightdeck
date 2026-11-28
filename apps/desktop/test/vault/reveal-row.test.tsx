@@ -70,28 +70,28 @@ describe("a revealed value is told in its own row (#4417)", () => {
     await reveal();
     const row = within(rowOf("github"));
     expect(row.queryByRole("status")?.textContent).toBe("github visível por 10 s");
-    expect(row.queryByRole("button", { name: "Ocultar agora: github" }) !== null).toBe(true);
-    expect(row.queryByText("Valor de github:") !== null).toBe(true);
-    expect(row.queryByText(VALUE) !== null).toBe(true);
+    expect(row.queryByRole("button", { name: "Ocultar agora: github" })).not.toBeNull();
+    expect(row.queryByText("Valor de github:")).not.toBeNull();
+    expect(row.queryByText(VALUE)).not.toBeNull();
   });
 
   test("the other row shows no status and no Hide now button", async () => {
     await open();
     await reveal();
     const other = within(rowOf("gitlab"));
-    expect(other.queryByRole("status") === null).toBe(true);
-    expect(other.queryByRole("button", { name: /Ocultar agora/ }) === null).toBe(true);
+    expect(other.queryByRole("status")).toBeNull();
+    expect(other.queryByRole("button", { name: /Ocultar agora/ })).toBeNull();
   });
 
   test("Hide now hides the value at once, says so with the name, and the focus goes back to Revelar", async () => {
     await open();
     await reveal();
     await click("Ocultar agora: github");
-    expect(screen.queryByText(VALUE) === null).toBe(true);
+    expect(screen.queryByText(VALUE)).toBeNull();
     expect(within(rowOf("github")).queryByRole("status")?.textContent).toBe("github oculto");
     const button = screen.getByRole("button", { name: "Revelar github" });
     await settle(() => document.activeElement === button);
-    expect(document.activeElement === button).toBe(true);
+    expect(document.activeElement).toBe(button);
   });
 
   test("when the time ends, the status names the secret and the focus leaves no hidden button behind", async () => {
@@ -106,11 +106,9 @@ describe("a revealed value is told in its own row (#4417)", () => {
       "github some em 5 segundos",
     );
     await pass(5_000);
-    expect(screen.queryByText(VALUE) === null).toBe(true);
+    expect(screen.queryByText(VALUE)).toBeNull();
     expect(within(rowOf("github")).queryByRole("status")?.textContent).toBe("github oculto");
-    expect(document.activeElement === screen.getByRole("button", { name: "Revelar github" })).toBe(
-      true,
-    );
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Revelar github" }));
   });
 
   test("the status never holds the value", async () => {
