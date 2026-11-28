@@ -9,7 +9,7 @@ import { buildProjectCards, type ProjectCard } from "./domain/project-cards.ts";
 
 /** What the cards hook asks of the store: the palette's load, the day, the host command and a project's key. */
 interface ProjectCardsStore extends Pick<AppKernel<object>, "hostCommand"> {
-  palette: { load(): Promise<void> };
+  palette: { load(): Promise<unknown> };
   today(): string;
   projectList: { keyOf(hostId: string, project: Project): string };
 }

@@ -17,7 +17,7 @@ import {
 interface ElsewhereStore extends Pick<AppKernel<object>, "hostCommand" | "hostRequest"> {
   getState(): { hosts: HostView[] };
   projectList: { keyOf(hostId: string, project: Project): string };
-  boardCards: { load(hostId: string, projectId: string): Promise<void> };
+  boardCards: { load(hostId: string, projectId: string): Promise<unknown> };
 }
 
 /** What another host said when the Start N confirm opened: its projects and its limit. */

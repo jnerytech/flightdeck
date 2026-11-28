@@ -59,7 +59,7 @@ function open(setup: Setup = {}) {
   // The boards are read through the host connections, which a test does not have: the cards are seeded.
   let loads = 0;
   const release: Array<() => void> = [];
-  store.palette.load = (async () => {
+  store.palette.loadAndReport = (async () => {
     const unread = setup.unread?.[Math.min(loads, setup.unread.length - 1)] ?? [];
     loads += 1;
     if (setup.hold) await new Promise<void>((resolve) => release.push(resolve));
@@ -564,7 +564,7 @@ describe("pull-requests-ui: a host that could not be read is not an empty one (#
     });
     await settle(() => loads() === 2);
     expect({
-      loading: screen.queryByText("Reading the pull requests…") !== null,
+      loading: screen.queryByRole("status", { name: "Reading the pull requests…" }) !== null,
       empty: screen.queryByText("No open pull requests.") !== null,
     }).toEqual({ loading: true, empty: false });
     release();

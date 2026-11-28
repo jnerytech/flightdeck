@@ -20,7 +20,8 @@ export interface PaletteCore {
   storage: { getItem(key: string): string | null; setItem(key: string, value: string): void };
   /** A host's projects; `null` when it could not answer. */
   loadProjects(hostId: string): Promise<readonly { id: string }[] | null>;
-  loadBoard(hostId: string, projectId: string): Promise<void>;
+  /** A project's board; `false` when the host did not answer. */
+  loadBoard(hostId: string, projectId: string): Promise<boolean>;
   loadSshTargets(hostId: string): Promise<void>;
   loadPersonas(hostId: string): Promise<void>;
   /** A host's snippets; `null` when it could not answer. */
@@ -38,12 +39,21 @@ export class PaletteSlice {
    * cards. Quiet: a host without a board (or offline) just lists less.
    */
   async load(): Promise<void> {
+    await this.loadAndReport();
+  }
+
+  /** `load`, and which online hosts did not give their projects or one of their boards: for a page that must not read that as "none" (#4461). */
+  async loadAndReport(): Promise<{ unread: string[] }> {
+    const unread: string[] = [];
     const boards = this.core
       .hosts()
       .filter((host) => host.status === "online")
       .map(async (host) => {
         const projects = await this.core.loadProjects(host.id);
-        await inSequence(projects ?? [], (project) => this.core.loadBoard(host.id, project.id));
+        const answers = await inSequence(projects ?? [], (project) =>
+          this.core.loadBoard(host.id, project.id),
+        );
+        if (projects === null || answers.includes(false)) unread.push(host.id);
       });
     const targets = this.core
       .hosts()
@@ -71,6 +81,7 @@ export class PaletteSlice {
         if (listed) this.core.keepSnippets(host.id, listed.snippets);
       });
     await Promise.all([this.core.refreshHub(), ...boards, ...targets, ...snippets, ...personas]);
+    return { unread };
   }
 
   /** What the palette was used for lately, most recent first. */

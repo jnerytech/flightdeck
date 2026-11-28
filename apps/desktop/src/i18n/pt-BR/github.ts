@@ -67,6 +67,8 @@ export const github = {
     updateLeftOut: "Ficam de fora: {items}.",
     refused: "{title}: {reason}",
     noHosts: "Nenhum host está online.",
+    unread: "Não foi possível ler os pull requests de {hosts}. Os PRs abertos deles não aparecem.",
+    retry: "Tentar de novo",
     watchOff: "Vigiar e consertar está desligado: ligue no card",
     conflict: "Em conflito com a base",
     mergeClean: "Sem conflitos",

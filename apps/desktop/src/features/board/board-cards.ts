@@ -66,11 +66,15 @@ export class BoardCardsSlice {
     for (const card of cardsIn(result)) this.onCard(hostId, card);
   }
 
-  /** #1220: one project's board on a host, its cards into the state (a host that fails says nothing). */
-  async load(hostId: string, projectId: string): Promise<void> {
+  /**
+   * #1220: one project's board on a host, its cards into the state (a host that fails says nothing).
+   * Says whether the host answered, so a caller can tell a board with no cards from one not read (#4461).
+   */
+  async load(hostId: string, projectId: string): Promise<boolean> {
     const conn = this.core.connection(hostId);
-    if (!conn) return;
+    if (!conn) return false;
     const board = await nullOnError(conn.request("board.get", { projectId }));
     this.onResult(hostId, board);
+    return board !== null;
   }
 }
