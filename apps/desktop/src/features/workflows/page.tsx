@@ -33,8 +33,12 @@ function TrustCommands(props: Readonly<{ workflow: WorkflowInfo; t: T }>) {
   return (
     <Stack as="ul" gap={1} label={t("workflowsUi.trustCommands", { name: workflow.name })}>
       {workflow.checks.map((command) => (
+        // A command may span lines (a YAML block): the breaks stay, so the person sees where each ends.
+        // The daemon lists each command once, so the command is the key.
         <li key={command}>
-          <code className="break-all rounded bg-muted font-mono text-xs">{command}</code>
+          <code className="whitespace-pre-wrap break-all rounded bg-muted font-mono text-xs">
+            {command}
+          </code>
         </li>
       ))}
     </Stack>
@@ -192,8 +196,13 @@ export function WorkflowsPage(
                     className="self-start"
                     data-target="trust"
                     disabled={far || pending !== null}
+                    aria-busy={pending === workflow.name || undefined}
                     aria-describedby={far ? `${farId}-${index}` : undefined}
-                    onClick={() => setTrusting(workflow)}
+                    onClick={() => {
+                      // The last answer is about an earlier question: it goes when a new one opens.
+                      setOutcome(null);
+                      setTrusting(workflow);
+                    }}
                   >
                     {t("workflowsUi.trust", { name: workflow.name })}
                   </Button>
