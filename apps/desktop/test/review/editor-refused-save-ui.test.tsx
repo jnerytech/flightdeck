@@ -17,19 +17,29 @@ afterEach(cleanup);
 
 type Lang = "en" | "pt-BR";
 const WORDS = {
-  en: { field: "Text of src/a.ts", save: "Save", overwrite: "Overwrite with my version" },
+  en: {
+    field: "Text of src/a.ts",
+    save: "Save",
+    overwrite: "Overwrite with my version",
+    conflict: "The file changed on disk after it was opened.",
+  },
   "pt-BR": {
     field: "Texto de src/a.ts",
     save: "Salvar",
     overwrite: "Sobrescrever com a minha versão",
+    conflict: "O arquivo mudou no disco depois de aberto.",
   },
 } as const;
 
 /** The editor of `src/a.ts`, opened over a host that reads the file and answers each write with `write`. */
-async function opened(lang: Lang, write: () => Promise<unknown>) {
+async function opened(
+  lang: Lang,
+  write: () => Promise<unknown>,
+  read: () => Promise<unknown> = async () => ({ text: "const total = a + b;\n", hash: "h1" }),
+) {
   const { store, calls } = await fakeHostStore(
     {
-      "file.read": onWire(async () => ({ text: "const total = a + b;\n", hash: "h1" })),
+      "file.read": onWire(read),
       "file.write": onWire(write),
     },
     { language: lang },
@@ -71,6 +81,33 @@ describe("a save the host refuses keeps the editor and what was written in it (#
       ).toBe(true);
       expect(screen.queryByRole("textbox", { name: words.field }) !== null).toBe(true);
       expect(screen.queryByRole("button", { name: words.save }) !== null).toBe(true);
+    });
+  }
+
+  for (const lang of ["en", "pt-BR"] as const) {
+    test(`${lang}: an overwrite whose re-read is refused keeps the editor and the conflict choices`, async () => {
+      let reads = 0;
+      const { words } = await opened(
+        lang,
+        async () => new RequestError("file_conflict", "changed"),
+        async () => {
+          reads += 1;
+          if (reads > 1) return new RequestError("unavailable", "disk gone");
+          return { text: "const total = a + b;\n", hash: "h1" };
+        },
+      );
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: words.save }));
+      });
+      expect(await settleMaybe(() => screen.queryByText(words.conflict) !== null)).toBe(true);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: words.overwrite }));
+      });
+      expect(
+        await settleMaybe(() => (screen.queryByRole("alert")?.textContent ?? "").includes("disk gone")),
+      ).toBe(true);
+      expect(screen.queryByRole("textbox", { name: words.field }) !== null).toBe(true);
+      expect(screen.queryByRole("button", { name: words.overwrite }) !== null).toBe(true);
     });
   }
 });
