@@ -530,13 +530,14 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await actions(second).click();
     await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
     // The menu's Start asks for the workflow and persona first (issue #188).
-    await c.page
-      .getByRole("dialog", { name: c.t("board.startCard") })
-      .getByRole("button", { name: c.t("cardUi.start"), exact: true })
-      .click();
-    await c.page
+    const startDialog = c.page.getByRole("dialog", { name: c.t("board.startCard") });
+    await startDialog.getByRole("button", { name: c.t("cardUi.start"), exact: true }).click();
+    // A refused start stays in the dialog with its answer (#4462); closing it frees the board.
+    await startDialog
       .getByText(c.t("daemonRefusal.card_blocked", { blockers: first }), { exact: true })
       .waitFor({ timeout: WAIT });
+    await startDialog.getByRole("button", { name: c.t("common.cancel"), exact: true }).click();
+    await startDialog.waitFor({ state: "detached", timeout: WAIT });
     await actions(first).click();
     await c.page
       .getByRole("menuitem", {
