@@ -21,6 +21,7 @@ const WORDS = {
     example: /For example/,
     open: "Show the keyboard shortcuts",
     sheet: "Keyboard shortcuts",
+    saved: "Shortcut saved: Ctrl+Alt+G",
   },
   "pt-BR": {
     region: "Atalho global",
@@ -28,6 +29,7 @@ const WORDS = {
     example: /Por exemplo/,
     open: "Mostrar os atalhos do teclado",
     sheet: "Atalhos de teclado",
+    saved: "Atalho salvo: Ctrl+Alt+G",
   },
 } as const;
 
@@ -35,10 +37,10 @@ function setup(language: "en" | "pt-BR", onShortcuts: () => void = () => {}) {
   const mem = memoryPlatform(false, language);
   const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   store.i18n.start();
-  render(
+  const screenFor = (globalShortcut: string) => (
     <Settings
       store={store}
-      settings={{ ...store.getState().settings, updaterSupported: true }}
+      settings={{ ...store.getState().settings, updaterSupported: true, globalShortcut }}
       onCloseToTray={() => {}}
       onAutostart={() => {}}
       onGlobalShortcut={() => {}}
@@ -54,8 +56,11 @@ function setup(language: "en" | "pt-BR", onShortcuts: () => void = () => {}) {
       lang={language}
       onLang={() => {}}
       t={store.i18n.t}
-    />,
+    />
   );
+  const view = render(screenFor(store.getState().settings.globalShortcut));
+  // The saved key changes as it does when the OS takes a new one.
+  return { saveAs: (key: string) => view.rerender(screenFor(key)) };
 }
 
 // Issue #4009: the field is named for what goes in it, shows an example and the page opens the list.
@@ -83,6 +88,17 @@ describe.each(["en", "pt-BR"] as const)("settings, global shortcut field (%s)", 
     );
     expect(combination).not.toBeNull();
     expect(validateShortcut(combination?.[0] ?? "").ok).toBe(true);
+  });
+
+  test("a saved shortcut is announced in the panel's status, and a first render says nothing (#4512)", () => {
+    const { saveAs } = setup(language);
+    const status = () =>
+      within(region())
+        .queryAllByRole("status")
+        .map((item) => item.textContent);
+    expect(status().includes(w.saved)).toBe(false);
+    saveAs("Ctrl+Alt+G");
+    expect(status().includes(w.saved)).toBe(true);
   });
 
   test("a button in the panel asks for the shortcut list", async () => {

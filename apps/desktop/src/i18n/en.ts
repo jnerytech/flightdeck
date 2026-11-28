@@ -462,6 +462,7 @@ export const en: Dictionary = {
     showShortcuts: "Show the keyboard shortcuts",
     previewGroup: "Preview features",
     saveShortcut: "Save shortcut",
+    shortcutSaved: "Shortcut saved: {accelerator}",
     shortcutUnchanged: "Nothing changed",
     shortcutUnavailable: "global shortcut unavailable on this platform",
   },

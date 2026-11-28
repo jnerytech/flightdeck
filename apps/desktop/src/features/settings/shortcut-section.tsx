@@ -49,6 +49,7 @@ export function ShortcutSection(
           }
         />
       </Form>
+      <output className="sr-only" />
       <div>
         <Button variant="outline" onClick={props.onShortcuts}>
           {t("prefs.showShortcuts")}

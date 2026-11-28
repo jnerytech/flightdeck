@@ -462,6 +462,7 @@ export const ptBR = {
     showShortcuts: "Mostrar os atalhos do teclado",
     previewGroup: "Recursos em prévia",
     saveShortcut: "Salvar atalho",
+    shortcutSaved: "Atalho salvo: {accelerator}",
     shortcutUnchanged: "Nada mudou",
     shortcutUnavailable: "atalho global indisponível nesta plataforma",
   },
