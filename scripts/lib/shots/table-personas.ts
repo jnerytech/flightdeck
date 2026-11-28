@@ -9,7 +9,7 @@ const WAIT = 15_000;
 const button = (page: Page, pattern: string) =>
   page.getByRole("button", { name: new RegExp(`^(${pattern})$`) });
 const text = (page: Page, pattern: string) => page.getByText(new RegExp(pattern));
-const literal = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const literal = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 
 const PROJECT_PATH = "/home/demo/flightdeck-web";
 const HASH = "3f9a1c0de27b64a85d0c4be1f2a7c9d83b60e5f1a49c7d2e8b13f06a5c4d9e72";
@@ -260,7 +260,7 @@ export function personaShots(ids: DemoIds): Shot[] {
       route,
       wire: [list([])],
       prepare: async (page) => {
-        await text(page, "No persona\\.|Nenhuma persona\\.").waitFor({ timeout: WAIT });
+        await text(page, String.raw`No persona\.|Nenhuma persona\.`).waitFor({ timeout: WAIT });
       },
     },
     {

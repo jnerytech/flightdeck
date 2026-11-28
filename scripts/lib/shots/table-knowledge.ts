@@ -246,8 +246,10 @@ async function memoryListed(page: Page): Promise<void> {
     .waitFor({ timeout: 15_000 });
 }
 
-const openFile = (page: Page, name: string) =>
-  page.getByRole("button", { name: new RegExp(`^(Abrir|Open) ${name.replaceAll(".", "\\.")}$`) });
+const openFile = (page: Page, name: string) => {
+  const file = name.replaceAll(".", String.raw`\.`);
+  return page.getByRole("button", { name: new RegExp(`^(Abrir|Open) ${file}$`) });
+};
 
 /** A file opened and one more line typed into it: the text now differs from the saved one. */
 async function edited(page: Page): Promise<void> {

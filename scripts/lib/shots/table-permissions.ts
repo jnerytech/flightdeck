@@ -8,7 +8,7 @@ import type { WireRule } from "./wire.ts";
 const WAIT = 15_000;
 const button = (page: Page, name: string) =>
   page.getByRole("button", { name: new RegExp(`^(${name})$`) });
-const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 
 /** The rules the project's "Always in this project" buttons would have saved. */
 const FIRST_RULE = "Bash(bun run test:*)";

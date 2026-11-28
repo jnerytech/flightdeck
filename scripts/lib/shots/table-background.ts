@@ -14,12 +14,15 @@ const CWD = "/srv/projects/flightdeck-web";
 
 const EN = translator("en");
 const PT = translator("pt-BR");
-const exactly = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const exactly = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 /** The text of a dictionary key in either language, exactly (a print runs in both). */
 const text = (key: Key, vars?: Record<string, string>) =>
   new RegExp(`^(${exactly(EN(key, vars))}|${exactly(PT(key, vars))})$`);
 
 type State = "working" | "blocked" | "done" | "failed" | "stopped";
+
+/** The status line `claude agents` shows for the states that have one. */
+const STATUS_OF: Partial<Record<State, string>> = { working: "busy", blocked: "waiting" };
 
 /** What `bg.list` answers: the host's `claude agents` listing, which the demo's hosts cannot be left holding. */
 function session(state: State, claudeSessionId: string | null, name: string, at = 0) {
@@ -28,7 +31,7 @@ function session(state: State, claudeSessionId: string | null, name: string, at 
     name,
     cwd: CWD,
     state,
-    status: state === "working" ? "busy" : state === "blocked" ? "waiting" : null,
+    status: STATUS_OF[state] ?? null,
     waitingFor: state === "blocked" ? "Bash: bun test" : null,
     pid: state === "working" || state === "blocked" ? 4200 + at : null,
     claudeSessionId,

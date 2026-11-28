@@ -6,7 +6,7 @@ import { ALFA, type Shot, showSection } from "./shot.ts";
 import type { WireRule } from "./wire.ts";
 
 const WAIT = 15_000;
-const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 /** A name in both languages, as a pattern that must match the whole text. */
 const both = (en: string, pt: string) => new RegExp(`^(${literal(en)}|${literal(pt)})$`);
 
@@ -272,8 +272,8 @@ export function costsShots(ids: DemoIds): Shot[] {
       prepare: async (page) => {
         for (const name of [both("Model", "Modelo"), both("Origin", "Origem")]) {
           const select = page.getByRole("combobox", { name });
-          await select.waitFor({ timeout: WAIT });
-          await select.selectOption({ index: 1 });
+          await select.waitFor({ timeout: WAIT }); // NOSONAR: one select after the other, as a person does; the second may depend on the first
+          await select.selectOption({ index: 1 }); // NOSONAR: the same order as above
         }
         await page.mouse.move(1000, 700);
         await page.waitForTimeout(600);

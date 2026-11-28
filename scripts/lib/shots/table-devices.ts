@@ -26,14 +26,14 @@ const THIS_DEVICE: ApprovalKeyInfo = {
   name: "Work laptop",
   client: "flightdeck-desktop",
   enrolledAt: "2026-11-02T14:00:00.000Z",
-  address: "192.168.1.20",
+  address: "192.0.2.20",
 };
 const OTHER_DEVICE: ApprovalKeyInfo = {
   keyId: DEMO_OTHER_KEY.keyId,
   name: "Home PC",
   client: "flightdeck-desktop",
   enrolledAt: "2026-11-05T09:30:00.000Z",
-  address: "192.168.1.31",
+  address: "192.0.2.31",
 };
 
 /** What `approval.list` answers when the host lists these devices, or none. */

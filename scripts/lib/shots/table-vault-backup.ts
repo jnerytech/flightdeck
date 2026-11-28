@@ -27,7 +27,7 @@ async function store(page: Page, name: string, value: string): Promise<void> {
 /** Secrets stored and exported: the file the save dialog would take is kept in the page. */
 async function exported(page: Page, secrets: Array<[name: string, value: string]>): Promise<void> {
   await keepFiles(page);
-  for (const [name, value] of secrets) await store(page, name, value);
+  for (const [name, value] of secrets) await store(page, name, value); // NOSONAR: the secrets are stored one after the other, in the order the print lists them
   await page.getByRole("tab", { name: "Backup" }).click();
   await page.getByLabel(/^(Passphrase|Frase-senha)$/).fill(PHRASE);
   await page.getByLabel(/^(Confirm passphrase|Confirmar frase-senha)$/).fill(PHRASE);

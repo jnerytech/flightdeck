@@ -58,7 +58,7 @@ const card = (windows: unknown[], ...rest: WireRule[]): WireRule[] => [
   ...STREAMS,
 ];
 
-const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 /** A text in both languages, as a pattern that must match the whole text. */
 const both = (en: string, pt: string) => new RegExp(`^(${literal(en)}|${literal(pt)})$`);
 const GUARD = /^(New cards wait from|Cartões novos esperam a partir de)/;
@@ -98,7 +98,8 @@ export function tabOrderProblem(names: readonly string[], hosts: readonly string
   for (const [index, [what, matches]] of expected.entries()) {
     const got = names[index];
     if (got === undefined || !matches(got)) {
-      return `stop ${index + 1} was ${got === undefined ? "nothing" : `"${got}"`}, expected ${what}`;
+      const was = got === undefined ? "nothing" : `"${got}"`;
+      return `stop ${index + 1} was ${was}, expected ${what}`;
     }
   }
   return null;
@@ -134,8 +135,8 @@ async function checkKeyboard(page: Page): Promise<void> {
   );
   const stops = [await focusedName(page)];
   for (let stop = 1; stop <= hosts.length * 2; stop++) {
-    await page.keyboard.press("Tab");
-    stops.push(await focusedName(page));
+    await page.keyboard.press("Tab"); // NOSONAR: the Tab order is read one key press at a time
+    stops.push(await focusedName(page)); // NOSONAR: the focus is read after its key press, before the next one
   }
   const problem = tabOrderProblem(
     stops.map((name) => name ?? ""),

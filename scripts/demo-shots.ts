@@ -276,16 +276,22 @@ function seedStorage(seed: StorageSeed): void {
         localStorage.setItem(keys[1] as string, seed.clients.selected);
       }
     }
-    if (seed.roi) localStorage.setItem("flightdeck.roi", seed.roi);
-    if (seed.inbox) localStorage.setItem("flightdeck.inbox", seed.inbox);
-    if (seed.finished) localStorage.setItem("flightdeck.finished", seed.finished);
-    if (seed.secrets) localStorage.setItem("flightdeck.vault", seed.secrets);
-    if (seed.vaultUsage) localStorage.setItem("flightdeck.vault-usage", seed.vaultUsage);
-    if (seed.webhooks) localStorage.setItem("flightdeck.webhooks", seed.webhooks);
-    if (seed.away) localStorage.setItem("flightdeck.lastActive", seed.away);
-    if (seed.teleportPreview) localStorage.setItem("flightdeck.teleportPreview", "true");
-    if (seed.autoUpdateOff) localStorage.setItem("flightdeck.autoUpdate", "false");
-    if (seed.assistant) localStorage.setItem("flightdeck.assistant", seed.assistant);
+    // The page runs this function alone, so the table lives inside it.
+    const values: Array<[key: string, value: string | null]> = [
+      ["flightdeck.roi", seed.roi],
+      ["flightdeck.inbox", seed.inbox],
+      ["flightdeck.finished", seed.finished],
+      ["flightdeck.vault", seed.secrets],
+      ["flightdeck.vault-usage", seed.vaultUsage],
+      ["flightdeck.webhooks", seed.webhooks],
+      ["flightdeck.lastActive", seed.away],
+      ["flightdeck.teleportPreview", seed.teleportPreview ? "true" : null],
+      ["flightdeck.autoUpdate", seed.autoUpdateOff ? "false" : null],
+      ["flightdeck.assistant", seed.assistant],
+    ];
+    for (const [key, value] of values) {
+      if (value) localStorage.setItem(key, value);
+    }
   } catch {
     // No storage, no clients.
   }
@@ -313,17 +319,16 @@ interface PrintSetup {
 
 /** What the storage starts with for one print: only what the print asks for, the rest empty. */
 function storageSeed(shot: Shot, lang: string, ids: DemoIds): StorageSeed {
+  const danger =
+    shot.inbox === "danger" ? { hostId: ALFA, requestId: ids.dangerRequest } : undefined;
+  const secretHosts = shot.secrets === "wide" ? ["demo-beta"] : [];
   return {
     clients: shot.clients
       ? { clients: shot.clients.data ?? DEMO_CLIENTS, selected: shot.clients.selected ?? "" }
       : null,
     roi: shot.roi ? DEMO_ROI : null,
     inbox: shot.inbox
-      ? demoInbox(
-          lang,
-          { hostId: ALFA, requestId: ids.waitingRequest },
-          shot.inbox === "danger" ? { hostId: ALFA, requestId: ids.dangerRequest } : undefined,
-        )
+      ? demoInbox(lang, { hostId: ALFA, requestId: ids.waitingRequest }, danger)
       : null,
     finished: shot.finished
       ? demoFinished(
@@ -331,7 +336,7 @@ function storageSeed(shot: Shot, lang: string, ids: DemoIds): StorageSeed {
           new Date(),
         )
       : null,
-    secrets: shot.secrets ? demoSecrets(ALFA, shot.secrets === "wide" ? ["demo-beta"] : []) : null,
+    secrets: shot.secrets ? demoSecrets(ALFA, secretHosts) : null,
     vaultUsage: shot.vaultUsage ? demoVaultUsage(ALFA) : null,
     webhooks: shot.webhooks ? demoWebhooks() : null,
     away: shot.away ? DEMO_AWAY_SINCE : null,
