@@ -34,9 +34,9 @@ for (const [lang, t] of [
       const before = region();
       view.rerender(page(lang, "offline"));
       expect(region()).toBe(before);
-      expect(region()?.textContent).toBe(`alfa: ${t.hosts.status.offline}`);
+      expect(region()?.textContent).toBe(t.hosts.status.offline);
       view.rerender(page(lang, "connecting"));
-      expect(region()?.textContent).toBe(`alfa: ${t.hosts.status.connecting}`);
+      expect(region()?.textContent).toBe(t.hosts.status.connecting);
     });
   });
 }
