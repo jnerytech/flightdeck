@@ -182,3 +182,39 @@ describe("github-issues-states: the issues of the repository picked (#4488)", ()
     expect(screen.queryByText("Não foi possível ler as issues.") !== null).toBe(true);
   });
 });
+
+describe("github-issues-states: one notice, and no side effect of a left pick (#4488)", () => {
+  test("a refused read is announced once", async () => {
+    const page = await open();
+    await pick(/o\/b/);
+    await page.answer("o/b", REFUSED);
+    expect(
+      await settleMaybe(() => screen.queryByRole("button", { name: "Try again" }) !== null, 3000),
+    ).toBe(true);
+    expect(screen.getAllByRole("alert").length).toBe(1);
+  });
+
+  test("the refusal of a pick the person left raises no error over the one shown", async () => {
+    const page = await open();
+    await pick(/o\/a/);
+    await pick(/o\/b/);
+    await page.answer("o/b", issuesOf(["2", "Only in B"]));
+    expect(await settleMaybe(() => screen.queryByText(/Only in B/) !== null, 3000)).toBe(true);
+    await page.answer("o/a", REFUSED);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test("while Try again asks again, the old alert is gone so a new failure announces again", async () => {
+    const page = await open();
+    await pick(/o\/b/);
+    await page.answer("o/b", REFUSED);
+    expect(
+      await settleMaybe(() => screen.queryByRole("button", { name: "Try again" }) !== null, 3000),
+    ).toBe(true);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    });
+    expect(await settleMaybe(() => page.asks() === 1, 3000)).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
