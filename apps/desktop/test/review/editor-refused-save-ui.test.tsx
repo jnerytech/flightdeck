@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { translator } from "../../src/i18n/index.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { fakeHostStore, onWire } from "../fake-host.ts";
-import { settleMaybe } from "../wait.ts";
+import { settleMaybe, uiIdle } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -112,4 +112,58 @@ describe("a save the host refuses keeps the editor and what was written in it (#
       expect(screen.queryByRole("button", { name: words.overwrite }) !== null).toBe(true);
     });
   }
+
+  test("a language change while the file is open does not rebuild the editor over a refused re-read", async () => {
+    let reads = 0;
+    const { store } = await fakeHostStore(
+      {
+        "file.read": onWire(async () => {
+          reads += 1;
+          if (reads > 1) return new RequestError("unavailable", "disk gone");
+          return { text: "const total = a + b;\n", hash: "h1" };
+        }),
+      },
+      { language: "en" },
+    );
+    const page = (lang: Lang) => (
+      <TContext.Provider value={translator(lang)}>
+        <FileEditor
+          store={store}
+          hostId="h"
+          target="session:c1"
+          path="src/a.ts"
+          onSaved={() => {}}
+          onClose={() => {}}
+        />
+      </TContext.Provider>
+    );
+    const view = render(page("en"));
+    expect(
+      await settleMaybe(() => screen.queryByRole("textbox", { name: WORDS.en.field }) !== null),
+    ).toBe(true);
+    view.rerender(page("pt-BR"));
+    expect(await settleMaybe(() => reads > 1, 1000)).toBe(true);
+    await uiIdle();
+    expect(screen.queryByRole("textbox", { name: WORDS.en.field }) !== null).toBe(true);
+  });
+
+  test("a new Save clears the last refusal while it is out, so a repeated refusal is announced again", async () => {
+    let writes = 0;
+    const { calls, words } = await opened("en", async () => {
+      writes += 1;
+      if (writes === 1) return new RequestError("unavailable", "disk full");
+      return new Promise<unknown>(() => {});
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: words.save }));
+    });
+    expect(await settleMaybe(() => screen.queryByRole("alert") !== null)).toBe(true);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: words.save }));
+    });
+    expect(await settleMaybe(() => calls.filter((c) => c.type === "file.write").length === 2)).toBe(
+      true,
+    );
+    expect(screen.queryByRole("alert") === null).toBe(true);
+  });
 });
