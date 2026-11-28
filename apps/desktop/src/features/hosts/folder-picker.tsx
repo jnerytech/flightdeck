@@ -60,8 +60,8 @@ export function FolderPicker(
   /** The files of the folder shown, when the picker takes files too; `failed` when the host refused to list them. */
   const [fileRead, setFileRead] = useState<FileRead>(NO_FILES);
   const files = typeof fileRead === "object" ? fileRead.files : [];
-  /** Try again is reading the files; its button stays so the focus stays. */
-  const [retrying, setRetrying] = useState(false);
+  /** The folder whose files Try again is reading; its button stays so the focus stays. */
+  const [retryingAt, setRetryingAt] = useState<string | null>(null);
   /** Set by Try again: once the read settles, the focus goes to the list instead of falling to the page. */
   const refocus = useRef(false);
   const listNode = useRef<HTMLUListElement | null>(null);
@@ -119,12 +119,12 @@ export function FolderPicker(
   /** Reads the files of the open folder again after a refusal. */
   const retryFiles = async () => {
     const at = shown.current;
-    if (!at || retrying) return;
+    if (!at || retryingAt === at) return;
     const ticket = opening.current;
     refocus.current = true;
-    setRetrying(true);
+    setRetryingAt(at);
     const read = await filesOf(at);
-    setRetrying(false);
+    setRetryingAt((now) => (now === at ? null : now));
     // Only the folder still shown takes the answer: a click on another folder may be on its way.
     if (ticket === opening.current && shown.current === at) setFileRead(read);
     else refocus.current = false;
@@ -132,10 +132,10 @@ export function FolderPicker(
 
   // The Try again button leaves with the failure: hand the focus to the list.
   useEffect(() => {
-    if (retrying || !refocus.current) return;
+    if (retryingAt !== null || !refocus.current) return;
     refocus.current = false;
     if (typeof fileRead === "object") listNode.current?.querySelector("button")?.focus();
-  }, [retrying, fileRead]);
+  }, [retryingAt, fileRead]);
   const openRef = useRef(open);
   openRef.current = open;
 
@@ -234,7 +234,7 @@ export function FolderPicker(
             )}
             {props.files && fileRead === "failed" && (
               <FieldRow>
-                {retrying ? (
+                {retryingAt !== null && retryingAt === listing?.path ? (
                   <output className="text-muted-foreground text-sm">
                     {t("folderPicker.filesLoading")}
                   </output>
