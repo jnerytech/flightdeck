@@ -135,6 +135,68 @@ describe("retomar-ui: the sessions a restart interrupted are offered in one dial
     expect(d.manager.get(ids[0] as string).status).not.toBe("error");
   });
 
+  test("with nothing ticked, Resume selected is disabled and says why next to it", async () => {
+    const { d } = await restarted(["Revisar o login"]);
+    await connect(d);
+    await settle(() => dialog() !== null);
+    const resume = () => within(dialog() as HTMLElement).getByRole("button", { name: "Resume selected" });
+    expect(resume().hasAttribute("disabled")).toBe(false);
+    await act(async () => {
+      fireEvent.click(rows()[0] as HTMLElement);
+    });
+    expect((resume() as HTMLButtonElement).disabled).toBe(true);
+    const reason = document.getElementById(resume().getAttribute("aria-describedby") ?? "none");
+    expect(reason?.textContent).toBe("Tick at least one session to resume.");
+  });
+
+  test("once every session is resumed, the button says so and the resumed rows cannot be unticked", async () => {
+    const { d } = await restarted(["Revisar o login", "Migrar o banco"]);
+    await connect(d);
+    await settle(() => dialog() !== null);
+    await press("Resume selected");
+    await settle(() => within(dialog() as HTMLElement).queryAllByText("Resumed").length === 2);
+    const resume = within(dialog() as HTMLElement).getByRole("button", { name: "Resume selected" });
+    expect((resume as HTMLButtonElement).disabled).toBe(true);
+    const reason = document.getElementById(resume.getAttribute("aria-describedby") ?? "none");
+    expect(reason?.textContent).toBe("Every session is already resumed.");
+    expect(rows().map((row) => (row as HTMLInputElement).disabled)).toEqual([true, true]);
+  });
+
+  test("the results are announced: a failure as an alert, the resumed ones in a status region", async () => {
+    const { d, ids } = await restarted();
+    await connect(d);
+    await settle(() => dialog() !== null);
+    const inDialog = within(dialog() as HTMLElement);
+    // The status region is there before anything happens, so a screen reader hears what lands in it.
+    expect(inDialog.queryByRole("status")).not.toBeNull();
+    await d.manager.resume(ids[0] as string);
+    await press("Resume selected");
+    await settle(() => inDialog.queryAllByText("Resumed").length === 2);
+    expect(inDialog.getByRole("alert").textContent).toContain("Could not resume");
+    expect(inDialog.getByRole("status").textContent).toBe("Resumed: Migrar o banco, Escrever os testes");
+  });
+
+  test("in Portuguese the button's reason and the announcement follow the dictionary", async () => {
+    const { d } = await restarted(["Revisar o login"]);
+    await connect(d, memoryPlatform(false, "pt-BR"));
+    await settle(() => screen.queryByRole("dialog", { name: "Retomar as sessões interrompidas" }) !== null);
+    const box = screen.getByRole("dialog", { name: "Retomar as sessões interrompidas" });
+    await act(async () => {
+      fireEvent.click(within(box).getByRole("checkbox"));
+    });
+    const resume = within(box).getByRole("button", { name: "Retomar as escolhidas" });
+    const reason = document.getElementById(resume.getAttribute("aria-describedby") ?? "none");
+    expect(reason?.textContent).toBe("Marque ao menos uma sessão para retomar.");
+    await act(async () => {
+      fireEvent.click(within(box).getByRole("checkbox"));
+    });
+    await act(async () => {
+      fireEvent.click(resume);
+    });
+    await settle(() => within(box).queryByRole("status")?.textContent === "Retomadas: Revisar o login");
+    expect(within(box).getByRole("status").textContent).toBe("Retomadas: Revisar o login");
+  });
+
   test("a row names the session's persona, and Escape closes the dialog as Not now does", async () => {
     const { d, ids } = await restarted(["Revisar o login"]);
     // As a session started with a persona keeps it: the snapshot in its row.
