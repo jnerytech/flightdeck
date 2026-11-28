@@ -42,6 +42,12 @@ export function WorkflowTemplates(
   const [copied, setCopied] = useState<"worked" | "refused" | null>(null);
   /** The template whose button takes the focus back when the list is shown again. */
   const [restore, setRestore] = useState<string | null>(null);
+  /**
+   * What Add to the project did for each template, by the project it targets: running, or the branch
+   * it opened. It lives here, above the dialog's content, because Back and closing unmount the file
+   * and would lose the result of a PR the host may still open (#4441).
+   */
+  const [adds, setAdds] = useState<Record<string, "busy" | WorkflowTemplateAdded>>({});
   const heading = useRef<HTMLHeadingElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const shown = templates?.find((template) => template.id === shownId) ?? null;
@@ -81,6 +87,15 @@ export function WorkflowTemplates(
   const back = () => {
     setRestore(shownId);
     setShownId(null);
+  };
+  const addKey = (template: WorkflowTemplate) => `${hostId}:${projectId}:${template.id}`;
+  const add = async (template: WorkflowTemplate) => {
+    const key = addKey(template);
+    setAdds((before) => ({ ...before, [key]: "busy" }));
+    const payload = { projectId, templateId: template.id, confirm: true };
+    const result = await store.hostCommand(hostId, "workflow.template.add", payload);
+    // A refusal leaves nothing to remember: Add is offered again.
+    setAdds(({ [key]: _, ...rest }) => (result ? { ...rest, [key]: result } : rest));
   };
   const copy = async (template: WorkflowTemplate) => {
     // Emptied first, so a second copy that works is announced again, not left as the same text.
@@ -126,7 +141,7 @@ export function WorkflowTemplates(
         {shown && (
           <TemplateFile
             template={shown}
-            add={canAdd ? { store, hostId, projectId, far } : null}
+            add={canAdd ? { store, far, state: adds[addKey(shown)], run: () => add(shown) } : null}
             copied={copied}
             headingRef={heading}
             onCopy={() => void copy(shown)}
@@ -169,18 +184,22 @@ function ListedTemplates(
  * Issue #1221: Add to the project, asked first. Idle, asking (the question and its two buttons), or
  * busy while the host commits and opens the PR. The focus goes to the question's answer, stays on it
  * while busy, moves to View the pull request once it is open, and back to Add when the person
- * cancels or the host refuses (the store shows why).
+ * cancels or the host refuses (the store shows why). The add itself, and so busy and the branch,
+ * belongs to the dialog: this file can unmount while the host works (#4441).
  */
 function useTemplateAdd(
-  where: Readonly<{ store: AppStore; hostId: string; projectId: string }> | null,
-  template: WorkflowTemplate,
+  state: "busy" | WorkflowTemplateAdded | undefined,
+  run: (() => Promise<void>) | null,
 ) {
-  const [phase, setPhase] = useState<"idle" | "asking" | "busy">("idle");
-  const [added, setAdded] = useState<WorkflowTemplateAdded | null>(null);
+  const [asked, setAsked] = useState(false);
   const [backToAdd, setBackToAdd] = useState(false);
+  const busy = state === "busy";
+  const added = typeof state === "object" ? state : null;
+  const phase = busy ? "busy" : asked ? "asking" : "idle";
   const addRef = useRef<HTMLButtonElement>(null);
   const goRef = useRef<HTMLButtonElement>(null);
   const viewRef = useRef<HTMLButtonElement>(null);
+  const wasBusy = useRef(false);
   useEffect(() => {
     if (phase === "asking") goRef.current?.focus();
     if (phase === "idle" && backToAdd) {
@@ -191,30 +210,35 @@ function useTemplateAdd(
   useEffect(() => {
     if (added) viewRef.current?.focus();
   }, [added]);
+  useEffect(() => {
+    // A refusal that ended while this file was open gives the focus back to Add.
+    if (wasBusy.current && !busy && !added) setBackToAdd(true);
+    wasBusy.current = busy;
+  }, [busy, added]);
   const cancel = () => {
-    setPhase("idle");
+    setAsked(false);
     setBackToAdd(true);
   };
   const go = async () => {
     // Busy keeps the button focused (aria-disabled, not disabled): a second press does nothing.
-    if (!where || phase === "busy") return;
-    setPhase("busy");
-    const { store, hostId, projectId } = where;
-    const payload = { projectId, templateId: template.id, confirm: true };
-    const result = await store.hostCommand(hostId, "workflow.template.add", payload);
-    setAdded(result);
-    setPhase("idle");
-    if (!result) setBackToAdd(true);
+    if (!run || busy) return;
+    setAsked(false);
+    await run();
   };
-  return { phase, added, addRef, goRef, viewRef, ask: () => setPhase("asking"), cancel, go };
+  return { phase, added, addRef, goRef, viewRef, ask: () => setAsked(true), cancel, go };
 }
 
 /** A template opened: its limits, where to commit it, the file itself and how to copy it. */
 function TemplateFile(
   props: Readonly<{
     template: WorkflowTemplate;
-    /** Where Add to the project sends the template; null when the host does not offer it. */
-    add: Readonly<{ store: AppStore; hostId: string; projectId: string; far: boolean }> | null;
+    /** Add to the project: its state and how to run it; null when the host does not offer it. */
+    add: Readonly<{
+      store: AppStore;
+      far: boolean;
+      state: "busy" | WorkflowTemplateAdded | undefined;
+      run(): Promise<void>;
+    }> | null;
     copied: "worked" | "refused" | null;
     headingRef: React.RefObject<HTMLHeadingElement | null>;
     onCopy(): void;
@@ -223,7 +247,7 @@ function TemplateFile(
 ) {
   const t = useT();
   const { template } = props;
-  const adding = useTemplateAdd(props.add, template);
+  const adding = useTemplateAdd(props.add?.state, props.add?.run ?? null);
   const name = template.title[t.lang];
   const questionId = useId();
   const farId = useId();
