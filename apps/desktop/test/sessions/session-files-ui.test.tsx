@@ -191,10 +191,9 @@ describe("session-files-ui: a refused read is not an empty list (#4489)", () => 
       fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     });
     expect(await settleMaybe(() => waiting.length === 1, 3000)).toBe(true);
-    expect([
-      screen.queryByText("Reading the session's files…") !== null,
-      document.activeElement === screen.queryByRole("button", { name: "Try again" }),
-    ]).toEqual([true, true]);
+    const loading = screen.queryByText("Reading the session's files…") !== null;
+    const focused = document.activeElement === screen.queryByRole("button", { name: "Try again" });
+    expect([loading, focused]).toEqual([true, true]);
     await act(async () => waiting.shift()?.(REFUSAL));
     expect(
       await settleMaybe(
