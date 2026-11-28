@@ -34,6 +34,7 @@ export const watch = {
     emptyHint:
       "Decisions show up when a project turns automatic approval on and a session asks for permission.",
     noMatch: "No decision matches the filter",
+    clearFilter: "Clear filter",
     allow: "Approved",
     ask: "Asked you",
     byRule: "Rule",

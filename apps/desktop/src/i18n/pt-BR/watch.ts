@@ -33,6 +33,7 @@ export const watch = {
     emptyHint:
       "As decisões aparecem quando um projeto liga a aprovação automática e uma sessão pede permissão.",
     noMatch: "Nenhuma decisão corresponde ao filtro",
+    clearFilter: "Limpar filtro",
     allow: "Aprovou",
     ask: "Perguntou a você",
     byRule: "Regra",
