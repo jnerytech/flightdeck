@@ -162,7 +162,7 @@ describe("automatic approvals page: what it says when the host refuses or is slo
     await act(async () => {
       fireEvent.click(button as HTMLElement);
     });
-    expect(sent.filter((s) => s.command === "autoapprove.resume").length).toBe(1);
+    expect(sent.filter((s) => s.command === "autoapprove.resume")).toHaveLength(1);
   });
 
   test("while the list is not read, 'No suspended sessions' is not said", async () => {
@@ -224,6 +224,6 @@ describe("automatic approvals page: what it says when the host refuses or is slo
     const { store } = fakeStore([refused("falhou")], [], "pt-BR");
     const { container } = view(store);
     await uiIdle();
-    expect(within(container).queryByRole("button", { name: "Tentar de novo" }) !== null).toBe(true);
+    expect(within(container).queryByRole("button", { name: "Tentar de novo" })).not.toBeNull();
   });
 });

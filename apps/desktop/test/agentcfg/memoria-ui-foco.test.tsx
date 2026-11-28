@@ -132,7 +132,7 @@ describe.each(["en", "pt-BR"] as const)(
       await press(w.open("user_role.md"));
       await settle(() => textarea("user_role.md") !== null);
       await uiIdle();
-      expect(focused() === textarea("user_role.md")).toBe(true);
+      expect(focused()?.isSameNode(textarea("user_role.md"))).toBe(true);
     });
 
     test("the open file's row button says it is the current one, and no other does", async () => {
@@ -166,7 +166,7 @@ describe.each(["en", "pt-BR"] as const)(
       await memory(seeded);
       await press(w.add);
       await settle(() => screen.queryByLabelText(w.fileName) !== null);
-      expect(focused() === screen.queryByLabelText(w.fileName)).toBe(true);
+      expect(focused()?.isSameNode(screen.queryByLabelText(w.fileName))).toBe(true);
     });
 
     test("Cancel closes the New memory form and the focus goes back to New memory", async () => {
@@ -201,7 +201,7 @@ describe.each(["en", "pt-BR"] as const)(
       await press(w.discard);
       await settle(() => textarea("feedback_tests.md") !== null);
       await uiIdle();
-      expect(focused() === textarea("feedback_tests.md")).toBe(true);
+      expect(focused()?.isSameNode(textarea("feedback_tests.md"))).toBe(true);
     });
 
     test("Escape in the name field does not reach a parent that also closes on Escape", async () => {

@@ -110,7 +110,7 @@ describe("bg-ui: Iniciar em segundo plano on a card", () => {
     const hidden = Array.from(document.querySelectorAll("[aria-hidden='true']")).filter(
       (el) => el.querySelector("a, button") !== null,
     );
-    expect(hidden.length).toBe(0);
+    expect(hidden).toHaveLength(0);
   });
 
   test("a host without bg has no such button", async () => {

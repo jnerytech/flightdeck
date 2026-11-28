@@ -102,7 +102,7 @@ describe.each(["en", "pt-BR"] as const)(
       await press(w.open("revisor"));
       await settle(() => field(w.name) !== null);
       await uiIdle();
-      expect(focused() === field(w.name)).toBe(true);
+      expect(focused()?.isSameNode(field(w.name))).toBe(true);
     });
 
     test("opening another file moves the focus to that file's first field", async () => {
@@ -112,7 +112,7 @@ describe.each(["en", "pt-BR"] as const)(
       await press(w.open("tester"));
       await settle(() => field(w.name)?.value === "tester");
       await uiIdle();
-      expect(focused() === field(w.name)).toBe(true);
+      expect(focused()?.isSameNode(field(w.name))).toBe(true);
     });
 
     test("a save does not move the focus off the field being edited", async () => {
@@ -125,7 +125,7 @@ describe.each(["en", "pt-BR"] as const)(
       });
       await press(w.save);
       await settle(() => screen.queryByText(w.saved) !== null);
-      expect(focused() === field(w.description)).toBe(true);
+      expect(focused()?.isSameNode(field(w.description))).toBe(true);
     });
 
     test("the open file's row has a mark that is not only a colour, and no other row has one", async () => {

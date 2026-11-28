@@ -284,7 +284,7 @@ describe("mudancas-ui", () => {
       expiry?.fn();
     });
     expect(undo()).toBeNull();
-    expect(active() === screen.queryByRole("region", { name: "Mudanças" })).toBe(true);
+    expect(active()?.isSameNode(screen.queryByRole("region", { name: "Mudanças" }))).toBe(true);
   });
 
   test("Sessões que mexeram aqui lista as sessões que gravaram o arquivo", async () => {

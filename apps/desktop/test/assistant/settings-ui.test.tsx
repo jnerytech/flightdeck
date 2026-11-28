@@ -429,7 +429,7 @@ describe("assistant-settings-ui: the models and the profiles", () => {
     const used = Array.from(document.querySelectorAll("p"))
       .map((p) => p.textContent ?? "")
       .filter((text) => text.startsWith("Used for:"));
-    expect(used.length).toBe(2);
+    expect(used).toHaveLength(2);
     expect(used[0]?.includes("Card title")).toBe(false);
     expect(used[1]?.includes("Card title")).toBe(true);
   });
@@ -500,7 +500,7 @@ describe("assistant-settings-ui: the models and the profiles", () => {
     expect(screen.getAllByRole("option", { name: /Opus 5.5/ }).length).toBeGreaterThan(0);
     // The newest Fable is offered, not the one it replaced.
     expect(screen.getAllByRole("option", { name: /Fable 5.2/ }).length).toBeGreaterThan(0);
-    expect(screen.queryAllByRole("option", { name: /Fable 5.1/ }).length).toBe(0);
+    expect(screen.queryAllByRole("option", { name: /Fable 5.1/ })).toHaveLength(0);
     expect(screen.queryByLabelText("Effort")).toBeNull();
   });
 
@@ -625,6 +625,6 @@ describe("settings: the AI button is named by what the person sees (issue #4167)
     await click(toggle);
     const id = toggle.getAttribute("aria-controls");
     expect(id).not.toBeNull();
-    expect(document.getElementById(id as string)?.querySelector("table") !== null).toBe(true);
+    expect(document.getElementById(id as string)?.querySelector("table")).not.toBeNull();
   });
 });
