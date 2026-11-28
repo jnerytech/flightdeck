@@ -1,5 +1,5 @@
 import type { WorkflowInfo } from "@flightdeck/protocol";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,8 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { PersonaPicker, useSuggestedPersona } from "@/features/personas/ui.ts";
 import { AlertPicker } from "@/features/workflows/ui.ts";
 import { useT } from "@/i18n/context";
+import { refusalText } from "@/i18n/errors.ts";
 import { useStoreSlice } from "@/lib/use-store";
-import { AppDialogContent } from "@/shared/feedback/index.ts";
+import { ActionButton, AppDialogContent, InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, Inline, NativeSelect, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
@@ -91,19 +92,29 @@ export function CardStartDialog(
       current = false;
     };
   }, [store, hostId, card.projectId, attempt]);
+  const loadingId = useId();
+  /** Why the host refused the start, said in the dialog: what the person chose stays as it is (#4462). */
+  const [refused, setRefused] = useState<string | null>(null);
   const starting = useRef(false);
   const start = async () => {
     // A second click while the first is on its way would start the card twice.
     if (starting.current || !ready) return;
     starting.current = true;
+    setRefused(null);
     const ref = store.personas.ref(persona);
-    const started = await store.hostCommand(hostId, "card.start", {
+    const result = await store.hostRequest(hostId, "card.start", {
       cardId: card.id,
       ...(chosen ? { workflow: chosen.name, inputs } : {}),
       ...(ref ? { persona: ref } : {}),
     });
+    if (!result.ok) {
+      // The dialog stays, so the person can start again: the guard is released.
+      starting.current = false;
+      setRefused(refusalText(result.code, result.message, t, result));
+      return;
+    }
     props.onClose();
-    if (started) props.onStarted();
+    props.onStarted();
   };
   return (
     <Dialog open onOpenChange={(open) => !open && props.onClose()}>
@@ -171,7 +182,9 @@ export function CardStartDialog(
             />
           )}
           {list === null && (
-            <p className="text-muted-foreground text-sm">{t("board.startLoading")}</p>
+            <p id={loadingId} className="text-muted-foreground text-sm">
+              {t("board.startLoading")}
+            </p>
           )}
           {list === "failed" && !withoutWorkflow && (
             <div role="alert">
@@ -195,14 +208,19 @@ export function CardStartDialog(
               </Stack>
             </div>
           )}
+          {refused !== null && <InlineNotice tone="error">{refused}</InlineNotice>}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={props.onClose}>
             {t("common.cancel")}
           </Button>
-          <Button disabled={!ready} onClick={() => void start()}>
+          <ActionButton
+            disabled={!ready}
+            aria-describedby={list === null ? loadingId : undefined}
+            onClick={start}
+          >
             {t("cardUi.start")}
-          </Button>
+          </ActionButton>
         </DialogFooter>
       </AppDialogContent>
     </Dialog>
