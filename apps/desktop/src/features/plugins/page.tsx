@@ -87,7 +87,11 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
   const [updating, setUpdating] = useState<InstalledPlugin | null>(null);
   const [asking, setAsking] = useState<Asking | null>(null);
   const [source, setSource] = useState("");
-  /** Why the CLI refused the last change: shown until the next one (#4490). */
+  /**
+   * Why the CLI refused the last remove or marketplace change: shown until the next one (#4490). These four
+   * answer `ok`, `failed` or, when the marketplace declares a command the page cannot accept,
+   * `needs-command-confirmation`; the last two show the CLI's message.
+   */
   const [refusal, setRefusal] = useState<string | null>(null);
 
   /** A change the CLI answered: its success text, or its reason when it refused; then the lists again. */
