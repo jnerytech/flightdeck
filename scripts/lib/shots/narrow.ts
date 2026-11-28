@@ -238,6 +238,14 @@ export const NARROW_SHOTS: readonly string[] = [
   "host-nao-autorizado",
   "host-nao-autorizado-testando",
   "host-nao-autorizado-recusado",
+  // #4435, #4436: the Settings sections with a notice, a mute list, disabled fields or an answer; they wrap at 390.
+  "configuracoes-janela",
+  "configuracoes-notificacoes",
+  "configuracoes-atalho",
+  "configuracoes-vigiar",
+  "configuracoes-atualizacoes-ok",
+  "configuracoes-atualizacoes-falhou",
+  "configuracoes-diagnostico",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */

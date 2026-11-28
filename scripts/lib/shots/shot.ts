@@ -3,7 +3,7 @@
  * tables and the print machinery of scripts/demo-shots.ts share.
  */
 
-import type { Page } from "playwright-core";
+import type { Locator, Page } from "playwright-core";
 import type { Route } from "../../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../../demo-seed.ts";
 import type { AssistantMode } from "./assistant-frames.ts";
@@ -184,25 +184,32 @@ export async function selectCards(page: Page): Promise<void> {
 }
 
 export function showSection(title: RegExp): (page: Page) => Promise<void> {
-  return async (page) => {
-    await page
-      .getByText(title)
-      .first()
-      .evaluate((el) => {
-        // The whole card, not just its title, goes to the top of the scrolling box; a small gap
-        // keeps its border from being cut.
-        const card = el.closest("section, [role=region], .rounded-lg") ?? el;
-        card.scrollIntoView({ block: "start" });
-        for (let box = card.parentElement; box; box = box.parentElement) {
-          const { overflowY } = getComputedStyle(box);
-          if ((overflowY === "auto" || overflowY === "scroll") && box.scrollTop > 0) {
-            box.scrollTop -= 12;
-            break;
-          }
-        }
-      });
-    await page.waitForTimeout(400);
-  };
+  return (page) => cardToTop(page, page.getByText(title).first());
+}
+
+/**
+ * Settings: the section with this id (such as "window") comes to the top. Its
+ * title is also a button of the rail, so the text alone would find the button first (#4435).
+ */
+export function showSectionById(id: string): (page: Page) => Promise<void> {
+  return (page) => cardToTop(page, page.locator(`#settings-${id}`));
+}
+
+async function cardToTop(page: Page, target: Locator): Promise<void> {
+  await target.evaluate((el) => {
+    // The whole card, not just its title, goes to the top of the scrolling box; a small gap
+    // keeps its border from being cut.
+    const card = el.closest("section, [role=region], .rounded-lg") ?? el;
+    card.scrollIntoView({ block: "start" });
+    for (let box = card.parentElement; box; box = box.parentElement) {
+      const { overflowY } = getComputedStyle(box);
+      if ((overflowY === "auto" || overflowY === "scroll") && box.scrollTop > 0) {
+        box.scrollTop -= 12;
+        break;
+      }
+    }
+  });
+  await page.waitForTimeout(400);
 }
 
 /** The host page's Settings tab, where its configuration sections (folders, terminal, telemetry…) are. */

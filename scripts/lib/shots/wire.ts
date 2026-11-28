@@ -9,7 +9,7 @@ import { type FrameRewriter, installHolds } from "./holds.ts";
  * unheard, so the panel stays loading; `reply` answers in the page and never sends the command (a
  * change the host would really make; a `"{in 30s}"` in it is the time 30 s from the answer, #4229, and a `"{in -90s}"` the time 90 s before it, #4287); `reject` answers in the page with a refusal and `stall` leaves
  * the command unanswered, both without sending it (an answer to a request the host would really
- * take, #4203); `without` takes entries out of an array of the answer (a feature the host announces; `"*"` takes every entry, #4388) and `with` adds them (one it does not). The demo's hosts are never left in the state the print shows.
+ * take, #4203); `without` takes entries out of an array of the answer (a feature the host announces; `"*"` takes every entry, #4388) and `with` adds them (one it does not); `set` puts fields into the answer's data (a host that answers as a far connection, #4435). The demo's hosts are never left in the state the print shows.
  * #4194: every rule applies on the socket of every host, unless it names a `port`: then only the host that listens there is touched, so the others answer (a page read by some hosts and refused by one).
  */
 export type WireRule = (
@@ -86,7 +86,7 @@ export function wireRewriter(allRules: WireRule[], url = ""): FrameRewriter {
         return JSON.stringify(refused);
       };
       if ("refuse" in rule) return refusal(rule.refuse);
-      if ("without" in rule || "with" in rule) {
+      if ("without" in rule || "with" in rule || "set" in rule) {
         const data: Record<string, unknown> =
           typeof message.data === "object" && message.data !== null
             ? { ...(message.data as Record<string, unknown>) }
@@ -97,6 +97,8 @@ export function wireRewriter(allRules: WireRule[], url = ""): FrameRewriter {
             if (Array.isArray(list))
               data[field] = gone.includes("*") ? [] : list.filter((item) => !gone.includes(item));
           }
+        } else if ("set" in rule) {
+          Object.assign(data, rule.set);
         } else {
           for (const [field, added] of Object.entries(rule.with)) {
             const list = data[field];
