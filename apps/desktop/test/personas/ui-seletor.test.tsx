@@ -120,6 +120,13 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     const opened = await open();
     const card = opened.d.board.createCard(opened.projectId, { title, description: "faça" });
     const asked: Array<{ type: string; payload: unknown }> = [];
+    // The Start dialog asks through hostRequest, so a refusal stays in the dialog (#4462); the
+    // card page's own Start still goes through hostCommand.
+    const request = opened.store.hostRequest.bind(opened.store);
+    opened.store.hostRequest = ((id: string, type: never, payload: never) => {
+      asked.push({ type, payload });
+      return request(id, type, payload);
+    }) as typeof opened.store.hostRequest;
     const command = opened.store.hostCommand.bind(opened.store);
     opened.store.hostCommand = (async (id: string, type: never, payload: never) => {
       asked.push({ type, payload });
@@ -195,11 +202,12 @@ describe("personas-ui: choosing a persona when a session opens", () => {
       startPersona: "security",
     });
     const asked: Array<{ type: string; payload: unknown }> = [];
-    const command = opened.store.hostCommand.bind(opened.store);
-    opened.store.hostCommand = (async (id: string, type: never, payload: never) => {
+    // The Start dialog asks through hostRequest, so a refusal stays in the dialog (#4462).
+    const request = opened.store.hostRequest.bind(opened.store);
+    opened.store.hostRequest = ((id: string, type: never, payload: never) => {
       asked.push({ type, payload });
-      return command(id, type, payload);
-    }) as typeof opened.store.hostCommand;
+      return request(id, type, payload);
+    }) as typeof opened.store.hostRequest;
     await act(async () => {
       opened.store.router.push({
         name: "card",
@@ -227,11 +235,12 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     const { store, hostId, projectId, d } = await open();
     d.board.createCard(projectId, { title: "Do menu", description: "faça" });
     const asked: Array<{ type: string; payload: unknown }> = [];
-    const command = store.hostCommand.bind(store);
-    store.hostCommand = (async (id: string, type: never, payload: never) => {
+    // The Start dialog asks through hostRequest, so a refusal stays in the dialog (#4462).
+    const request = store.hostRequest.bind(store);
+    store.hostRequest = ((id: string, type: never, payload: never) => {
       asked.push({ type, payload });
-      return command(id, type, payload);
-    }) as typeof store.hostCommand;
+      return request(id, type, payload);
+    }) as typeof store.hostRequest;
     await act(async () => {
       store.router.push({ name: "board", host: hostId, projectId });
     });
