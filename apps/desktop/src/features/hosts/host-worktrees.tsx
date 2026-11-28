@@ -3,8 +3,8 @@ import { TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
-import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
-import { Panel } from "@/shared/layout/index.ts";
+import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import { ErrorState, LoadingState, Panel } from "@/shared/layout/index.ts";
 import { formatBytes } from "../../i18n/format.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
@@ -90,8 +90,11 @@ export function HostWorktrees(props: Readonly<{ store: AppStore; host: HostView 
   const [removing, setRemoving] = useState(false);
   const offered = hasFeature(host.hostInfo?.features, "worktrees", false);
   const reading = offered && host.status === "online";
+  // The host refused the last read: the banner says why, the panel says what it could not do.
+  const [failed, setFailed] = useState(false);
   const read = useCallback(async () => {
     const next = await store.hostCommand(host.id, "worktree.list", {});
+    setFailed(next === null);
     if (next) setData(next);
   }, [store, host.id]);
   useEffect(() => {
@@ -178,16 +181,33 @@ export function HostWorktrees(props: Readonly<{ store: AppStore; host: HostView 
 
   return (
     <Panel title={t("worktrees.title")} label={t("worktrees.title")} slot="host-worktrees">
+      {!data && reading && !failed && <LoadingState label={t("worktrees.loading")} />}
+      {!data && failed && (
+        <ErrorState
+          message={t("worktrees.readFailed")}
+          retryLabel={t("worktrees.retry")}
+          onRetry={() => void read()}
+        />
+      )}
       {data && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <span>
               {count === 1 ? t("worktrees.countOne") : t("worktrees.count", { n: count })}
             </span>
-            <Button size="sm" variant="outline" onClick={() => void read()}>
+            <ActionButton
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                // The lines about the last removal describe the list before this scan.
+                setNotice([]);
+                return read();
+              }}
+            >
               {t("worktrees.scan")}
-            </Button>
+            </ActionButton>
           </div>
+          {failed && <InlineNotice tone="error">{t("worktrees.scanFailed")}</InlineNotice>}
           {low && (
             <p className="flex items-center gap-1 text-sm text-status-needs-you">
               <TriangleAlert aria-hidden="true" className="size-4" />

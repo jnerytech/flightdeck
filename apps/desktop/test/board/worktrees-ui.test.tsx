@@ -607,7 +607,7 @@ describe("worktrees-ui: the panel says what its read is doing (#4454)", () => {
   test("the new texts exist in pt-BR", async () => {
     const w = setup({ language: "pt-BR" });
     const first = open();
-    answering(w, [first.pending, null, LIST]);
+    answering(w, [first.pending, LIST]);
     render(w.view());
     expect(screen.queryByRole("status", { name: "Lendo as worktrees…" })).not.toBeNull();
     await act(async () => first.settleRead(null));
