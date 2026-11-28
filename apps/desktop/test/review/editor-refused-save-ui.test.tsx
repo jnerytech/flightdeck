@@ -104,7 +104,9 @@ describe("a save the host refuses keeps the editor and what was written in it (#
         fireEvent.click(screen.getByRole("button", { name: words.overwrite }));
       });
       expect(
-        await settleMaybe(() => (screen.queryByRole("alert")?.textContent ?? "").includes("disk gone")),
+        await settleMaybe(() =>
+          (screen.queryByRole("alert")?.textContent ?? "").includes("disk gone"),
+        ),
       ).toBe(true);
       expect(screen.queryByRole("textbox", { name: words.field }) !== null).toBe(true);
       expect(screen.queryByRole("button", { name: words.overwrite }) !== null).toBe(true);
