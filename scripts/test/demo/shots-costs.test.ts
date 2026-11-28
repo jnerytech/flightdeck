@@ -189,7 +189,7 @@ describe("the Costs and ROI prints (#4194)", () => {
       },
     };
     await named("custos-projeto-vazio")?.prepare?.(page as never);
-    expect(waited.length).toBe(1);
+    expect(waited).toHaveLength(1);
     const [matcher] = waited;
     expect([
       matcher?.test("flightdeck-web has no costs in this period. "),

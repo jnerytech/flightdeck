@@ -32,7 +32,7 @@ describe("the Changes states' prints (#4229)", () => {
   });
 
   test("no name is printed twice", () => {
-    expect(names.length).toBe(new Set(names).size);
+    expect(names).toHaveLength(new Set(names).size);
   });
 
   test("a state the host cannot be left in is a wire rule, so the demo's hosts stay as they are", () => {

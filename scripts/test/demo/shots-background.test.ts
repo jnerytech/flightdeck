@@ -45,7 +45,7 @@ describe("the background session prints (#4173)", () => {
     PANEL.forEach((name, at) => {
       const [listed] = listOf(name);
       const route = named(name)?.route;
-      expect(listOf(name).length).toBe(1);
+      expect(listOf(name)).toHaveLength(1);
       expect(listed?.state).toBe(STATES[at] ?? "");
       expect(route?.name === "external" ? route.host : null).toBe(ALFA);
       expect(route?.name === "external" ? route.claudeSessionId : null).toBe(
@@ -66,7 +66,7 @@ describe("the background session prints (#4173)", () => {
     expect(rule("sessao-bg-mensagem-recusada", "bg.message")).toBeUndefined();
     expect(rule("sessao-bg-parar-recusado", "bg.stop")).toBeUndefined();
     expect(rule("sessao-bg-mensagem", "bg.message")).toBeUndefined();
-    for (const name of ACTIONS) expect(listOf(name).length).toBe(1);
+    for (const name of ACTIONS) expect(listOf(name)).toHaveLength(1);
   });
 
   test("the new-session print is the form of the demo's first host, and the card menu print starts on the board", () => {
