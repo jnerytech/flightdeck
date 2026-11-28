@@ -40,6 +40,20 @@ interface Undo {
   seconds: number;
 }
 
+/** Where a comment goes, said above its box: the file, the line or lines, and "before" for the old side. */
+function composerPlace(selection: Selection, t: ReturnType<typeof useT>): string {
+  const lines =
+    selection.start === selection.end
+      ? t("changes.composerLine", { path: selection.path, line: selection.start })
+      : t("changes.composerLines", {
+          path: selection.path,
+          from: selection.start,
+          to: selection.end,
+        });
+  const side = selection.side === "old" ? t("changes.composerBefore") : "";
+  return [lines, side].join(" ").trim();
+}
+
 /**
  * The Mudanças tab of a session or a card (phase 11): the files that changed with their diff,
  * comments on its lines kept as drafts until the review goes to the agent, revert with undo, a
@@ -263,20 +277,7 @@ export function ChangesPanel(
     await refresh();
   };
 
-  const where = selection
-    ? [
-        selection.start === selection.end
-          ? t("changes.composerLine", { path: selection.path, line: selection.start })
-          : t("changes.composerLines", {
-              path: selection.path,
-              from: selection.start,
-              to: selection.end,
-            }),
-        selection.side === "old" ? t("changes.composerBefore") : "",
-      ]
-        .join(" ")
-        .trim()
-    : "";
+  const where = selection ? composerPlace(selection, t) : "";
 
   const blank = body.trim() === "";
   const composer = selection && (
