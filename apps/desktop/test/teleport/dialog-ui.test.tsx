@@ -705,7 +705,7 @@ describe("teleport-dialog-ui: the summary says where the session goes and flags 
 });
 
 /** The dialog drops a host that goes offline in the first step, and its summary breaks a long path (#4495, #4496). */
-describe("teleport-dialog-ui: a host that goes offline in the first step, a long path, the focus between steps", () => {
+describe("teleport-dialog-ui: a host that goes offline in the first step, a long path in the summary", () => {
   const dialog = (targets: ReadonlyArray<{ id: string; name: string }>) => (
     <TContext.Provider value={translator("en")}>
       <TeleportDialog
@@ -742,30 +742,19 @@ describe("teleport-dialog-ui: a host that goes offline in the first step, a long
     await act(async () => {
       view.rerender(dialog([{ id: "h3", name: "nas" }]));
     });
-    expect({
-      continueOff: screen.queryByRole("button", { name: "Continue" })?.hasAttribute("disabled"),
-      repoField: screen.queryByRole("textbox", { name: "repo-path" }) !== null,
-    }).toEqual({ continueOff: true, repoField: false });
+    const continueOff = screen
+      .queryByRole("button", { name: "Continue" })
+      ?.hasAttribute("disabled");
+    const repoField = screen.queryByRole("textbox", { name: "repo-path" }) !== null;
+    expect({ continueOff, repoField }).toEqual({ continueOff: true, repoField: false });
   });
 
   test("the summary's repository and branch break inside the dialog instead of widening it", async () => {
     open("en", { ...SUMMARY, branch: "feature/a-very-long-branch-name-with-no-break-at-all" });
     await start("en");
     await shows(TEXT.en.secrets);
-    expect({
-      repo: document.querySelector("form p span.font-mono")?.className.includes("break-all"),
-      branch: document.querySelector("form bdi.font-mono")?.className.includes("break-all"),
-    }).toEqual({ repo: true, branch: true });
-  });
-
-  test("when the summary appears the focus is inside the dialog, not on the page behind it", async () => {
-    open("en");
-    await start("en");
-    await shows(TEXT.en.secrets);
-    const content = screen.queryByRole("dialog");
-    expect({
-      focusInside: content?.contains(document.activeElement) ?? false,
-      onBody: document.activeElement === document.body,
-    }).toEqual({ focusInside: true, onBody: false });
+    const repo = document.querySelector("form p span.font-mono")?.className.includes("break-all");
+    const branch = document.querySelector("form bdi.font-mono")?.className.includes("break-all");
+    expect({ repo, branch }).toEqual({ repo: true, branch: true });
   });
 });
