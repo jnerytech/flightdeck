@@ -42,6 +42,13 @@ async function open(language: "en" | "pt-BR", answers: Answers, statuses: unknow
       }
       return answers[type] ?? null;
     },
+    // Sign-out and cancel answer with no data: a refusal is `ok: false`.
+    hostRequest: async (_host: string, type: string) => {
+      asked.push(type);
+      return type in answers && answers[type] === null
+        ? { ok: false, code: "refused", message: "refused" }
+        : { ok: true, data: undefined };
+    },
     githubTicker: () => () => {},
     refreshSetup: async () => {},
     system: { copyText: async () => {} },
@@ -117,11 +124,7 @@ for (const [language, t] of [
     });
 
     test("a cancel the host refused says so, and the code stays on screen", async () => {
-      await open(
-        language,
-        { "github.login.start": CODE, "github.login.cancel": null },
-        [STATUS],
-      );
+      await open(language, { "github.login.start": CODE, "github.login.cancel": null }, [STATUS]);
       await settleMaybe(() => screen.queryByText(t.github.signedOut) !== null, 1000);
       await press(t.github.signIn);
       await settleMaybe(() => screen.queryByText(CODE.code) !== null, 1000);

@@ -3,8 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
-import { ActionButton } from "@/shared/feedback/index.ts";
-import { Panel } from "@/shared/layout/index.ts";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
+import { ErrorState, LoadingState, Panel } from "@/shared/layout/index.ts";
 
 /**
  * The host's GitHub sign-in (phase 37): the host's gh does the device flow and keeps the token, so
@@ -15,10 +15,17 @@ export function GithubPanel(props: Readonly<{ store: AppStore; host: HostView }>
   const t = useT();
   const [status, setStatus] = useState<GithubStatusResult | null>(null);
   const [device, setDevice] = useState<GithubLoginResult | null>(null);
+  // The host refused the last read (it shows only while there is nothing to show yet).
+  const [unread, setUnread] = useState(false);
+  // What the host refused of the last action, said in the panel (the banner keeps the host's reason).
+  const [refused, setRefused] = useState<"startFailed" | "signOutFailed" | "cancelFailed" | null>(
+    null,
+  );
 
   const refresh = useCallback(async () => {
     const next = await store.hostCommand(host.id, "github.status", {});
     if (next) setStatus(next);
+    setUnread(next === null);
     return next;
   }, [store, host.id]);
 
@@ -40,16 +47,31 @@ export function GithubPanel(props: Readonly<{ store: AppStore; host: HostView }>
   }, [device, refresh, store, host.id]);
 
   const signIn = async () => {
+    setRefused(null);
     const started = await store.hostCommand(host.id, "github.login.start", {});
     if (started) setDevice(started);
+    else setRefused("startFailed");
   };
   const cancel = async () => {
-    await store.hostCommand(host.id, "github.login.cancel", {});
+    setRefused(null);
+    // `hostRequest`: a cancel or a sign-out answers with no data, so only it tells a refusal from a success.
+    const answer = await store.hostRequest(host.id, "github.login.cancel", {});
+    // A cancel the host refused leaves its login running: the code stays, so it can be cancelled again.
+    if (!answer.ok) {
+      setRefused("cancelFailed");
+      return;
+    }
     setDevice(null);
     await refresh();
   };
   const signOut = async () => {
-    await store.hostCommand(host.id, "github.logout", {});
+    setRefused(null);
+    const answer = await store.hostRequest(host.id, "github.logout", {});
+    // Already signed out (elsewhere): the host says so, and reading again shows it.
+    if (!answer.ok && answer.reason !== "gh_logged_out") {
+      setRefused("signOutFailed");
+      return;
+    }
     await refresh();
     void store.refreshSetup(host.id, { github: true });
   };
@@ -57,6 +79,15 @@ export function GithubPanel(props: Readonly<{ store: AppStore; host: HostView }>
   return (
     <Panel title={t("github.title")}>
       <p className="text-muted-foreground text-xs">{t("github.hint")}</p>
+      {status === null && !unread && <LoadingState label={t("github.loading")} />}
+      {status === null && unread && (
+        <ErrorState
+          message={t("github.failed")}
+          retryLabel={t("github.recheck")}
+          onRetry={() => void refresh()}
+        />
+      )}
+      {refused && <InlineNotice tone="error">{t(`github.${refused}`)}</InlineNotice>}
       {status && !status.installed && (
         <>
           <output className="text-sm">{t("github.notInstalled")}</output>
@@ -127,6 +158,7 @@ export function GithubPanel(props: Readonly<{ store: AppStore; host: HostView }>
             </ActionButton>
           </div>
           <output className="text-muted-foreground text-xs">{t("github.waiting")}</output>
+          <p className="text-muted-foreground text-xs">{t("github.codeExpires")}</p>
         </>
       )}
     </Panel>
