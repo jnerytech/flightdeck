@@ -61,6 +61,7 @@ import { personaShots } from "./lib/shots/table-personas.ts";
 import { quotaShots } from "./lib/shots/table-quota.ts";
 import { runViewShots } from "./lib/shots/table-run-views.ts";
 import { runenvShots } from "./lib/shots/table-runenv.ts";
+import { settingsShots } from "./lib/shots/table-settings.ts";
 import { shellShots } from "./lib/shots/table-shell.ts";
 import { snippetShots } from "./lib/shots/table-snippets.ts";
 import { teleportShots } from "./lib/shots/table-teleport.ts";
@@ -133,6 +134,7 @@ function shots(ids: DemoIds): Shot[] {
     ...issuesShots(ids),
     ...messagingShots(ids),
     ...quotaShots(ids),
+    ...settingsShots(ids),
     ...devicesShots(ids),
     ...permissionShots(ids),
     ...personaShots(ids),

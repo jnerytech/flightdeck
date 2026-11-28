@@ -216,6 +216,30 @@ describe("demo-prints", () => {
     expect(failure).toBe("The update server did not answer");
   });
 
+  test("?update=none gives the demo an updater that answers it is up to date, so the Updates print shows its answer (#4436)", async () => {
+    const { platform } = memoryPlatform();
+    const demo = demoPlatform(platform, "?update=none");
+    expect([demo.updater.supported, await demo.updater.check()]).toEqual([true, null]);
+  });
+
+  test("?shortcut=taken gives the demo a global shortcut the system refuses, so Settings shows its problem notice (#4435)", async () => {
+    const { platform } = memoryPlatform();
+    expect(platform.globalShortcut.supported).toBe(false);
+    const demo = demoPlatform(platform, "?shortcut=taken");
+    expect(demo.globalShortcut.supported).toBe(true);
+    await expect(demo.globalShortcut.unregister("Ctrl+Alt+K")).resolves.toBeUndefined();
+    await expect(demo.globalShortcut.register("Ctrl+Alt+K", () => {})).rejects.toThrow();
+  });
+
+  test("?logs=demo gives the demo a log file with lines to read and a folder to open, so Settings shows Diagnostics (#4436)", async () => {
+    const { platform } = memoryPlatform();
+    expect(platform.logs).toBeUndefined();
+    const logs = demoPlatform(platform, "?logs=demo").logs;
+    expect((await logs?.tail(2))?.length).toBe(2);
+    await expect(logs?.openFolder()).resolves.toBeUndefined();
+    await expect(logs?.write(["a line"])).resolves.toBeUndefined();
+  });
+
   test("?approvalKeys=enrolled|empty gives the page a key store, and tells the print which host it asked about; without it the web build has none (#4154)", async () => {
     const { platform } = memoryPlatform();
     expect(demoPlatform(platform, "?route=%7B%7D").approvalKeys).toBeUndefined();

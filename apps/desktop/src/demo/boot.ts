@@ -177,7 +177,8 @@ export function demoBackupFolder(platform: Platform): NonNullable<Platform["back
  * The e2e asks for `?update=<version>`: the demo's updater then offers that version and "downloads"
  * it, so the update card (#490) can be driven in a page, which has no Tauri updater. Without it, or
  * with something that is not a version, the platform is the browser's as it is. `?update=fail` makes
- * every check fail instead, so the update banner's error can be driven (#4059).
+ * every check fail instead, so the update banner's error can be driven (#4059), and `?update=none` makes
+ * every check answer that this is the latest version (#4436).
  */
 export function demoPlatform(platform: Platform, search = ""): Platform {
   const params = new URLSearchParams(search);
@@ -198,13 +199,28 @@ export function demoPlatform(platform: Platform, search = ""): Platform {
           }),
         }
       : folderPlatform;
+  // #4435: `?shortcut=taken` gives the page a global shortcut the system always refuses, so Settings shows its problem notice.
+  const withShortcut =
+    params.get("shortcut") === "taken"
+      ? {
+          ...withKeys,
+          globalShortcut: {
+            supported: true,
+            register: () => Promise.reject(new Error("The shortcut is taken")),
+            unregister: () => Promise.resolve(),
+          },
+        }
+      : withKeys;
+  // #4436: `?logs=demo` gives the page the log file the desktop shell has, so Settings shows Diagnostics.
+  const withLogs =
+    params.get("logs") === "demo" ? { ...withShortcut, logs: demoLogs() } : withShortcut;
   const version = params.get("update");
   const nothing = () => Promise.resolve();
   if (version === "fail") {
     // #4059: every check fails, so the update banner shows its error.
     const failing = () => Promise.reject(new Error("The update server did not answer"));
     return {
-      ...withKeys,
+      ...withLogs,
       updater: {
         supported: true,
         check: failing,
@@ -214,9 +230,22 @@ export function demoPlatform(platform: Platform, search = ""): Platform {
       },
     };
   }
-  if (!version || !/^\d+\.\d+\.\d+$/.test(version)) return withKeys;
+  if (version === "none") {
+    // #4436: every check answers that this is the latest version, so Settings shows "up to date".
+    return {
+      ...withLogs,
+      updater: {
+        supported: true,
+        check: () => Promise.resolve(null),
+        download: nothing,
+        installDownloaded: nothing,
+        install: nothing,
+      },
+    };
+  }
+  if (!version || !/^\d+\.\d+\.\d+$/.test(version)) return withLogs;
   return {
-    ...withKeys,
+    ...withLogs,
     updater: {
       supported: true,
       check: () => Promise.resolve({ version, notes: "" }),
@@ -224,6 +253,23 @@ export function demoPlatform(platform: Platform, search = ""): Platform {
       installDownloaded: nothing,
       install: nothing,
     },
+  };
+}
+
+/** A few lines of the app's log, as the shell's log file would hold them (#4436). */
+const DEMO_LOG_LINES = [
+  "2026-11-28T09:14:02Z info  connected to alfa",
+  "2026-11-28T09:14:03Z info  connected to beta",
+  "2026-11-28T09:20:41Z warn  host gama did not answer, retrying in 60 s",
+  "2026-11-28T09:21:41Z info  connected to gama",
+];
+
+/** The log file's stand-in: it keeps no file, reads back the sample lines and opens no folder. */
+function demoLogs(): NonNullable<Platform["logs"]> {
+  return {
+    write: () => Promise.resolve(),
+    tail: (lines) => Promise.resolve(lines > 0 ? DEMO_LOG_LINES.slice(-lines) : []),
+    openFolder: () => Promise.resolve(),
   };
 }
 
