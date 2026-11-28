@@ -133,6 +133,8 @@ export const CardDetail = memo(function CardDetail(props: {
    */
   const [lookup, setLookup] = useState<{ key: string; refused: Refused | null } | null>(null);
   const [lookups, setLookups] = useState(0);
+  /** Try again is asking: the failure block stays, so the focus stays on its button. */
+  const [retrying, setRetrying] = useState(false);
   const key = sessionKey(hostId, cardId);
   const asked = lookup?.key === key;
   const refused = asked ? lookup.refused : null;
@@ -148,6 +150,7 @@ export const CardDetail = memo(function CardDetail(props: {
         result.reason === "card_not_found" ||
         (result.reason === undefined && result.code === "not_found");
       setLookup({ key, refused: gone ? null : result });
+      setRetrying(false);
     });
     return () => {
       live = false;
@@ -160,10 +163,15 @@ export const CardDetail = memo(function CardDetail(props: {
       return (
         <Stack gap={3}>
           <ErrorState
-            message={`${t("cardUi.readFailed")} ${refusalText(refused.code, refused.message, t, refused)}`}
+            message={
+              retrying
+                ? t("cardUi.loadingTitle")
+                : `${t("cardUi.readFailed")} ${refusalText(refused.code, refused.message, t, refused)}`
+            }
             retryLabel={t("cardUi.retry")}
             onRetry={() => {
-              setLookup(null);
+              if (retrying) return;
+              setRetrying(true);
               setLookups((n) => n + 1);
             }}
           />
