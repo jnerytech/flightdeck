@@ -139,7 +139,8 @@ describe("retomar-ui: the sessions a restart interrupted are offered in one dial
     const { d } = await restarted(["Revisar o login"]);
     await connect(d);
     await settle(() => dialog() !== null);
-    const resume = () => within(dialog() as HTMLElement).getByRole("button", { name: "Resume selected" });
+    const resume = () =>
+      within(dialog() as HTMLElement).getByRole("button", { name: "Resume selected" });
     expect(resume().hasAttribute("disabled")).toBe(false);
     await act(async () => {
       fireEvent.click(rows()[0] as HTMLElement);
@@ -173,13 +174,17 @@ describe("retomar-ui: the sessions a restart interrupted are offered in one dial
     await press("Resume selected");
     await settle(() => inDialog.queryAllByText("Resumed").length === 2);
     expect(inDialog.getByRole("alert").textContent).toContain("Could not resume");
-    expect(inDialog.getByRole("status").textContent).toBe("Resumed: Migrar o banco, Escrever os testes");
+    expect(inDialog.getByRole("status").textContent).toBe(
+      "Resumed: Migrar o banco, Escrever os testes",
+    );
   });
 
   test("in Portuguese the button's reason and the announcement follow the dictionary", async () => {
     const { d } = await restarted(["Revisar o login"]);
     await connect(d, memoryPlatform(false, "pt-BR"));
-    await settle(() => screen.queryByRole("dialog", { name: "Retomar as sessões interrompidas" }) !== null);
+    await settle(
+      () => screen.queryByRole("dialog", { name: "Retomar as sessões interrompidas" }) !== null,
+    );
     const box = screen.getByRole("dialog", { name: "Retomar as sessões interrompidas" });
     await act(async () => {
       fireEvent.click(within(box).getByRole("checkbox"));
@@ -191,9 +196,11 @@ describe("retomar-ui: the sessions a restart interrupted are offered in one dial
       fireEvent.click(within(box).getByRole("checkbox"));
     });
     await act(async () => {
-      fireEvent.click(resume);
+      fireEvent.click(within(box).getByRole("button", { name: "Retomar as escolhidas" }));
     });
-    await settle(() => within(box).queryByRole("status")?.textContent === "Retomadas: Revisar o login");
+    await settle(
+      () => within(box).queryByRole("status")?.textContent === "Retomadas: Revisar o login",
+    );
     expect(within(box).getByRole("status").textContent).toBe("Retomadas: Revisar o login");
   });
 

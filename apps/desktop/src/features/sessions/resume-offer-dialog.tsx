@@ -1,4 +1,5 @@
 import type { InterruptedSession } from "@flightdeck/protocol";
+import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,9 +36,10 @@ export function ResumeOfferDialog(
   const [off, setOff] = useState<Set<string>>(new Set());
   const [outcome, setOutcome] = useState<Record<string, Outcome>>({});
   const nameOf = (s: InterruptedSession) => s.name ?? basename(s.cwd);
-  const chosen = props.sessions.filter(
-    (s) => !off.has(s.sessionId) && !props.resumed.includes(s.sessionId),
-  );
+  const resumedAlready = (s: InterruptedSession) =>
+    props.resumed.includes(s.sessionId) || outcome[s.sessionId]?.ok === true;
+  const chosen = props.sessions.filter((s) => !off.has(s.sessionId) && !resumedAlready(s));
+  const resumedNames = props.sessions.filter(resumedAlready).map(nameOf);
   const run = async (list: InterruptedSession[]) => {
     const done = await store.sessions.resumeInterrupted(hostId, list);
     setOutcome((before) => ({ ...before, ...done }));
@@ -64,6 +66,7 @@ export function ResumeOfferDialog(
                         type="checkbox"
                         aria-label={nameOf(session)}
                         checked={!off.has(session.sessionId)}
+                        disabled={resumedAlready(session)}
                         onChange={(e) =>
                           setOff((before) => {
                             const next = new Set(before);
@@ -82,7 +85,7 @@ export function ResumeOfferDialog(
                           n: Math.max(1, Math.round(session.ranMs / 60000)),
                         })}
                       </span>
-                      {(result?.ok || props.resumed.includes(session.sessionId)) && (
+                      {resumedAlready(session) && (
                         <span className="text-xs">{t("resumeOffer.resumed")}</span>
                       )}
                     </label>
@@ -92,7 +95,11 @@ export function ResumeOfferDialog(
                       </span>
                     )}
                     {result && !result.ok && (
-                      <span className="flex items-center gap-2 ps-6 text-status-error text-xs">
+                      <span
+                        role="alert"
+                        className="flex items-center gap-2 ps-6 text-status-error text-xs"
+                      >
+                        <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
                         {t("resumeOffer.failed", { reason: result.reason })}
                         <Button
                           size="sm"
@@ -110,6 +117,11 @@ export function ResumeOfferDialog(
             </section>
           ))}
         </div>
+        {/* Always in the page, so a screen reader hears what lands in it. */}
+        <div role="status" className="sr-only">
+          {resumedNames.length > 0 &&
+            t("resumeOffer.announceResumed", { names: resumedNames.join(", ") })}
+        </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => store.sessions.dismissResumeOffer(hostId)}>
             {t("resumeOffer.dismissAll")}
@@ -117,7 +129,15 @@ export function ResumeOfferDialog(
           <Button variant="outline" onClick={() => store.sessions.snoozeResumeOffer(hostId)}>
             {t("resumeOffer.notNow")}
           </Button>
-          <ActionButton disabled={chosen.length === 0} onClick={() => run(chosen)}>
+          <ActionButton
+            disabled={chosen.length === 0}
+            disabledReason={
+              props.sessions.every(resumedAlready)
+                ? t("resumeOffer.allResumed")
+                : t("resumeOffer.nothingChosen")
+            }
+            onClick={() => run(chosen)}
+          >
             {t("resumeOffer.resumeSelected")}
           </ActionButton>
         </DialogFooter>
