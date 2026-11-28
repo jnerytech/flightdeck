@@ -8,6 +8,7 @@ const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { BoardView } = await import("../../src/features/board/board-view.tsx");
 const { RequestError } = await import("../../src/features/hosts/host-connection.ts");
+const { sessionKey } = await import("../../src/lib/app-store.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -18,10 +19,45 @@ afterEach(cleanup);
  */
 const project = { id: "p1", name: "api", path: "/p1", projectKey: "git:acme/api" };
 
+/** A card the store already holds, as when it arrived before `board.get` answered. */
+const knownCard = {
+  id: "c1",
+  projectId: "p1",
+  title: "Cart screen",
+  description: "",
+  column: "in_progress",
+  columnLocked: false,
+  position: 1,
+  slug: "cart",
+  branch: "fd/cart",
+  worktreePath: null,
+  prUrl: null,
+  prState: null,
+  checksState: null,
+  queued: false,
+  sessionId: null,
+  sessionStatus: null,
+  notice: null,
+  discarded: false,
+  runs: [],
+  waitingOn: [],
+  blocking: [],
+  workflowRunId: null,
+  arenaOf: null,
+  variant: null,
+  arenaVariants: 0,
+  issueRef: null,
+  issueExternal: false,
+  queueReason: null,
+  quotaUntil: null,
+  createdAt: "2026-11-08T12:00:00.000Z",
+  updatedAt: "2026-11-08T12:00:00.000Z",
+} as never;
+
 type Answer = "pending" | "refused" | "empty";
 
 /** A fake host whose `board.get` stays pending, is refused, or answers a project with no card. */
-async function openBoard(answer: Answer) {
+async function openBoard(answer: Answer, known = false) {
   const host = await fakeHostStore(
     {
       "board.get": () => {
@@ -33,6 +69,11 @@ async function openBoard(answer: Answer) {
     { hostId: "h1", language: "en", fallback: {} },
   );
   host.store.i18n.start();
+  if (known) {
+    (host.store as unknown as { update(patch: object): void }).update({
+      cards: { [sessionKey("h1", "c1")]: knownCard },
+    });
+  }
   render(
     <BoardView
       store={host.store}
@@ -74,5 +115,15 @@ describe("board-columns-loading", () => {
       "the empty board",
     );
     expect(emptyBoxes()).toHaveLength(5);
+  });
+
+  test("a card the store already holds shows while the board is still loading", async () => {
+    await openBoard("pending", true);
+    await settle(
+      () => screen.queryByLabelText("Card Cart screen") !== null,
+      3000,
+      "the known card",
+    );
+    expect(screen.queryByRole("button", { name: "Actions for Cart screen" }) !== null).toBe(true);
   });
 });
