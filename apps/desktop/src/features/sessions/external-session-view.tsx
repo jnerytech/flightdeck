@@ -9,7 +9,7 @@ import { PersonaSwitch } from "@/features/personas/ui.ts";
 import type { PromptSnippets } from "@/features/snippets/index.ts";
 import { PromptMenu } from "@/features/snippets/ui.ts";
 import { RecapPanel } from "@/features/summary/ui.ts";
-import { Stack } from "@/shared/layout/index.ts";
+import { Note, Stack } from "@/shared/layout/index.ts";
 import { isBusy } from "@/shared/lib/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
@@ -53,10 +53,26 @@ export function ExternalView(
   // Stable, or the reader would reload on every render.
   const target = useMemo(() => ({ hostId, claudeSessionId: id }), [hostId, id]);
 
+  /** The host refused the last send and the message is back in the box (#4502). */
+  const [refused, setRefused] = useState(false);
+
   const send = () => {
-    if (!text.trim()) return;
-    void store.hostCommand(hostId, "external.message", { claudeSessionId: id, text: text.trim() });
+    const value = text.trim();
+    if (!value) {
+      // A click with nothing to send is not dead: the cursor goes where the text is typed.
+      box.current?.focus();
+      return;
+    }
     setText("");
+    setRefused(false);
+    void store
+      .hostRequest(hostId, "external.message", { claudeSessionId: id, text: value })
+      .then((result) => {
+        if (result.ok) return;
+        // The host did not take it: what was written comes back, before anything typed meanwhile.
+        setText((now) => (now.trim() ? `${value}\n\n${now}` : value));
+        setRefused(true);
+      });
   };
 
   return (
@@ -180,12 +196,22 @@ export function ExternalView(
                   value={text}
                   className="max-h-40 min-h-9 flex-1 resize-none"
                   rows={1}
-                  onChange={(e) => setText(e.target.value)}
+                  onChange={(e) => {
+                    setText(e.target.value);
+                    setRefused(false);
+                  }}
                 />
                 <Button onClick={send}>{t("external.send")}</Button>
               </Composer>
             )}
           </AssistField>
+          {refused && (
+            <Note>
+              <p role="alert" className="text-status-error">
+                {t("session.sendRefused")}
+              </p>
+            </Note>
+          )}
         </div>
       )}
       <div className="min-h-0 flex-1">
