@@ -38,12 +38,12 @@ export function SessionFiles(
   }, [store, hostId, claudeSessionId, reads]);
 
   if (files === null) return null;
-  if (files === "failed") {
-    return (
-      <section aria-labelledby={titleId} className="flex flex-col gap-2">
-        <h3 id={titleId} className="font-medium text-sm">
-          {t("changes.sessionFilesTitle")}
-        </h3>
+  return (
+    <section aria-labelledby={titleId} className="flex flex-col gap-2">
+      <h3 id={titleId} className="font-medium text-sm">
+        {t("changes.sessionFilesTitle")}
+      </h3>
+      {files === "failed" ? (
         <FieldRow>
           {retrying ? (
             <output className="text-muted-foreground text-sm">
@@ -67,15 +67,7 @@ export function SessionFiles(
             {t("changes.sessionFilesRetry")}
           </Button>
         </FieldRow>
-      </section>
-    );
-  }
-  return (
-    <section aria-labelledby={titleId} className="flex flex-col gap-2">
-      <h3 id={titleId} className="font-medium text-sm">
-        {t("changes.sessionFilesTitle")}
-      </h3>
-      {files.length === 0 ? (
+      ) : files.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("changes.sessionFilesNone")}</p>
       ) : (
         <ul aria-label={t("changes.sessionFiles")} className="flex flex-col gap-1 text-sm">
@@ -92,7 +84,9 @@ export function SessionFiles(
           ))}
         </ul>
       )}
-      {files.length > 0 && <p className="text-muted-foreground text-xs">{t("changes.bashNote")}</p>}
+      {files !== "failed" && files.length > 0 && (
+        <p className="text-muted-foreground text-xs">{t("changes.bashNote")}</p>
+      )}
     </section>
   );
 }
