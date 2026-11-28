@@ -266,7 +266,10 @@ export function SessionComposer(props: Readonly<SessionComposerProps>) {
             value={text}
             className="composer-box max-h-40 min-h-9 flex-1 resize-none"
             rows={1}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              setSendRefused(false);
+            }}
             onPaste={(e) => {
               const files = Array.from(e.clipboardData?.files ?? []);
               if (props.images && files.some((file) => file.type.startsWith("image/"))) {
