@@ -113,6 +113,7 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
       d.toolName.toLowerCase().includes(needle) ||
       d.reason.toLowerCase().includes(needle),
   );
+  const noMatch = decisions !== null && decisions.length > 0 && shown.length === 0;
 
   return (
     <Page
@@ -210,12 +211,10 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
             />
           )}
           {/* Always in the page, so a screen reader hears the text when it appears. */}
-          <p role="status" className="text-muted-foreground text-sm empty:hidden">
-            {decisions !== null && decisions.length > 0 && shown.length === 0
-              ? t("autoApprovalsUi.noMatch")
-              : null}
-          </p>
-          {decisions !== null && decisions.length > 0 && shown.length === 0 && (
+          <output className="text-muted-foreground text-sm empty:sr-only">
+            {noMatch ? t("autoApprovalsUi.noMatch") : null}
+          </output>
+          {noMatch && (
             <Button variant="outline" size="sm" className="self-start" onClick={clearFilter}>
               {t("autoApprovalsUi.clearFilter")}
             </Button>
