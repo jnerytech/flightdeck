@@ -116,6 +116,7 @@ export const notifications = {
     muteProject: "Silenciar {name} ({host})",
     mutedSession: "A sessão {name} está silenciada",
     unmute: "Reativar {name}",
+    unmuted: "{name} reativado",
     unmuteShort: "Reativar",
     sound: "Som",
     soundOff: "Desligado",

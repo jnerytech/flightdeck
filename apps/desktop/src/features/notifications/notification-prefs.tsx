@@ -1,6 +1,6 @@
 import type { Project } from "@flightdeck/protocol";
 import { Volume2 } from "lucide-react";
-import { useId, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { Inline, NativeSelect, Panel } from "@/shared/layout/index.ts";
@@ -32,6 +32,23 @@ export function NotificationPrefs(
   const hintId = useId();
   const usesVolume = prefs.sound.mode !== "off";
   const usesFile = prefs.sound.mode === "file";
+  // #4513: after an Unmute the button is gone: the focus goes to the next one (or the group), and the change is said.
+  const [said, setSaid] = useState("");
+  const group = useRef<HTMLFieldSetElement>(null);
+  const focusIndex = useRef<number | null>(null);
+  useEffect(() => {
+    const index = focusIndex.current;
+    focusIndex.current = null;
+    if (index === null || !group.current) return;
+    const buttons = [...group.current.querySelectorAll<HTMLElement>("[data-unmute]")];
+    (buttons[Math.min(index, buttons.length - 1)] ?? group.current).focus();
+  });
+  const unmuting = (name: string, undo: () => void) => (event: { currentTarget: Element }) => {
+    const buttons = [...(group.current?.querySelectorAll("[data-unmute]") ?? [])];
+    focusIndex.current = buttons.indexOf(event.currentTarget);
+    setSaid(t("notifyPrefs.unmuted", { name }));
+    undo();
+  };
   const [test, setTest] = useState<"delivered" | "blocked" | null>(null);
   // With the master switch off there is no system notification and no sound: what only feeds them waits.
   const off = !prefs.enabled;
@@ -112,7 +129,7 @@ export function NotificationPrefs(
         {t("notifyPrefs.teamFold")}
       </label>
 
-      <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
+      <fieldset ref={group} tabIndex={-1} className="m-0 flex flex-col gap-2 border-0 p-0">
         <legend className="mb-1 font-medium text-sm">{t("notifyPrefs.mute")}</legend>
         {nothingToMute && (
           <p className="text-muted-foreground text-sm">{t("notifyPrefs.muteNone")}</p>
@@ -151,7 +168,7 @@ export function NotificationPrefs(
             text={t("notifyPrefs.mutedHostGone", { name: id })}
             unmute={t("notifyPrefs.unmute", { name: id })}
             short={t("notifyPrefs.unmuteShort")}
-            onUnmute={() => controller.muteHost(id, false)}
+            onUnmute={unmuting(id, () => controller.muteHost(id, false))}
           />
         ))}
         {unlisted.projects.map((key) => (
@@ -160,7 +177,7 @@ export function NotificationPrefs(
             text={t("notifyPrefs.mutedProjectGone", { name: key })}
             unmute={t("notifyPrefs.unmute", { name: key })}
             short={t("notifyPrefs.unmuteShort")}
-            onUnmute={() => controller.muteProject(key, false)}
+            onUnmute={unmuting(key, () => controller.muteProject(key, false))}
           />
         ))}
         {prefs.mutedSessions.map((session) => (
@@ -169,10 +186,11 @@ export function NotificationPrefs(
             text={t("notifyPrefs.mutedSession", { name: session })}
             unmute={t("notifyPrefs.unmute", { name: session })}
             short={t("notifyPrefs.unmuteShort")}
-            onUnmute={() => controller.muteSession(session, false)}
+            onUnmute={unmuting(session, () => controller.muteSession(session, false))}
           />
         ))}
       </fieldset>
+      <output className="sr-only">{said}</output>
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2 text-sm">
@@ -267,12 +285,23 @@ export function NotificationPrefs(
 
 /** A saved mute with the button that clears it. */
 function MutedRow(
-  props: Readonly<{ text: string; unmute: string; short: string; onUnmute(): void }>,
+  props: Readonly<{
+    text: string;
+    unmute: string;
+    short: string;
+    onUnmute(event: { currentTarget: Element }): void;
+  }>,
 ) {
   return (
     <div className="flex items-center gap-2 text-sm">
       <span className="min-w-0 truncate">{props.text}</span>
-      <Button variant="ghost" size="sm" aria-label={props.unmute} onClick={props.onUnmute}>
+      <Button
+        variant="ghost"
+        size="sm"
+        data-unmute=""
+        aria-label={props.unmute}
+        onClick={props.onUnmute}
+      >
         {props.short}
       </Button>
     </div>
