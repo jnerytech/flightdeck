@@ -972,4 +972,42 @@ describe("linha-do-tempo-falhas: the list of files in a dialog", () => {
     await click("Desfazer volta");
     expect(scrolls("Arquivos que este desfazer restaura")).toBe(true);
   });
+
+  // #4529, #4530, #4531: the audit of the Timeline's refusals, announcements and long text.
+  test("a refused read of a turn's files is told once, in its row, and not in the banner (#4529)", async () => {
+    const { banner } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "snapshots.files": async () => null,
+    });
+    await click("Show files of turn 1");
+    expect(alerts().some((text) => text.includes("Could not read the files of turn 1"))).toBe(true);
+    expect(banner.filter((type) => type === "snapshots.files")).toEqual([]);
+  });
+
+  test("a second rewind to the same turn brings a new notice, and a cancelled one keeps the old (#4530)", async () => {
+    const { names } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "rewind.preview": async () => PREVIEW,
+      "rewind.apply": async () => PREVIEW,
+    });
+    await click(names.rewind);
+    await click("Rewind files");
+    const first = screen.queryByText("Files rewound to turn 1.");
+    expect(first !== null).toBe(true);
+    // Looking is not doing: a cancelled rewind leaves what was said where it was.
+    await click(names.rewind);
+    await click("Cancel");
+    expect(screen.queryByText("Files rewound to turn 1.") === first).toBe(true);
+    await click(names.rewind);
+    await click("Rewind files");
+    // The same words are said again as a new notice, which a live region announces.
+    const second = screen.queryByText("Files rewound to turn 1.");
+    expect(second !== null && second !== first).toBe(true);
+  });
+
+  test("a long word in a prompt breaks at the edge instead of widening the row (#4531)", async () => {
+    await timeline("en", { "snapshots.list": async () => SNAPSHOTS });
+    const prompt = screen.queryByText("fix the README") as HTMLElement;
+    expect(prompt.className.split(" ").includes("wrap-anywhere")).toBe(true);
+  });
 });
