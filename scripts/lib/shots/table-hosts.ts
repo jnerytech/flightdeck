@@ -742,8 +742,12 @@ export function hostShots(ids: DemoIds): Shot[] {
             static readonly CLOSING = 2;
             static readonly CLOSED = 3;
             readyState = 0;
-            send() {}
-            close() {}
+            send() {
+              // A socket that never opens: nothing to send.
+            }
+            close() {
+              // Nothing was opened, so nothing closes.
+            }
           } as unknown as typeof WebSocket;
           // The probe gives up after 8 s: the resizes and the axe run after this step take longer, so the timer is dropped.
           const real = window.setTimeout.bind(window);

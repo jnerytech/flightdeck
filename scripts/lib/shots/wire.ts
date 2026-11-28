@@ -61,6 +61,45 @@ export function wireRewriter(allRules: WireRule[], url = ""): FrameRewriter {
       ? asked.get(message.id)
       : undefined;
   };
+  /** The host's answer, turned into a refusal with `text`. */
+  const refusal = (message: Record<string, unknown>, text: string): string => {
+    const refused: Record<string, unknown> = {
+      ...message,
+      ok: false,
+      error: { code: "unavailable", message: text },
+    };
+    delete refused.data;
+    return JSON.stringify(refused);
+  };
+  /** The answer with its data edited: `without` takes entries out of its arrays, `with` adds them, `set` puts fields in. */
+  const edit = (message: Record<string, unknown>, rule: WireRule): string => {
+    const data: Record<string, unknown> =
+      typeof message.data === "object" && message.data !== null
+        ? { ...(message.data as Record<string, unknown>) }
+        : {};
+    const change = (
+      fields: Record<string, string[]>,
+      apply: (list: unknown[], names: string[]) => unknown[],
+    ) => {
+      for (const [field, names] of Object.entries(fields)) {
+        const list = data[field];
+        if (Array.isArray(list)) data[field] = apply(list, names);
+      }
+    };
+    if ("without" in rule) {
+      change(rule.without, (list, gone) =>
+        gone.includes("*") ? [] : list.filter((item) => !gone.includes(item as string)),
+      );
+    } else if ("set" in rule) {
+      Object.assign(data, rule.set);
+    } else if ("with" in rule) {
+      change(rule.with, (list, added) => [
+        ...list,
+        ...added.filter((item) => !list.includes(item)),
+      ]);
+    }
+    return JSON.stringify({ ...message, data });
+  };
   return {
     fromApp(frame) {
       const message = parse(frame);
@@ -76,40 +115,10 @@ export function wireRewriter(allRules: WireRule[], url = ""): FrameRewriter {
       if (message?.type !== "ack" || typeof id !== "string" || !rule) return frame;
       asked.delete(id);
       if (message.ok !== true) return frame;
-      const refusal = (text: string): string => {
-        const refused: Record<string, unknown> = {
-          ...message,
-          ok: false,
-          error: { code: "unavailable", message: text },
-        };
-        delete refused.data;
-        return JSON.stringify(refused);
-      };
-      if ("refuse" in rule) return refusal(rule.refuse);
-      if ("without" in rule || "with" in rule || "set" in rule) {
-        const data: Record<string, unknown> =
-          typeof message.data === "object" && message.data !== null
-            ? { ...(message.data as Record<string, unknown>) }
-            : {};
-        if ("without" in rule) {
-          for (const [field, gone] of Object.entries(rule.without)) {
-            const list = data[field];
-            if (Array.isArray(list))
-              data[field] = gone.includes("*") ? [] : list.filter((item) => !gone.includes(item));
-          }
-        } else if ("set" in rule) {
-          Object.assign(data, rule.set);
-        } else {
-          for (const [field, added] of Object.entries(rule.with)) {
-            const list = data[field];
-            if (Array.isArray(list))
-              data[field] = [...list, ...added.filter((item) => !list.includes(item))];
-          }
-        }
-        return JSON.stringify({ ...message, data });
-      }
+      if ("refuse" in rule) return refusal(message, rule.refuse);
+      if ("without" in rule || "with" in rule || "set" in rule) return edit(message, rule);
       if ("afterRefuse" in rule && typeof rule.afterRefuse === "string" && answered.has(rule))
-        return refusal(rule.afterRefuse);
+        return refusal(message, rule.afterRefuse);
       if (!("data" in rule)) return frame;
       const later = answered.has(rule) && "after" in rule;
       answered.add(rule);

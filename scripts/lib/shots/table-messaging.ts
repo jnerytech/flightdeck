@@ -106,7 +106,9 @@ export function messagingShots(ids: DemoIds): Shot[] {
     {
       name: "conversas-filtro",
       route: conversationsRoute,
-      prepare: filtered("128", (page) => page.getByText(/\d+ (of|de) \d+ (messages?|mensagens?)/)),
+      prepare: filtered("128", (page) =>
+        page.getByText(/\d{1,6} (of|de) \d{1,6} (messages?|mensagens?)/),
+      ),
     },
     {
       name: "conversas-filtro-vazio",

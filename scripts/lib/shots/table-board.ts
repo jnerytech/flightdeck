@@ -6,7 +6,7 @@ import { ALFA, type Shot, selectCards, toastSettled } from "./shot.ts";
 
 /** A card's ⋯ menu button: its name carries the title, so two cards never share one. */
 const actionsOf = (title: string) => {
-  const exact = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const exact = title.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
   return new RegExp(`^(Actions for ${exact}|Ações de ${exact})$`);
 };
 
