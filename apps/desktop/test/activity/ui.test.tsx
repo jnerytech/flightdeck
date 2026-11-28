@@ -956,4 +956,26 @@ describe("activity-ui: a filter whose value left the sessions, and a card that m
     const onBody = focused === document.body;
     expect({ onTitle, onBody }).toEqual({ onTitle: true, onBody: false });
   });
+
+  test("a person who moved the focus off the title is not pulled back when the card moves", async () => {
+    const w = setup(SPECS);
+    render(w.view(SPECS));
+    const title = within(card("Working", "Write docs")).queryByRole("button", {
+      name: "Write docs",
+    });
+    expect(has(title)).toBe(true);
+    (title as HTMLElement).focus();
+    // A separate turn of the event loop, as when the person clicks away.
+    await act(async () => {
+      (title as HTMLElement).blur();
+    });
+    const finished: Specs = SPECS.map((spec) =>
+      spec.id === "run" ? { ...spec, status: "idle", unread: true } : spec,
+    );
+    await act(async () => {
+      feed(w.store, finished);
+    });
+    expect(cardsOf("Done")).toContain("Write docs");
+    expect(document.activeElement === document.body).toBe(true);
+  });
 });
