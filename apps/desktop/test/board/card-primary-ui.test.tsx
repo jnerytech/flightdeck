@@ -31,12 +31,13 @@ const card = (over: object = {}) =>
 
 type Call = [string, string, unknown];
 
-function setup(language: "en" | "pt-BR" = "en") {
+function setup(language: "en" | "pt-BR" = "en", diff: unknown = {}) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   const commands: Call[] = [];
   store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
     commands.push([hostId, type, payload]);
+    if (type === "card.diff") return diff;
     return type === "workflow.list" ? { workflows: [] } : {};
   }) as never;
   store.hostRequest = (async () => ({ ok: true, data: { text: null, ignored: null } })) as never;
@@ -270,6 +271,48 @@ describe("card-primary-ui: the card leads with one button for its next step (#11
     expect(w.commands.filter(([, type]) => type === "card.discard")).toEqual([
       ["h1", "card.discard", { cardId: "c1", confirm: true }],
     ]);
+  });
+
+  // #4468: a diff the host refused to give was treated as a clean card, so Discard warned of nothing.
+  describe("what the Discard confirm says about the changes (#4468)", () => {
+    const discardDialog = async (w: ReturnType<typeof setup>, over: object = finished) => {
+      const pt = w.store.i18n.lang === "pt-BR";
+      render(w.form(over));
+      await openMenu(pt ? "Ações de Cart screen" : "Actions for Cart screen");
+      await click(item(pt ? "Descartar" : "Discard"));
+      await settle(() => screen.queryByRole("alertdialog") !== null);
+      return screen.getByRole("alertdialog");
+    };
+    const COULD_NOT = "Could not check for unsent changes";
+
+    test("a refused diff says the changes could not be checked, and Discard still works", async () => {
+      const w = setup("en", null);
+      const dialog = await discardDialog(w);
+      expect((dialog.textContent ?? "").includes(COULD_NOT)).toBe(true);
+      expect((dialog.textContent ?? "").includes("unsent changes that will be lost")).toBe(false);
+      await click(button("Discard card"));
+      await settle(() => w.seen.back === 1);
+    });
+
+    test("uncommitted files keep the unsent-changes warning", async () => {
+      const w = setup("en", { files: [{ path: "a.ts", uncommitted: true }] });
+      const dialog = await discardDialog(w);
+      expect((dialog.textContent ?? "").includes("unsent changes that will be lost")).toBe(true);
+      expect((dialog.textContent ?? "").includes(COULD_NOT)).toBe(false);
+    });
+
+    test("a card with no worktree has no warning and asks the host nothing", async () => {
+      const w = setup("en", null);
+      const dialog = await discardDialog(w, { ...finished, worktreePath: null });
+      expect((dialog.textContent ?? "").includes(COULD_NOT)).toBe(false);
+      expect(w.commands.some(([, type]) => type === "card.diff")).toBe(false);
+    });
+
+    test("in Portuguese the refused diff is said in Portuguese", async () => {
+      const w = setup("pt-BR", null);
+      const dialog = await discardDialog(w);
+      expect((dialog.textContent ?? "").includes("Não deu para conferir")).toBe(true);
+    });
   });
 
   test("the menu opens from the keyboard", async () => {
