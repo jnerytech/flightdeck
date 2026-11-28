@@ -18,7 +18,7 @@ afterEach(cleanup);
  * the host was still asked and no way back. It now loads, then says so and offers the board.
  */
 async function openCard(
-  answer: "pending" | "not-found" | "refused" | "refused-then-gone",
+  answer: "pending" | "not-found" | "not-found-old-host" | "refused" | "refused-then-gone",
   language: "en" | "pt-BR" = "en",
 ) {
   let release: (() => void) | undefined;
@@ -30,6 +30,8 @@ async function openCard(
     {
       "card.get": (payload: { cardId: string }) => {
         asks++;
+        // A host before v0.37.22 refuses a missing card with the code only, no reason.
+        if (answer === "not-found-old-host") throw new RequestError("not_found", "no such card");
         if (answer === "not-found" || (answer === "refused-then-gone" && asks > 1)) {
           throw new RequestError("not_found", "no such card", "card_not_found", {
             id: payload.cardId,
@@ -163,5 +165,11 @@ describe("card-not-found-ui", () => {
       true,
     );
     expect(screen.queryByRole("button", { name: "Tentar de novo" }) !== null).toBe(true);
+  });
+
+  test("a host that refuses a missing card with the code only, no reason, still says Card not found", async () => {
+    await openCard("not-found-old-host");
+    expect(await settleMaybe(() => notFound() !== null, 3000)).toBe(true);
+    expect(failure()).toBe("");
   });
 });
