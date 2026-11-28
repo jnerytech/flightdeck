@@ -218,12 +218,15 @@ describe.each(["en", "pt-BR"] as const)("palette status (%s)", (lang) => {
     }).toEqual({ needs: true, running: true, idle: true });
   });
 
-  test("a card row's description is its detail only (#4526)", async () => {
+  test("a row with no state is described by its detail alone (#4526)", async () => {
     open(lang);
     await type(lang, "alfa");
     const host = screen.queryByRole("option", { name: "alfa" });
     const ids = (host?.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean);
-    expect({ row: host !== null, one: ids.length <= 1 }).toEqual({ row: true, one: true });
+    expect({ row: host !== null, ids: ids.map((id) => id.endsWith("-detail")) }).toEqual({
+      row: true,
+      ids: [true],
+    });
   });
 
   test("a history search that no host answered says so in sight, not Results: 0 (#4527)", async () => {
@@ -238,6 +241,15 @@ describe.each(["en", "pt-BR"] as const)("palette status (%s)", (lang) => {
   test("a silent host next to one that answered does not make the search a failure (#4527)", async () => {
     open(lang, { ...NO_HIT, query: "zzzz", silent: ["h1"] }, { beta: true });
     await type(lang, "zzzz");
-    expect(status()?.textContent === WORDS[lang].noAnswer).toBe(false);
+    expect(status()?.textContent === WORDS[lang].found(0)).toBe(true);
+  });
+
+  test("rows that match locally do not hide that no host answered the search (#4527)", async () => {
+    open(lang, { ...NO_HIT, query: "alfa", silent: ["h1"] });
+    await type(lang, "alfa");
+    expect({
+      says: status()?.textContent === WORDS[lang].noAnswer.replace("zzzz", "alfa"),
+      seen: status() !== null && !status()?.classList.contains("sr-only"),
+    }).toEqual({ says: true, seen: true });
   });
 });
