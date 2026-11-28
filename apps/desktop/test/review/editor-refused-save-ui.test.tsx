@@ -142,7 +142,8 @@ describe("a save the host refuses keeps the editor and what was written in it (#
       await settleMaybe(() => screen.queryByRole("textbox", { name: WORDS.en.field }) !== null),
     ).toBe(true);
     view.rerender(page("pt-BR"));
-    expect(await settleMaybe(() => reads > 1, 1000)).toBe(true);
+    // The old code read again here; the wait ends at once there, and runs its short window out here.
+    await settleMaybe(() => reads > 1, 300);
     await uiIdle();
     expect(screen.queryByRole("textbox", { name: WORDS.en.field }) !== null).toBe(true);
   });
