@@ -134,13 +134,14 @@ function SignedOutBody(
 ) {
   const t = useT();
   const { state, copied, copyFailed, onCopy, onTerminal } = props;
+  const copiedNote = copied ? t("account.copied") : "";
   return (
     <>
       <p className="font-medium text-sm">{t("account.signedOut.title")}</p>
       <p className="text-muted-foreground text-sm">{t("account.signedOut.steps")}</p>
       <code className="code-chip rounded bg-muted font-mono text-sm">{state.loginCommand}</code>
       <output className={copyFailed ? "text-sm text-status-needs-you" : "sr-only"}>
-        {copyFailed ? t("account.copyFailed") : copied ? t("account.copied") : ""}
+        {copyFailed ? t("account.copyFailed") : copiedNote}
       </output>
       <div className="row-gap2">
         <Button type="button" variant="outline" size="sm" onClick={onCopy}>
