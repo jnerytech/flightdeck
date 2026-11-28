@@ -79,6 +79,20 @@ const menuOpen = () =>
   screen.queryByRole("button", { name: ACTIONS })?.getAttribute("aria-expanded") === "true" &&
   screen.queryByRole("menuitem", { name: FINISH }) !== null;
 
+/** A press on the Actions button, the way a pointer sends it. */
+function pressActions(init: { button: number; ctrlKey: boolean }) {
+  const trigger = screen.queryByRole("button", { name: ACTIONS });
+  expect(trigger).not.toBeNull();
+  if (trigger) fireEvent.pointerDown(trigger, { ...init, pointerType: "mouse" });
+}
+
+async function openMenu() {
+  await act(async () => {
+    pressActions({ button: 0, ctrlKey: false });
+  });
+  expect(await settleMaybe(menuOpen)).toBe(true);
+}
+
 describe("card-menu-reopen-ui: the Actions menu opened again while the last one is still closing stays open (#4353)", () => {
   test("Actions pressed right after the Finish dialog closes opens the menu", async () => {
     const undo = declareMenuAnimations();
@@ -106,5 +120,23 @@ describe("card-menu-reopen-ui: the Actions menu opened again while the last one 
     } finally {
       undo();
     }
+  });
+
+  test("a left press on Actions closes the menu it opened", async () => {
+    setup();
+    await openMenu();
+    await act(async () => {
+      pressActions({ button: 0, ctrlKey: false });
+    });
+    expect(await settleMaybe(() => !menuOpen())).toBe(true);
+  });
+
+  test("a press the button does not take as a toggle (ctrl) still dismisses the open menu", async () => {
+    setup();
+    await openMenu();
+    await act(async () => {
+      pressActions({ button: 0, ctrlKey: true });
+    });
+    expect(await settleMaybe(() => !menuOpen())).toBe(true);
   });
 });
