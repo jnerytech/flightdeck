@@ -1,12 +1,18 @@
 import type { BoardColumn, Card } from "@flightdeck/protocol";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AssistField } from "@/features/assistant/ui.ts";
 import { ActionButton, AppDialogContent } from "@/shared/feedback/index.ts";
-import type { T } from "../../i18n/index.ts";
+import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { CardTemplateField } from "./card-template-field.tsx";
 import { applyTemplate } from "./domain/card-template.ts";
@@ -87,7 +93,6 @@ export function NewCardDialog(
   return (
     <Dialog open={props.open} onOpenChange={(open) => !open && close()}>
       <AppDialogContent
-        aria-describedby={undefined}
         onCloseAutoFocus={(event) => {
           if (!made.current) return;
           made.current = false;
@@ -96,6 +101,9 @@ export function NewCardDialog(
       >
         <DialogHeader>
           <DialogTitle>{t("kanban.newCard")}</DialogTitle>
+          <DialogDescription>
+            {t("kanban.newCardIn", { column: t(`kanban.columns.${props.column}` as Key) })}
+          </DialogDescription>
         </DialogHeader>
         <form
           className="grid gap-4"
