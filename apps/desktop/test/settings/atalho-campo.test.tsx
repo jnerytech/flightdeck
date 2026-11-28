@@ -22,6 +22,7 @@ const WORDS = {
     open: "Show the keyboard shortcuts",
     sheet: "Keyboard shortcuts",
     saved: "Shortcut saved: Ctrl+Alt+G",
+    savedBack: "Shortcut saved: Ctrl+Alt+F",
   },
   "pt-BR": {
     region: "Atalho global",
@@ -30,6 +31,7 @@ const WORDS = {
     open: "Mostrar os atalhos do teclado",
     sheet: "Atalhos de teclado",
     saved: "Atalho salvo: Ctrl+Alt+G",
+    savedBack: "Atalho salvo: Ctrl+Alt+F",
   },
 } as const;
 
@@ -99,6 +101,17 @@ describe.each(["en", "pt-BR"] as const)("settings, global shortcut field (%s)", 
     expect(status().includes(w.saved)).toBe(false);
     saveAs("Ctrl+Alt+G");
     expect(status().includes(w.saved)).toBe(true);
+  });
+
+  test("saving the first key again is announced too, not only a change from the opening key (#4512)", () => {
+    const { saveAs } = setup(language);
+    const status = () =>
+      within(region())
+        .queryAllByRole("status")
+        .map((item) => item.textContent);
+    saveAs("Ctrl+Alt+G");
+    saveAs("Ctrl+Alt+F");
+    expect(status().includes(w.savedBack)).toBe(true);
   });
 
   test("a button in the panel asks for the shortcut list", async () => {
