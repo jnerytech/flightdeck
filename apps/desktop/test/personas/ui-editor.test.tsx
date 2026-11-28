@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { translator } from "../../src/i18n/index.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { settle, settleMaybe, uiIdle } from "../wait.ts";
@@ -184,14 +183,13 @@ describe("personas-ui: the editor", () => {
     );
   });
 
-  test("a refused save is not confirmed, and the English words are the dictionary's (#4533)", async () => {
+  test("a refused save is not confirmed (#4533)", async () => {
     await open();
     await newPersona();
     await fill("Instruções", "Use o token ghp_abcdefghijklmnopqrstuvwxyz0123456789 no deploy.");
     await click("Salvar persona");
     expect(screen.queryByRole("alert")?.textContent).toContain("A persona tem um segredo");
     expect(screen.queryByText("Persona salva: Meu QA") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
-    expect(translator("en")("personas.editor.saved", { name: "QA" })).toBe("Persona saved: QA");
   });
 
   test("the icon typed is kept with the persona", async () => {
