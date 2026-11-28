@@ -45,6 +45,14 @@ async function open(language: "en" | "pt-BR", answers: Answers, statuses: unknow
     // Sign-out and cancel answer with no data: a refusal is `ok: false`.
     hostRequest: async (_host: string, type: string) => {
       asked.push(type);
+      if (answers[type] === "already-out") {
+        return {
+          ok: false,
+          code: "invalid_state",
+          message: "gh is not signed in",
+          reason: "gh_logged_out",
+        };
+      }
       return type in answers && answers[type] === null
         ? { ok: false, code: "refused", message: "refused" }
         : { ok: true, data: undefined };
@@ -121,6 +129,30 @@ for (const [language, t] of [
       expect(notice?.closest("[role=alert]")).not.toBeNull();
       expect(screen.queryByText(who)).not.toBeNull();
       expect(screen.queryByRole("button", { name: t.github.signOut })).not.toBeNull();
+    });
+
+    test("a sign-out of an account that is already out is not a failure: the panel reads again", async () => {
+      await open(language, { "github.logout": "already-out" }, [SIGNED_IN, STATUS]);
+      const who = t.github.signedIn.replace("{login}", "octocat");
+      await settleMaybe(() => screen.queryByText(who) !== null, 1000);
+      await press(t.github.signOut);
+      await settleMaybe(() => screen.queryByText(t.github.signedOut) !== null, 1000);
+      expect(screen.queryByText(t.github.signedOut)).not.toBeNull();
+      expect(screen.queryByText(t.github.signOutFailed)).toBeNull();
+    });
+
+    test("a read that is refused after the panel had an answer says so, and Try again reads", async () => {
+      await open(language, {}, [SIGNED_IN, null, SIGNED_IN]);
+      const who = t.github.signedIn.replace("{login}", "octocat");
+      await settleMaybe(() => screen.queryByText(who) !== null, 1000);
+      await press(t.github.signOut);
+      await settleMaybe(() => screen.queryByText(t.github.failed) !== null, 1000);
+      const alert = screen.queryByText(t.github.failed);
+      expect(alert).not.toBeNull();
+      expect(alert?.closest("[role=alert]")).not.toBeNull();
+      await press(t.github.recheck);
+      await settleMaybe(() => screen.queryByText(t.github.failed) === null, 1000);
+      expect(screen.queryByText(t.github.failed)).toBeNull();
     });
 
     test("a cancel the host refused says so, and the code stays on screen", async () => {
