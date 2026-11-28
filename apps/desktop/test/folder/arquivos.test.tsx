@@ -118,9 +118,12 @@ describe("pasta-arquivos: what the picker says in file mode (#4458)", () => {
           : {
               ok: true,
               data: {
-                path: "/work",
+                path: payload.path,
                 parent: null,
-                dirs: subdirs.map((name) => ({ name, path: `/work/${name}` })),
+                dirs:
+                  payload.path === "/work"
+                    ? subdirs.map((name) => ({ name, path: `/work/${name}` }))
+                    : [],
                 truncated: false,
               },
             };
@@ -128,7 +131,7 @@ describe("pasta-arquivos: what the picker says in file mode (#4458)", () => {
       const answer = answers[Math.min(reads++, answers.length - 1)] as Files;
       if (answer === "pending") return new Promise(() => {});
       if (answer === "refused") return { ok: false, code: "internal", message: "no files" };
-      return { ok: true, data: { path: "/work", truncated: false, ...answer } };
+      return { ok: true, data: { path: payload.path ?? "/work", truncated: false, ...answer } };
     }) as never;
     const host = {
       id: "h",
