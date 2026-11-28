@@ -69,7 +69,8 @@ export const github = {
     refused: "{title}: {reason}",
     noHosts: "No host is online.",
     /** #4461: a host whose projects or boards could not be read; its PRs are not listed. */
-    unread: "Could not read the pull requests of {hosts}. Their open PRs are not listed.",
+    unread:
+      "Could not read the pull requests of {hosts}. Some of their open PRs may not be listed.",
     retry: "Try again",
     watchOff: "Watch and fix is off: turn it on from the card",
     conflict: "Conflicts with the base",

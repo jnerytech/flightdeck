@@ -219,7 +219,11 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
           <ErrorState
             message={t("pullRequests.unread", { hosts: unreadNames.join(", ") })}
             retryLabel={t("pullRequests.retry")}
-            onRetry={() => void read()}
+            onRetry={() => {
+              // The notice gives way to the loading state, so the click shows it did something.
+              setUnread(null);
+              void read();
+            }}
           />
         )}
         {refusal && <PrRefusal text={refusal} />}
