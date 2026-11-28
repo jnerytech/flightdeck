@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { T } from "@/i18n/index.ts";
@@ -22,6 +23,14 @@ export function ShortcutSection(
 ) {
   const { settings, t, draft: shortcut } = props;
   const shortcutOff = !settings.globalShortcutSupported;
+  // A save is a change of the saved key while the block is open: said once, and a first render says nothing (#4512).
+  const [saved, setSaved] = useState("");
+  const seen = useRef(settings.globalShortcut);
+  useEffect(() => {
+    if (seen.current === settings.globalShortcut) return;
+    seen.current = settings.globalShortcut;
+    setSaved(t("prefs.shortcutSaved", { accelerator: settings.globalShortcut }));
+  }, [settings.globalShortcut, t]);
   return (
     <Panel title={t("prefs.shortcut")}>
       {settings.shortcutProblem && <InlineNotice>{settings.shortcutProblem}</InlineNotice>}
@@ -49,6 +58,7 @@ export function ShortcutSection(
           }
         />
       </Form>
+      <output className="sr-only">{saved}</output>
       <div>
         <Button variant="outline" onClick={props.onShortcuts}>
           {t("prefs.showShortcuts")}

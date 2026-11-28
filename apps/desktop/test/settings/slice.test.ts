@@ -8,8 +8,8 @@ import {
 import { translator } from "../../src/i18n/index.ts";
 import { memoryPlatform } from "../fixtures.ts";
 
-/** A slice over a bare state, with a shortcut API that records what the OS was asked. */
-function slice(supported = true) {
+/** A slice over a bare state, with a shortcut API that records what the OS was asked and refuses `taken`. */
+function slice(supported = true, taken = "") {
   const mem = memoryPlatform();
   const calls: string[] = [];
   let pressed: () => void = () => {};
@@ -19,6 +19,7 @@ function slice(supported = true) {
       supported,
       register: async (accelerator, onPress) => {
         calls.push(`register ${accelerator}`);
+        if (accelerator === taken) throw new Error("taken");
         pressed = onPress;
       },
       unregister: async (accelerator) => {
@@ -93,5 +94,35 @@ describe("settings slice (#1596)", () => {
     expect(t.get().settings.teleportPreview).toBe(true);
     expect(t.items.get("flightdeck.autoUpdate")).toBe("false");
     expect(t.items.get("flightdeck.teleportPreview")).toBe("true");
+  });
+
+  test("a refused save leaves the saved shortcut working (#4511)", async () => {
+    const t = slice(true, "Ctrl+Alt+G");
+    await t.settings.registerSaved();
+    await t.settings.setGlobalShortcut("Ctrl+Alt+G");
+    expect(t.calls.at(-1)).toBe("register Ctrl+Alt+F");
+    expect(t.get().settings.globalShortcut).toBe("Ctrl+Alt+F");
+    expect(t.get().settings.shortcutProblem?.includes("Ctrl+Alt+G")).toBe(true);
+    expect(t.items.get("flightdeck.globalShortcut")).toBeUndefined();
+    t.press();
+    expect(t.opened()).toBe(1);
+  });
+
+  test("two saves at once run one after the other, so no key is left registered twice (#4511)", async () => {
+    const t = slice(true, "Ctrl+Alt+G");
+    await t.settings.registerSaved();
+    await Promise.all([
+      t.settings.setGlobalShortcut("Ctrl+Alt+G"),
+      t.settings.setGlobalShortcut("Ctrl+Alt+G"),
+    ]);
+    expect(t.calls).toEqual([
+      "register Ctrl+Alt+F",
+      "unregister Ctrl+Alt+F",
+      "register Ctrl+Alt+G",
+      "register Ctrl+Alt+F",
+      "unregister Ctrl+Alt+F",
+      "register Ctrl+Alt+G",
+      "register Ctrl+Alt+F",
+    ]);
   });
 });

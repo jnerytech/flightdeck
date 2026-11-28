@@ -116,6 +116,7 @@ export const notifications = {
     muteProject: "Mute {name} ({host})",
     mutedSession: "Session {name} is muted",
     unmute: "Unmute {name}",
+    unmuted: "Unmuted {name}",
     unmuteShort: "Unmute",
     sound: "Sound",
     soundOff: "Off",

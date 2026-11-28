@@ -65,6 +65,12 @@ function settings(language: "en" | "pt-BR" = "en") {
 }
 
 const panel = () => screen.getByRole("region", { name: "Notifications" });
+/** The status the test notification answers in: the one beside its button (the panel has others, #4513). */
+const testResult = () =>
+  within(
+    within(panel()).getByRole("button", { name: "Send test notification" })
+      .parentElement as HTMLElement,
+  ).getByRole("status");
 const box = (name: string) => within(panel()).getByRole("checkbox", { name }) as HTMLInputElement;
 const click = (el: HTMLElement) =>
   act(async () => {
@@ -229,6 +235,42 @@ describe("notify-prefs-ui: the mutes the lists cannot show (issue #4007)", () =>
       store.notifyPrefs.value.mutedHosts,
       store.notifyPrefs.value.mutedProjects,
     ]).toEqual([["Unmute gone", "Unmute h2/p9"], [], [], []]);
+  });
+
+  test("after Unmute the focus moves to the next Unmute, then to the group, and the change is said (#4513)", async () => {
+    const { store } = settings();
+    act(() => {
+      store.notifyPrefs.muteHost("gone", true);
+      store.notifyPrefs.muteProject("h2/p9", true);
+    });
+    const group = () =>
+      within(panel()).queryByRole("group", { name: "Mute" }) as HTMLElement | null;
+    const focused = () =>
+      (document.activeElement as HTMLElement | null)?.getAttribute("aria-label");
+    const status = () =>
+      within(panel())
+        .queryAllByRole("status")
+        .map((el) => el.textContent);
+    await click(within(panel()).getByRole("button", { name: "Unmute gone" }));
+    const afterFirst = [focused(), status().includes("Unmuted gone")];
+    await click(within(panel()).getByRole("button", { name: "Unmute h2/p9" }));
+    const afterLast = [document.activeElement === group(), status().includes("Unmuted h2/p9")];
+    expect([afterFirst, afterLast]).toEqual([
+      ["Unmute h2/p9", true],
+      [true, true],
+    ]);
+  });
+
+  test("it says the change in Portuguese when the app is (#4513)", async () => {
+    const { store } = settings("pt-BR");
+    act(() => store.notifyPrefs.muteHost("gone", true));
+    const region = screen.getByRole("region", { name: "Notificações" });
+    await click(within(region).getByRole("button", { name: "Reativar gone" }));
+    expect(
+      within(region)
+        .queryAllByRole("status")
+        .some((el) => el.textContent === "gone reativado"),
+    ).toBe(true);
   });
 
   test("with no host and nothing muted a line says there is nothing to mute", () => {
@@ -397,7 +439,7 @@ describe("notify-prefs-ui: the sound (issue #149)", () => {
 
 describe("notify-prefs-ui: the test notification answers each press (issue #4006)", () => {
   const testButton = () => within(panel()).getByRole("button", { name: "Send test notification" });
-  const result = () => within(panel()).getByRole("status").textContent;
+  const result = () => testResult().textContent;
 
   test("the button is busy until the test answers, a second press sends nothing, and each answer is announced again", async () => {
     const { store } = settings();
@@ -425,8 +467,8 @@ describe("notify-prefs-ui: the test notification (issue #149)", () => {
   test("delivered", async () => {
     settings();
     await click(within(panel()).getByRole("button", { name: "Send test notification" }));
-    await settle(() => within(panel()).getByRole("status").textContent === "Delivered.");
-    expect(within(panel()).getByRole("status").textContent).toBe("Delivered.");
+    await settle(() => testResult().textContent === "Delivered.");
+    expect(testResult().textContent).toBe("Delivered.");
   });
 
   test("not displayed: it says so and names the Windows setting", async () => {
@@ -438,8 +480,8 @@ describe("notify-prefs-ui: the test notification (issue #149)", () => {
     api.permission = "denied";
     api.requestPermission = async () => "denied";
     await click(within(panel()).getByRole("button", { name: "Send test notification" }));
-    await settle(() => (within(panel()).getByRole("status").textContent ?? "") !== "");
-    const text = within(panel()).getByRole("status").textContent ?? "";
+    await settle(() => (testResult().textContent ?? "") !== "");
+    const text = testResult().textContent ?? "";
     expect(text).toContain("Not displayed.");
     expect(text).toContain("Notifications are blocked for Flightdeck");
     expect(text).toContain("Settings → System → Notifications");
