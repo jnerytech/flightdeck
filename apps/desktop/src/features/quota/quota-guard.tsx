@@ -30,16 +30,13 @@ export function QuotaGuard(
   const [asked, setAsked] = useState<number | null | undefined>(undefined);
   const [refused, setRefused] = useState(false);
   if (!hasFeature(host.hostInfo?.features, "quotaPause", false)) {
+    const offKey = props.named ? "quota.guard.readOnlyOffFor" : "quota.guard.readOnlyOff";
+    const onKey = props.named ? "quota.guard.readOnlyFor" : "quota.guard.readOnly";
     return (
       <p className="text-muted-foreground text-xs">
         {pauseAt === null
-          ? t(props.named ? "quota.guard.readOnlyOffFor" : "quota.guard.readOnlyOff", {
-              host: host.name,
-            })
-          : t(props.named ? "quota.guard.readOnlyFor" : "quota.guard.readOnly", {
-              host: host.name,
-              pct: Math.round(pauseAt * 100),
-            })}
+          ? t(offKey, { host: host.name })
+          : t(onKey, { host: host.name, pct: Math.round(pauseAt * 100) })}
       </p>
     );
   }
