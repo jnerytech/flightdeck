@@ -42,7 +42,7 @@ export function FirstRun(props: Readonly<{ onCopy(text: string): void }>) {
             <FileCommand system={t("welcome.step1Linux")} command="./flightdeckd-linux-x64 setup" />
             <FileCommand
               system={t("welcome.step1Windows")}
-              command={".\\flightdeckd-windows-x64.exe setup"}
+              command={String.raw`.\flightdeckd-windows-x64.exe setup`}
             />
             <p className="text-muted-foreground">{t("welcome.step1After")}</p>
           </Stack>

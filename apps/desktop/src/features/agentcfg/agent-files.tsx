@@ -22,6 +22,8 @@ import { getField, parseDocument, serialize, setField } from "./domain/frontmatt
 
 type Kind = AgentCfgItem["kind"];
 type Origin = AgentCfgItem["origin"];
+/** A one-line or a multi-line field of the frontmatter form. */
+type TextField = HTMLInputElement | HTMLTextAreaElement;
 
 /** The file being edited; `hash` is `null` for one that does not exist yet. */
 interface Opened {
@@ -200,7 +202,7 @@ function FrontmatterFields(
   props: Readonly<{
     kind: Kind;
     edit: (key: string) => FieldProps;
-    takeFirst: (el: HTMLInputElement | HTMLTextAreaElement | null) => void;
+    takeFirst: (el: TextField | null) => void;
     t: T;
   }>,
 ) {
@@ -275,7 +277,7 @@ function FileBody(
     doc: ReturnType<typeof parseDocument>;
     form: boolean;
     preview: boolean;
-    takeFirst: (el: HTMLInputElement | HTMLTextAreaElement | null) => void;
+    takeFirst: (el: TextField | null) => void;
     t: T;
     onText(text: string): void;
   }>,
@@ -308,7 +310,7 @@ function FileEditor(
     stale: { content: string; hash: string } | null;
     dirty: boolean;
     justSaved: boolean;
-    takeFirst: (el: HTMLInputElement | HTMLTextAreaElement | null) => void;
+    takeFirst: (el: TextField | null) => void;
     t: T;
     onText(text: string): void;
     onTogglePreview(): void;

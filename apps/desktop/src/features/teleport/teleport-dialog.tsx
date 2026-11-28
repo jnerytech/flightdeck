@@ -241,7 +241,7 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
                 ? t("teleportUi.finishing", { host })
                 : t("teleportUi.moving", { percent: phase.percent })}
             </output>
-            <div
+            <div // NOSONAR: <progress> cannot hold the Bar that draws the track, and its aria values are what the test and axe read
               role="progressbar"
               aria-label={t("teleportUi.progress")}
               aria-valuemin={0}
