@@ -246,6 +246,15 @@ describe("pasta-arquivos: what the picker says in file mode (#4458)", () => {
     expect(document.activeElement === dialog().queryByRole("button", { name: "a.txt" })).toBe(true);
   });
 
+  test("a slow Try again of one folder does not freeze the failure row of the next folder", async () => {
+    await stubbed(true, ["refused", "pending", "refused"], "en", ["sub"]);
+    expect(await settleMaybe(() => said(FAILED), 1500)).toBe(true);
+    await press("Try again");
+    await press("sub");
+    expect(await settleMaybe(() => said(FAILED), 1500)).toBe(true);
+    expect(said("Loading files…")).toBe(false);
+  });
+
   test("in Portuguese the file mode speaks Portuguese", async () => {
     await stubbed(true, "refused", "pt-BR");
     expect(
