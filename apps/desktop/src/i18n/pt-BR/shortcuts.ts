@@ -99,6 +99,7 @@ export const shortcuts = {
     silent: "{host}: sem resposta",
     results: "Resultados da busca",
     noMatch: "Nada corresponde a “{query}”. Pressione Enter para buscar no histórico.",
+    noAnswer: "Nenhum host respondeu à busca no histórico por “{query}”.",
     found: "Resultados: {n}",
   },
   folderPicker: {
