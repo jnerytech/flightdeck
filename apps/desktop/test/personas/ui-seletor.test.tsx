@@ -161,7 +161,12 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     await act(async () => {
       fireEvent.click(within(startDialog()).getByRole("button", { name: "Iniciar" }));
     });
-    await uiIdle();
+    // The request leaves after a few async hops; one idle tick can land before it (#4532).
+    await settle(
+      () => asked.some((a) => a.type === "card.start" && a.via === "request"),
+      3000,
+      "the card.start request",
+    );
     expect(
       asked.find((a) => a.type === "card.start" && a.via === "request")?.payload,
     ).toMatchObject({
