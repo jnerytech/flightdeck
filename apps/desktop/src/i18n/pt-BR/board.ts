@@ -171,6 +171,8 @@ export const board = {
     countMany: "{n} cards",
     keysHint:
       "As setas passam de um card a outro, Enter abre, S inicia, M mostra as ações, X seleciona e Shift com uma seta seleciona um trecho. Esc limpa a seleção.",
+    hostOffline:
+      "{host} está offline. O board mostra o último estado; mover e criar cards precisam dele de volta.",
     columns: "Colunas",
     showColumn: "{column}, {count}",
     countOfMany: "{shown} de {total} cards",

@@ -24,6 +24,7 @@ import { activeWorktreeFilter, worktreeOfProject } from "@/features/projects/ind
 import { WorktreeChip } from "@/features/projects/ui.ts";
 import { RoiCard } from "@/features/roi/ui.ts";
 import { useStoreSlice } from "@/lib/use-store";
+import { InlineNotice } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
 import { EmptyState, LoadingState, Page } from "@/shared/layout/index.ts";
 import { useWidth } from "@/shared/lib/index.ts";
@@ -96,6 +97,10 @@ export const BoardView = memo(function BoardView(props: {
   /** Phase 31: only the cards that wait for a blocker. */
   const [onlyBlocked, setOnlyBlocked] = useState(false);
   const loading = useMinLoading(project === null && !loadFailed);
+  /** The host while it is neither online nor connecting: the board on screen is its last state (#4507). */
+  const thisHost = state.hosts.find((h) => h.id === hostId);
+  const hostOffline =
+    thisHost && thisHost.status !== "online" && thisHost.status !== "connecting" ? thisHost : null;
   /** The new-card dialog. */
   const [creating, setCreating] = useState(props.newCard === true);
   // The ask is used up once the dialog is open, so coming back to this entry shows no dialog (#1582).
@@ -397,6 +402,9 @@ export const BoardView = memo(function BoardView(props: {
             title={t("states.emptyCards")}
             action={<Button onClick={() => setCreating(true)}>{t("states.newCard")}</Button>}
           />
+        )}
+        {project && hostOffline && (
+          <InlineNotice>{t("board.hostOffline", { host: hostOffline.name })}</InlineNotice>
         )}
         <BoardStatus
           text={[
