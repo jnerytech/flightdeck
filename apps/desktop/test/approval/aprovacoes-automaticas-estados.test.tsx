@@ -227,3 +227,58 @@ describe("automatic approvals page: what it says when the host refuses or is slo
     expect(within(container).queryByRole("button", { name: "Tentar de novo" }) !== null).toBe(true);
   });
 });
+
+const WORDS = {
+  en: {
+    filter: "Filter decisions",
+    noMatch: "No decision matches the filter",
+    clear: "Clear filter",
+  },
+  "pt-BR": {
+    filter: "Filtrar decisões",
+    noMatch: "Nenhuma decisão corresponde ao filtro",
+    clear: "Limpar filtro",
+  },
+} as const;
+
+describe.each(["en", "pt-BR"] as const)(
+  "automatic approvals page, %s: a filter that matches nothing is announced and can be cleared (#4491)",
+  (lang) => {
+    const w = WORDS[lang];
+
+    test("a filter that matches nothing says so in a status and offers Clear filter, which shows the list again", async () => {
+      const { store } = fakeStore([listed([decision("d1", "Bash")])], [], lang);
+      const { container } = view(store);
+      await uiIdle();
+      const field = within(container).getByLabelText(w.filter) as HTMLInputElement;
+      await act(async () => {
+        fireEvent.change(field, { target: { value: "zzz" } });
+      });
+      await uiIdle();
+      const said = within(container).queryByRole("status")?.textContent ?? "";
+      const clear = within(container).queryByRole("button", { name: w.clear });
+      expect({ said, hasClear: clear !== null }).toEqual({ said: w.noMatch, hasClear: true });
+      await press(container, w.clear);
+      await uiIdle();
+      expect({
+        listed: text(container).includes("reason of d1"),
+        field: field.value,
+        focused: document.activeElement?.isSameNode(field) ?? false,
+      }).toEqual({ listed: true, field: "", focused: true });
+    });
+  },
+);
+
+describe("automatic approvals page: a long session key does not widen the row (#4492)", () => {
+  test("the key wraps inside its column instead of pushing Resume out of a narrow window", async () => {
+    const long = { ...SUSPENDED, sessionKey: "host-1/6f1c2d3e-4b5a-4c6d-8e9f-0a1b2c3d4e5f" };
+    const { store } = fakeStore([listed([], [long])]);
+    const { container } = view(store);
+    await uiIdle();
+    const key = within(container).queryByText(long.sessionKey);
+    expect({
+      key: key?.className.includes("break-all") ?? false,
+      column: key?.parentElement?.className.includes("min-w-0") ?? false,
+    }).toEqual({ key: true, column: true });
+  });
+});
