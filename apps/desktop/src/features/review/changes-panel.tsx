@@ -19,7 +19,7 @@ import { refusalText } from "@/i18n/errors";
 import { cn } from "@/lib/utils";
 import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { useBreakpoint } from "@/shared/hooks/index.ts";
-import { Inline, Stack } from "@/shared/layout/index.ts";
+import { Inline, LoadingState, Stack } from "@/shared/layout/index.ts";
 import { formatBytes } from "@/shared/lib/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { DiffView } from "./diff-view.tsx";
@@ -386,7 +386,7 @@ export function ChangesPanel(
     );
   }
   if (changes === null) {
-    return <p className="text-muted-foreground text-sm">{t("changes.loading")}</p>;
+    return <LoadingState label={t("changes.loading")} />;
   }
   // A file can be shown in the folder only where the host's paths are the machine's own.
   const folder = store.system.canOpenPaths(hostId)

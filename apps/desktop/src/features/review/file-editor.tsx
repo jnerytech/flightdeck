@@ -13,6 +13,7 @@ import {
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import { LoadingState } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
 type Phase =
@@ -155,9 +156,7 @@ export function FileEditor(
             {t("changes.editorTitle", { path })}
           </DialogTitle>
         </DialogHeader>
-        {phase.name === "opening" && (
-          <p className="text-muted-foreground text-sm">{t("changes.editorOpening")}</p>
-        )}
+        {phase.name === "opening" && <LoadingState label={t("changes.editorOpening")} />}
         {phase.name === "refused" && <InlineNotice tone="error">{phase.message}</InlineNotice>}
         {phase.name === "ready" && (
           <>
