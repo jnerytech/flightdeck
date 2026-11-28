@@ -248,7 +248,19 @@ export function CardRunForm(
                 {t("cardUi.menu")}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent
+              align="end"
+              // A left press on Actions is the trigger's own toggle (Radix: button 0, no ctrl). A menu still in its exit
+              // animation keeps its outside-press listener, so the press that opens it again would also dismiss it in the
+              // same event (#4353). Any other press on the button is left to dismiss the menu.
+              onPointerDownOutside={(event) => {
+                const press = event.detail.originalEvent;
+                const toggles = press.button === 0 && !press.ctrlKey;
+                if (toggles && menuButton.current?.contains(press.target as Node)) {
+                  event.preventDefault();
+                }
+              }}
+            >
               {step !== "start" && startable && (
                 <DropdownMenuItem onSelect={startPlain}>{t("cardUi.start")}</DropdownMenuItem>
               )}
