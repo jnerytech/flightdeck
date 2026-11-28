@@ -153,6 +153,9 @@ export const changes = {
     sessionFilesTitle: "Arquivos que a sessão editou direto (Write, Edit)",
     sessionFilesNone:
       "Nenhum ainda. Mudanças feitas por comandos (Bash) ou fora da sessão não aparecem aqui.",
+    sessionFilesFailed: "Não foi possível ler os arquivos da sessão.",
+    sessionFilesLoading: "Lendo os arquivos da sessão…",
+    sessionFilesRetry: "Tentar de novo",
     bashNote: "Mudanças feitas pelo Bash não entram.",
   },
   secondOpinion: {

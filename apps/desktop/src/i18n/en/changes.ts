@@ -153,6 +153,9 @@ export const changes = {
     sessionFilesTitle: "Files the session edited directly (Write, Edit)",
     sessionFilesNone:
       "None yet. Changes made by commands (Bash) or outside the session are not listed here.",
+    sessionFilesFailed: "The session's files could not be read.",
+    sessionFilesLoading: "Reading the session's files…",
+    sessionFilesRetry: "Try again",
     bashNote: "Changes made through Bash do not count.",
   },
   secondOpinion: {
