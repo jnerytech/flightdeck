@@ -72,6 +72,8 @@ export const BgPanel = memo(function BgPanel(props: {
     // The button is off again once the box is empty: the focus stays where the person types.
     field.current?.focus();
   };
+  const failedKey = failed === "stop" ? "bg.stopFailed" : "bg.respawnFailed";
+  const sentRefusal = sent === "refused" ? t("bg.sendFailed") : "";
   return (
     <section ref={region} tabIndex={-1} aria-label={t("bg.region", { name })}>
       <Panel size="sm">
@@ -121,7 +123,7 @@ export const BgPanel = memo(function BgPanel(props: {
             )}
           </Inline>
           <output className="text-destructive text-sm empty:sr-only">
-            {failed ? t(failed === "stop" ? "bg.stopFailed" : "bg.respawnFailed") : ""}
+            {failed ? t(failedKey) : ""}
           </output>
           <Form variant="inline" onSubmit={() => void send()}>
             <Inline>
@@ -155,7 +157,7 @@ export const BgPanel = memo(function BgPanel(props: {
                   : "text-sm empty:sr-only"
               }
             >
-              {sent === "ok" ? t("bg.sent") : sent === "refused" ? t("bg.sendFailed") : ""}
+              {sent === "ok" ? t("bg.sent") : sentRefusal}
             </output>
           </Form>
         </Stack>
