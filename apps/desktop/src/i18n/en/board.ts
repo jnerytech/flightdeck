@@ -359,7 +359,7 @@ export const board = {
     descriptionPlaceholder: "Description",
     newCard: "New card",
     /** #4506: under the New card title, so a card made from a column's + is not a surprise. */
-    newCardIn: "It goes to {column}.",
+    newCardIn: "It goes in the {column} column.",
     /** Issue #1201: the project's card templates, offered in New card. */
     template: "From a template",
     templateNone: "Blank card",
