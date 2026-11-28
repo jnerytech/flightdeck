@@ -402,6 +402,35 @@ describe("nova-sessao-ux: the OpenCode model list says what it is doing (#4469)"
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  test("the wait is announced politely, as a status", async () => {
+    await openCode([new Promise<Answer>(() => {})]);
+    const said = () =>
+      screen
+        .queryAllByRole("status")
+        .some((node) => node.textContent === "Reading the OpenCode models…");
+    expect(said()).toBe(true);
+  });
+
+  test("a refused read does not mark the Model select invalid, and the message comes before Try again", async () => {
+    await openCode([REFUSED]);
+    expect(await settleMaybe(() => screen.queryByRole("alert") !== null, 1500)).toBe(true);
+    const select = screen.queryByLabelText("Model") as HTMLSelectElement;
+    expect(select.getAttribute("aria-invalid")).not.toBe("true");
+    const alert = screen.queryByRole("alert") as HTMLElement;
+    const retry = screen.queryByRole("button", { name: "Try again" }) as HTMLElement;
+    expect((alert.compareDocumentPosition(retry) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0).toBe(
+      true,
+    );
+  });
+
+  test("after Try again the focus stays in the Model field instead of falling to the page", async () => {
+    await openCode([REFUSED, LIST]);
+    expect(await settleMaybe(() => screen.queryByRole("alert") !== null, 1500)).toBe(true);
+    await press("Try again");
+    expect(await settleMaybe(() => options().includes("gpt-x"), 1500)).toBe(true);
+    expect(document.activeElement === screen.queryByLabelText("Model")).toBe(true);
+  });
+
   test("in Portuguese the failure and the retry are in Portuguese", async () => {
     await openCode([REFUSED], "pt-BR");
     expect(await settleMaybe(() => screen.queryByRole("alert") !== null, 1500)).toBe(true);
