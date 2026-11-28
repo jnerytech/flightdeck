@@ -43,7 +43,10 @@ export function StartFromGithub(
   const roots = store.getState().hosts.find((h) => h.id === hostId)?.info?.allowedRoots ?? [];
   const [root, setRoot] = useState(roots[0] ?? "");
 
-  /** The answer of a command, or null with the refusal said in the dialog. */
+  /**
+   * The answer of a command, or null with the refusal said in the dialog. With `current`, the
+   * answer of a request the person has left is dropped before it touches the dialog's notice.
+   */
   const ask = useCallback(
     async <T,>(
       run: () => Promise<
@@ -56,8 +59,10 @@ export function StartFromGithub(
             params?: Record<string, string | number>;
           }
       >,
+      current?: () => boolean,
     ): Promise<T | null> => {
       const result = await run();
+      if (current && !current()) return null;
       if (result.ok) {
         setError(null);
         return result.data;
@@ -99,12 +104,17 @@ export function StartFromGithub(
     latestPick.current += 1;
     const pick = latestPick.current;
     setRetrying(again);
+    // The notice above the list announces the refusal: clear the old one so a new failure speaks again.
+    setError(null);
     if (!again) {
       setRepo(name);
       setIssue(null);
       setIssues("loading");
     }
-    const found = await ask(() => store.hostRequest(hostId, "github.issues", { repo: name }));
+    const found = await ask(
+      () => store.hostRequest(hostId, "github.issues", { repo: name }),
+      () => pick === latestPick.current,
+    );
     if (pick !== latestPick.current) return;
     setRetrying(false);
     setIssues(found ? found.issues : "failed");
@@ -205,14 +215,13 @@ export function StartFromGithub(
                         {t("githubStart.issuesLoading")}
                       </output>
                     ) : (
-                      <p role="alert" className="text-sm text-status-error">
-                        {t("githubStart.issuesFailed")}
-                      </p>
+                      <p className="text-sm text-status-error">{t("githubStart.issuesFailed")}</p>
                     )}
                     <Button
                       type="button"
                       variant="outline"
                       size="xs"
+                      aria-disabled={retrying}
                       onClick={() => !retrying && void pickRepo(repo, true)}
                     >
                       {t("githubStart.issuesRetry")}
