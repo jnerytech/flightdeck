@@ -13,6 +13,7 @@ import {
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { Inline } from "@/shared/layout/index.ts";
 import { basename } from "@/shared/lib/index.ts";
 import { byProject, CONTINUATION } from "./domain/resume-offer.ts";
 
@@ -39,10 +40,12 @@ export function ResumeOfferDialog(
   const resumedAlready = (s: InterruptedSession) =>
     props.resumed.includes(s.sessionId) || outcome[s.sessionId]?.ok === true;
   const chosen = props.sessions.filter((s) => !off.has(s.sessionId) && !resumedAlready(s));
-  const resumedNames = props.sessions.filter(resumedAlready).map(nameOf);
+  /** What the last run resumed: a screen reader hears the news, not the whole list again. */
+  const [announced, setAnnounced] = useState<string[]>([]);
   const run = async (list: InterruptedSession[]) => {
     const done = await store.sessions.resumeInterrupted(hostId, list);
     setOutcome((before) => ({ ...before, ...done }));
+    setAnnounced(list.filter((s) => done[s.sessionId]?.ok).map(nameOf));
   };
   return (
     <Dialog open onOpenChange={(open) => !open && store.sessions.snoozeResumeOffer(hostId)}>
@@ -95,12 +98,13 @@ export function ResumeOfferDialog(
                       </span>
                     )}
                     {result && !result.ok && (
-                      <span
-                        role="alert"
-                        className="flex items-center gap-2 ps-6 text-status-error text-xs"
-                      >
-                        <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
-                        {t("resumeOffer.failed", { reason: result.reason })}
+                      <Inline gap={2} className="ps-6 text-status-error text-xs">
+                        <div role="alert">
+                          <Inline gap={1}>
+                            <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
+                            {t("resumeOffer.failed", { reason: result.reason })}
+                          </Inline>
+                        </div>
                         <Button
                           size="sm"
                           variant="outline"
@@ -109,7 +113,7 @@ export function ResumeOfferDialog(
                         >
                           {t("resumeOffer.retry", { name: "" }).trim()}
                         </Button>
-                      </span>
+                      </Inline>
                     )}
                   </div>
                 );
@@ -119,8 +123,8 @@ export function ResumeOfferDialog(
         </div>
         {/* Always in the page, so a screen reader hears what lands in it. */}
         <div role="status" className="sr-only">
-          {resumedNames.length > 0 &&
-            t("resumeOffer.announceResumed", { names: resumedNames.join(", ") })}
+          {announced.length > 0 &&
+            t("resumeOffer.announceResumed", { names: announced.join(", ") })}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => store.sessions.dismissResumeOffer(hostId)}>

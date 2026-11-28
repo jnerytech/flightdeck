@@ -117,6 +117,14 @@ export function SessionsHub(
   const hostless = hostlessHub(state.hosts, rows.length);
   /** Nothing is listed, though the host is there: no session yet, or the filters left none. */
   const nothingListed = !hostless && groups.length === 0;
+  /** A host whose list has not arrived yet has not said it has no session. */
+  const listsArrived = state.hosts.every((h) => h.status !== "online" || state.hub[h.id]);
+  const narrowed = Boolean(scoped) || Boolean(only) || Boolean(picked);
+  const showAll = () => {
+    clearOnly();
+    store.setWorktreeFilter(null);
+    if (scoped) showAllHosts();
+  };
   const newSession = () => {
     if (!starter) return;
     store.subscriptions.select(starter.id, null);
@@ -200,17 +208,31 @@ export function SessionsHub(
             icon={SearchX}
             title={t("hub.noMatch")}
             action={
-              <Button variant="outline" onClick={() => set(DEFAULT_HUB_FILTER)}>
-                {t("hub.clearFilters")}
-              </Button>
+              active > 0 || filter.text.trim() !== "" ? (
+                <Button variant="outline" onClick={() => set(DEFAULT_HUB_FILTER)}>
+                  {t("hub.clearFilters")}
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={() => set({ showArchived: true })}>
+                  {t("hub.showArchived")}
+                </Button>
+              )
             }
           />
         )}
-        {nothingListed && rows.length === 0 && !scopedProject && !only && !picked && (
+        {nothingListed && rows.length === 0 && listsArrived && !scopedProject && (
           <EmptyState
-            icon={MessagesSquare}
-            title={t("hub.noSessions")}
-            action={starter && <Button onClick={newSession}>{t("sidebar.newSession")}</Button>}
+            icon={narrowed ? SearchX : MessagesSquare}
+            title={narrowed ? t("hub.noneHere") : t("hub.noSessions")}
+            action={
+              narrowed ? (
+                <Button variant="outline" onClick={showAll}>
+                  {t("scope.showAll")}
+                </Button>
+              ) : (
+                starter && <Button onClick={newSession}>{t("sidebar.newSession")}</Button>
+              )
+            }
           />
         )}
         {only && (
