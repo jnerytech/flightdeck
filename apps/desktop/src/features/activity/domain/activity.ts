@@ -179,8 +179,8 @@ export function activityOptions(state: HubRowState): {
 }
 
 /**
- * The filter without the host, project or persona that no live session has any more (the lists only
- * hold what exists); the same object when nothing was dropped (#4508).
+ * The filter as it applies now: without the host, project or persona that no live session lists
+ * (the lists only hold what exists); the same object when nothing was left out (#4508).
  */
 export function clampFilter(
   filter: ActivityFilter,

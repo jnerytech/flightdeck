@@ -55,9 +55,10 @@ export function ActivityBoard(
   }, [props.tickMs]);
   const nowMs = store.now();
   const options = activityOptions(state);
-  // #4508: a filter value that no live session has any more is dropped, so the controls and the cards agree.
+  // #4508: a filter value that no live session lists is not applied and not shown as picked, so the
+  // controls and the cards agree. It stays in `filter` until the person changes one: a host that
+  // reconnects brings its filter back.
   const kept = clampFilter(filter, options);
-  if (kept !== filter) setFilter(kept);
   const data = activityBoard(state, nowMs, kept, showIdle);
   const signature = ACTIVITY_COLUMNS.flatMap((column) =>
     data.columns[column].map((card) => `${card.row.key}:${column}`),
