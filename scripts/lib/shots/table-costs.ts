@@ -330,16 +330,18 @@ export function costsShots(ids: DemoIds): Shot[] {
       },
     },
     {
-      // The host refuses the readings: the panel says there are none, not that it is loading.
+      // The host refuses the readings: each window says it did not load and offers Try again, not
+      // that it has no readings (#4430).
       name: "custos-cota-recusada",
       route: { name: "costs", host: ALFA },
       wire: [{ command: "quota.history", refuse: "The quota could not be read on this host." }],
       prepare: async (page) => {
-        const text = page.getByText(
-          both("No quota readings to show.", "Nenhuma leitura de cota para mostrar."),
-        );
-        await text.waitFor({ timeout: WAIT });
-        await text.scrollIntoViewIfNeeded();
+        const retry = page
+          .getByRole("region", { name: both("Quota", "Cota") })
+          .getByRole("button", { name: both("Try again", "Tentar de novo") })
+          .first();
+        await retry.waitFor({ timeout: WAIT });
+        await retry.scrollIntoViewIfNeeded();
       },
     },
     {
