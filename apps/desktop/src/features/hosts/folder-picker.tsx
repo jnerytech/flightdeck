@@ -60,6 +60,11 @@ export function FolderPicker(
   /** The files of the folder shown, when the picker takes files too; `failed` when the host refused to list them. */
   const [fileRead, setFileRead] = useState<FileRead>(NO_FILES);
   const files = typeof fileRead === "object" ? fileRead.files : [];
+  /** Try again is reading the files; its button stays so the focus stays. */
+  const [retrying, setRetrying] = useState(false);
+  /** Set by Try again: once the read settles, the focus goes to the list instead of falling to the page. */
+  const refocus = useRef(false);
+  const listNode = useRef<HTMLUListElement | null>(null);
   const allowed = host.info?.allowedRoots ?? [];
 
   /** The folder being shown, kept apart from `listing` so a reload does not restart the effect. */
@@ -94,6 +99,8 @@ export function FolderPicker(
     if (ticket !== opening.current) return;
     if (!result.ok) {
       setTarget(null);
+      // A files read of the folder still shown was dropped by this open: let it be read again.
+      setFileRead((read) => (read === "loading" ? "failed" : read));
       return setError(describe(result.code, result.message));
     }
     setTarget(null);
@@ -112,12 +119,23 @@ export function FolderPicker(
   /** Reads the files of the open folder again after a refusal. */
   const retryFiles = async () => {
     const at = shown.current;
-    if (!at) return;
+    if (!at || retrying) return;
     const ticket = opening.current;
-    setFileRead("loading");
+    refocus.current = true;
+    setRetrying(true);
     const read = await filesOf(at);
-    if (ticket === opening.current) setFileRead(read);
+    setRetrying(false);
+    // Only the folder still shown takes the answer: a click on another folder may be on its way.
+    if (ticket === opening.current && shown.current === at) setFileRead(read);
+    else refocus.current = false;
   };
+
+  // The Try again button leaves with the failure: hand the focus to the list.
+  useEffect(() => {
+    if (retrying || !refocus.current) return;
+    refocus.current = false;
+    if (typeof fileRead === "object") listNode.current?.querySelector("button")?.focus();
+  }, [retrying, fileRead]);
   const openRef = useRef(open);
   openRef.current = open;
 
@@ -148,6 +166,7 @@ export function FolderPicker(
   // The keys of the folder buttons, caught on the list they bubble to. The list is not itself
   // interactive, so the listener goes on the element and not on a React prop of a `<ul>`.
   const listRef = useCallback((list: HTMLUListElement) => {
+    listNode.current = list;
     const onKeyDown = (event: KeyboardEvent) => {
       const moved = moveByKey(event, list);
       if (!moved && event.key !== "Backspace") return;
@@ -214,14 +233,20 @@ export function FolderPicker(
               <p className="text-muted-foreground text-sm">{t("folderPicker.empty")}</p>
             )}
             {props.files && fileRead === "failed" && (
-              <div className="flex flex-wrap items-center gap-2">
-                <p role="alert" className="text-sm text-status-error">
-                  {t("folderPicker.filesFailed")}
-                </p>
+              <FieldRow>
+                {retrying ? (
+                  <output className="text-muted-foreground text-sm">
+                    {t("folderPicker.filesLoading")}
+                  </output>
+                ) : (
+                  <p role="alert" className="text-sm text-status-error">
+                    {t("folderPicker.filesFailed")}
+                  </p>
+                )}
                 <Button type="button" variant="outline" size="xs" onClick={() => void retryFiles()}>
                   {t("folderPicker.filesRetry")}
                 </Button>
-              </div>
+              </FieldRow>
             )}
             {props.files && fileRead === "loading" && (
               <output className="text-muted-foreground text-sm">

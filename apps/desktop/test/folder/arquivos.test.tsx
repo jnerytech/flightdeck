@@ -229,7 +229,9 @@ describe("pasta-arquivos: what the picker says in file mode (#4458)", () => {
     await stubbed(true, "pending", "en", ["sub"], ["/work/sub"]);
     expect(await settleMaybe(() => said("Loading files…"), 1500)).toBe(true);
     await press("sub");
-    expect(await settleMaybe(() => screen.queryByRole("alert") !== null, 1500)).toBe(true);
+    expect(
+      await settleMaybe(() => dialog().queryByRole("button", { name: "Try again" }) !== null, 1500),
+    ).toBe(true);
     expect(said("Loading files…")).toBe(false);
     expect(dialog().queryByRole("button", { name: "Try again" }) !== null).toBe(true);
   });
