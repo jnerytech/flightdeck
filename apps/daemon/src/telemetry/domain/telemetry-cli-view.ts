@@ -10,8 +10,10 @@ const iso = (at: number) => new Date(at).toISOString();
 const ms = (value: number) => `${Math.round(value)} ms`;
 const dollars = (value: number) => `$${value.toFixed(4)}`;
 
-const successWord = (success: boolean | null): string | null =>
-  success === null ? null : success ? "ok" : "failed";
+const successWord = (success: boolean | null): string | null => {
+  if (success === null) return null;
+  return success ? "ok" : "failed";
+};
 
 const decisionText = (decision: string | null, source: string | null): string | null =>
   decision === null || source === null ? decision : `${decision} by ${source}`;

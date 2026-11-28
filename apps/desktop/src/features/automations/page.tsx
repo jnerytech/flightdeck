@@ -105,7 +105,8 @@ export function AutomationsPage(
       store.hostCommand(hostId, "workflow.list", { projectId }, { retry: false }),
     ]);
     // Without the automations there is no list to show; without the workflows the list still works.
-    setFailed(list === null ? "automations" : flows === null ? "workflows" : null);
+    const workflowsFailed = flows === null ? "workflows" : null;
+    setFailed(list === null ? "automations" : workflowsFailed);
     if (list) setAutomations(list.automations);
     if (flows) setWorkflows(flows.workflows);
   }, [store, hostId, projectId]);
