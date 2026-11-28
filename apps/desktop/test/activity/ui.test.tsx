@@ -919,6 +919,23 @@ describe("activity-ui: a filter whose value left the sessions, and a card that m
     expect({ counted, saysNoMatch }).toEqual({ counted: true, saysNoMatch: false });
   });
 
+  test("a persona that comes back brings its filter back", async () => {
+    const w = setup(SPECS);
+    render(w.view(SPECS));
+    await act(async () => {
+      fireEvent.change(labelled("Persona"), { target: { value: "p" } });
+    });
+    await act(async () => {
+      feed(w.store, withoutPersona);
+    });
+    await act(async () => {
+      feed(w.store, SPECS);
+    });
+    const counted = has(screen.queryByText("1 of 3 shown"));
+    const picked = (labelled("Persona") as HTMLSelectElement).value;
+    expect({ counted, picked }).toEqual({ counted: true, picked: "p" });
+  });
+
   test("a project that no live session has any more is dropped from the filter too", async () => {
     const w = setup(SPECS);
     render(w.view(SPECS));
