@@ -196,6 +196,7 @@ describe("conexoes-ui: the screen", () => {
     await settle(() => d.commands.some((c) => c.type === "ssh.list"));
     await uiIdle();
     expect(screen.queryByText("Carregando os destinos…")).not.toBeNull();
+    expect(screen.queryByText("Carregando os destinos…")?.tagName).toBe("OUTPUT");
     expect(screen.queryByText("Nenhum destino SSH cadastrado.")).toBeNull();
     expect(screen.queryByLabelText("Buscar destino")).toBeNull();
     await act(async () => {
