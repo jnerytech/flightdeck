@@ -62,6 +62,11 @@ describe("the approving-devices panel prints (#4154)", () => {
     expect(keyIds("aprovacao-lista")).toEqual([DEMO_THIS_KEY.keyId, DEMO_OTHER_KEY.keyId]);
   });
 
+  test("the devices of the list sit at documentation addresses (TEST-NET-1), not at a private network's (#4453)", () => {
+    const keys = (listed("aprovacao-lista")?.data as { keys: Array<{ address: string }> }).keys;
+    expect(keys.map((key) => key.address)).toEqual(["192.0.2.20", "192.0.2.31"]);
+  });
+
   test("the lost warning is a list that is read with a device and afterwards with none, after a revoke the page answers itself", () => {
     const rule = listed("aprovacao-perdida");
     expect(rule && "after" in rule ? rule.after : null).toEqual({ protectionOff: true, keys: [] });
