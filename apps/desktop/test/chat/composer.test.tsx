@@ -195,6 +195,16 @@ describe("chat-composer: a message the host refuses comes back to the box (#4466
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  test("the notice goes away when the person edits the box", async () => {
+    const { box, press, answer } = refusing();
+    fireEvent.change(box(), { target: { value: "uma" } });
+    await press();
+    await answer(false);
+    expect(screen.queryByRole("alert")).not.toBeNull();
+    fireEvent.change(box(), { target: { value: "outra coisa" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   test("the notice goes away with the next send", async () => {
     const { box, press, answer } = refusing();
     fireEvent.change(box(), { target: { value: "uma" } });

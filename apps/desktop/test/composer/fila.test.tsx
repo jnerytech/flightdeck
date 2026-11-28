@@ -155,7 +155,7 @@ describe("composer-fila: a queued message the host refuses stays queued (#4466)"
     await waitFor(() => expect(screen.queryByRole("list", { name: "Na fila" })).toBeNull());
   });
 
-  test("a refused message does not hold back the one behind it: the order stays", async () => {
+  test("a refused message stays at the head of the queue, ahead of the one behind it", async () => {
     const { sent, queue, turn } = setup(false, 0, 1);
     await queue("um");
     await queue("dois");
