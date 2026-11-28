@@ -35,10 +35,10 @@ import { useCardCosts } from "./use-card-costs.ts";
 
 const CARDDETAIL_KEYS = ["runs", "personas", "hosts", "cards", "projects"] as const;
 
-/** One card: description, runs, the active run's conversation, its diff and the actions. */
 /** A refused lookup: its code and text, to say why the card could not be read. */
 type Refused = Extract<HostResult<unknown>, { ok: false }>;
 
+/** One card: description, runs, the active run's conversation, its diff and the actions. */
 export const CardDetail = memo(function CardDetail(props: {
   store: AppStore;
   hostId: string;
@@ -142,7 +142,11 @@ export const CardDetail = memo(function CardDetail(props: {
     let live = true;
     void store.hostRequest(hostId, "card.get", { cardId }).then((result) => {
       if (!live) return;
-      const gone = result.ok || result.reason === "card_not_found";
+      // A host before v0.37.22 sends the code `not_found` alone, with no reason.
+      const gone =
+        result.ok ||
+        result.reason === "card_not_found" ||
+        (result.reason === undefined && result.code === "not_found");
       setLookup({ key, refused: gone ? null : result });
     });
     return () => {
