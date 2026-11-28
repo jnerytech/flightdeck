@@ -449,7 +449,8 @@ export const BoardView = memo(function BoardView(props: {
           <div // NOSONAR: Esc clears the selection from any card inside the board; the columns are a region, not a control
             ref={boardRef}
             data-slot="board-columns"
-            hidden={narrow && filesShown}
+            // Before the board is loaded the columns know nothing of its cards: they would each say Empty (#4505).
+            hidden={!project || (narrow && filesShown)}
             // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
             tabIndex={0} // NOSONAR: a region that scrolls must take focus, or the keyboard cannot scroll it (axe scrollable-region-focusable)
             style={{ gridAutoColumns: switcher ? "minmax(0, 1fr)" : `${width}px` }}
