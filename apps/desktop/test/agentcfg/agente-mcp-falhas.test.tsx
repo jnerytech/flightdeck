@@ -259,6 +259,6 @@ describe.each(["en", "pt-BR"] as const)("the MCP tab, forms and refusals (%s)", 
     await press(w.remove("eco"));
     await press(w.removeConfirm);
     await uiIdle();
-    expect(focused() === screen.queryByRole("button", { name: w.add })).toBe(true);
+    expect(focused()?.isSameNode(screen.queryByRole("button", { name: w.add }))).toBe(true);
   });
 });

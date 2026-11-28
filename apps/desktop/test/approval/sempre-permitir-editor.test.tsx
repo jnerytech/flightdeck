@@ -126,6 +126,6 @@ describe("always-allow editor: the person's way through the rule field (#4158)",
     editor("pt-BR");
     await open("pt-BR");
     await type("", "Regra");
-    expect(screen.queryByText("Digite uma regra para salvá-la.") !== null).toBe(true);
+    expect(screen.queryByText("Digite uma regra para salvá-la.")).not.toBeNull();
   });
 });

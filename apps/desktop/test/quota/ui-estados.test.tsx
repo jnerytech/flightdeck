@@ -178,7 +178,7 @@ describe.each(["en", "pt-BR"] as const)("the quota screens, states (%s)", (lang)
       );
       const text = container.textContent ?? "";
       expect(text.split(reason).length - 1).toBe(1);
-      expect(text.includes(t("quota.noReading"))).toBe(false);
+      expect(text).not.toContain(t("quota.noReading"));
     },
   );
 

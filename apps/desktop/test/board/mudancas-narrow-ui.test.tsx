@@ -83,8 +83,8 @@ describe("mudancas-narrow-ui (#4225, #4226)", () => {
     ).toBe(true);
 
     // The pressed toggle shows a check mark, not only a tint; the other one has none.
-    expect(splitButton()?.querySelector("svg") !== null).toBe(true);
-    expect(unifiedButton()?.querySelector("svg") === null).toBe(true);
+    expect(splitButton()?.querySelector("svg")).not.toBeNull();
+    expect(unifiedButton()?.querySelector("svg")).toBeNull();
     // A picked line number has a cue beyond its colour.
     const number = screen.queryAllByRole("button", { name: /^Comentar a linha/ })[0];
     expect(number?.className.includes("aria-pressed:underline")).toBe(true);

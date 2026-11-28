@@ -143,7 +143,7 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     type("fix the totl");
     await click("Improve with AI");
     const dialog = await screen.findByRole("dialog", { name: "AI suggestion" });
-    expect(document.activeElement === box()).toBe(true); // #4166: the suggestion does not take the focus from the field
+    expect(document.activeElement?.isSameNode(box())).toBe(true); // #4166: the suggestion does not take the focus from the field
     await act(async () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Accept" }));
     });

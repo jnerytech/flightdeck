@@ -173,16 +173,16 @@ describe("cota-por-conta: the panel", () => {
   test("the hot notice names each hot host with its own guard, not one percent for both", async () => {
     const card = sharedCard({ a: reading(0.6, 0.5), b: reading(0.6, 0.9) });
     const text = card.textContent ?? "";
-    expect(text.includes("a: over 50%")).toBe(true);
-    expect(text.includes("a · b: over")).toBe(false);
-    expect(text.includes("b: over")).toBe(false);
+    expect(text).toContain("a: over 50%");
+    expect(text).not.toContain("a · b: over");
+    expect(text).not.toContain("b: over");
   });
 
   test("when both hosts are hot, each notice has its own percent", async () => {
     const card = sharedCard({ a: reading(0.95, 0.5), b: reading(0.95, 0.9) });
     const text = card.textContent ?? "";
-    expect(text.includes("a: over 50%")).toBe(true);
-    expect(text.includes("b: over 90%")).toBe(true);
+    expect(text).toContain("a: over 50%");
+    expect(text).toContain("b: over 90%");
   });
 
   test("hosts on different accounts keep a card each", async () => {

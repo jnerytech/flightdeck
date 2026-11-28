@@ -200,8 +200,8 @@ describe("project rules section: what it says while it waits and when the host r
     const { store } = fakeStore({ "rules.list": [list.promise], "rules.remove": [] });
     const { container } = view(store, "pt-BR");
     await uiIdle();
-    expect(within(container).queryByRole("status", { name: "Carregando as regras" }) !== null).toBe(
-      true,
-    );
+    expect(
+      within(container).queryByRole("status", { name: "Carregando as regras" }),
+    ).not.toBeNull();
   });
 });

@@ -260,13 +260,13 @@ describe("nova-sessao-ux: the form says what it needs", () => {
         <NewSessionForm host={hostWith(["/work"])} store={store} onCreate={() => {}} />
       </TContext.Provider>,
     );
-    expect(screen.queryByRole("button", { name: "Browse…" }) !== null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Browse…" })).not.toBeNull();
     view.rerender(
       <TContext.Provider value={translator("en")}>
         <NewSessionForm host={hostWith([])} store={store} onCreate={() => {}} />
       </TContext.Provider>,
     );
-    expect(screen.queryByRole("button", { name: "Browse…" }) === null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Browse…" })).toBeNull();
   });
 
   test("every field of the form has the same width, and the button sits at the fields' left edge", async () => {

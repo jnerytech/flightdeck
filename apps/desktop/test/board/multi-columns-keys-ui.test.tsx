@@ -398,7 +398,7 @@ describe("board-multi-ui: a filter that matches nothing (#4409)", () => {
       expect(screen.queryByText(w.none)).toBeNull();
       expect(screen.queryByLabelText(`Card A`)).not.toBeNull();
       expect((screen.getByLabelText(w.field) as HTMLInputElement).value).toBe("");
-      expect(document.activeElement === screen.getByLabelText(w.field)).toBe(true);
+      expect(document.activeElement?.isSameNode(screen.getByLabelText(w.field))).toBe(true);
     });
 
     test(`${language}: a filter that leaves some cards shows no board message, and the live region says how many are left`, async () => {
@@ -424,7 +424,7 @@ describe("board-multi-ui: a filter that matches nothing (#4409)", () => {
       });
       expect((screen.getByLabelText(w.field) as HTMLInputElement).value).toBe("");
       expect(screen.queryByRole("button", { name: w.clearText })).toBeNull();
-      expect(document.activeElement === screen.getByLabelText(w.field)).toBe(true);
+      expect(document.activeElement?.isSameNode(screen.getByLabelText(w.field))).toBe(true);
       expect(li("C")).not.toBeNull();
     });
   }
