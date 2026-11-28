@@ -1,6 +1,6 @@
 import type { GithubRepoItem, Issue } from "@flightdeck/protocol";
 import { GitBranch } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,7 +15,7 @@ import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
-import { NativeSelect } from "@/shared/layout/index.ts";
+import { FieldRow, NativeSelect } from "@/shared/layout/index.ts";
 
 /**
  * "Start from GitHub" (phase 37): pick a repository, optionally one of its issues, and the host
@@ -31,14 +31,22 @@ export function StartFromGithub(
   const [query, setQuery] = useState("");
   const [repos, setRepos] = useState<GithubRepoItem[] | null>(null);
   const [repo, setRepo] = useState<string | null>(null);
-  const [issues, setIssues] = useState<Issue[]>([]);
+  /** The issues of `repo`: `loading` while they are read, `failed` when the host refused. */
+  const [issues, setIssues] = useState<Issue[] | "loading" | "failed">([]);
+  /** Try again is asking: the failure line stays, so the focus stays on its button. */
+  const [retrying, setRetrying] = useState(false);
+  /** The latest pick: the answer of an older one is dropped. */
+  const latestPick = useRef(0);
   const [issue, setIssue] = useState<string | null>(null);
   const [mode, setMode] = useState<"card" | "session">("card");
   const [error, setError] = useState<string | null>(null);
   const roots = store.getState().hosts.find((h) => h.id === hostId)?.info?.allowedRoots ?? [];
   const [root, setRoot] = useState(roots[0] ?? "");
 
-  /** The answer of a command, or null with the refusal said in the dialog. */
+  /**
+   * The answer of a command, or null with the refusal said in the dialog. With `current`, the
+   * answer of a request the person has left is dropped before it touches the dialog's notice.
+   */
   const ask = useCallback(
     async <T,>(
       run: () => Promise<
@@ -51,8 +59,10 @@ export function StartFromGithub(
             params?: Record<string, string | number>;
           }
       >,
+      current?: () => boolean,
     ): Promise<T | null> => {
       const result = await run();
+      if (current && !current()) return null;
       if (result.ok) {
         setError(null);
         return result.data;
@@ -75,8 +85,10 @@ export function StartFromGithub(
       );
       if (found) {
         setRepos(found.repos);
+        latestPick.current += 1;
         setRepo(null);
         setIssues([]);
+        setRetrying(false);
         setIssue(null);
       }
     },
@@ -87,11 +99,25 @@ export function StartFromGithub(
     if (open) void load();
   }, [open, load]);
 
-  const pickRepo = async (name: string) => {
-    setRepo(name);
-    setIssue(null);
-    const found = await ask(() => store.hostRequest(hostId, "github.issues", { repo: name }));
-    setIssues(found?.issues ?? []);
+  /** Reads the issues of a repository; `again` is Try again on the one shown. */
+  const pickRepo = async (name: string, again = false) => {
+    latestPick.current += 1;
+    const pick = latestPick.current;
+    setRetrying(again);
+    // The notice above the list announces the refusal: clear the old one so a new failure speaks again.
+    setError(null);
+    if (!again) {
+      setRepo(name);
+      setIssue(null);
+      setIssues("loading");
+    }
+    const found = await ask(
+      () => store.hostRequest(hostId, "github.issues", { repo: name }),
+      () => pick === latestPick.current,
+    );
+    if (pick !== latestPick.current) return;
+    setRetrying(false);
+    setIssues(found ? found.issues : "failed");
   };
 
   const start = async () => {
@@ -177,23 +203,50 @@ export function StartFromGithub(
                   />
                   <span className="text-sm">{t("githubStart.wholeRepo")}</span>
                 </label>
-                {issues.length === 0 && (
+                {issues === "loading" && (
+                  <output className="text-muted-foreground text-sm">
+                    {t("githubStart.issuesLoading")}
+                  </output>
+                )}
+                {issues === "failed" && (
+                  <FieldRow>
+                    {retrying ? (
+                      <output className="text-muted-foreground text-sm">
+                        {t("githubStart.issuesLoading")}
+                      </output>
+                    ) : (
+                      <p className="text-sm text-status-error">{t("githubStart.issuesFailed")}</p>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      aria-disabled={retrying}
+                      className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
+                      onClick={() => !retrying && void pickRepo(repo, true)}
+                    >
+                      {t("githubStart.issuesRetry")}
+                    </Button>
+                  </FieldRow>
+                )}
+                {Array.isArray(issues) && issues.length === 0 && (
                   <p className="text-muted-foreground text-sm">{t("githubStart.noIssues")}</p>
                 )}
-                {issues.map((item) => (
-                  <label key={item.id} className="check-line">
-                    <input
-                      type="radio"
-                      name="github-issue"
-                      className="hit-control"
-                      checked={issue === item.id}
-                      onChange={() => setIssue(item.id)}
-                    />
-                    <span className="text-sm">
-                      #{item.id} {item.title}
-                    </span>
-                  </label>
-                ))}
+                {Array.isArray(issues) &&
+                  issues.map((item) => (
+                    <label key={item.id} className="check-line">
+                      <input
+                        type="radio"
+                        name="github-issue"
+                        className="hit-control"
+                        checked={issue === item.id}
+                        onChange={() => setIssue(item.id)}
+                      />
+                      <span className="text-sm">
+                        #{item.id} {item.title}
+                      </span>
+                    </label>
+                  ))}
               </section>
             )}
             <section className="find-block">

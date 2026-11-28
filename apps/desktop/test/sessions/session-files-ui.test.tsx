@@ -3,7 +3,8 @@ import type { SessionFile } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
-const { cleanup, render, waitFor, within } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
+const { settleMaybe } = await import("../wait.ts");
 const screen = liveScreen(within);
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
@@ -19,6 +20,7 @@ afterEach(cleanup);
  */
 function show(language: "en" | "pt-BR", files: SessionFile[]) {
   const store = {
+    hostRequest: async () => ({ ok: true, data: { files } }),
     hostCommand: async () => ({ files }),
     formatDateTime: () => "today",
   };
@@ -82,4 +84,179 @@ describe("session-files-ui: the session's own files say where they come from (#1
       ]).toEqual([true, true]);
     });
   }
+});
+
+/**
+ * #4489: a refused `session.files` came back as `null` and the block said "None yet.", as if the
+ * session had written nothing. It now says the files could not be read, with Try again.
+ */
+const FILE = {
+  path: "src/app.ts",
+  edits: 2,
+  firstAt: "2026-11-08T09:00:00.000Z",
+  lastAt: "2026-11-08T10:00:00.000Z",
+};
+
+const REFUSAL = { ok: false, code: "busy", message: "The host is busy." };
+
+/**
+ * A store whose `hostRequest` answers in turn: a list, or null for a refusal. `banners` counts the
+ * reads that went through `hostCommand`, whose refusal raises the global banner on top of the block.
+ */
+function showAnswers(language: "en" | "pt-BR", answers: (SessionFile[] | null)[]) {
+  let asked = 0;
+  let banners = 0;
+  const store = {
+    hostRequest: async () => {
+      const answer = answers[Math.min(asked, answers.length - 1)] ?? null;
+      asked += 1;
+      return answer === null ? REFUSAL : { ok: true, data: { files: answer } };
+    },
+    hostCommand: async () => {
+      banners += 1;
+      return null;
+    },
+    formatDateTime: () => "today",
+  };
+  render(
+    <TContext.Provider value={translator(language)}>
+      <SessionFiles store={store as never} hostId="h" claudeSessionId="s" />
+    </TContext.Provider>,
+  );
+  return { asked: () => asked, banners: () => banners };
+}
+
+describe("session-files-ui: a refused read is not an empty list (#4489)", () => {
+  for (const [language, names] of [
+    [
+      "en",
+      {
+        failed: "The session's files could not be read.",
+        none: "None yet. Changes made by commands (Bash) or outside the session are not listed here.",
+        retry: "Try again",
+      },
+    ],
+    [
+      "pt-BR",
+      {
+        failed: "Não foi possível ler os arquivos da sessão.",
+        none: "Nenhum ainda. Mudanças feitas por comandos (Bash) ou fora da sessão não aparecem aqui.",
+        retry: "Tentar de novo",
+      },
+    ],
+  ] as const) {
+    test(`${language}: a refused read says the files could not be read, with Try again, not None yet`, async () => {
+      showAnswers(language, [null]);
+      expect(
+        await settleMaybe(() => screen.queryByRole("button", { name: names.retry }) !== null, 3000),
+      ).toBe(true);
+      expect([
+        screen.queryByRole("alert")?.textContent?.includes(names.failed) ?? false,
+        screen.queryByText(names.none) === null,
+      ]).toEqual([true, true]);
+    });
+  }
+
+  test("Try again asks the host again and lists the files it answers with", async () => {
+    const page = showAnswers("en", [null, [FILE]]);
+    expect(
+      await settleMaybe(() => screen.queryByRole("button", { name: "Try again" }) !== null, 3000),
+    ).toBe(true);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    });
+    expect(await settleMaybe(() => screen.queryByText("src/app.ts") !== null, 3000)).toBe(true);
+    expect([page.asked(), screen.queryByRole("alert") === null]).toEqual([2, true]);
+  });
+
+  test("Try again keeps the focus on its button while the host is asked again", async () => {
+    const waiting: Array<(result: unknown) => void> = [];
+    const store = {
+      hostRequest: () => new Promise((resolve) => waiting.push(resolve)),
+      hostCommand: () => new Promise(() => {}),
+      formatDateTime: () => "today",
+    };
+    render(
+      <TContext.Provider value={translator("en")}>
+        <SessionFiles store={store as never} hostId="h" claudeSessionId="s" />
+      </TContext.Provider>,
+    );
+    expect(await settleMaybe(() => waiting.length === 1, 3000)).toBe(true);
+    await act(async () => waiting.shift()?.(REFUSAL));
+    expect(
+      await settleMaybe(() => screen.queryByRole("button", { name: "Try again" }) !== null, 3000),
+    ).toBe(true);
+    (screen.getByRole("button", { name: "Try again" }) as HTMLElement).focus();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    });
+    expect(await settleMaybe(() => waiting.length === 1, 3000)).toBe(true);
+    const loading = screen.queryByText("Reading the session's files…") !== null;
+    const focused = document.activeElement === screen.queryByRole("button", { name: "Try again" });
+    expect([loading, focused]).toEqual([true, true]);
+    await act(async () => waiting.shift()?.(REFUSAL));
+    expect(
+      await settleMaybe(
+        () => screen.queryByText("The session's files could not be read.") !== null,
+        3000,
+      ),
+    ).toBe(true);
+    expect(document.activeElement === screen.queryByRole("button", { name: "Try again" })).toBe(
+      true,
+    );
+  });
+
+  test("a host that answers with no files still says None yet", async () => {
+    showAnswers("en", [[]]);
+    expect(
+      await settleMaybe(
+        () =>
+          screen.queryByText(
+            "None yet. Changes made by commands (Bash) or outside the session are not listed here.",
+          ) !== null,
+        3000,
+      ),
+    ).toBe(true);
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+});
+
+describe("session-files-ui: one notice, and no stale answer across sessions (#4489)", () => {
+  test("a refused read is shown by the block alone, without the global banner", async () => {
+    const page = showAnswers("en", [null]);
+    expect(
+      await settleMaybe(() => screen.queryByRole("button", { name: "Try again" }) !== null, 3000),
+    ).toBe(true);
+    expect(page.banners()).toBe(0);
+  });
+
+  test("another session starts blank: the failure of the first one is not shown under it", async () => {
+    const answers: unknown[] = [REFUSAL];
+    let release: (value: unknown) => void = () => {};
+    const store = {
+      hostRequest: () =>
+        answers.length > 0
+          ? Promise.resolve(answers.shift())
+          : new Promise((resolve) => {
+              release = resolve;
+            }),
+      hostCommand: () => new Promise(() => {}),
+      formatDateTime: () => "today",
+    };
+    const tree = (id: string) => (
+      <TContext.Provider value={translator("en")}>
+        <SessionFiles store={store as never} hostId="h" claudeSessionId={id} />
+      </TContext.Provider>
+    );
+    const view = render(tree("a"));
+    expect(
+      await settleMaybe(() => screen.queryByRole("button", { name: "Try again" }) !== null, 3000),
+    ).toBe(true);
+    view.rerender(tree("b"));
+    expect(
+      await settleMaybe(() => screen.queryByRole("button", { name: "Try again" }) === null, 3000),
+    ).toBe(true);
+    await act(async () => release({ ok: true, data: { files: [FILE] } }));
+    expect(await settleMaybe(() => screen.queryByText("src/app.ts") !== null, 3000)).toBe(true);
+  });
 });
