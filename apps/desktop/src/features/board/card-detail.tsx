@@ -14,12 +14,13 @@ import { PostMortem } from "@/features/board/post-mortem";
 import { RunAgain } from "@/features/board/run-again";
 import { PrWatchPanel } from "@/features/watch/ui.ts";
 import { useT } from "@/i18n/context";
-import { reasonText } from "@/i18n/errors";
+import { reasonText, refusalText } from "@/i18n/errors";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { InlineNotice } from "@/shared/feedback/index.ts";
-import { EmptyState, LoadingState, Page } from "@/shared/layout/index.ts";
+import { EmptyState, ErrorState, LoadingState, Page, Stack } from "@/shared/layout/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
+import type { HostResult } from "../../lib/kernel.ts";
 import { useSessionState } from "../../lib/use-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { usd } from "../costs/index.ts";
@@ -33,6 +34,9 @@ import { opensOnChanges } from "./domain/card-next-step.ts";
 import { useCardCosts } from "./use-card-costs.ts";
 
 const CARDDETAIL_KEYS = ["runs", "personas", "hosts", "cards", "projects"] as const;
+
+/** A refused lookup: its code and text, to say why the card could not be read. */
+type Refused = Extract<HostResult<unknown>, { ok: false }>;
 
 /** One card: description, runs, the active run's conversation, its diff and the actions. */
 export const CardDetail = memo(function CardDetail(props: {
@@ -123,19 +127,60 @@ export const CardDetail = memo(function CardDetail(props: {
 
   // A route straight to a card (a link, a notification) has not loaded its board: ask the host.
   const missing = card === undefined;
-  /** The card the host answered the lookup for (#2599): until then the page loads, after it a missing card is gone. */
-  const [askedFor, setAskedFor] = useState<string | null>(null);
-  const asked = askedFor === sessionKey(hostId, cardId);
+  /**
+   * What the host answered the lookup for a card (#2599): until then the page loads. A card the host
+   * does not have is gone; any other refusal is a card that could not be read, with its reason (#4478).
+   */
+  const [lookup, setLookup] = useState<{ key: string; refused: Refused | null } | null>(null);
+  const [lookups, setLookups] = useState(0);
+  /** Try again is asking: the failure block stays, so the focus stays on its button. */
+  const [retrying, setRetrying] = useState(false);
+  const key = sessionKey(hostId, cardId);
+  const asked = lookup?.key === key;
+  const refused = asked ? lookup.refused : null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `lookups` only asks again, after Try again
   useEffect(() => {
-    if (missing) {
-      void store
-        .hostCommand(hostId, "card.get", { cardId })
-        .then(() => setAskedFor(sessionKey(hostId, cardId)));
-    }
-  }, [store, hostId, cardId, missing]);
+    if (!missing) return;
+    let live = true;
+    void store.hostRequest(hostId, "card.get", { cardId }).then((result) => {
+      if (!live) return;
+      // A host before v0.37.22 sends the code `not_found` alone, with no reason.
+      const gone =
+        result.ok ||
+        result.reason === "card_not_found" ||
+        (result.reason === undefined && result.code === "not_found");
+      setLookup({ key, refused: gone ? null : result });
+      setRetrying(false);
+    });
+    return () => {
+      live = false;
+    };
+  }, [store, hostId, cardId, missing, key, lookups]);
 
   if (!card) {
     if (!asked) return <LoadingState label={t("cardUi.loadingTitle")} />;
+    if (refused !== null) {
+      return (
+        <Stack gap={3}>
+          <ErrorState
+            message={
+              retrying
+                ? t("cardUi.loadingTitle")
+                : `${t("cardUi.readFailed")} ${refusalText(refused.code, refused.message, t, refused)}`
+            }
+            retryLabel={t("cardUi.retry")}
+            onRetry={() => {
+              if (retrying) return;
+              setRetrying(true);
+              setLookups((n) => n + 1);
+            }}
+          />
+          <Button variant="outline" className="self-start" onClick={props.onBack}>
+            {t("cardUi.back")}
+          </Button>
+        </Stack>
+      );
+    }
     return (
       <EmptyState
         title={t("cardUi.notFound")}
