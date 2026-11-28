@@ -307,7 +307,7 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
       control.finish?.({ kind: "moved", sessionId: "", worktree: "/w", branch: "fd/x" });
     });
     await settle(() => screen.queryByRole("alert") !== null);
-    expect(screen.queryByRole("button", { name: "Try again" }) === null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
   for (const lang of ["en", "pt-BR"] as const) {
