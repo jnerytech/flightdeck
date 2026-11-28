@@ -92,6 +92,8 @@ describe("pasta-arquivos: what the picker says in file mode (#4458)", () => {
     scripted: Files | Files[],
     language: "en" | "pt-BR" = "en",
     subdirs: string[] = [],
+    /** Folders whose listing the host refuses. */
+    refused: string[] = [],
   ) {
     const answers = Array.isArray(scripted) ? scripted : [scripted];
     let reads = 0;
@@ -100,6 +102,9 @@ describe("pasta-arquivos: what the picker says in file mode (#4458)", () => {
     cleanups.push(() => store.dispose());
     store.hostRequest = (async (_host: string, type: string, payload: { path?: string }) => {
       if (type === "fs.dirs") {
+        if (payload.path && refused.includes(payload.path)) {
+          return { ok: false, code: "internal", message: "refused" };
+        }
         return payload.path === undefined
           ? {
               ok: true,
@@ -218,6 +223,25 @@ describe("pasta-arquivos: what the picker says in file mode (#4458)", () => {
     ).toBe(true);
     expect(said(FAILED)).toBe(false);
     expect(dialog().queryByRole("button", { name: "Try again" }) === null).toBe(true);
+  });
+
+  test("a refused folder while the files load does not leave Loading files on the screen for good", async () => {
+    await stubbed(true, "pending", "en", ["sub"], ["/work/sub"]);
+    expect(await settleMaybe(() => said("Loading files…"), 1500)).toBe(true);
+    await press("sub");
+    expect(await settleMaybe(() => screen.queryByRole("alert") !== null, 1500)).toBe(true);
+    expect(said("Loading files…")).toBe(false);
+    expect(dialog().queryByRole("button", { name: "Try again" }) !== null).toBe(true);
+  });
+
+  test("after Try again the focus moves to the first entry of the list, not to the page", async () => {
+    await stubbed(true, ["refused", { files: [{ name: "a.txt", path: "/work/a.txt" }] }]);
+    expect(await settleMaybe(() => said(FAILED), 1500)).toBe(true);
+    await press("Try again");
+    expect(
+      await settleMaybe(() => dialog().queryByRole("button", { name: "a.txt" }) !== null, 1500),
+    ).toBe(true);
+    expect(document.activeElement === dialog().queryByRole("button", { name: "a.txt" })).toBe(true);
   });
 
   test("in Portuguese the file mode speaks Portuguese", async () => {
