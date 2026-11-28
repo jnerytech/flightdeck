@@ -110,7 +110,7 @@ function statusOf(
     typed &&
     current &&
     !searching &&
-    o.count + hitCount === 0 &&
+    hitCount === 0 &&
     search.silent.length > 0 &&
     o.answering === 0;
   const historyNone =
