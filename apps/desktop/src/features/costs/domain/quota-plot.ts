@@ -3,8 +3,11 @@ export const PLOT = { width: 240, height: 72, left: 30, right: 8, top: 8, bottom
 
 type PlotPoint = { x: number; y: number };
 
+/** A dot is the point of one reading, so a screen can name it by its time. */
+type PlotDot = PlotPoint & { takenAt: string };
+
 /** The points to draw: one line per run of known readings, and a dot for each reading. */
-type QuotaPlot = { segments: PlotPoint[][]; dots: PlotPoint[] };
+type QuotaPlot = { segments: PlotPoint[][]; dots: PlotDot[] };
 
 /** One reading of a window: its time and its utilization (0 to 1, `null` when the plan did not say). */
 type PlotSample = { takenAt: string; utilization: number | null };
@@ -19,7 +22,7 @@ export function quotaPlot(samples: readonly PlotSample[]): QuotaPlot {
   const first = Math.min(...times);
   const span = Math.max(...times) - first;
   const segments: PlotPoint[][] = [];
-  const dots: PlotPoint[] = [];
+  const dots: PlotDot[] = [];
   let run: PlotPoint[] = [];
   samples.forEach((sample, i) => {
     if (sample.utilization === null) {
@@ -33,7 +36,7 @@ export function quotaPlot(samples: readonly PlotSample[]): QuotaPlot {
         : (left + right) / 2;
     const y = bottom - Math.min(1, Math.max(0, sample.utilization)) * (bottom - top);
     const point = { x, y };
-    dots.push(point);
+    dots.push({ ...point, takenAt: sample.takenAt });
     if (run.length === 0) segments.push(run);
     run.push(point);
   });

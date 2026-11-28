@@ -15,7 +15,6 @@ const percent = (utilization: number) => `${Math.round(utilization * 100)}%`;
 /** The plot of one window: its 0 and 100% marks, the line of the known readings and a dot for each. */
 function Plot(props: Readonly<{ history: QuotaHistory; name: string }>) {
   const { segments, dots } = quotaPlot(props.history.samples);
-  const known = props.history.samples.filter((s) => s.utilization !== null);
   const bottom = PLOT.height - PLOT.bottom;
   const right = PLOT.width - PLOT.right;
   return (
@@ -45,8 +44,15 @@ function Plot(props: Readonly<{ history: QuotaHistory; name: string }>) {
           points={segment.map((p) => `${p.x},${p.y}`).join(" ")}
         />
       ))}
-      {dots.map((p, i) => (
-        <circle key={known[i]?.takenAt} data-sample cx={p.x} cy={p.y} r={DOT} fill="currentColor" />
+      {dots.map((p) => (
+        <circle
+          key={`${p.takenAt}@${p.y}`}
+          data-sample
+          cx={p.x}
+          cy={p.y}
+          r={DOT}
+          fill="currentColor"
+        />
       ))}
     </svg>
   );
@@ -69,14 +75,15 @@ function WindowChart(props: Readonly<{ store: AppStore; history: QuotaHistory }>
   const label = props.store.i18n.t(`quota.windows.${history.window}` as Key);
   const first = history.samples[0];
   const last = history.samples.at(-1);
-  const time = (iso: string) => props.store.formatTime(iso);
+  // The day shows too once a reading is not from today: a week's range is not 14:00 to 14:00.
+  const time = (iso: string) => props.store.formatWhen(iso);
   const name =
     first && last
       ? t(
           last.utilization === null ? "quotaCharts.utilizationUnknown" : "quotaCharts.utilization",
           {
             label,
-            value: String(Math.round((last.utilization ?? 0) * 100)),
+            value: String(Math.round(Math.min(1, Math.max(0, last.utilization ?? 0)) * 100)),
             from: time(first.takenAt),
             to: time(last.takenAt),
           },
@@ -85,6 +92,9 @@ function WindowChart(props: Readonly<{ store: AppStore; history: QuotaHistory }>
   return (
     <WindowCard name={t("quotaCharts.window", { label })} label={label}>
       {first && last && <Plot history={history} name={name} />}
+      {!(first && last) && (
+        <p className="text-muted-foreground text-xs">{t("quotaCharts.empty")}</p>
+      )}
       {first && last && (
         <p className="text-muted-foreground text-xs">
           {history.samples.length === 1
