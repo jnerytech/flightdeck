@@ -105,7 +105,12 @@ describe("continuar", () => {
     await click("Continuar no Flightdeck");
     await settle(() => screen.queryByLabelText("Mensagem") !== null);
     const earlier = () => screen.queryByRole("region", { name: "Antes de retomar" });
-    await settle(() => earlier() !== null);
+    // The region shows its loading line first; the turns come with the answer.
+    await settle(
+      () =>
+        earlier() !== null &&
+        within(earlier() as HTMLElement).queryByText("falando da girafa") !== null,
+    );
     expect(within(earlier() as HTMLElement).queryByText("falando da girafa")).not.toBeNull();
     expect(within(earlier() as HTMLElement).queryByText("a girafa é alta")).not.toBeNull();
   });
