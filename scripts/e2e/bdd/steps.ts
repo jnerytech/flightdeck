@@ -326,10 +326,11 @@ const MENU_OPENINGS = 3;
 /**
  * Finish… sits under the card page's menu (#1197). The step clicks Actions and then the item of the open menu,
  * with no wait for a dialog to be gone or for the focus to be back: a person clicks Actions the moment a card
- * dialog closes. On a slow CI runner that menu is sometimes dismissed within 20 ms of opening, by a focus move the
- * app does not explain yet (#4357, #4353), so the step opens it again, up to MENU_OPENINGS times, when it closed
- * before its item could be clicked. Only the open menu's item counts: one in the menu's closing animation takes a
- * click that selects nothing.
+ * dialog closes. The menu the Finish… item closed is still in its exit animation then, and its outside-press
+ * listener dismissed the very press that opened it again (#4353: the card page's menu now ignores a press on its own
+ * button). The step still opens the menu again, up to MENU_OPENINGS times, when it closed before its item could be
+ * clicked (#4357). Only the open menu's item counts: one in the menu's closing animation takes a click that selects
+ * nothing.
  */
 const fromCardMenu = async (c: Context, item: string) => {
   const button = cardMenuButton(c);
@@ -356,7 +357,7 @@ const fromCardMenu = async (c: Context, item: string) => {
 
 /**
  * A card dialog is gone and the focus is back on Actions. The dialog hands the focus back a tick after it leaves, and
- * an Actions click made before that opens a menu the late focus closes again (#4353).
+ * a focus on the button of a menu already open closes it (#4288).
  */
 const cardDialogGone = async (c: Context, dialog: Locator) => {
   await dialog.waitFor({ state: "detached", timeout: WAIT });

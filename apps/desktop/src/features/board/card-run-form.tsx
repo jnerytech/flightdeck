@@ -248,7 +248,14 @@ export function CardRunForm(
                 {t("cardUi.menu")}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent
+              align="end"
+              // The press on Actions is the trigger's own toggle. A menu still in its exit animation keeps its outside-press
+              // listener, so the press that opens it again would also dismiss it in the same event (#4353).
+              onPointerDownOutside={(event) => {
+                if (menuButton.current?.contains(event.target as Node)) event.preventDefault();
+              }}
+            >
               {step !== "start" && startable && (
                 <DropdownMenuItem onSelect={startPlain}>{t("cardUi.start")}</DropdownMenuItem>
               )}
