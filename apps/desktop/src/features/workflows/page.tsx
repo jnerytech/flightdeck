@@ -74,6 +74,8 @@ export function WorkflowsPage(
   const list = useRef<HTMLUListElement>(null);
   // A confirmed Trust removes its button when it is accepted: the focus waits on the workflow's name.
   const confirmed = useRef(false);
+  // The request of a confirmed Trust has not answered yet (read when the dialog gives the focus back).
+  const inFlight = useRef(false);
   // The workflow whose answer just came: once its button is back on, the focus may move there.
   const answered = useRef<string | null>(null);
 
@@ -99,12 +101,14 @@ export function WorkflowsPage(
     setTrusting(null);
     setOutcome(null);
     setPending(name);
+    inFlight.current = true;
     try {
       const answer = await store.hostCommand(hostId, "workflow.trust", { projectId, name, hash });
       setOutcome({ name, accepted: answer?.trusted === true });
       await reload();
     } finally {
       answered.current = name;
+      inFlight.current = false;
       setPending(null);
     }
   };
@@ -221,9 +225,12 @@ export function WorkflowsPage(
         <ConfirmDialog
           message={t("workflowsUi.trustMessage", { name: trusting.name })}
           confirmLabel={t("workflowsUi.trustConfirm")}
-          // Radix would return the focus to Trust, which an accepted Trust removes: the name stays.
+          // Radix would return the focus to Trust, which an accepted Trust removes: the name stays while
+          // the host answers. An answer that came first has already given the focus to Trust (or, once
+          // Trust is gone, to the name): the restore must not take it back.
           onRestoreFocus={() => {
-            focusIn(list.current, trusting.name, confirmed.current ? "name" : "trust");
+            const waiting = confirmed.current && inFlight.current;
+            focusIn(list.current, trusting.name, waiting ? "name" : "trust");
             confirmed.current = false;
           }}
           onConfirm={() => void trust(trusting)}
