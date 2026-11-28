@@ -37,7 +37,14 @@ export function useComposerQueue(input: {
     awaiting.current = step.awaiting;
     if (!step.send || !nextQueued) return;
     void send(nextQueued.text, nextQueued.images.length > 0 ? nextQueued.images : undefined)
-      .then(() => setQueued((rest) => rest.slice(1)))
+      .then((taken) => {
+        if (taken === false) {
+          // The host refused: the message stays, and the next turn change tries it again (#4466).
+          awaiting.current = null;
+          return;
+        }
+        setQueued((rest) => rest.slice(1));
+      })
       .catch(() => {
         awaiting.current = null;
       });
