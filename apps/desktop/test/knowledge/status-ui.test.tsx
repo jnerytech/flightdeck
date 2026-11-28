@@ -275,7 +275,7 @@ describe("knowledge-status-ui: changing the status of a document (#76)", () => {
     fireEvent.change(picker("Use the outbox"), { target: { value: "transitional" } });
     press("Use the outbox");
     await waitFor(() => expect(within(panel()).queryByRole("alert")).not.toBeNull());
-    await waitFor(() => expect(document.activeElement === picker("Use the outbox")).toBe(true));
+    await waitFor(() => expect(document.activeElement === picker("Use the outbox")).toBe(true)); // NOSONAR: a failed toBe or toBeNull on a DOM node prints its whole happy-dom graph; the boolean fails in one line
   });
 
   test("the button says Change in words, in both languages", async () => {

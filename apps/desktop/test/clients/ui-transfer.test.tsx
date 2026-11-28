@@ -119,7 +119,7 @@ describe("clients-ui: the transfer outcome is announced and the export can be co
     await click("Importar");
     const second = document.querySelector("[role=alert]");
     expect(second).not.toBeNull();
-    expect(second === first).toBe(false);
+    expect(second === first).toBe(false); // NOSONAR: a failed toBe or toBeNull on a DOM node prints its whole happy-dom graph; the boolean fails in one line
   });
 
   test("an import that worked is a polite status line", async () => {

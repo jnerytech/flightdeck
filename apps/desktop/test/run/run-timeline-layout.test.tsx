@@ -122,7 +122,7 @@ describe("the time of a running step moves (#4286)", () => {
           <RunTimeline run={ended as WorkflowRun} onOpenStep={() => {}} formatTime={String} />
         </TContext.Provider>,
       );
-      expect(spy.mock.calls.filter((call) => call[1] === 1000).length).toBe(0);
+      expect(spy.mock.calls.filter((call) => call[1] === 1000)).toHaveLength(0);
     } finally {
       spy.mockRestore();
     }

@@ -225,7 +225,7 @@ describe("knowledge-feed-ui: whether agents are given the index (#76)", () => {
     );
     const turnOn = within(panel()).getByRole("button", { name: "Turn on" });
     await waitFor(() => expect(turnOn.hasAttribute("aria-busy")).toBe(false));
-    expect(document.activeElement === turnOn).toBe(true);
+    expect(document.activeElement === turnOn).toBe(true); // NOSONAR: a failed toBe or toBeNull on a DOM node prints its whole happy-dom graph; the boolean fails in one line
   });
 
   test("a first read that fails shows Try again, and pressing it reads again and shows the switch", async () => {

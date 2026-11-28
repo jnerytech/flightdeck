@@ -156,7 +156,7 @@ describe.each(["en", "pt-BR"] as const)("the Automations page, its states (%s)",
       second.release({ runs: [] });
     });
     await settle(() => screen.queryAllByRole("button", { expanded: true }).length > 0);
-    expect(screen.queryAllByRole("button", { expanded: true }).length).toBe(2);
+    expect(screen.queryAllByRole("button", { expanded: true })).toHaveLength(2);
   });
 
   test("Delete is not offered again for a row whose removal is in flight", async () => {

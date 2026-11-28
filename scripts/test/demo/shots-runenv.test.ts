@@ -34,7 +34,7 @@ describe("the Run environment panel's prints (#4287)", () => {
   });
 
   test("no name is printed twice", () => {
-    expect(names.length).toBe(new Set(names).size);
+    expect(names).toHaveLength(new Set(names).size);
   });
 
   test("every print is the demo card's page, and answers the run.yaml in the page", () => {
@@ -44,8 +44,8 @@ describe("the Run environment panel's prints (#4287)", () => {
           shot.route.name !== "card" ||
           !("cardId" in shot.route) ||
           shot.route.cardId !== IDS.diffCard,
-      ).length,
-    ).toBe(0);
+      ),
+    ).toHaveLength(0);
     expect(STATES.filter((name) => answerOf(name, "runenv.config") === undefined)).toEqual([]);
   });
 

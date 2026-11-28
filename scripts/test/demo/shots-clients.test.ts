@@ -34,7 +34,7 @@ describe("the Clients screen's prints (#4345)", () => {
   });
 
   test("no name is printed twice, and each print is the Clients screen", () => {
-    expect(names.length).toBe(new Set(names).size);
+    expect(names).toHaveLength(new Set(names).size);
     expect(shots.filter((s) => s.route.name !== "clients")).toEqual([]);
   });
 
