@@ -13,10 +13,13 @@ const { HostStateLive } = await import("../../src/features/hosts/host-state-live
 
 afterEach(cleanup);
 
-const host = (status: "online" | "offline" | "connecting") =>
+const host = (status: "online" | "offline" | "connecting" | "incompatible") =>
   ({ id: "h1", name: "alfa", status, hostInfo: null }) as never;
 
-const page = (lang: "en" | "pt-BR", status: "online" | "offline" | "connecting") => (
+const page = (
+  lang: "en" | "pt-BR",
+  status: "online" | "offline" | "connecting" | "incompatible",
+) => (
   <TContext.Provider value={translator(lang)}>
     <HostStateLive host={host(status)} />
   </TContext.Provider>
@@ -37,6 +40,12 @@ for (const [lang, t] of [
       expect(region()?.textContent).toBe(t.hosts.status.offline);
       view.rerender(page(lang, "connecting"));
       expect(region()?.textContent).toBe(t.hosts.status.connecting);
+    });
+
+    test("an incompatible host's region stays empty: its notice says what is wrong", () => {
+      const view = render(page(lang, "online"));
+      view.rerender(page(lang, "incompatible"));
+      expect(region()?.textContent).toBe("");
     });
   });
 }
