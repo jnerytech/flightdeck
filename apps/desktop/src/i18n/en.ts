@@ -427,7 +427,13 @@ export const en: Dictionary = {
   ...plugins,
   quotaCharts: {
     window: "{label} window",
-    utilization: "Utilization of the {label} window",
+    utilization: "Utilization of the {label} window: {value}% at {to}, readings since {from}",
+    utilizationUnknown:
+      "Utilization of the {label} window: the latest reading, at {to}, is unknown; readings since {from}",
+    failed: "The {label} window did not load.",
+    retry: "Try again",
+    one: "One reading so far, at {time}.",
+    range: "Readings from {from} to {to}",
     consumers: "Who used the 5-hour window",
     attribution: "approximate attribution: the plan does not say who used it",
     title: "Quota",

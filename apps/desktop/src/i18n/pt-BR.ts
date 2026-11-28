@@ -427,7 +427,13 @@ export const ptBR = {
   ...plugins,
   quotaCharts: {
     window: "Janela de {label}",
-    utilization: "Utilização da janela de {label}",
+    utilization: "Utilização da janela de {label}: {value}% às {to}, leituras desde {from}",
+    utilizationUnknown:
+      "Utilização da janela de {label}: a última leitura, às {to}, é desconhecida; leituras desde {from}",
+    failed: "A janela de {label} não carregou.",
+    retry: "Tentar de novo",
+    one: "Uma leitura até agora, às {time}.",
+    range: "Leituras de {from} a {to}",
     consumers: "Quem consumiu a janela de 5 horas",
     attribution: "atribuição aproximada: o plano não diz quem consumiu",
     title: "Cota",
