@@ -246,8 +246,11 @@ export const automations = {
     trustConfirm: "Confiar",
     farOnly: "Isso só funciona neste computador ou pelo Tailscale.",
     trustMessage:
-      "Confiar no workflow {name}? Ele poderá rodar estes comandos na worktree dos cards: {commands}.",
-    none: "nenhum",
+      "Confiar no workflow {name}? Ele poderá rodar estes comandos na worktree dos cards:",
+    trustCommands: "Comandos que {name} poderá rodar",
+    trustNone: "Nenhum comando.",
+    trustDone: "{name} confiado",
+    trustRefused: "O host não confiou em {name}. Confira o workflow e tente de novo.",
     loading: "Carregando workflows",
     empty: "Nenhum workflow na branch base ainda.",
     failed: "Não deu para ler os workflows. Veja se o host está conectado.",

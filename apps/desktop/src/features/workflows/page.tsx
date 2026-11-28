@@ -1,21 +1,44 @@
 import type { WorkflowInfo } from "@flightdeck/protocol";
 import { Workflow } from "lucide-react";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { workflowIssueText } from "@/i18n/errors";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
-import { EmptyState, ErrorState, LoadingState, Page } from "@/shared/layout/index.ts";
+import { EmptyState, ErrorState, LoadingState, Page, Stack } from "@/shared/layout/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { useStoreSlice } from "../../lib/use-store.ts";
 import { WorkflowTemplates } from "./workflow-templates.tsx";
 
-/** What trusting a workflow allows, said before the user confirms it. */
-function trustMessage(workflow: WorkflowInfo, t: T): string {
-  const commands = workflow.checks.join("; ") || t("workflowsUi.none");
-  return t("workflowsUi.trustMessage", { name: workflow.name, commands });
+/** An element of one workflow's card: its name (`name`) or its Trust button (`trust`). */
+function pick(list: HTMLUListElement | null, workflow: string, target: "trust" | "name") {
+  const item = [...(list?.children ?? [])].find(
+    (child): child is HTMLElement =>
+      child instanceof HTMLElement && child.dataset.workflow === workflow,
+  );
+  return item?.querySelector<HTMLElement>(`[data-target="${target}"]`) ?? null;
+}
+
+/** Focuses `target` of that workflow's card, or its name when the button is gone. */
+function focusIn(list: HTMLUListElement | null, workflow: string, target: "trust" | "name") {
+  (pick(list, workflow, target) ?? pick(list, workflow, "name"))?.focus();
+}
+
+/** What trusting a workflow allows, said before the user confirms it: each command on its own line. */
+function TrustCommands(props: Readonly<{ workflow: WorkflowInfo; t: T }>) {
+  const { workflow, t } = props;
+  if (workflow.checks.length === 0) return <p className="text-sm">{t("workflowsUi.trustNone")}</p>;
+  return (
+    <Stack as="ul" gap={1} label={t("workflowsUi.trustCommands", { name: workflow.name })}>
+      {workflow.checks.map((command) => (
+        <li key={command}>
+          <code className="break-all rounded bg-muted font-mono text-xs">{command}</code>
+        </li>
+      ))}
+    </Stack>
+  );
 }
 
 /**
@@ -41,6 +64,14 @@ export function WorkflowsPage(
   const [workflows, setWorkflows] = useState<WorkflowInfo[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [trusting, setTrusting] = useState<WorkflowInfo | null>(null);
+  // The workflow whose Trust is in flight (one at a time), and what the host answered to the last one.
+  const [pending, setPending] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<{ name: string; accepted: boolean } | null>(null);
+  const list = useRef<HTMLUListElement>(null);
+  // A confirmed Trust removes its button when it is accepted: the focus waits on the workflow's name.
+  const confirmed = useRef(false);
+  // The workflow whose answer just came: once its button is back on, the focus may move there.
+  const answered = useRef<string | null>(null);
 
   const reload = useCallback(async () => {
     // The page has its own error and Try again (the toast's retry would drop the answer).
@@ -59,11 +90,32 @@ export function WorkflowsPage(
   }, [reload]);
 
   const trust = async (workflow: WorkflowInfo) => {
-    setTrusting(null);
     const { name, hash } = workflow;
-    await store.hostCommand(hostId, "workflow.trust", { projectId, name, hash });
-    await reload();
+    confirmed.current = true;
+    setTrusting(null);
+    setOutcome(null);
+    setPending(name);
+    try {
+      const answer = await store.hostCommand(hostId, "workflow.trust", { projectId, name, hash });
+      setOutcome({ name, accepted: answer?.trusted === true });
+      await reload();
+    } finally {
+      answered.current = name;
+      setPending(null);
+    }
   };
+
+  // The answer is in and the buttons are back: Trust again after a refusal, else the workflow's name.
+  // Only the page body or the name gives the focus up: a person who moved on keeps theirs.
+  useEffect(() => {
+    const name = answered.current;
+    if (pending !== null || name === null) return;
+    answered.current = null;
+    const active = document.activeElement;
+    if (active === document.body || active === pick(list.current, name, "name")) {
+      focusIn(list.current, name, "trust");
+    }
+  }, [pending]);
 
   return (
     <Page
@@ -71,6 +123,14 @@ export function WorkflowsPage(
       subtitle={t("workflowsUi.subtitle")}
       actions={<WorkflowTemplates store={store} hostId={hostId} projectId={projectId} />}
     >
+      <div aria-live="polite" className="text-muted-foreground text-sm empty:sr-only">
+        {outcome?.accepted && t("workflowsUi.trustDone", { name: outcome.name })}
+      </div>
+      {outcome && !outcome.accepted && (
+        <InlineNotice tone="error">
+          {t("workflowsUi.trustRefused", { name: outcome.name })}
+        </InlineNotice>
+      )}
       {failed && (
         <ErrorState
           message={t("workflowsUi.failed")}
@@ -81,15 +141,18 @@ export function WorkflowsPage(
       {!failed && workflows === null && <LoadingState label={t("workflowsUi.loading")} />}
       {workflows?.length === 0 && <EmptyState icon={Workflow} title={t("workflowsUi.empty")} />}
       {workflows && workflows.length > 0 && (
-        <ul aria-label={t("workflowsUi.list")} className="flex flex-col gap-3">
+        <ul ref={list} aria-label={t("workflowsUi.list")} className="flex flex-col gap-3">
           {workflows.map((workflow, index) => (
             <li
               key={workflow.name}
+              data-workflow={workflow.name}
               aria-label={t("workflowsUi.item", { name: workflow.name })}
               className="flex flex-col gap-2 rounded-lg border bg-card p-4 text-sm"
             >
               <div className="flex items-center gap-2">
-                <strong>{workflow.name}</strong>{" "}
+                <strong tabIndex={-1} data-target="name">
+                  {workflow.name}
+                </strong>{" "}
                 <Badge variant="outline">
                   {workflow.trusted ? t("workflowsUi.trusted") : t("workflowsUi.untrusted")}
                 </Badge>
@@ -127,7 +190,8 @@ export function WorkflowsPage(
                     variant="outline"
                     size="sm"
                     className="self-start"
-                    disabled={far}
+                    data-target="trust"
+                    disabled={far || pending !== null}
                     aria-describedby={far ? `${farId}-${index}` : undefined}
                     onClick={() => setTrusting(workflow)}
                   >
@@ -146,11 +210,18 @@ export function WorkflowsPage(
       )}
       {trusting && (
         <ConfirmDialog
-          message={trustMessage(trusting, t)}
+          message={t("workflowsUi.trustMessage", { name: trusting.name })}
           confirmLabel={t("workflowsUi.trustConfirm")}
+          // Radix would return the focus to Trust, which an accepted Trust removes: the name stays.
+          onRestoreFocus={() => {
+            focusIn(list.current, trusting.name, confirmed.current ? "name" : "trust");
+            confirmed.current = false;
+          }}
           onConfirm={() => void trust(trusting)}
           onCancel={() => setTrusting(null)}
-        />
+        >
+          <TrustCommands workflow={trusting} t={t} />
+        </ConfirmDialog>
       )}
     </Page>
   );
