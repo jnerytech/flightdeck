@@ -107,4 +107,22 @@ describe("settings slice (#1596)", () => {
     t.press();
     expect(t.opened()).toBe(1);
   });
+
+  test("two saves at once run one after the other, so no key is left registered twice (#4511)", async () => {
+    const t = slice(true, "Ctrl+Alt+G");
+    await t.settings.registerSaved();
+    await Promise.all([
+      t.settings.setGlobalShortcut("Ctrl+Alt+G"),
+      t.settings.setGlobalShortcut("Ctrl+Alt+G"),
+    ]);
+    expect(t.calls).toEqual([
+      "register Ctrl+Alt+F",
+      "unregister Ctrl+Alt+F",
+      "register Ctrl+Alt+G",
+      "register Ctrl+Alt+F",
+      "unregister Ctrl+Alt+F",
+      "register Ctrl+Alt+G",
+      "register Ctrl+Alt+F",
+    ]);
+  });
 });
