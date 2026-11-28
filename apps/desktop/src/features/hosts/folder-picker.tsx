@@ -18,8 +18,8 @@ import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { isLocalUrl } from "../terminal/index.ts";
 import { AllowedFolders } from "./allowed-folders.tsx";
 
-/** The files of the open folder: listed (maybe cut short), or `failed` when the host refused. */
-type FileRead = { files: FsFilesResult["files"]; truncated: boolean } | "failed";
+/** The files of the open folder: being read, listed (maybe cut short), or `failed` when the host refused. */
+type FileRead = { files: FsFilesResult["files"]; truncated: boolean } | "loading" | "failed";
 const NO_FILES: FileRead = { files: [], truncated: false };
 
 /** Arrow keys move through the folder buttons, Enter opens the focused one; false for any other key. */
@@ -59,7 +59,7 @@ export function FolderPicker(
   const [hidden, setHidden] = useState(false);
   /** The files of the folder shown, when the picker takes files too; `failed` when the host refused to list them. */
   const [fileRead, setFileRead] = useState<FileRead>(NO_FILES);
-  const files = fileRead === "failed" ? [] : fileRead.files;
+  const files = typeof fileRead === "object" ? fileRead.files : [];
   const allowed = host.info?.allowedRoots ?? [];
 
   /** The folder being shown, kept apart from `listing` so a reload does not restart the effect. */
@@ -96,15 +96,27 @@ export function FolderPicker(
       setTarget(null);
       return setError(describe(result.code, result.message));
     }
-    // The files come with the folders, so the screen never says "nothing here" while they load.
-    const read = props.files && result.data.path ? await filesOf(result.data.path) : NO_FILES;
-    if (ticket !== opening.current) return;
     setTarget(null);
     setError(null);
     shown.current = result.data.path ?? undefined;
     setListing(result.data);
-    setFileRead(read);
+    // The folders show at once; the files follow, and "nothing here" waits for them.
+    const wanted = props.files ? result.data.path : null;
+    setFileRead(wanted ? "loading" : NO_FILES);
     if (path === undefined) setRoots(result.data.dirs.map((dir) => dir.path));
+    if (!wanted) return;
+    const read = await filesOf(wanted);
+    if (ticket === opening.current) setFileRead(read);
+  };
+
+  /** Reads the files of the open folder again after a refusal. */
+  const retryFiles = async () => {
+    const at = shown.current;
+    if (!at) return;
+    const ticket = opening.current;
+    setFileRead("loading");
+    const read = await filesOf(at);
+    if (ticket === opening.current) setFileRead(read);
   };
   const openRef = useRef(open);
   openRef.current = open;
@@ -202,12 +214,22 @@ export function FolderPicker(
               <p className="text-muted-foreground text-sm">{t("folderPicker.empty")}</p>
             )}
             {props.files && fileRead === "failed" && (
-              <p role="alert" className="text-sm text-status-error">
-                {t("folderPicker.filesFailed")}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p role="alert" className="text-sm text-status-error">
+                  {t("folderPicker.filesFailed")}
+                </p>
+                <Button type="button" variant="outline" size="xs" onClick={() => void retryFiles()}>
+                  {t("folderPicker.filesRetry")}
+                </Button>
+              </div>
+            )}
+            {props.files && fileRead === "loading" && (
+              <output className="text-muted-foreground text-sm">
+                {t("folderPicker.filesLoading")}
+              </output>
             )}
             {props.files &&
-              fileRead !== "failed" &&
+              typeof fileRead === "object" &&
               listing.dirs.length === 0 &&
               files.length === 0 &&
               allowed.length > 0 && (
@@ -266,7 +288,7 @@ export function FolderPicker(
                 {t("folderPicker.truncated", { n: String(listing.dirs.length) })}
               </p>
             )}
-            {fileRead !== "failed" && fileRead.truncated && (
+            {typeof fileRead === "object" && fileRead.truncated && (
               <p className="text-muted-foreground text-xs">
                 {t("folderPicker.truncatedFiles", { n: String(files.length) })}
               </p>

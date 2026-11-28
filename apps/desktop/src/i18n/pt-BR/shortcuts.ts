@@ -123,8 +123,9 @@ export const shortcuts = {
     listFiles: "Pastas e arquivos",
     hiddenFiles: "Mostrar pastas e arquivos ocultos",
     emptyFiles: "Nada aqui: nenhuma subpasta e nenhum arquivo.",
-    filesFailed:
-      "Não foi possível ler os arquivos desta pasta. Abra a pasta de novo para tentar outra vez.",
+    filesFailed: "Não foi possível ler os arquivos desta pasta.",
+    filesRetry: "Tentar de novo",
+    filesLoading: "Carregando os arquivos…",
     truncatedFiles: "Só os primeiros {n} arquivos aparecem: digite o caminho para ir além.",
     outside: "Essa pasta está fora das pastas que o host permite. Escolha uma dentro de: {roots}",
   },
