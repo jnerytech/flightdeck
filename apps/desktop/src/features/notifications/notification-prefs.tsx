@@ -71,6 +71,7 @@ export function NotificationPrefs(
       <label className={check}>
         <input
           type="checkbox"
+          className="hit-control"
           checked={prefs.enabled}
           aria-describedby={`${hintId}-master`}
           onChange={(e) => controller.setEnabled(e.target.checked)}
@@ -92,6 +93,7 @@ export function NotificationPrefs(
           <label key={event} className={check}>
             <input
               type="checkbox"
+              className="hit-control"
               checked={prefs.events[event]}
               onChange={(e) => controller.setEvent(event, e.target.checked)}
             />
@@ -103,6 +105,7 @@ export function NotificationPrefs(
       <label className={check}>
         <input
           type="checkbox"
+          className="hit-control"
           checked={prefs.teamFold}
           onChange={(e) => controller.setTeamFold(e.target.checked)}
         />
@@ -120,6 +123,7 @@ export function NotificationPrefs(
             <label className={check}>
               <input
                 type="checkbox"
+                className="hit-control"
                 checked={prefs.mutedHosts.includes(host.id)}
                 onChange={(e) => controller.muteHost(host.id, e.target.checked)}
               />
@@ -131,6 +135,7 @@ export function NotificationPrefs(
                 <label key={key} className={nestedCheck}>
                   <input
                     type="checkbox"
+                    className="hit-control"
                     checked={prefs.mutedProjects.includes(key)}
                     onChange={(e) => controller.muteProject(key, e.target.checked)}
                   />
