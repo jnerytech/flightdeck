@@ -177,3 +177,19 @@ export function activityOptions(state: HubRowState): {
     personas: [...personas].map(([id, name]) => ({ id, name })),
   };
 }
+
+/**
+ * The filter as it applies now: without the host, project or persona that no live session lists
+ * (the lists only hold what exists); the same object when nothing was left out (#4508).
+ */
+export function clampFilter(
+  filter: ActivityFilter,
+  options: ReturnType<typeof activityOptions>,
+): ActivityFilter {
+  const host = options.hosts.includes(filter.host) ? filter.host : "";
+  const project = options.projects.includes(filter.project) ? filter.project : "";
+  const persona = options.personas.some((p) => p.id === filter.persona) ? filter.persona : "";
+  return host === filter.host && project === filter.project && persona === filter.persona
+    ? filter
+    : { ...filter, host, project, persona };
+}

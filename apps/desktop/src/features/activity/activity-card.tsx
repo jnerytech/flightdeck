@@ -41,6 +41,8 @@ export function ActivityCardView(
     failure?: string;
     /** Hands the title button to the board, which returns the focus to it after an answer (#2675). */
     titleRef?(button: HTMLButtonElement | null): void;
+    /** The title took or lost the focus: the board puts it back if the card moves column (#4509). */
+    onTitleFocus?(on: boolean): void;
   }>,
 ) {
   const { card, t } = props;
@@ -75,6 +77,8 @@ export function ActivityCardView(
           type="button"
           className="activity-card-title"
           onClick={(e) => props.onOpen(e.ctrlKey || e.metaKey)}
+          onFocus={() => props.onTitleFocus?.(true)}
+          onBlur={() => props.onTitleFocus?.(false)}
           onAuxClick={(e) => {
             if (e.button === 1) props.onOpen(true);
           }}

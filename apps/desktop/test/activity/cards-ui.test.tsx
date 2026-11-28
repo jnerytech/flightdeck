@@ -142,3 +142,11 @@ describe("activity board: narrow windows (#4243)", () => {
     expect(narrow.includes("overflow-x: visible")).toBe(true);
   });
 });
+
+describe("activity cards: the last request line breaks a long unbroken word (#4510)", () => {
+  test("the line under a card's title breaks inside the card instead of being cut", () => {
+    const rule = utility("activity-card-line");
+    expect(rule).not.toBe("");
+    expect(rule.includes("overflow-wrap: anywhere")).toBe(true);
+  });
+});

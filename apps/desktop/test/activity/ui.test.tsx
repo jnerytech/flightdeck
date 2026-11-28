@@ -896,3 +896,103 @@ describe("activity-ui: the screen is reachable (issue #151)", () => {
     expect(went).toEqual([{ name: "activity" }]);
   });
 });
+
+/** The board's controls say what the board shows, and the focus stays on a card that moves (#4508, #4509). */
+describe("activity-ui: a filter whose value left the sessions, and a card that moves under the focus", () => {
+  const withoutPersona: Specs = SPECS.map((spec) => {
+    const { persona: _persona, ...rest } = spec;
+    return rest;
+  });
+
+  test("a persona that no live session has any more is dropped from the filter, not kept hidden", async () => {
+    const w = setup(SPECS);
+    render(w.view(SPECS));
+    await act(async () => {
+      fireEvent.change(labelled("Persona"), { target: { value: "p" } });
+    });
+    expect(has(screen.queryByText("1 of 3 shown"))).toBe(true);
+    await act(async () => {
+      feed(w.store, withoutPersona);
+    });
+    const counted = has(screen.queryByText("3 of 3 shown"));
+    const saysNoMatch = has(screen.queryByText("No session matches these filters."));
+    expect({ counted, saysNoMatch }).toEqual({ counted: true, saysNoMatch: false });
+  });
+
+  test("a persona that comes back brings its filter back", async () => {
+    const w = setup(SPECS);
+    render(w.view(SPECS));
+    await act(async () => {
+      fireEvent.change(labelled("Persona"), { target: { value: "p" } });
+    });
+    await act(async () => {
+      feed(w.store, withoutPersona);
+    });
+    await act(async () => {
+      feed(w.store, SPECS);
+    });
+    const counted = has(screen.queryByText("1 of 3 shown"));
+    const picked = (labelled("Persona") as HTMLSelectElement).value;
+    expect({ counted, picked }).toEqual({ counted: true, picked: "p" });
+  });
+
+  test("a project that no live session has any more is dropped from the filter too", async () => {
+    const w = setup(SPECS);
+    render(w.view(SPECS));
+    await act(async () => {
+      fireEvent.change(labelled("Project"), { target: { value: "web" } });
+    });
+    expect(has(screen.queryByText("1 of 3 shown"))).toBe(true);
+    const elsewhere: Specs = SPECS.map((spec) => ({ ...spec, cwd: "/work/api" }));
+    await act(async () => {
+      feed(w.store, elsewhere);
+    });
+    const picked = (labelled("Project") as HTMLSelectElement).value;
+    const counted = has(screen.queryByText("3 of 3 shown"));
+    expect({ picked, counted }).toEqual({ picked: "", counted: true });
+  });
+
+  test("a card that changes column keeps the keyboard focus on its title", async () => {
+    const w = setup(SPECS);
+    render(w.view(SPECS));
+    const title = within(card("Working", "Write docs")).queryByRole("button", {
+      name: "Write docs",
+    });
+    expect(has(title)).toBe(true);
+    (title as HTMLElement).focus();
+    expect((document.activeElement as HTMLElement | null)?.textContent).toBe("Write docs");
+    const finished: Specs = SPECS.map((spec) =>
+      spec.id === "run" ? { ...spec, status: "idle", unread: true } : spec,
+    );
+    await act(async () => {
+      feed(w.store, finished);
+    });
+    expect(cardsOf("Done")).toContain("Write docs");
+    const focused = document.activeElement as HTMLElement | null;
+    const onTitle = focused?.tagName === "BUTTON" && focused.textContent === "Write docs";
+    const onBody = focused === document.body;
+    expect({ onTitle, onBody }).toEqual({ onTitle: true, onBody: false });
+  });
+
+  test("a person who moved the focus off the title is not pulled back when the card moves", async () => {
+    const w = setup(SPECS);
+    render(w.view(SPECS));
+    const title = within(card("Working", "Write docs")).queryByRole("button", {
+      name: "Write docs",
+    });
+    expect(has(title)).toBe(true);
+    (title as HTMLElement).focus();
+    // A separate turn of the event loop, as when the person clicks away.
+    await act(async () => {
+      (title as HTMLElement).blur();
+    });
+    const finished: Specs = SPECS.map((spec) =>
+      spec.id === "run" ? { ...spec, status: "idle", unread: true } : spec,
+    );
+    await act(async () => {
+      feed(w.store, finished);
+    });
+    expect(cardsOf("Done")).toContain("Write docs");
+    expect(document.activeElement === document.body).toBe(true);
+  });
+});
