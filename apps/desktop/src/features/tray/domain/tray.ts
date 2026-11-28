@@ -81,7 +81,7 @@ function fitTooltip(
   }
   // Windows counts UTF-16 units, so the cut may fall inside a pair: drop its first half.
   const cut = text(1, false).slice(0, TOOLTIP_MAX - 1);
-  const last = cut.charCodeAt(cut.length - 1);
+  const last = cut.codePointAt(cut.length - 1) ?? 0;
   return `${last >= 0xd800 && last <= 0xdbff ? cut.slice(0, -1) : cut}…`;
 }
 

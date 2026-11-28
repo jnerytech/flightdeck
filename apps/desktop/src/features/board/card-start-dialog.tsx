@@ -40,7 +40,7 @@ export function CardStartDialog(
     };
     onClose(): void;
     /** The dialog was opened from a menu item that is gone: the focus goes back to the menu's button (#4272). */
-    returnFocus?: (() => void) | undefined;
+    returnFocus?: () => void;
     /** The card started: the caller tells the person. */
     onStarted(): void;
   }>,

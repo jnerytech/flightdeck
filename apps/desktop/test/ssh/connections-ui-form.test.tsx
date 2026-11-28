@@ -315,6 +315,16 @@ describe("conexoes-ui: the connection test", () => {
     ).toBe(false);
   });
 
+  test("a keep-alive typed as text is flagged, but it is no change from the saved value, so Test stays on (#4452)", async () => {
+    await open();
+    await click("Editar vps");
+    await fill("Manter a conexão viva (segundos)", "abc");
+    expect(
+      (screen.queryByRole("button", { name: "Testar conexão" }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+    expect(screen.queryByText("Salve para testar estes valores")).toBeNull();
+  });
+
   test("the result of a test goes away when the form changes, since it was about the saved values (#4330)", async () => {
     await open();
     await click("Editar vps");

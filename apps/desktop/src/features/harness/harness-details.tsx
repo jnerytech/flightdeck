@@ -64,7 +64,7 @@ export function Details(
                     {file.path}
                   </summary>
                   {/* biome-ignore lint/a11y/useSemanticElements: the file keeps its <pre> (whitespace and wrapping); a region is what lets it carry the name */}
-                  <pre
+                  <pre // NOSONAR: a native section element cannot hold the pre's whitespace and wrapping; the region role is what lets it carry the file's name
                     role="region"
                     aria-label={t("projectPage.harness.setup.fileContent", { path: file.path })}
                     className="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-2 font-mono text-xs"

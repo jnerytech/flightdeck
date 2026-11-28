@@ -113,9 +113,9 @@ function InboxItem(
       {/* Outside the button, whose children a screen reader reads as part of its name: the live region
           of a gone row says why its click opened nothing (#4200). */}
       {gone && (
-        <span role="status" className="inbox-note text-muted-foreground text-xs">
+        <output className="inbox-note text-muted-foreground text-xs">
           {props.noted ? t("inbox.goneClick") : ""}
-        </span>
+        </output>
       )}
       {request && (
         <fieldset className="inbox-request" aria-label={title}>

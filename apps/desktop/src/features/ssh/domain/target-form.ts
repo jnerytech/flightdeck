@@ -77,7 +77,7 @@ export function unsaved(target: SshTarget, draft: TargetDraft): boolean {
     (draft.via || null) !== (target.viaHost ?? null) ||
     (draft.jump || null) !== (target.jump ?? null) ||
     split(draft.tags, ",").join(",") !== target.tags.join(",") ||
-    (alive > 0 ? alive : 0) !== (options.serverAliveInterval ?? 0) ||
+    Math.max(alive || 0, 0) !== (options.serverAliveInterval ?? 0) ||
     draft.compression !== (options.compression ?? false) ||
     split(draft.forwards, "\n").join("\n") !== (options.localForward ?? []).join("\n") ||
     draft.forwardAgent !== (options.forwardAgent ?? false)

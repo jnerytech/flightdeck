@@ -46,7 +46,7 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
   }, [store, hostId, projects]);
   useEffect(() => {
     // `attempt` re-runs this read; a slower answer of an older filter must not land.
-    void attempt;
+    void attempt; // NOSONAR: reads `attempt` only so a new attempt re-runs this effect (it is in the dependency list)
     let current = true;
     setLoadRefusal(null);
     void store

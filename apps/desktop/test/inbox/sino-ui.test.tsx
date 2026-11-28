@@ -203,6 +203,7 @@ describe("inbox-sino-ui: which notification is unread, and what each one is abou
     expect(within(row).queryByText("O que isto citava não existe mais.") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     // The row has a live region of its own, outside its button, quiet until the click.
     expect(within(row).queryByRole("status")?.textContent).toBe("");
+    expect(within(row).queryByRole("status")?.tagName).toBe("OUTPUT");
     expect(within(row).queryByRole("status")?.closest("button") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.click(within(row).getByRole("button", { name: /^(?!Marcar|Descartar).*Pedido/ }));

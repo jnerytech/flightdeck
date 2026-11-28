@@ -35,7 +35,10 @@ function fakeGoogle(mode: DemoGoogleMode): typeof fetch {
   return (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(input instanceof Request ? input.url : input);
     if (url.href === TOKEN_URL) {
-      const grant = new URLSearchParams(String(init?.body)).get("grant_type");
+      const body = init?.body;
+      const grant = new URLSearchParams(
+        typeof body === "string" || body instanceof URLSearchParams ? body : undefined,
+      ).get("grant_type");
       if (grant === "authorization_code") {
         return mode === "refused"
           ? reply({ error: "invalid_grant" }, 400)

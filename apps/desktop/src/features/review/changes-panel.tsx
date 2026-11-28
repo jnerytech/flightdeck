@@ -72,7 +72,7 @@ export function ChangesPanel(
   const [changes, setChanges] = useState<ChangesResult | null>(null);
   const [unavailable, setUnavailable] = useState<string | null>(null);
   const [comments, setComments] = useState<ReviewComment[]>([]);
-  const [chosen, setMode] = useState<"unified" | "split">("unified");
+  const [chosen, setChosen] = useState<"unified" | "split">("unified");
   // Two half-width columns do not fit a compact window: the diff stays in one column there, and
   // the choice comes back with the width.
   const compact = useBreakpoint() === "compact";
@@ -416,7 +416,7 @@ export function ChangesPanel(
           size="sm"
           aria-pressed={mode === "unified"}
           className="aria-pressed:bg-accent aria-pressed:font-semibold"
-          onClick={() => setMode("unified")}
+          onClick={() => setChosen("unified")}
         >
           {mode === "unified" && <Check aria-hidden="true" className="size-4" />}
           {t("diff.unified")}
@@ -428,7 +428,7 @@ export function ChangesPanel(
           aria-describedby={compact ? splitOffId : undefined}
           className="aria-pressed:bg-accent aria-pressed:font-semibold"
           disabled={compact}
-          onClick={() => setMode("split")}
+          onClick={() => setChosen("split")}
         >
           {mode === "split" && <Check aria-hidden="true" className="size-4" />}
           {t("diff.split")}

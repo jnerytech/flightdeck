@@ -16,7 +16,7 @@ export function AppDialogContent({
    * The dialog was opened from a menu item that is gone with its menu: Radix has nowhere to return the focus and it
    * falls to the page, so this hands it to the menu's button (#4272). A choice that moved the focus on keeps it.
    */
-  returnFocus?: (() => void) | undefined;
+  returnFocus?: () => void;
 }) {
   const t = useT();
   return (
