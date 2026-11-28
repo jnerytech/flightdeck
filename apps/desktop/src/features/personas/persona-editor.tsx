@@ -148,12 +148,18 @@ export function PersonaEditor(
         : reasonText(t, message, why?.reason, why?.params),
     );
 
+  /** The editor closes, so the notice is what says the persona was kept (#4533). */
+  const saved = () => {
+    store.success(t("personas.editor.saved", { name: input.name }));
+    props.onSaved();
+  };
+
   const save = async () => {
     setError(null);
     if (place === "app") {
       try {
         store.personas.global.save(input);
-        return props.onSaved();
+        return saved();
       } catch (error_) {
         if (!(error_ instanceof PersonaModelError)) throw error_;
         return refused(error_.code, error_.message, {
@@ -167,7 +173,7 @@ export function PersonaEditor(
       ...(place === "project" ? { projectPath: project } : {}),
       persona: input,
     });
-    if (result.ok) props.onSaved();
+    if (result.ok) saved();
     else refused(result.code, result.message, result);
   };
 
