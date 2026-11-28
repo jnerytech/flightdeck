@@ -480,6 +480,8 @@ export const board = {
     completeConfirm: "Concluir card",
     discardConfirm: "Descartar card",
     unsent: "Há alterações não enviadas que serão perdidas.",
+    unreadDiff:
+      "Não deu para conferir se há alterações não enviadas; o que não foi enviado pode ser perdido.",
     adjustment: "Ajuste",
     adjustmentPlaceholder: "O que ajustar",
     askAdjustment: "Pedir ajuste",

@@ -141,10 +141,10 @@ export function BoardSyncControl(
   };
   const unlink = async () => {
     const done = await ask(() => store.hostRequest(hostId, "boardsync.unlink", { projectId }));
-    if (done !== null || !error) {
-      setAskPush(false);
-      await load();
-    }
+    // A refusal stays on screen with the link as it was: a reload would answer and clear it.
+    if (done === null) return;
+    setAskPush(false);
+    await load();
   };
 
   return (
