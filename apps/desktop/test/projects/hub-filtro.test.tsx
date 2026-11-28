@@ -26,7 +26,7 @@ const external = (id: string, cwd: string) => ({
   projectKey: `host:alfa:${cwd}`,
 });
 
-function setup(language = "en", sessions = true) {
+function setup(language = "en", sessions = true, patch: Record<string, unknown> = {}) {
   const store: Store = new AppStore(memoryPlatform(false, language).platform, {
     baseDelayMs: 600_000,
   });
@@ -56,6 +56,7 @@ function setup(language = "en", sessions = true) {
           "h1/w1": external("w1", "/work/web"),
         }
       : {},
+    ...patch,
   } as never as ReturnType<Store["getState"]>;
   const view = (project?: Filter) => (
     <TooltipProvider>
@@ -165,6 +166,39 @@ describe.each(["en", "pt-BR"] as const)("the empty hub (%s, #4460)", (language) 
     });
     await waitFor(() => expect(screen.queryByText(text("hub.noMatch"))).not.toBeNull());
     expect(screen.queryByRole("button", { name: text("hub.clearFilters") })).not.toBeNull();
+  });
+
+  test("sessions that are all archived say so and offer Show archived, which brings them back", async () => {
+    const archived = { name: null, pinned: false, archived: true };
+    const { view, store } = setup(language, true, {
+      meta: { "h1/a1": archived, "h1/a2": archived, "h1/w1": archived },
+    });
+    render(view());
+    await waitFor(() => expect(screen.queryByText(text("hub.noMatch"))).not.toBeNull());
+    expect(screen.queryByRole("button", { name: text("hub.clearFilters") })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: text("hub.showArchived") }));
+    await unfoldAll(act);
+    await waitFor(() => expect(rowsDrawn()).toBe(3));
+    expect(store.viewPrefs.hubFilter().showArchived).toBe(true);
+  });
+
+  test("a project with no session here says so, and Show all brings the others back", async () => {
+    const { view } = setup(language);
+    render(view({ hostId: "h1", projectKey: "host:alfa:/work/none", name: "none" }));
+    await waitFor(() => expect(screen.queryByText(text("hub.noneHere"))).not.toBeNull());
+    expect(screen.queryByText(text("hub.noSessions"))).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: text("scope.showAll") }));
+    await unfoldAll(act);
+    await waitFor(() => expect(rowsDrawn()).toBe(3));
+    expect(screen.queryByText(text("hub.noneHere"))).toBeNull();
+  });
+
+  test("while the host's session list has not arrived, no empty state shows", async () => {
+    const { view } = setup(language, false, { hub: {} });
+    render(view());
+    await act(async () => {});
+    expect(screen.queryByText(text("hub.noSessions"))).toBeNull();
+    expect(screen.queryByText(text("hub.noMatch"))).toBeNull();
   });
 
   test("with sessions on screen no empty state shows", async () => {

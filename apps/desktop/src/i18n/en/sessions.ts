@@ -126,6 +126,7 @@ export const sessions = {
     noSessions: "No session yet",
     noMatch: "No session matches the filters",
     clearFilters: "Clear filters",
+    noneHere: "No session here",
     expandAll: "Expand all",
     collapseAll: "Collapse all",
     earlier: "{n} earlier sessions",

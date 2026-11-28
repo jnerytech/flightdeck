@@ -179,6 +179,22 @@ describe("retomar-ui: the sessions a restart interrupted are offered in one dial
     );
   });
 
+  test("a retry announces only the session it resumed, and the alert holds the text, not the button", async () => {
+    const { d, ids } = await restarted();
+    await connect(d);
+    await settle(() => dialog() !== null);
+    const inDialog = within(dialog() as HTMLElement);
+    await d.manager.resume(ids[0] as string);
+    await press("Resume selected");
+    await settle(() => inDialog.queryAllByText("Resumed").length === 2);
+    expect(within(inDialog.getByRole("alert")).queryByRole("button")).toBeNull();
+    await poll(() => d.manager.get(ids[0] as string).status === "idle");
+    interrupt(d, [ids[0] as string]);
+    await press(/Retry Revisar o login/);
+    await settle(() => inDialog.queryAllByText("Resumed").length === 3);
+    expect(inDialog.getByRole("status").textContent).toBe("Resumed: Revisar o login");
+  });
+
   test("in Portuguese the button's reason and the announcement follow the dictionary", async () => {
     const { d } = await restarted(["Revisar o login"]);
     await connect(d, memoryPlatform(false, "pt-BR"));

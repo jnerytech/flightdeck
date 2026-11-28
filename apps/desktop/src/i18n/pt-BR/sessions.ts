@@ -133,6 +133,7 @@ export const sessions = {
     noSessions: "Nenhuma sessão ainda",
     noMatch: "Nenhuma sessão corresponde aos filtros",
     clearFilters: "Limpar filtros",
+    noneHere: "Nenhuma sessão aqui",
     expandAll: "Expandir tudo",
     collapseAll: "Recolher tudo",
     earlier: "{n} sessões anteriores",
