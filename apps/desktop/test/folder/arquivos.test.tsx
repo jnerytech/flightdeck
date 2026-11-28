@@ -81,10 +81,20 @@ describe("pasta-arquivos: a file of the host as well as a folder", () => {
 // #4458: in file mode the dialog spoke only of folders, called a folder with files empty, and showed
 // a refused file read as no files.
 describe("pasta-arquivos: what the picker says in file mode (#4458)", () => {
-  type Files = { files: Array<{ name: string; path: string }>; truncated?: boolean } | "refused";
+  type Files =
+    | { files: Array<{ name: string; path: string }>; truncated?: boolean }
+    | "refused"
+    | "pending";
 
   /** The picker on a stub host with one root, "/work", whose files answer as scripted. */
-  async function stubbed(files: boolean, answer: Files, language: "en" | "pt-BR" = "en") {
+  async function stubbed(
+    files: boolean,
+    scripted: Files | Files[],
+    language: "en" | "pt-BR" = "en",
+    subdirs: string[] = [],
+  ) {
+    const answers = Array.isArray(scripted) ? scripted : [scripted];
+    let reads = 0;
     const { translator } = await import("../../src/i18n/index.ts");
     const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());
@@ -100,8 +110,18 @@ describe("pasta-arquivos: what the picker says in file mode (#4458)", () => {
                 truncated: false,
               },
             }
-          : { ok: true, data: { path: "/work", parent: null, dirs: [], truncated: false } };
+          : {
+              ok: true,
+              data: {
+                path: "/work",
+                parent: null,
+                dirs: subdirs.map((name) => ({ name, path: `/work/${name}` })),
+                truncated: false,
+              },
+            };
       }
+      const answer = answers[Math.min(reads++, answers.length - 1)] as Files;
+      if (answer === "pending") return new Promise(() => {});
       if (answer === "refused") return { ok: false, code: "internal", message: "no files" };
       return { ok: true, data: { path: "/work", truncated: false, ...answer } };
     }) as never;
@@ -126,7 +146,7 @@ describe("pasta-arquivos: what the picker says in file mode (#4458)", () => {
   }
   const said = (text: string) => screen.queryByText(text) !== null;
   const NOTHING = "Nothing here: no subfolders and no files.";
-  const FAILED = "The files of this folder could not be read. Open the folder again to try again.";
+  const FAILED = "The files of this folder could not be read.";
 
   test("a folder with files and no subfolders does not say there are no subfolders", async () => {
     await stubbed(true, { files: [{ name: "a.txt", path: "/work/a.txt" }] });
@@ -180,16 +200,30 @@ describe("pasta-arquivos: what the picker says in file mode (#4458)", () => {
     expect(said(NOTHING)).toBe(false);
   });
 
+  test("the folders show at once while the files are still being read", async () => {
+    await stubbed(true, "pending", "en", ["sub"]);
+    expect(
+      await settleMaybe(() => dialog().queryByRole("button", { name: "sub" }) !== null, 1500),
+    ).toBe(true);
+    expect(said("Loading files…")).toBe(true);
+    expect(said(NOTHING)).toBe(false);
+  });
+
+  test("a refused file read offers Try again, which reads the files again", async () => {
+    await stubbed(true, ["refused", { files: [{ name: "a.txt", path: "/work/a.txt" }] }]);
+    expect(await settleMaybe(() => said(FAILED), 1500)).toBe(true);
+    await press("Try again");
+    expect(
+      await settleMaybe(() => dialog().queryByRole("button", { name: "a.txt" }) !== null, 1500),
+    ).toBe(true);
+    expect(said(FAILED)).toBe(false);
+    expect(dialog().queryByRole("button", { name: "Try again" }) === null).toBe(true);
+  });
+
   test("in Portuguese the file mode speaks Portuguese", async () => {
     await stubbed(true, "refused", "pt-BR");
     expect(
-      await settleMaybe(
-        () =>
-          said(
-            "Não foi possível ler os arquivos desta pasta. Abra a pasta de novo para tentar outra vez.",
-          ),
-        1500,
-      ),
+      await settleMaybe(() => said("Não foi possível ler os arquivos desta pasta."), 1500),
     ).toBe(true);
     expect(screen.queryByRole("dialog", { name: "Escolher arquivo ou pasta" }) !== null).toBe(true);
   });
