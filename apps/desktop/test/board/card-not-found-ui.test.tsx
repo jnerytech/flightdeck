@@ -172,4 +172,18 @@ describe("card-not-found-ui", () => {
     expect(await settleMaybe(() => notFound() !== null, 3000)).toBe(true);
     expect(failure()).toBe("");
   });
+
+  test("Try again keeps the focus on its button while the host is asked again", async () => {
+    const page = await openCard("refused");
+    expect(await settleMaybe(() => tryAgain() !== null, 3000)).toBe(true);
+    (tryAgain() as HTMLElement).focus();
+    expect(document.activeElement === tryAgain()).toBe(true);
+    await act(async () => {
+      fireEvent.click(tryAgain() as HTMLElement);
+    });
+    expect(await settleMaybe(() => page.asks() === 2, 3000)).toBe(true);
+    await settleMaybe(() => false, 300);
+    expect(document.activeElement === tryAgain()).toBe(true);
+    expect(failure().includes("The card could not be read.")).toBe(true);
+  });
 });
