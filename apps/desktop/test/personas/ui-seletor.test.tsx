@@ -119,17 +119,17 @@ describe("personas-ui: choosing a persona when a session opens", () => {
   const cardPage = async (title: string) => {
     const opened = await open();
     const card = opened.d.board.createCard(opened.projectId, { title, description: "faça" });
-    const asked: Array<{ type: string; payload: unknown }> = [];
+    const asked: Array<{ type: string; payload: unknown; via: "request" | "command" }> = [];
     // The Start dialog asks through hostRequest, so a refusal stays in the dialog (#4462); the
-    // card page's own Start still goes through hostCommand.
+    // card page's own Start still goes through hostCommand. `via` tells the two apart.
     const request = opened.store.hostRequest.bind(opened.store);
     opened.store.hostRequest = ((id: string, type: never, payload: never) => {
-      asked.push({ type, payload });
+      asked.push({ type, payload, via: "request" });
       return request(id, type, payload);
     }) as typeof opened.store.hostRequest;
     const command = opened.store.hostCommand.bind(opened.store);
     opened.store.hostCommand = (async (id: string, type: never, payload: never) => {
-      asked.push({ type, payload });
+      asked.push({ type, payload, via: "command" });
       return command(id, type, payload);
     }) as typeof opened.store.hostCommand;
     await act(async () => {
@@ -162,7 +162,9 @@ describe("personas-ui: choosing a persona when a session opens", () => {
       fireEvent.click(within(startDialog()).getByRole("button", { name: "Iniciar" }));
     });
     await uiIdle();
-    expect(asked.find((a) => a.type === "card.start")?.payload).toMatchObject({
+    expect(
+      asked.find((a) => a.type === "card.start" && a.via === "request")?.payload,
+    ).toMatchObject({
       cardId: card.id,
       persona: { id: "qa", language: "pt-BR" },
     });
