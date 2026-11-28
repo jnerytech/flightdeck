@@ -231,6 +231,30 @@ describe("notify-prefs-ui: the mutes the lists cannot show (issue #4007)", () =>
     ]).toEqual([["Unmute gone", "Unmute h2/p9"], [], [], []]);
   });
 
+  test("after Unmute the focus moves to the next Unmute, then to the group, and the change is said (#4513)", async () => {
+    const { store } = settings();
+    act(() => {
+      store.notifyPrefs.muteHost("gone", true);
+      store.notifyPrefs.muteProject("h2/p9", true);
+    });
+    const group = () =>
+      within(panel()).queryByRole("group", { name: "Mute" }) as HTMLElement | null;
+    const focused = () =>
+      (document.activeElement as HTMLElement | null)?.getAttribute("aria-label");
+    const status = () =>
+      within(panel())
+        .queryAllByRole("status")
+        .map((el) => el.textContent);
+    await click(within(panel()).getByRole("button", { name: "Unmute gone" }));
+    const afterFirst = [focused(), status().includes("Unmuted gone")];
+    await click(within(panel()).getByRole("button", { name: "Unmute h2/p9" }));
+    const afterLast = [document.activeElement === group(), status().includes("Unmuted h2/p9")];
+    expect([afterFirst, afterLast]).toEqual([
+      ["Unmute h2/p9", true],
+      [true, true],
+    ]);
+  });
+
   test("with no host and nothing muted a line says there is nothing to mute", () => {
     const { store } = settings();
     const line = () =>
