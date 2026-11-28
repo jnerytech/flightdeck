@@ -11,9 +11,14 @@ const { BoardSyncControl, CardSyncLog } = await import("../../src/features/board
 afterEach(cleanup);
 
 const t = ptBR.boardSyncUi;
+const REFUSED = "o host recusou desligar o quadro";
 
 /** A store that answers the sync commands from a script; nothing leaves the test. */
-function stubStore(status: BoardSyncStatus, entries: BoardSyncLogEntry[] = []) {
+function stubStore(
+  status: BoardSyncStatus,
+  entries: BoardSyncLogEntry[] = [],
+  unlink: "accepted" | "refused" = "accepted",
+) {
   const asked: string[] = [];
   const store = {
     hostRequest: async (_host: string, type: string) => {
@@ -21,6 +26,11 @@ function stubStore(status: BoardSyncStatus, entries: BoardSyncLogEntry[] = []) {
       if (type === "boardsync.status") return { ok: true, data: status };
       if (type === "boardsync.log") return { ok: true, data: { entries } };
       if (type === "boardsync.setPush") return { ok: true, data: { ...status, push: true } };
+      if (type === "boardsync.unlink") {
+        return unlink === "refused"
+          ? { ok: false, code: "invalid", message: REFUSED }
+          : { ok: true, data: undefined };
+      }
       return { ok: true, data: { boards: [] } };
     },
   };
@@ -40,8 +50,8 @@ const linked: BoardSyncStatus = {
   truncated: false,
 };
 
-async function open(status: BoardSyncStatus) {
-  const { store } = stubStore(status);
+async function open(status: BoardSyncStatus, unlink: "accepted" | "refused" = "accepted") {
+  const { store } = stubStore(status, [], unlink);
   render(<BoardSyncControl store={store} hostId="h" projectId="p" />);
   await act(async () => {
     fireEvent.click(screen.getByRole("button", { name: t.button }));
@@ -147,5 +157,34 @@ describe("board-sync-gaps: a card's sync log", () => {
     const lines = screen.getAllByRole("listitem").map((li) => li.textContent);
     expect(lines).toContain("something_new");
     expect(new Set(lines).size).toBe(7);
+  });
+});
+
+// #4467: the reload after a refused unlink erased the refusal and the dialog said nothing.
+describe("board-sync-gaps: Unlink (#4467)", () => {
+  const unlinkAndConfirm = async (dialog: ReturnType<typeof within>) => {
+    await waitFor(() => expect(dialog.queryByRole("button", { name: t.unlink })).not.toBeNull());
+    await act(async () => {
+      fireEvent.click(dialog.getByRole("button", { name: t.unlink }));
+    });
+    const confirm = within(screen.getByRole("alertdialog"));
+    await act(async () => {
+      fireEvent.click(confirm.getByRole("button", { name: t.unlink }));
+    });
+  };
+
+  test("a refused Unlink keeps the refusal in the dialog and the link on screen", async () => {
+    await open(linked, "refused");
+    const dialog = within(screen.getByRole("dialog"));
+    await unlinkAndConfirm(dialog);
+    await waitFor(() => expect(dialog.queryByText(new RegExp(REFUSED)) !== null).toBe(true));
+    expect(dialog.queryByText(/Roadmap/) !== null).toBe(true);
+  });
+
+  test("an accepted Unlink shows no error", async () => {
+    await open(linked, "accepted");
+    const dialog = within(screen.getByRole("dialog"));
+    await unlinkAndConfirm(dialog);
+    expect(dialog.queryByRole("alert")).toBeNull();
   });
 });
