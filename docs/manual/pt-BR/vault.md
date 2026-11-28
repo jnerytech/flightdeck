@@ -11,7 +11,10 @@ nome, o tipo, as etiquetas e uma descrição do segredo.
   com o `ssh-keygen` deste computador, guarda a chave privada no cofre, apaga o arquivo temporário
   e mostra a chave pública, pronta para **Copiar chave pública**. **Importar arquivo de chave** lê
   um arquivo que você escolhe no diálogo do sistema; o original fica onde está, a menos que você
-  marque **Apagar o arquivo original depois de importar**.
+  marque **Apagar o arquivo original depois de importar**. Cada um diz o que fez, pelo nome, em uma
+  linha que o leitor de tela anuncia: a chave foi salva no cofre (o formulário fica aberto para a
+  chave pública), o arquivo de chave foi importado ou o segredo foi salvo (esses dois depois que o
+  formulário fecha).
 - **Editar** muda o nome, a descrição, as etiquetas e os hosts permitidos de um segredo, nunca o
   valor. **Salvar alterações** fica desligado, com o motivo ao lado, enquanto o nome está vazio.
   Quando o formulário fecha, uma linha no alto da página diz que o segredo foi salvo. Se você
