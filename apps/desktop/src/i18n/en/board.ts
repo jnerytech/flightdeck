@@ -603,7 +603,8 @@ export const board = {
     removeConfirm: "Remove worktrees",
     removeNeeds: "Tick the worktrees to remove.",
     confirm:
-      "Remove {names} and their branches? About {size} will be freed. Nothing with uncommitted changes or unpushed commits is removed; rebuildable folders at the root (node_modules, build output, caches) go with it.",
+      "Remove these worktrees and their branches? About {size} will be freed. Nothing with uncommitted changes or unpushed commits is removed; rebuildable folders at the root (node_modules, build output, caches) go with it.",
+    confirmList: "Worktrees to remove",
     confirmItem: '{name} (card "{card}", {column})',
     branchKept: "{branch}: folder removed, branch kept (it has newer work)",
     noAnswer:

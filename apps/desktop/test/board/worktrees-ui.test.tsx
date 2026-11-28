@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { WorktreeItem, WorktreesResult } from "@flightdeck/protocol";
 import { formatBytes } from "../../src/i18n/format.ts";
 import { liveScreen, registerDom } from "../dom.ts";
@@ -517,7 +519,7 @@ describe("worktrees-ui: the removal's confirmation is a list (#4455)", () => {
     },
     "pt-BR": {
       remove: "Remover 3 worktrees",
-      lines: ['fd/a (cartão "Fix; retry", Concluídas)', "fd/b", 'fd/c (cartão "Docs", Concluídas)'],
+      lines: ['fd/a (cartão "Fix; retry", Concluído)', "fd/b", 'fd/c (cartão "Docs", Concluído)'],
     },
   } as const;
   const SEVERAL: WorktreesResult = {
@@ -562,7 +564,11 @@ describe("worktrees-ui: the removal's confirmation is a list (#4455)", () => {
     const dialog = screen.queryByRole("alertdialog") as HTMLElement;
     const list = within(dialog).queryByRole("list");
     expect(list).not.toBeNull();
-    expect(list?.className.includes("overflow-y-auto")).toBe(true);
+    expect(list?.className.includes("worktree-confirm-list")).toBe(true);
+    // The class caps the height and scrolls (the stylesheet is where that is decided).
+    const css = readFileSync(join(import.meta.dir, "../../src/styles/hosts.css"), "utf8");
+    const rule = /@utility worktree-confirm-list \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? "";
+    expect(/max-height:\s*\S+/.test(rule) && /overflow-y:\s*auto/.test(rule)).toBe(true);
     expect(list?.getAttribute("tabindex")).toBe("0");
     // The buttons stay in the dialog, below the list.
     expect(within(dialog).queryByRole("button", { name: "Remove worktrees" })).not.toBeNull();

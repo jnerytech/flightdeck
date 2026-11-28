@@ -381,3 +381,10 @@
     rotate: 90deg;
   }
 }
+
+/* The worktrees the removal's confirmation lists (#4455): thirty of them scroll in their own box
+   instead of making the dialog taller than the window. */
+@utility worktree-confirm-list {
+  max-height: 15rem;
+  overflow-y: auto;
+}
