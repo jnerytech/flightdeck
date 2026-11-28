@@ -485,9 +485,9 @@ describe("adding a template to the project from the app (issue #1221)", () => {
     await press("Show Alert fixer");
     await settleMaybe(() => button("View the pull request") !== null);
     expect(button("View the pull request")).not.toBeNull();
-    expect(
-      document.querySelector('[data-slot="add-status"]')?.textContent ?? "",
-    ).toContain(ADDED.branch);
+    expect(document.querySelector('[data-slot="add-status"]')?.textContent ?? "").toContain(
+      ADDED.branch,
+    );
     expect(button("Add to the project") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(adds()).toHaveLength(1);
   });
