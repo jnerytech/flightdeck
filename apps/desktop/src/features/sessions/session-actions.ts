@@ -16,7 +16,8 @@ interface SessionAnswer {
 export interface SessionActions {
   /** Copies a text (the approval's folder); the store's `sessionActions` does. */
   copyText?(text: string): Promise<boolean>;
-  send(text: string, images?: SessionImage[]): Promise<void>;
+  /** False when the host did not take the message (#4466): the box gets it back, the queue keeps it. Test `=== false`. */
+  send(text: string, images?: SessionImage[]): Promise<unknown>;
   /** Changes the permission mode / the model (null: the default) of the open session. */
   /** False when the host refused the mode (#935): the picker goes back to the session's own. */
   setMode?(mode: SettableMode): Promise<unknown>;

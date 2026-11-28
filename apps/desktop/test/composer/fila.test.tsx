@@ -9,13 +9,17 @@ const { emptySession } = await import("../../src/features/sessions/domain/sessio
 
 afterEach(cleanup);
 
-function setup(images = false, failures = 0) {
+function setup(images = false, failures = 0, refusals = 0) {
   const sent: Array<{ text: string; images: unknown }> = [];
   let failing = failures;
+  let refusing = refusals;
   const actions = {
     send: async (text: string, withImages?: unknown) => {
       sent.push({ text, images: withImages });
       if (failing-- > 0) throw new Error("host unreachable");
+      // The store's send never throws: a host that says no gives false (#4466).
+      if (refusing-- > 0) return false;
+      return true;
     },
     interrupt: async () => {},
     close: async () => {},
@@ -133,5 +137,33 @@ describe("composer-fila: messages queued while a turn runs", () => {
     await turn("idle");
     await waitFor(() => expect(sent.map((m) => m.text)).toEqual(["importante", "importante"]));
     await waitFor(() => expect(screen.queryByRole("list", { name: "Na fila" })).toBeNull());
+  });
+});
+
+describe("composer-fila: a queued message the host refuses stays queued (#4466)", () => {
+  test("a refusal keeps the message in the list, and the next idle turn tries it again", async () => {
+    const { sent, queue, turn } = setup(false, 0, 1);
+    await queue("recusada");
+    await turn("idle");
+    await waitFor(() => expect(sent.map((m) => m.text)).toEqual(["recusada"]));
+    expect(
+      within(screen.getByRole("list", { name: "Na fila" })).queryByText("recusada"),
+    ).not.toBeNull();
+    await turn("running");
+    await turn("idle");
+    await waitFor(() => expect(sent.map((m) => m.text)).toEqual(["recusada", "recusada"]));
+    await waitFor(() => expect(screen.queryByRole("list", { name: "Na fila" })).toBeNull());
+  });
+
+  test("a refused message stays at the head of the queue, ahead of the one behind it", async () => {
+    const { sent, queue, turn } = setup(false, 0, 1);
+    await queue("um");
+    await queue("dois");
+    await turn("idle");
+    await waitFor(() => expect(sent.map((m) => m.text)).toEqual(["um"]));
+    await turn("running");
+    await turn("idle");
+    await waitFor(() => expect(sent.map((m) => m.text)).toEqual(["um", "um"]));
+    expect(screen.queryByText("dois")).not.toBeNull();
   });
 });

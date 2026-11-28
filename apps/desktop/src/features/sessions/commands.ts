@@ -53,12 +53,20 @@ export class SessionCommandsSlice {
     }
   }
 
-  async send(text: string, images?: SessionImage[]): Promise<void> {
+  /** Whether the host took the message (#4466): false when it refused (said why), or no session is open. */
+  async send(text: string, images?: SessionImage[]): Promise<boolean> {
     startMeasure("send");
-    await this.onSelected((conn, sessionId) =>
-      conn.request("session.send", { sessionId, text, ...(images?.length ? { images } : {}) }),
-    );
+    let taken = false;
+    await this.onSelected(async (conn, sessionId) => {
+      await conn.request("session.send", {
+        sessionId,
+        text,
+        ...(images?.length ? { images } : {}),
+      });
+      taken = true;
+    });
     endMeasure("send");
+    return taken;
   }
 
   interrupt(): Promise<void> {

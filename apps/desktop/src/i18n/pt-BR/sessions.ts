@@ -291,6 +291,7 @@ export const sessions = {
       count: "No máximo {max} imagens por mensagem.",
     },
     send: "Enviar",
+    sendRefused: "Não enviada: a mensagem voltou para a caixa.",
     turnDone: "turno concluído · {seconds} s",
     personaApplied: "Persona aplicada: {name}",
     personaCleared: "Fora do papel: {name}",

@@ -115,6 +115,8 @@ export function SessionComposer(props: Readonly<SessionComposerProps>) {
   }, [text]);
 
   const { attached, setAttached, refusal, setRefusal, attach } = useComposerImages(props.images);
+  /** The host refused the last send and the message is back in the box. */
+  const [sendRefused, setSendRefused] = useState(false);
 
   const sendShown = text.trim() !== "" || attached.length > 0;
   // The button of the message card (Send, Stop, Queue) that holds the focus. These buttons leave
@@ -157,11 +159,20 @@ export function SessionComposer(props: Readonly<SessionComposerProps>) {
     setText("");
     setAttached([]);
     setRefusal(null);
+    setSendRefused(false);
     if (action === "queue") {
       enqueue({ text: value, images: attached });
       return undefined;
     }
-    return actions.send(value, attached.length > 0 ? attached : undefined);
+    const images = attached;
+    return actions.send(value, images.length > 0 ? images : undefined).then((taken) => {
+      if (taken !== false) return;
+      // The host refused (it said why in the banner): what was written comes back, before anything
+      // typed meanwhile, so a long message is never lost (#4466).
+      setText((now) => (now.trim() ? `${value}\n\n${now}` : value));
+      setAttached((now) => [...images, ...now]);
+      setSendRefused(true);
+    });
   };
 
   const pickers = composerPickers(props, t, {
@@ -195,6 +206,11 @@ export function SessionComposer(props: Readonly<SessionComposerProps>) {
           }}
           onRemove={remove}
         />
+        {sendRefused && (
+          <p role="alert" className="text-status-error text-xs">
+            {t("session.sendRefused")}
+          </p>
+        )}
         <ComposerAttachments
           t={t}
           attached={attached}
@@ -250,7 +266,10 @@ export function SessionComposer(props: Readonly<SessionComposerProps>) {
             value={text}
             className="composer-box max-h-40 min-h-9 flex-1 resize-none"
             rows={1}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              setSendRefused(false);
+            }}
             onPaste={(e) => {
               const files = Array.from(e.clipboardData?.files ?? []);
               if (props.images && files.some((file) => file.type.startsWith("image/"))) {

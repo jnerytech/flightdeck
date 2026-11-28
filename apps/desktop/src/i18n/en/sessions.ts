@@ -288,6 +288,7 @@ export const sessions = {
       count: "At most {max} images per message.",
     },
     send: "Send",
+    sendRefused: "Not sent: the message is back in the box.",
     turnDone: "turn finished · {seconds} s",
     personaApplied: "Persona applied: {name}",
     personaCleared: "Out of the role: {name}",
