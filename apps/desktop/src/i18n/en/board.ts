@@ -390,6 +390,8 @@ export const board = {
   cardUi: {
     noIssueLink: "This issue has no link we can open",
     notFound: "Card not found.",
+    readFailed: "The card could not be read.",
+    retry: "Try again",
     cost: "Card cost",
     back: "Back to the board",
     description: "Description",
