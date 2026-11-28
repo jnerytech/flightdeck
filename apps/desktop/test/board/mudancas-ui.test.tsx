@@ -387,9 +387,14 @@ describe("mudancas-ui", () => {
     await click("Editar arquivo a.txt");
     await settle(() => document.querySelector(".cm-content") !== null);
     await click("Salvar");
-    await settle(() => document.querySelector(".cm-content") === null);
-    expect(document.querySelector(".cm-content")).toBeNull();
-    const shown = screen.queryByRole("dialog")?.textContent ?? "";
+    // The refusal keeps the editor and what was typed, and says why in an alert (#4515).
+    await settle(() =>
+      (screen.queryByRole("alert")?.textContent ?? "").includes(
+        "está fora das pastas permitidas do host",
+      ),
+    );
+    expect(document.querySelector(".cm-content") !== null).toBe(true);
+    const shown = screen.queryByRole("alert")?.textContent ?? "";
     expect(shown).toContain("está fora das pastas permitidas do host");
     // The reason carries the whole sentence now; the host's English text is no longer appended.
     expect(shown).not.toContain("outside allowedRoots");
