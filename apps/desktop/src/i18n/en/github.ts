@@ -23,6 +23,13 @@ export const github = {
     scopes: "Access: {scopes}",
     signOut: "Sign out",
     signOutEnv: "The login comes from an environment variable of the daemon: remove it there.",
+    loading: "Reading GitHub sign-in…",
+    failed: "Could not read the GitHub sign-in of this host.",
+    startFailed: "The sign-in did not start. Try again.",
+    signOutFailed: "The host did not sign out. You are still signed in.",
+    cancelFailed: "The host did not cancel the sign-in. Cancel again, or wait for the code to expire.",
+    codeExpires:
+      "The code works for 15 minutes. If GitHub does not accept it, press Cancel and sign in again.",
   },
   githubStart: {
     open: "Start from GitHub",

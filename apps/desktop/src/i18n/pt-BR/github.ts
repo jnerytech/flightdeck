@@ -23,6 +23,14 @@ export const github = {
     scopes: "Acesso: {scopes}",
     signOut: "Sair",
     signOutEnv: "O login vem de uma variável de ambiente do daemon: remova-a de lá.",
+    loading: "Lendo o login do GitHub…",
+    failed: "Não foi possível ler o login do GitHub deste host.",
+    startFailed: "O login não começou. Tente de novo.",
+    signOutFailed: "O host não saiu da conta. Você continua conectado.",
+    cancelFailed:
+      "O host não cancelou o login. Cancele de novo ou espere o código expirar.",
+    codeExpires:
+      "O código vale por 15 minutos. Se o GitHub não o aceitar, clique em Cancelar e entre de novo.",
   },
   githubStart: {
     open: "Começar pelo GitHub",
