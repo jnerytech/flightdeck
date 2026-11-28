@@ -43,9 +43,17 @@ async function openBoard(language: "en" | "pt-BR") {
 }
 
 /** The host drops or comes back: the store says so to every screen, as its link does. */
-async function hostIs(store: Awaited<ReturnType<typeof openBoard>>, online: boolean) {
+async function hostIs(
+  store: Awaited<ReturnType<typeof openBoard>>,
+  online: boolean,
+  status?: "connecting" | "unauthorized" | "incompatible",
+) {
   await act(async () => {
     seedHosts(store, [{ id: "h1", name: "alfa", online }]);
+    if (status) {
+      const hosts = store.getState().hosts;
+      (hosts[0] as { status: string }).status = status;
+    }
     (store as unknown as { update(patch: object): void }).update({ hosts: store.getState().hosts });
   });
 }
@@ -59,6 +67,14 @@ describe("board-offline: a board whose host is offline says it shows the last st
       expect(screen.queryByText(SAID[language]) !== null).toBe(true);
       await hostIs(store, true);
       expect(screen.queryByText(SAID[language]) === null).toBe(true);
+    });
+  }
+
+  for (const status of ["connecting", "unauthorized", "incompatible"] as const) {
+    test(`a host that is ${status} is not said to be offline`, async () => {
+      const store = await openBoard("en");
+      await hostIs(store, false, status);
+      expect(screen.queryByText(SAID.en) === null).toBe(true);
     });
   }
 });
